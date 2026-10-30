@@ -15,6 +15,9 @@ export type PublicSiteSettings = {
   principalMessage?: string;
   address?: string;
   phone?: string;
+  officeHours?: string;
+  mapUrl?: string;
+  statusPageUrl?: string;
   email?: string;
   jurisdiction?: string;
   socialLinks?: { label: string; url: string }[];

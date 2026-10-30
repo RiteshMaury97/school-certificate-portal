@@ -39,16 +39,11 @@ export async function verifyOptOutToken(
       : expiry instanceof Date
         ? expiry.getTime()
         : 0;
-  if (!snap.exists || snap.get("usedAt") || expiresAt <= Date.now())
-    return null;
+  if (!snap.exists || snap.get("usedAt") || expiresAt <= Date.now()) return null;
   const studentId = snap.get("studentId");
-  return typeof studentId === "string" && studentId
-    ? { studentId, tokenHash: hash }
-    : null;
+  return typeof studentId === "string" && studentId ? { studentId, tokenHash: hash } : null;
 }
-export async function sendCertificateAvailableNotice(
-  studentId: string,
-): Promise<void> {
+export async function sendCertificateAvailableNotice(studentId: string): Promise<void> {
   const studentRef = db.collection("students").doc(studentId);
   const student = await studentRef.get();
   if (
@@ -63,29 +58,25 @@ export async function sendCertificateAvailableNotice(
   if (
     !latestConsent.exists ||
     latestConsent.get("notificationConsent") !== true ||
-    latestConsent.get("notificationConsentPurpose") !==
-      "certificate_availability" ||
+    latestConsent.get("notificationConsentPurpose") !== "certificate_availability" ||
     !latestConsent.get("notificationConsentAt") ||
     latestConsent.get("notificationOptOut") === true
   )
     return;
   const email = String(latestConsent.get("parentEmail") ?? "").trim();
   const mobile = String(latestConsent.get("parentMobile") ?? "").trim();
-  const siteUrl = (
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.SITE_URL ??
-    ""
-  ).replace(/\/$/, "");
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? "").replace(
+    /\/$/,
+    "",
+  );
+  const siteSettings = await db.collection("siteSettings").doc("main").get();
+  const schoolName = String(siteSettings.get("schoolName") || "Satyam International School");
   if (!siteUrl) return;
   const token = await makeOptOutToken(studentId);
   const optOutUrl = `${siteUrl}/api/public/notifications/opt-out?token=${encodeURIComponent(token)}`;
   let sent = false;
   let channel = "none";
-  if (
-    email &&
-    process.env.RESEND_API_KEY &&
-    process.env.NOTIFICATION_FROM_EMAIL
-  ) {
+  if (email && process.env.RESEND_API_KEY && process.env.NOTIFICATION_FROM_EMAIL) {
     channel = "email";
     try {
       const response = await fetch("https://api.resend.com/emails", {
@@ -97,9 +88,9 @@ export async function sendCertificateAvailableNotice(
         body: JSON.stringify({
           from: process.env.NOTIFICATION_FROM_EMAIL,
           to: [email],
-          subject: "Your certificate is now available",
-          text: `Your certificate is now available at ${siteUrl}. No personal details are included in this message. To stop future notifications, visit: ${optOutUrl}`,
-          html: `<p>Your certificate is now available at <a href="${siteUrl}">${siteUrl}</a>.</p><p>No personal details are included in this message.</p><p><a href="${optOutUrl}">Opt out of future notifications</a>.</p>`,
+          subject: `${schoolName}: your certificate is now available`,
+          text: `${schoolName} has made your certificate available at ${siteUrl}. No personal details are included in this message. To stop future notifications, visit: ${optOutUrl}`,
+          html: `<p>${schoolName} has made your certificate available at <a href="${siteUrl}">${siteUrl}</a>.</p><p>No personal details are included in this message.</p><p><a href="${optOutUrl}">Opt out of future notifications</a>.</p>`,
         }),
         cache: "no-store",
         signal: AbortSignal.timeout(8000),
@@ -144,14 +135,12 @@ export async function sendCertificateAvailableNotice(
       sent = false;
     }
   }
-  await db
-    .collection("notificationLogs")
-    .add({
-      studentId,
-      channel,
-      sent,
-      purpose: "certificate_available",
-      consentTimestamp: latestConsent.get("notificationConsentAt") ?? null,
-      createdAt: new Date(),
-    });
+  await db.collection("notificationLogs").add({
+    studentId,
+    channel,
+    sent,
+    purpose: "certificate_available",
+    consentTimestamp: latestConsent.get("notificationConsentAt") ?? null,
+    createdAt: new Date(),
+  });
 }

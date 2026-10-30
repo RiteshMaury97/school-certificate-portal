@@ -1,6 +1,6 @@
 "use client";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { appCheckHeaders, auth } from "@/src/lib/firebase-client";
 import {
   getMultiFactorResolver,
@@ -10,11 +10,34 @@ import {
   TotpMultiFactorGenerator,
 } from "firebase/auth";
 import type { MultiFactorError, User } from "firebase/auth";
-import i18n from "@/src/lib/i18n";
+import { usePublicSiteSettings } from "@/src/lib/use-site-settings";
+import EmptyState from "@/src/components/EmptyState";
+import ErrorState from "@/src/components/feedback/ErrorState";
 import {
-  ADMIN_IDLE_TIMEOUT_MS,
-  ADMIN_IDLE_WARNING_MS,
-} from "@/src/lib/session-policy";
+  Bell,
+  Sun,
+  Moon,
+  Contrast,
+  UserRound,
+  LayoutDashboard,
+  Users,
+  FileCheck2,
+  ClipboardCheck,
+  CalendarDays,
+  MessageSquareWarning,
+  ScrollText,
+  Settings,
+  ShieldCheck,
+  Database,
+  HelpCircle,
+  FileText,
+  UploadCloud,
+  History,
+  LockKeyhole,
+  Menu,
+  X,
+} from "lucide-react";
+import { ADMIN_IDLE_TIMEOUT_MS, ADMIN_IDLE_WARNING_MS } from "@/src/lib/session-policy";
 type Role = "uploader" | "approver" | "superadmin";
 type Student = {
   id: string;
@@ -62,6 +85,24 @@ type Tab =
   | "announcement"
   | "faqs"
   | "retention";
+const tabIcons = {
+  help: HelpCircle,
+  dashboard: LayoutDashboard,
+  approvals: ClipboardCheck,
+  students: Users,
+  certificates: FileCheck2,
+  catalog: CalendarDays,
+  audit: ScrollText,
+  rights: LockKeyhole,
+  breaches: ShieldCheck,
+  reports: MessageSquareWarning,
+  timeline: History,
+  admins: UserRound,
+  branding: Settings,
+  announcement: Bell,
+  faqs: FileText,
+  retention: Database,
+} satisfies Record<Tab, typeof HelpCircle>;
 const tabs: Tab[] = [
   "help",
   "dashboard",
@@ -89,32 +130,48 @@ function csrf() {
   );
 }
 export default function AdminPage() {
+  const [mobileAdminNav, setMobileAdminNav] = useState(false);
+  const siteSettings = usePublicSiteSettings();
   const navigate = useNavigate();
+  const location = useLocation();
+  const routeTab: Tab = location.pathname.includes("/students")
+    ? "students"
+    : location.pathname.includes("/certificates")
+      ? "certificates"
+      : location.pathname.includes("/approvals")
+        ? "approvals"
+        : location.pathname.includes("/sessions")
+          ? "catalog"
+          : location.pathname.includes("/tickets")
+            ? "rights"
+            : location.pathname.includes("/audit")
+              ? "audit"
+              : location.pathname.includes("/settings")
+                ? "branding"
+                : location.pathname.includes("/admins")
+                  ? "admins"
+                  : location.pathname.includes("/backup")
+                    ? "retention"
+                    : "dashboard";
   const [uid, setUid] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [highContrast, setHighContrast] = useState(false);
   const [role, setRole] = useState<Role>("uploader");
   const [email, setEmail] = useState("");
-  const [tab, setTab] = useState<Tab>("students");
+  const [tab, setTab] = useState<Tab>(routeTab);
   const [students, setStudents] = useState<Student[]>([]);
   const [certs, setCerts] = useState<Cert[]>([]);
-  const [catalog, setCatalog] = useState<
-    { id: string; label?: string; name?: string }[]
-  >([]);
+  const [catalog, setCatalog] = useState<{ id: string; label?: string; name?: string }[]>([]);
   const [sessionOptions, setSessionOptions] = useState<
     { id: string; label?: string; name?: string }[]
   >([]);
-  const [typeOptions, setTypeOptions] = useState<
-    { id: string; label?: string; name?: string }[]
-  >([]);
+  const [typeOptions, setTypeOptions] = useState<{ id: string; label?: string; name?: string }[]>(
+    [],
+  );
   const [logs, setLogs] = useState<Record<string, unknown>[]>([]);
   const [rights, setRights] = useState<Record<string, unknown>[]>([]);
-  const [retentionRecords, setRetentionRecords] = useState<
-    Record<string, unknown>[]
-  >([]);
-  const [retentionRetryJobs, setRetentionRetryJobs] = useState<
-    Record<string, unknown>[]
-  >([]);
+  const [retentionRecords, setRetentionRecords] = useState<Record<string, unknown>[]>([]);
+  const [retentionRetryJobs, setRetentionRetryJobs] = useState<Record<string, unknown>[]>([]);
   const [retentionYears, setRetentionYears] = useState("7");
   const [retentionConfirmed, setRetentionConfirmed] = useState(false);
   const [backupRotationDays, setBackupRotationDays] = useState("30");
@@ -125,64 +182,41 @@ export default function AdminPage() {
     {
       questionEn: string;
       answerEn: string;
-      questionHi: string;
-      answerHi: string;
     }[]
   >([
     {
       questionEn: "Name not found",
       answerEn:
         "Check that the student's name and both parents' names match the school register, including spaces and spelling. If the record still does not appear, submit a report for review.",
-      questionHi: "नाम नहीं मिला",
-      answerHi:
-        "जाँचें कि छात्र और माता-पिता के नाम विद्यालय रजिस्टर से मेल खाते हैं। फिर भी रिकॉर्ड न मिले तो रिपोर्ट भेजें।",
     },
     {
       questionEn: "Which spelling should I use?",
-      answerEn:
-        "Use the exact spelling recorded in the school's admission or examination records.",
-      questionHi: "किस वर्तनी का उपयोग करें?",
-      answerHi:
-        "विद्यालय के प्रवेश या परीक्षा रिकॉर्ड में दर्ज बिल्कुल वही वर्तनी लिखें।",
+      answerEn: "Use the exact spelling recorded in the school's admission or examination records.",
     },
     {
       questionEn: "Wrong details in my certificate",
       answerEn:
         "Submit a wrong-record report with the session, incorrect detail and a contact method.",
-      questionHi: "प्रमाणपत्र में गलत विवरण",
-      answerHi: "सत्र, गलत विवरण और संपर्क जानकारी के साथ रिपोर्ट भेजें।",
     },
     {
       questionEn: "I passed in a different session",
       answerEn:
         "Choose the session in which you passed. If it is not listed, contact the school office.",
-      questionHi: "मैंने दूसरे सत्र में परीक्षा उत्तीर्ण की",
-      answerHi:
-        "जिस सत्र में आपने परीक्षा उत्तीर्ण की थी, वही चुनें। सत्र उपलब्ध न हो तो कार्यालय से संपर्क करें।",
     },
     {
       questionEn: "Is my data safe? (DPDP)",
       answerEn:
         "Your details are used to match school records and provide the requested certificate. See the Privacy page for data-rights and grievance information.",
-      questionHi: "क्या मेरा डेटा सुरक्षित है? (DPDP)",
-      answerHi:
-        "आपके विवरण का उपयोग विद्यालय रिकॉर्ड मिलाने और प्रमाणपत्र देने के लिए किया जाता है। डेटा अधिकारों के लिए गोपनीयता पृष्ठ देखें।",
     },
     {
       questionEn: "How do I verify a certificate as an employer?",
       answerEn:
         "Open Verify and enter the certificate number. The result confirms whether the certificate record is valid, revoked or unavailable.",
-      questionHi: "नियोक्ता प्रमाणपत्र कैसे सत्यापित करें?",
-      answerHi:
-        "सत्यापन पृष्ठ खोलें और प्रमाणपत्र संख्या दर्ज करें। परिणाम प्रमाणपत्र की स्थिति बताएगा।",
     },
     {
       questionEn: "Can I get a hard copy?",
       answerEn:
         "Contact the school office using the support details in the footer. Availability and any applicable fee are decided by the school.",
-      questionHi: "क्या मुझे हार्ड कॉपी मिल सकती है?",
-      answerHi:
-        "हार्ड कॉपी के लिए पादलेख में दिए गए संपर्क विवरण से विद्यालय कार्यालय से संपर्क करें।",
     },
   ]);
   const [reportNotes, setReportNotes] = useState<Record<string, string>>({});
@@ -191,6 +225,9 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
+  useEffect(() => {
+    setTab(routeTab);
+  }, [routeTab]);
   const [form, setForm] = useState({
     admissionNumber: "",
     dateOfBirth: "",
@@ -218,32 +255,25 @@ export default function AdminPage() {
     }[]
   >([]);
   const [bulkProgress, setBulkProgress] = useState<Record<string, number>>({});
-  const [catalogKind, setCatalogKind] = useState<
-    "sessions" | "certificateTypes"
-  >("sessions");
+  const [catalogKind, setCatalogKind] = useState<"sessions" | "certificateTypes">("sessions");
   const [catalogName, setCatalogName] = useState("");
   const [auditAction, setAuditAction] = useState("");
   const [auditStart, setAuditStart] = useState("");
   const [auditEnd, setAuditEnd] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<
-    "uploader" | "approver" | "superadmin"
-  >("uploader");
+  const [inviteRole, setInviteRole] = useState<"uploader" | "approver" | "superadmin">("uploader");
   const [pending, setPending] = useState<Cert[]>([]);
   const [stats, setStats] = useState<Record<string, unknown>>({});
   const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
   const [resolution, setResolution] = useState<Record<string, string>>({});
-  const [approvalChecks, setApprovalChecks] = useState<Record<string, boolean>>(
+  const [approvalChecks, setApprovalChecks] = useState<Record<string, boolean>>({});
+  const [previewUrls, setPreviewUrls] = useState<Record<string, { url: string; mimeType: string }>>(
     {},
   );
-  const [previewUrls, setPreviewUrls] = useState<
-    Record<string, { url: string; mimeType: string }>
-  >({});
   const [certificateHistory, setCertificateHistory] = useState<
     Record<string, Record<string, unknown>[]>
   >({});
-  const [duplicateHashAcknowledged, setDuplicateHashAcknowledged] =
-    useState(false);
+  const [duplicateHashAcknowledged, setDuplicateHashAcknowledged] = useState(false);
   const [duplicateHashReason, setDuplicateHashReason] = useState("");
   const [duplicateHashWarning, setDuplicateHashWarning] = useState("");
   const [timeline, setTimeline] = useState<Record<string, unknown>[]>([]);
@@ -256,15 +286,12 @@ export default function AdminPage() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [idleWarning, setIdleWarning] = useState(false);
   const [sessions, setSessions] = useState<Record<string, unknown>[]>([]);
-  const [recentLogins, setRecentLogins] = useState<Record<string, unknown>[]>(
-    [],
-  );
+  const [recentLogins, setRecentLogins] = useState<Record<string, unknown>[]>([]);
   const [showSessions, setShowSessions] = useState(false);
   const [announcement, setAnnouncement] = useState({
     enabled: false,
     type: "info" as "info" | "warning",
     textEn: "",
-    textHi: "",
     linkUrl: "",
     startAt: "",
     endAt: "",
@@ -291,19 +318,14 @@ export default function AdminPage() {
     grievanceOfficerPhone: "",
     lastUpdated: "",
     statusPageUrl: "",
+    includedLanguages: "en,hi,bn,mr,gu,pa,ta,te,ur",
   });
   const obtainReauthGrant = useCallback(async (): Promise<string> => {
-    const password = prompt(
-      "For this sensitive action, re-enter your administrator password:",
-    );
+    const password = prompt("For this sensitive action, re-enter your administrator password:");
     if (!password) throw new Error("Re-authentication cancelled.");
     let user: User | null = null;
     try {
-      const credential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
+      const credential = await signInWithEmailAndPassword(auth, email, password);
       user = credential.user;
     } catch (cause) {
       const authError = cause as { code?: string };
@@ -313,10 +335,7 @@ export default function AdminPage() {
       const factor = resolver.hints.find(
         (item) => item.factorId === TotpMultiFactorGenerator.FACTOR_ID,
       );
-      if (!factor)
-        throw new Error(
-          "An authenticator factor is required for sensitive actions.",
-        );
+      if (!factor) throw new Error("An authenticator factor is required for sensitive actions.");
       const otp = prompt("Enter the six-digit authenticator code:");
       if (!otp) throw new Error("MFA verification cancelled.");
       const credential = await resolver.resolveSignIn(
@@ -352,9 +371,7 @@ export default function AdminPage() {
     ): Promise<T> => {
       const method = (init.method ?? "GET").toUpperCase();
       const headers = new Headers(init.headers);
-      Object.entries(await appCheckHeaders()).forEach(([key, value]) =>
-        headers.set(key, value),
-      );
+      Object.entries(await appCheckHeaders()).forEach(([key, value]) => headers.set(key, value));
       if (!["GET", "HEAD", "OPTIONS"].includes(method))
         headers.set("x-csrf-token", decodeURIComponent(csrf()));
       const options: RequestInit = {
@@ -386,15 +403,11 @@ export default function AdminPage() {
   }, [api]);
   const load = useCallback(async () => {
     if (tab === "dashboard") {
-      const d = await api<{ stats: Record<string, unknown> }>(
-        "/api/admin/dashboard",
-      );
+      const d = await api<{ stats: Record<string, unknown> }>("/api/admin/dashboard");
       setStats(d.stats ?? {});
     }
     if (tab === "approvals") {
-      const d = await api<{ certificates: Cert[] }>(
-        "/api/admin/certificates?status=pending",
-      );
+      const d = await api<{ certificates: Cert[] }>("/api/admin/certificates?status=pending");
       setPending((d.certificates ?? []).filter((x) => x.status === "pending"));
     }
     if (tab === "students") {
@@ -435,17 +448,14 @@ export default function AdminPage() {
       const params = new URLSearchParams();
       if (auditAction) params.set("action", auditAction);
       if (auditStart) params.set("start", new Date(auditStart).toISOString());
-      if (auditEnd)
-        params.set("end", new Date(auditEnd + "T23:59:59").toISOString());
+      if (auditEnd) params.set("end", new Date(auditEnd + "T23:59:59").toISOString());
       const d = await api<{ logs: Record<string, unknown>[] }>(
         `/api/admin/audit?${params.toString()}`,
       );
       setLogs(d.logs ?? []);
     }
     if (tab === "rights") {
-      const d = await api<{ requests: Record<string, unknown>[] }>(
-        "/api/admin/rights?status=open",
-      );
+      const d = await api<{ requests: Record<string, unknown>[] }>("/api/admin/rights?status=open");
       setRights(d.requests ?? []);
     }
     if (tab === "retention" && role === "superadmin") {
@@ -457,15 +467,11 @@ export default function AdminPage() {
       setRetentionRetryJobs(d.retryJobs ?? []);
     }
     if (tab === "breaches") {
-      const d = await api<{ breaches: Record<string, unknown>[] }>(
-        "/api/admin/breaches",
-      );
+      const d = await api<{ breaches: Record<string, unknown>[] }>("/api/admin/breaches");
       setBreaches(d.breaches ?? []);
     }
     if (tab === "reports") {
-      const d = await api<{ reports: Record<string, unknown>[] }>(
-        "/api/admin/reports",
-      );
+      const d = await api<{ reports: Record<string, unknown>[] }>("/api/admin/reports");
       setReports(d.reports ?? []);
     }
     if (tab === "timeline") {
@@ -479,22 +485,16 @@ export default function AdminPage() {
         faqs: {
           questionEn: string;
           answerEn: string;
-          questionHi: string;
-          answerHi: string;
         }[];
       }>("/api/admin/faqs");
       if (d.faqs?.length) setFaqs(d.faqs);
     }
     if (tab === "admins" && role === "superadmin") {
-      const d = await api<{ admins: Record<string, unknown>[] }>(
-        "/api/admin/users",
-      );
+      const d = await api<{ admins: Record<string, unknown>[] }>("/api/admin/users");
       setAdmins(d.admins ?? []);
     }
     if (tab === "branding" && role === "superadmin") {
-      const d = await api<{ settings: Record<string, unknown> }>(
-        "/api/admin/site-settings",
-      );
+      const d = await api<{ settings: Record<string, unknown> }>("/api/admin/site-settings");
       const x = d.settings ?? {};
       setMaintenanceMode(x.maintenanceMode === true);
       setRetentionYears(String(x.retentionYears ?? 7));
@@ -516,13 +516,8 @@ export default function AdminPage() {
         ),
       }));
     }
-    if (
-      tab === "announcement" &&
-      (role === "superadmin" || role === "approver")
-    ) {
-      const d = await api<{ announcement: Record<string, unknown> }>(
-        "/api/admin/announcements",
-      );
+    if (tab === "announcement" && (role === "superadmin" || role === "approver")) {
+      const d = await api<{ announcement: Record<string, unknown> }>("/api/admin/announcements");
       const a = d.announcement ?? {};
       const local = (value: unknown) => {
         if (typeof value !== "string" || !value) return "";
@@ -536,7 +531,6 @@ export default function AdminPage() {
         enabled: a.enabled === true,
         type: a.type === "warning" ? "warning" : "info",
         textEn: String(a.textEn ?? ""),
-        textHi: String(a.textHi ?? ""),
         linkUrl: String(a.linkUrl ?? ""),
         startAt: local(a.startAt),
         endAt: local(a.endAt),
@@ -569,24 +563,23 @@ export default function AdminPage() {
     navigate("/admin/login");
   }, [navigate]);
   useEffect(() => {
-    setTheme(
-      document.documentElement.classList.contains("dark") ? "dark" : "light",
-    );
+    setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light");
     const contrast = localStorage.getItem("sis-high-contrast") === "true";
     setHighContrast(contrast);
-    document.documentElement.classList.toggle("high-contrast", contrast);
+    document.documentElement.dataset.contrast = contrast ? "high" : "normal";
   }, []);
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
     localStorage.setItem("sis-theme", next);
-    document.documentElement.classList.toggle("dark", next === "dark");
+    document.documentElement.dataset.theme = next;
+    document.documentElement.style.colorScheme = next;
   }
   function toggleContrast() {
     const next = !highContrast;
     setHighContrast(next);
     localStorage.setItem("sis-high-contrast", String(next));
-    document.documentElement.classList.toggle("high-contrast", next);
+    document.documentElement.dataset.contrast = next ? "high" : "normal";
   }
   useEffect(() => {
     let live = true;
@@ -637,10 +630,7 @@ export default function AdminPage() {
       setIdleWarning(false);
       lastActivity = Date.now();
       lastScheduled = lastActivity;
-      warningTimer = setTimeout(
-        () => setIdleWarning(true),
-        ADMIN_IDLE_WARNING_MS,
-      );
+      warningTimer = setTimeout(() => setIdleWarning(true), ADMIN_IDLE_WARNING_MS);
       logoutTimer = setTimeout(() => {
         void logout();
       }, ADMIN_IDLE_TIMEOUT_MS);
@@ -650,16 +640,8 @@ export default function AdminPage() {
       if (Date.now() - lastScheduled > 5_000) schedule();
     };
     const externalActivity = () => schedule();
-    const events = [
-      "pointerdown",
-      "keydown",
-      "mousemove",
-      "scroll",
-      "touchstart",
-    ];
-    events.forEach((event) =>
-      window.addEventListener(event, activity, { passive: true }),
-    );
+    const events = ["pointerdown", "keydown", "mousemove", "scroll", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, activity, { passive: true }));
     window.addEventListener("sis-session-activity", externalActivity);
     schedule();
     const refreshSession = async () => {
@@ -721,9 +703,7 @@ export default function AdminPage() {
     setShowSessions(true);
   }
   async function revokeSession(sessionId: string) {
-    const current = sessions.some(
-      (item) => item.sessionId === sessionId && item.current === true,
-    );
+    const current = sessions.some((item) => item.sessionId === sessionId && item.current === true);
     await api("/api/admin/sessions", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -736,8 +716,7 @@ export default function AdminPage() {
     await loadSessions();
   }
   async function revokeAllSessions() {
-    if (!confirm("Sign out of every device? You will need to sign in again."))
-      return;
+    if (!confirm("Sign out of every device? You will need to sign in again.")) return;
     await api("/api/admin/sessions/revoke-all", { method: "POST" });
     navigate("/admin/login");
   }
@@ -794,17 +773,12 @@ export default function AdminPage() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (result.duplicateFileWarning === true)
-          setDuplicateHashWarning(
-            String(result.error ?? "Duplicate file detected."),
-          );
+          setDuplicateHashWarning(String(result.error ?? "Duplicate file detected."));
         throw new Error(
-          typeof result.error === "string"
-            ? result.error
-            : "Student/certificate save failed.",
+          typeof result.error === "string" ? result.error : "Student/certificate save failed.",
         );
       }
-      duplicateWarning =
-        typeof result.warning === "string" ? result.warning : "";
+      duplicateWarning = typeof result.warning === "string" ? result.warning : "";
       setForm({
         admissionNumber: "",
         dateOfBirth: "",
@@ -849,8 +823,7 @@ export default function AdminPage() {
       f.append("confirmDuplicateHash", String(duplicateHashAcknowledged));
       f.append("duplicateHashReason", duplicateHashReason);
       const firstFile = files[0];
-      if (!(firstFile instanceof File))
-        throw new Error("Select a certificate file.");
+      if (!(firstFile instanceof File)) throw new Error("Select a certificate file.");
       f.append("file", firstFile);
       const response = await fetch("/api/admin/certificates", {
         method: "POST",
@@ -863,9 +836,7 @@ export default function AdminPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (data.duplicateFileWarning === true)
-          setDuplicateHashWarning(
-            String(data.error ?? "Duplicate file detected."),
-          );
+          setDuplicateHashWarning(String(data.error ?? "Duplicate file detected."));
         throw new Error(String(data.error ?? "Certificate upload failed."));
       }
       setFiles([]);
@@ -877,11 +848,7 @@ export default function AdminPage() {
   }
   async function importCsv(action: "preview" | "commit") {
     if (!csv) return;
-    if (
-      action === "commit" &&
-      !confirm("Import all validated student rows now?")
-    )
-      return;
+    if (action === "commit" && !confirm("Import all validated student rows now?")) return;
     await act(async () => {
       const f = new FormData();
       f.append("file", csv);
@@ -910,9 +877,7 @@ export default function AdminPage() {
       body.append("mappingCsv", bulkCsv);
       body.append(
         "fileManifest",
-        JSON.stringify(
-          bulkFiles.map((file) => ({ name: file.name, size: file.size })),
-        ),
+        JSON.stringify(bulkFiles.map((file) => ({ name: file.name, size: file.size }))),
       );
       const result = await api<{
         preview: {
@@ -948,13 +913,8 @@ export default function AdminPage() {
             xhr.open("POST", "/api/admin/bulk-upload");
             void appCheckHeaders()
               .then((headers) => {
-                Object.entries(headers).forEach(([k, v]) =>
-                  xhr.setRequestHeader(k, v),
-                );
-                xhr.setRequestHeader(
-                  "x-csrf-token",
-                  decodeURIComponent(csrf()),
-                );
+                Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+                xhr.setRequestHeader("x-csrf-token", decodeURIComponent(csrf()));
                 xhr.upload.onprogress = (e) => {
                   if (e.lengthComputable)
                     setBulkProgress((v) => ({
@@ -969,15 +929,10 @@ export default function AdminPage() {
                   } else {
                     let payload: Record<string, unknown> = {};
                     try {
-                      payload = JSON.parse(xhr.responseText) as Record<
-                        string,
-                        unknown
-                      >;
+                      payload = JSON.parse(xhr.responseText) as Record<string, unknown>;
                     } catch {}
                     if (payload.duplicateFileWarning === true)
-                      setDuplicateHashWarning(
-                        String(payload.error ?? "Duplicate file detected."),
-                      );
+                      setDuplicateHashWarning(String(payload.error ?? "Duplicate file detected."));
                     reject(
                       new Error(
                         `Upload failed for ${row.fileName}: ${String(payload.error ?? xhr.responseText)}`,
@@ -985,8 +940,7 @@ export default function AdminPage() {
                     );
                   }
                 };
-                xhr.onerror = () =>
-                  reject(new Error(`Network error uploading ${row.fileName}`));
+                xhr.onerror = () => reject(new Error(`Network error uploading ${row.fileName}`));
                 xhr.send(body);
               })
               .catch(reject);
@@ -996,8 +950,7 @@ export default function AdminPage() {
           setBulkProgress((v) => ({ ...v, [row.fileName]: 0 }));
         }
       }
-      if (failed.length)
-        throw new Error(`Retry required for: ${failed.join(", ")}`);
+      if (failed.length) throw new Error(`Retry required for: ${failed.join(", ")}`);
       setBulkPreview([]);
       setBulkFiles([]);
       setBulkCsv(null);
@@ -1037,10 +990,7 @@ export default function AdminPage() {
       });
     });
   }
-  async function updateReport(
-    id: string,
-    status: "open" | "reviewing" | "resolved" | "rejected",
-  ) {
+  async function updateReport(id: string, status: "open" | "reviewing" | "resolved" | "rejected") {
     await act(async () => {
       await api("/api/admin/reports", {
         method: "PATCH",
@@ -1097,9 +1047,7 @@ export default function AdminPage() {
       return;
     }
     if (decision === "approve" && !approvalChecks[id]) {
-      setError(
-        "Confirm that the student details match the document before approval.",
-      );
+      setError("Confirm that the student details match the document before approval.");
       return;
     }
     await act(async () => {
@@ -1153,10 +1101,9 @@ export default function AdminPage() {
   }
   async function createBackup() {
     await act(async () => {
-      const d = await api<{ objectKey: string; size: number }>(
-        "/api/admin/backup",
-        { method: "POST" },
-      );
+      const d = await api<{ objectKey: string; size: number }>("/api/admin/backup", {
+        method: "POST",
+      });
       setToast(`Encrypted backup saved to private R2: ${d.objectKey}`);
     });
   }
@@ -1190,10 +1137,7 @@ export default function AdminPage() {
       URL.revokeObjectURL(url);
     });
   }
-  async function changeRole(
-    uid: string,
-    role: "uploader" | "approver" | "superadmin",
-  ) {
+  async function changeRole(uid: string, role: "uploader" | "approver" | "superadmin") {
     await act(async () => {
       await api("/api/admin/users", {
         method: "PATCH",
@@ -1220,11 +1164,7 @@ export default function AdminPage() {
   }
   if (!email)
     return (
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className="grid min-h-screen place-items-center"
-      >
+      <main id="main-content" tabIndex={-1} className="grid min-h-screen place-items-center">
         Checking secure administrator session…
       </main>
     );
@@ -1242,19 +1182,16 @@ export default function AdminPage() {
               Session expiring soon
             </h2>
             <p className="mt-2 text-sm">
-              You have been inactive for 13 minutes. You will be signed out
-              after 15 minutes of inactivity.
+              You have been inactive for 13 minutes. You will be signed out after 15 minutes of
+              inactivity.
             </p>
             <div className="mt-5 flex justify-end gap-3">
-              <button
-                onClick={() => void logout()}
-                className="rounded-lg border px-4 py-2"
-              >
+              <button onClick={() => void logout()} className="rounded-lg border px-4 py-2">
                 Sign out
               </button>
               <button
                 onClick={() => void staySignedIn()}
-                className="rounded-lg bg-[#173b68] px-4 py-2 text-white"
+                className="rounded-lg bg-[var(--primary)] px-4 py-2 text-[var(--primary-contrast)]"
               >
                 Stay signed in
               </button>
@@ -1288,23 +1225,19 @@ export default function AdminPage() {
                     <p className="font-semibold">
                       {String(session.browser ?? "Device")} ·{" "}
                       {String(session.city ?? "Unknown city")}
-                      {session.country
-                        ? `, ${String(session.country)}`
-                        : ""}{" "}
+                      {session.country ? `, ${String(session.country)}` : ""}{" "}
                       {session.current ? "· This device" : ""}
                     </p>
                     <p className="text-xs text-slate-600">
-                      Signed in: {String(session.createdAt ?? "Unknown")} · Last
-                      activity: {String(session.lastActivityAt ?? "Unknown")}
+                      Signed in: {String(session.createdAt ?? "Unknown")} · Last activity:{" "}
+                      {String(session.lastActivityAt ?? "Unknown")}
                     </p>
                   </div>
                   {session.revoked ? (
                     <span>Revoked</span>
                   ) : (
                     <button
-                      onClick={() =>
-                        void revokeSession(String(session.sessionId))
-                      }
+                      onClick={() => void revokeSession(String(session.sessionId))}
                       className="rounded-lg border px-3 py-2"
                     >
                       Revoke
@@ -1318,8 +1251,7 @@ export default function AdminPage() {
               {recentLogins.map((login, i) => (
                 <div key={i} className="rounded-lg border p-3 text-sm">
                   <b>
-                    {String(login.browser ?? "Device")} ·{" "}
-                    {String(login.city ?? "Unknown city")}
+                    {String(login.browser ?? "Device")} · {String(login.city ?? "Unknown city")}
                     {login.country ? `, ${String(login.country)}` : ""}
                   </b>
                   <p className="text-xs text-slate-600">
@@ -1337,56 +1269,68 @@ export default function AdminPage() {
           </section>
         </div>
       )}
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className="min-h-screen bg-slate-50"
-      >
-        <header className="bg-[#173b68] text-white">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-slate-50">
+        <header className="bg-[var(--primary)] text-[var(--primary-contrast)]">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5">
             <div>
-              <h1 className="text-xl font-bold">School Admin Dashboard</h1>
+              <h1 className="text-xl font-bold">
+                {siteSettings.schoolName || "Satyam International School"}
+              </h1>
               <p className="text-sm text-blue-100">
                 {email} · {role}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <select
-                aria-label="Language"
-                value={i18n.language.startsWith("hi") ? "hi" : "en"}
-                onChange={(e) => {
-                  const value = e.target.value as "en" | "hi";
-                  localStorage.setItem("sis-language", value);
-                  document.documentElement.lang = value;
-                  void i18n.changeLanguage(value);
-                }}
-                className="rounded-lg border border-white/40 bg-transparent px-2 py-2 text-xs text-white"
-              >
-                <option className="text-slate-900" value="en">
-                  English
-                </option>
-                <option className="text-slate-900" value="hi">
-                  हिन्दी
-                </option>
-              </select>
               <button
-                onClick={toggleTheme}
-                className="rounded-lg border border-white/40 px-3 py-2 text-sm"
+                type="button"
+                aria-label={mobileAdminNav ? "Close navigation" : "Open navigation"}
+                title={mobileAdminNav ? "Close navigation" : "Open navigation"}
+                onClick={() => setMobileAdminNav((value) => !value)}
+                className="utility-icon md:hidden"
               >
-                {theme === "dark" ? "☀" : "☾"}
+                {mobileAdminNav ? <X size={18} /> : <Menu size={18} />}
               </button>
               <button
+                type="button"
+                aria-label="Notifications and support tickets"
+                title="Notifications"
+                onClick={() => navigate("/admin/tickets")}
+                className="utility-icon"
+              >
+                <Bell size={18} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+                title={theme === "dark" ? "Light theme" : "Dark theme"}
+                className="utility-icon"
+              >
+                {theme === "dark" ? (
+                  <Sun size={18} aria-hidden="true" />
+                ) : (
+                  <Moon size={18} aria-hidden="true" />
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={toggleContrast}
                 aria-pressed={highContrast}
-                className="rounded-lg border border-white/40 px-3 py-2 text-xs"
+                aria-label={highContrast ? "Standard contrast" : "High contrast"}
+                title={highContrast ? "Standard contrast" : "High contrast"}
+                className="utility-icon"
               >
-                {highContrast
-                  ? i18n.t("standardContrast")
-                  : i18n.t("highContrast")}
+                <Contrast size={18} aria-hidden="true" />
               </button>
               <details className="relative">
-                <summary className="cursor-pointer list-none rounded-lg border border-white/40 px-4 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
-                  Profile ▾
+                <summary
+                  aria-label="Administrator profile menu"
+                  title="Profile menu"
+                  className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg border border-white/40 px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  <UserRound size={18} aria-hidden="true" />
+                  <span className="hidden sm:inline">Profile</span>
+                  <span aria-hidden="true">▾</span>
                 </summary>
                 <div className="absolute right-0 z-50 mt-2 min-w-56 rounded-xl border border-slate-200 bg-white p-2 text-slate-900 shadow-xl">
                   <button
@@ -1414,7 +1358,7 @@ export default function AdminPage() {
         </header>
         <div className="mx-auto max-w-7xl px-5 py-7">
           <nav
-            className="mb-6 flex flex-wrap gap-2"
+            className="mb-6 hidden gap-2 overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 md:flex lg:gap-1"
             aria-label="Admin sections"
           >
             {tabs
@@ -1422,13 +1366,7 @@ export default function AdminPage() {
                 role === "superadmin"
                   ? true
                   : role === "uploader"
-                    ? [
-                        "help",
-                        "dashboard",
-                        "students",
-                        "certificates",
-                        "catalog",
-                      ].includes(t)
+                    ? ["help", "dashboard", "students", "certificates", "catalog"].includes(t)
                     : [
                         "help",
                         "dashboard",
@@ -1449,51 +1387,139 @@ export default function AdminPage() {
                     setTab(t);
                     setPage(0);
                   }}
-                  className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize ${tab === t ? "bg-[#173b68] text-white" : "border border-slate-300 bg-white text-slate-700"}`}
+                  className={`flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold capitalize focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] ${tab === t ? "bg-[var(--primary)] text-[var(--primary-contrast)]" : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"}`}
+                  aria-label={t === "help" ? "Help and policies" : t}
+                  title={t === "help" ? "Help and policies" : t}
                 >
-                  {t === "help"
-                    ? "Help & policies"
-                    : t === "dashboard"
-                      ? "Overview"
-                      : t === "approvals"
-                        ? "Pending approvals"
-                        : t === "catalog"
-                          ? "Sessions & Types"
-                          : t === "rights"
-                            ? "Data rights"
-                            : t === "admins"
-                              ? "Admin users"
-                              : t === "breaches"
-                                ? "Breach log"
-                                : t === "branding"
-                                  ? "Site branding"
-                                  : t === "announcement"
-                                    ? "Announcement"
-                                    : t === "reports"
-                                      ? "Record reports"
-                                      : t === "faqs"
-                                        ? "FAQ editor"
-                                        : t === "retention"
-                                          ? "Retention review"
-                                          : t}
+                  {(() => {
+                    const Icon = tabIcons[t];
+                    return <Icon aria-hidden="true" size={17} className="shrink-0" />;
+                  })()}
+                  <span className="hidden text-sm capitalize lg:inline">
+                    {t === "help"
+                      ? "Help & policies"
+                      : t === "dashboard"
+                        ? "Overview"
+                        : t === "approvals"
+                          ? "Pending approvals"
+                          : t === "catalog"
+                            ? "Sessions & Types"
+                            : t === "rights"
+                              ? "Data rights"
+                              : t === "admins"
+                                ? "Admin users"
+                                : t === "breaches"
+                                  ? "Breach log"
+                                  : t === "branding"
+                                    ? "Site branding"
+                                    : t === "announcement"
+                                      ? "Announcement"
+                                      : t === "reports"
+                                        ? "Record reports"
+                                        : t === "faqs"
+                                          ? "FAQ editor"
+                                          : t === "retention"
+                                            ? "Retention review"
+                                            : t}
+                  </span>
                 </button>
               ))}
           </nav>
-          {toast && (
-            <p
-              role="status"
-              className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800"
+          {mobileAdminNav && (
+            <div
+              className="fixed inset-0 z-[95] bg-black/50 md:hidden"
+              role="presentation"
+              onClick={() => setMobileAdminNav(false)}
             >
+              <nav
+                aria-label="Mobile admin navigation"
+                className="h-dvh w-[min(86vw,22rem)] overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--text)] shadow-xl"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="mb-4 flex items-center justify-between">
+                  <strong>Admin navigation</strong>
+                  <button
+                    type="button"
+                    aria-label="Close navigation"
+                    onClick={() => setMobileAdminNav(false)}
+                    className="utility-icon"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                {tabs
+                  .filter((item) =>
+                    role === "superadmin"
+                      ? true
+                      : role === "uploader"
+                        ? ["help", "dashboard", "students", "certificates", "catalog"].includes(
+                            item,
+                          )
+                        : [
+                            "help",
+                            "dashboard",
+                            "approvals",
+                            "students",
+                            "certificates",
+                            "audit",
+                            "rights",
+                            "reports",
+                            "timeline",
+                            "announcement",
+                          ].includes(item),
+                  )
+                  .map((item) => {
+                    const Icon = tabIcons[item];
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => {
+                          setTab(item);
+                          setPage(0);
+                          setMobileAdminNav(false);
+                        }}
+                        className={`flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold capitalize ${tab === item ? "bg-[var(--primary)] text-[var(--primary-contrast)]" : "text-[var(--text)] hover:bg-[var(--surface-2)]"}`}
+                      >
+                        <Icon size={18} />
+                        {item === "help"
+                          ? "Help & policies"
+                          : item === "dashboard"
+                            ? "Overview"
+                            : item === "catalog"
+                              ? "Sessions & Types"
+                              : item === "rights"
+                                ? "Data rights"
+                                : item}
+                      </button>
+                    );
+                  })}
+              </nav>
+            </div>
+          )}
+          {toast && (
+            <p role="status" className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
               {toast}
             </p>
           )}
           {error && (
-            <p
-              role="alert"
-              className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800"
-            >
-              {error}
-            </p>
+            <div className="mb-4">
+              <ErrorState
+                title="Admin data could not be loaded"
+                description={error}
+                onRetry={() => {
+                  setError("");
+                  setBusy(true);
+                  void load()
+                    .catch((cause) =>
+                      setError(
+                        cause instanceof Error ? cause.message : "Unable to reload admin data.",
+                      ),
+                    )
+                    .finally(() => setBusy(false));
+                }}
+              />
+            </div>
           )}
           {busy && (
             <section
@@ -1514,14 +1540,11 @@ export default function AdminPage() {
           )}
           {tab === "help" && (
             <section className="rounded-xl border bg-white p-5">
-              <h2 className="text-lg font-bold">
-                Management and operational documents
-              </h2>
+              <h2 className="text-lg font-bold">Management and operational documents</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Read these controlled documents before approving production
-                access, handling student information or responding to an
-                incident. The Markdown files are published from the project’s{" "}
-                <code>docs/</code> folder.
+                Read these controlled documents before approving production access, handling student
+                information or responding to an incident. The Markdown files are published from the
+                project’s <code>docs/</code> folder.
               </p>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <a
@@ -1532,8 +1555,7 @@ export default function AdminPage() {
                 >
                   <b>Penetration Test Checklist</b>
                   <p className="mt-1 text-sm text-slate-600">
-                    Manual security tests, automated scans, findings and
-                    sign-off.
+                    Manual security tests, automated scans, findings and sign-off.
                   </p>
                 </a>
                 <a
@@ -1544,8 +1566,7 @@ export default function AdminPage() {
                 >
                   <b>Privacy Impact Review</b>
                   <p className="mt-1 text-sm text-slate-600">
-                    Personal data inventory, providers, access, retention, risks
-                    and DPDP checklist.
+                    Personal data inventory, providers, access, retention, risks and DPDP checklist.
                   </p>
                 </a>
                 <a
@@ -1556,16 +1577,14 @@ export default function AdminPage() {
                 >
                   <b>Disaster Recovery Plan</b>
                   <p className="mt-1 text-sm text-slate-600">
-                    Backup, recovery roles, restore steps, contacts and restore
-                    test log.
+                    Backup, recovery roles, restore steps, contacts and restore test log.
                   </p>
                 </a>
               </div>
               <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-                Go-live requirement: complete the penetration test, approve the
-                privacy review, fill all disaster-recovery role/contact and
-                RTO/RPO placeholders, and record one successful staging restore
-                test.
+                Go-live requirement: complete the penetration test, approve the privacy review, fill
+                all disaster-recovery role/contact and RTO/RPO placeholders, and record one
+                successful staging restore test.
               </p>
             </section>
           )}
@@ -1582,27 +1601,21 @@ export default function AdminPage() {
                   ["Open support tickets", stats.openTickets],
                   [
                     "Feedback responses",
-                    (stats.feedback as Record<string, unknown> | undefined)
-                      ?.total ?? 0,
+                    (stats.feedback as Record<string, unknown> | undefined)?.total ?? 0,
                   ],
                   [
                     "Helpful feedback",
-                    (stats.feedback as Record<string, unknown> | undefined)
-                      ?.helpful ?? 0,
+                    (stats.feedback as Record<string, unknown> | undefined)?.helpful ?? 0,
                   ],
                 ] as const
               ).map(([label, value]) => (
                 <article key={label} className="rounded-xl border bg-white p-5">
                   <p className="text-sm text-slate-500">{label}</p>
-                  <p className="mt-2 text-3xl font-bold tabular-nums">
-                    {String(value ?? 0)}
-                  </p>
+                  <p className="mt-2 text-3xl font-bold tabular-nums">{String(value ?? 0)}</p>
                 </article>
               ))}
               <article className="rounded-xl border bg-white p-5 sm:col-span-2 xl:col-span-4">
-                <h2 className="font-bold">
-                  Published certificates per session
-                </h2>
+                <h2 className="font-bold">Published certificates per session</h2>
                 <div className="mt-3 space-y-3">
                   {(() => {
                     const series = Array.isArray(stats.certificatesPerSession)
@@ -1612,6 +1625,13 @@ export default function AdminPage() {
                         }[])
                       : [];
                     const max = Math.max(1, ...series.map((x) => x.count));
+                    if (series.length === 0)
+                      return (
+                        <EmptyState
+                          title="No data found"
+                          description="No published certificate statistics are available yet."
+                        />
+                      );
                     return series.map((x) => (
                       <div
                         key={x.session}
@@ -1620,13 +1640,11 @@ export default function AdminPage() {
                         <b>{x.session}</b>
                         <div className="h-3 overflow-hidden rounded-full bg-slate-100">
                           <div
-                            className="h-full rounded-full bg-[#315f91]"
+                            className="h-full rounded-full bg-[var(--primary)]"
                             style={{ width: `${(x.count / max) * 100}%` }}
                           />
                         </div>
-                        <span className="text-right tabular-nums">
-                          {x.count}
-                        </span>
+                        <span className="text-right tabular-nums">{x.count}</span>
                       </div>
                     ));
                   })()}
@@ -1652,44 +1670,31 @@ export default function AdminPage() {
                           <b>{x.session}</b>
                           <div className="h-3 overflow-hidden rounded-full bg-slate-100">
                             <div
-                              className="h-full rounded-full bg-[#2f855a]"
+                              className="h-full rounded-full bg-[var(--primary)]"
                               style={{ width: `${(x.downloads / max) * 100}%` }}
                             />
                           </div>
-                          <span className="text-right tabular-nums">
-                            {x.downloads}
-                          </span>
+                          <span className="text-right tabular-nums">{x.downloads}</span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-slate-500">
-                        No downloads recorded yet.
-                      </p>
+                      <p className="text-sm text-slate-500">No downloads recorded yet.</p>
                     );
                   })()}
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  Counts include successful individual file and ZIP downloads,
-                  not previews or print views. No downloader identity is stored.
+                  Counts include successful individual file and ZIP downloads, not previews or print
+                  views. No downloader identity is stored.
                 </p>
               </article>
               <article className="rounded-xl border bg-white p-5 sm:col-span-2 xl:col-span-4">
                 <h2 className="font-bold">Public feedback summary</h2>
                 <p className="mt-2 text-sm text-slate-600">
-                  {String(
-                    (stats.feedback as Record<string, unknown> | undefined)
-                      ?.total ?? 0,
-                  )}{" "}
+                  {String((stats.feedback as Record<string, unknown> | undefined)?.total ?? 0)}{" "}
                   responses ·{" "}
-                  {String(
-                    (stats.feedback as Record<string, unknown> | undefined)
-                      ?.helpful ?? 0,
-                  )}{" "}
+                  {String((stats.feedback as Record<string, unknown> | undefined)?.helpful ?? 0)}{" "}
                   helpful ·{" "}
-                  {String(
-                    (stats.feedback as Record<string, unknown> | undefined)
-                      ?.notHelpful ?? 0,
-                  )}{" "}
+                  {String((stats.feedback as Record<string, unknown> | undefined)?.notHelpful ?? 0)}{" "}
                   not helpful
                 </p>
               </article>
@@ -1697,12 +1702,10 @@ export default function AdminPage() {
           )}
           {tab === "approvals" && (
             <section className="rounded-xl border bg-white p-5">
-              <h2 className="text-lg font-bold">
-                Pending certificate approvals
-              </h2>
+              <h2 className="text-lg font-bold">Pending certificate approvals</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Review the original, unwatermarked upload in a private 60-second
-                preview. The uploader cannot approve their own submission.
+                Review the original, unwatermarked upload in a private 60-second preview. The
+                uploader cannot approve their own submission.
               </p>
               <div className="mt-4 space-y-4">
                 {pending.map((c) => (
@@ -1713,16 +1716,12 @@ export default function AdminPage() {
                           <b>
                             {c.type} · {c.session}
                           </b>
-                          <span className="text-xs font-semibold text-amber-700">
-                            Pending
-                          </span>
+                          <span className="text-xs font-semibold text-amber-700">Pending</span>
                         </div>
                         <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
                           <div>
                             <dt className="text-slate-500">Student</dt>
-                            <dd className="font-semibold">
-                              {c.studentName || c.studentId}
-                            </dd>
+                            <dd className="font-semibold">{c.studentName || c.studentId}</dd>
                           </div>
                           <div>
                             <dt className="text-slate-500">Father</dt>
@@ -1733,9 +1732,7 @@ export default function AdminPage() {
                             <dd>{c.motherName || "—"}</dd>
                           </div>
                           <div>
-                            <dt className="text-slate-500">
-                              Certificate number
-                            </dt>
+                            <dt className="text-slate-500">Certificate number</dt>
                             <dd className="font-semibold">
                               {c.certificateNumber || "Not recorded"}
                             </dd>
@@ -1759,14 +1756,14 @@ export default function AdminPage() {
                         </dl>
                         {c.replacesId && (
                           <p className="mt-3 rounded bg-amber-50 p-2 text-xs text-amber-900">
-                            Replacement for certificate record {c.replacesId}.
-                            The old version will be superseded only after this
-                            approval.
+                            Replacement for certificate record {c.replacesId}. The old version will
+                            be superseded only after this approval.
                           </p>
                         )}
                         <label className="mt-4 block text-sm">
                           Rejection reason
                           <textarea
+                            translate="no"
                             value={rejectReason[c.id] ?? ""}
                             onChange={(e) =>
                               setRejectReason((v) => ({
@@ -1781,6 +1778,7 @@ export default function AdminPage() {
                         </label>
                         <label className="mt-3 flex items-start gap-2 text-sm">
                           <input
+                            translate="no"
                             type="checkbox"
                             checked={approvalChecks[c.id] === true}
                             disabled={!previewUrls[c.id]}
@@ -1854,9 +1852,10 @@ export default function AdminPage() {
                   </article>
                 ))}
                 {pending.length === 0 && (
-                  <p className="rounded-lg bg-slate-50 p-5 text-sm text-slate-600">
-                    No pending certificates.
-                  </p>
+                  <EmptyState
+                    title="No data found"
+                    description="There are no pending certificates for review."
+                  />
                 )}
               </div>
             </section>
@@ -1865,15 +1864,13 @@ export default function AdminPage() {
             <div className="grid gap-6 xl:grid-cols-[.9fr_1.1fr]">
               {role !== "approver" && (
                 <section className="rounded-xl border bg-white p-5">
-                  <h2 className="text-lg font-bold">
-                    Add student and certificate
-                  </h2>
+                  <h2 className="text-lg font-bold">Add student and certificate</h2>
                   <p className="mt-1 text-xs text-slate-500">
-                    If the student name, parents’ names and session already
-                    exist, enter a date of birth or admission number. Both
-                    values are encrypted before storage.
+                    If the student name, parents’ names and session already exist, enter a date of
+                    birth or admission number. Both values are encrypted before storage.
                   </p>
                   <form
+                    id="student-create-form"
                     onSubmit={addStudent}
                     className="mt-4 grid gap-3 sm:grid-cols-2"
                   >
@@ -1894,6 +1891,7 @@ export default function AdminPage() {
                         {l}
                         {k === "session" ? (
                           <select
+                            translate="no"
                             required
                             value={form.session}
                             onChange={(e) =>
@@ -1913,6 +1911,7 @@ export default function AdminPage() {
                           </select>
                         ) : k === "certificateType" ? (
                           <select
+                            translate="no"
                             required
                             value={form.certificateType}
                             onChange={(e) =>
@@ -1925,26 +1924,18 @@ export default function AdminPage() {
                           >
                             <option value="">Choose certificate type</option>
                             {typeOptions.map((x) => (
-                              <option
-                                key={x.id}
-                                value={x.name ?? x.label ?? x.id}
-                              >
+                              <option key={x.id} value={x.name ?? x.label ?? x.id}>
                                 {x.name ?? x.label ?? x.id}
                               </option>
                             ))}
                           </select>
                         ) : (
                           <input
+                            translate="no"
                             required={false}
-                            type={
-                              k === "issuedAt" || k === "dateOfBirth"
-                                ? "date"
-                                : "text"
-                            }
+                            type={k === "issuedAt" || k === "dateOfBirth" ? "date" : "text"}
                             value={form[k]}
-                            onChange={(e) =>
-                              setForm((v) => ({ ...v, [k]: e.target.value }))
-                            }
+                            onChange={(e) => setForm((v) => ({ ...v, [k]: e.target.value }))}
                             className="mt-1 w-full rounded-lg border p-2.5"
                           />
                         )}
@@ -1953,14 +1944,11 @@ export default function AdminPage() {
                     <label className="text-sm font-medium sm:col-span-2">
                       Certificate file
                       <input
+                        translate="no"
                         required
                         type="file"
                         accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) =>
-                          setFiles(
-                            e.target.files ? Array.from(e.target.files) : [],
-                          )
-                        }
+                        onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])}
                         className="mt-1 block w-full text-sm"
                       />
                     </label>
@@ -1970,25 +1958,24 @@ export default function AdminPage() {
                       </p>
                       <div className="mt-2 grid gap-2 sm:grid-cols-2">
                         <input
+                          translate="no"
                           type="email"
                           value={notify.email}
-                          onChange={(e) =>
-                            setNotify((v) => ({ ...v, email: e.target.value }))
-                          }
+                          onChange={(e) => setNotify((v) => ({ ...v, email: e.target.value }))}
                           placeholder="Parent email"
                           className="rounded border p-2"
                         />
                         <input
+                          translate="no"
                           value={notify.mobile}
-                          onChange={(e) =>
-                            setNotify((v) => ({ ...v, mobile: e.target.value }))
-                          }
+                          onChange={(e) => setNotify((v) => ({ ...v, mobile: e.target.value }))}
                           placeholder="Mobile with country code"
                           className="rounded border p-2"
                         />
                       </div>
                       <label className="mt-2 flex items-start gap-2 text-xs text-slate-600">
                         <input
+                          translate="no"
                           type="checkbox"
                           checked={notify.consent}
                           onChange={(e) =>
@@ -1998,24 +1985,20 @@ export default function AdminPage() {
                             }))
                           }
                         />{" "}
-                        Parent/guardian has consented to receive a generic
-                        certificate-availability notification. Consent is
-                        recorded with timestamp and purpose; they can opt out at
-                        any time.
+                        Parent/guardian has consented to receive a generic certificate-availability
+                        notification. Consent is recorded with timestamp and purpose; they can opt
+                        out at any time.
                       </label>
                     </div>
                     {duplicateHashWarning && (
                       <div className="sm:col-span-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-4">
-                        <p className="font-bold text-amber-950">
-                          {duplicateHashWarning}
-                        </p>
+                        <p className="font-bold text-amber-950">{duplicateHashWarning}</p>
                         <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-amber-950">
                           <input
+                            translate="no"
                             type="checkbox"
                             checked={duplicateHashAcknowledged}
-                            onChange={(e) =>
-                              setDuplicateHashAcknowledged(e.target.checked)
-                            }
+                            onChange={(e) => setDuplicateHashAcknowledged(e.target.checked)}
                             className="h-5 w-5"
                           />{" "}
                           I confirm this is intentional
@@ -2023,10 +2006,9 @@ export default function AdminPage() {
                         <label className="mt-2 block text-sm font-semibold text-amber-950">
                           Reason
                           <textarea
+                            translate="no"
                             value={duplicateHashReason}
-                            onChange={(e) =>
-                              setDuplicateHashReason(e.target.value)
-                            }
+                            onChange={(e) => setDuplicateHashReason(e.target.value)}
                             minLength={10}
                             maxLength={500}
                             rows={2}
@@ -2039,23 +2021,19 @@ export default function AdminPage() {
                       disabled={
                         busy ||
                         (Boolean(duplicateHashWarning) &&
-                          (!duplicateHashAcknowledged ||
-                            duplicateHashReason.trim().length < 10))
+                          (!duplicateHashAcknowledged || duplicateHashReason.trim().length < 10))
                       }
-                      className="rounded-lg bg-[#173b68] p-3 font-semibold text-white sm:col-span-2"
+                      className="rounded-lg bg-[var(--primary)] p-3 font-semibold text-[var(--primary-contrast)] sm:col-span-2"
                     >
                       Save student & certificate
                     </button>
                   </form>
                   <div className="mt-7 border-t pt-5">
-                    <h3 className="font-semibold">
-                      Bulk import students (CSV)
-                    </h3>
+                    <h3 className="font-semibold">Bulk import students (CSV)</h3>
                     <p className="mt-1 text-xs text-slate-500">
-                      Required headers:
-                      studentName,fatherName,motherName,session. Admission
-                      number and dateOfBirth are optional unless a duplicate
-                      name combination exists; then provide at least one.
+                      Required headers: studentName,fatherName,motherName,session. Admission number
+                      and dateOfBirth are optional unless a duplicate name combination exists; then
+                      provide at least one.
                     </p>
                     <div className="mt-2 flex gap-2">
                       <button
@@ -2074,6 +2052,7 @@ export default function AdminPage() {
                       </button>
                     </div>
                     <input
+                      translate="no"
                       type="file"
                       accept=".csv,text/csv"
                       onChange={(e) => setCsv(e.target.files?.[0] ?? null)}
@@ -2095,7 +2074,7 @@ export default function AdminPage() {
                           !preview ||
                           Number(preview.valid) !== Number(preview.total)
                         }
-                        className="rounded-lg bg-[#173b68] px-3 py-2 text-sm text-white"
+                        className="rounded-lg bg-[var(--primary)] px-3 py-2 text-sm text-[var(--primary-contrast)]"
                       >
                         Commit import
                       </button>
@@ -2103,17 +2082,13 @@ export default function AdminPage() {
                     {preview && (
                       <div className="mt-2 text-sm">
                         <p>
-                          Rows: {String(preview.total)} · Valid:{" "}
-                          {String(preview.valid)} · Errors:{" "}
-                          {Array.isArray(preview.errors)
-                            ? preview.errors.length
-                            : 0}
+                          Rows: {String(preview.total)} · Valid: {String(preview.valid)} · Errors:{" "}
+                          {Array.isArray(preview.errors) ? preview.errors.length : 0}
                         </p>
                         {Array.isArray(preview.errors) &&
                           preview.errors.map((item, index) => (
                             <p key={index} className="mt-1 text-red-700">
-                              Row{" "}
-                              {String((item as Record<string, unknown>).row)}:{" "}
+                              Row {String((item as Record<string, unknown>).row)}:{" "}
                               {String((item as Record<string, unknown>).error)}
                             </p>
                           ))}
@@ -2123,10 +2098,9 @@ export default function AdminPage() {
                   <div className="mt-7 border-t pt-5">
                     <h3 className="font-semibold">Bulk certificate upload</h3>
                     <p className="mt-1 text-xs text-slate-500">
-                      Drop up to 20 PDF/JPG/PNG files and attach a CSV with
-                      headers fileName, admissionNo or studentId, session,
-                      certificateType, certificateNumber, issueDate. Validate
-                      all rows before upload.
+                      Drop up to 20 PDF/JPG/PNG files and attach a CSV with headers fileName,
+                      admissionNo or studentId, session, certificateType, certificateNumber,
+                      issueDate. Validate all rows before upload.
                     </p>
                     <label
                       className="mt-3 block rounded-xl border-2 border-dashed border-slate-300 p-5 text-center text-sm"
@@ -2138,26 +2112,24 @@ export default function AdminPage() {
                     >
                       Drop certificate files here or choose files
                       <input
+                        translate="no"
                         className="mt-2 block w-full"
                         type="file"
                         multiple
                         accept=".pdf,.jpg,.jpeg,.png"
                         onChange={(e) =>
-                          setBulkFiles(
-                            e.target.files ? Array.from(e.target.files) : [],
-                          )
+                          setBulkFiles(e.target.files ? Array.from(e.target.files) : [])
                         }
                       />
                     </label>
                     <label className="mt-3 block text-sm">
                       CSV mapping file
                       <input
+                        translate="no"
                         className="mt-1 block w-full"
                         type="file"
                         accept=".csv,text/csv"
-                        onChange={(e) =>
-                          setBulkCsv(e.target.files?.[0] ?? null)
-                        }
+                        onChange={(e) => setBulkCsv(e.target.files?.[0] ?? null)}
                       />
                     </label>
                     <button
@@ -2183,9 +2155,7 @@ export default function AdminPage() {
                             {bulkPreview.map((row) => (
                               <tr key={row.fileName} className="border-t">
                                 <td className="p-2">{row.fileName}</td>
-                                <td className="p-2">
-                                  {Math.ceil(row.size / 1024)} KB
-                                </td>
+                                <td className="p-2">{Math.ceil(row.size / 1024)} KB</td>
                                 <td className="p-2">
                                   {row.valid ? "Ready" : row.errors.join("; ")}
                                 </td>
@@ -2208,16 +2178,13 @@ export default function AdminPage() {
                         </table>
                         {duplicateHashWarning && (
                           <div className="mt-3 rounded-lg border-2 border-amber-500 bg-amber-50 p-4">
-                            <p className="font-bold text-amber-950">
-                              {duplicateHashWarning}
-                            </p>
+                            <p className="font-bold text-amber-950">{duplicateHashWarning}</p>
                             <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-amber-950">
                               <input
+                                translate="no"
                                 type="checkbox"
                                 checked={duplicateHashAcknowledged}
-                                onChange={(e) =>
-                                  setDuplicateHashAcknowledged(e.target.checked)
-                                }
+                                onChange={(e) => setDuplicateHashAcknowledged(e.target.checked)}
                                 className="h-5 w-5"
                               />{" "}
                               I confirm this is intentional
@@ -2225,10 +2192,9 @@ export default function AdminPage() {
                             <label className="mt-2 block text-sm font-semibold text-amber-950">
                               Reason
                               <textarea
+                                translate="no"
                                 value={duplicateHashReason}
-                                onChange={(e) =>
-                                  setDuplicateHashReason(e.target.value)
-                                }
+                                onChange={(e) => setDuplicateHashReason(e.target.value)}
                                 minLength={10}
                                 maxLength={500}
                                 rows={2}
@@ -2247,7 +2213,7 @@ export default function AdminPage() {
                               (!duplicateHashAcknowledged ||
                                 duplicateHashReason.trim().length < 10))
                           }
-                          className="mt-3 rounded bg-[#173b68] px-4 py-2 text-sm font-semibold text-white"
+                          className="mt-3 rounded bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-contrast)]"
                         >
                           Commit / retry remaining uploads
                         </button>
@@ -2260,6 +2226,7 @@ export default function AdminPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-lg font-bold">Students</h2>
                   <input
+                    translate="no"
                     value={search}
                     onChange={(e) => {
                       setSearch(e.target.value);
@@ -2270,6 +2237,31 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="mt-4 space-y-3">
+                  {visible.length === 0 && (
+                    <EmptyState
+                      title="No data found"
+                      description={
+                        search
+                          ? "No students match your search."
+                          : "There are no student records yet."
+                      }
+                      action={
+                        role !== "approver" ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              document
+                                .getElementById("student-create-form")
+                                ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                            }
+                            className="min-h-10 rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--primary-contrast)]"
+                          >
+                            Add student
+                          </button>
+                        ) : undefined
+                      }
+                    />
+                  )}
                   {visible.map((s) => (
                     <article
                       key={s.id}
@@ -2278,8 +2270,8 @@ export default function AdminPage() {
                       <div>
                         <p className="font-semibold">{s.studentName}</p>
                         <p className="text-xs text-slate-500">
-                          Parents: {s.fatherName} / {s.motherName} · {s.session}{" "}
-                          · {s.certificateCount} certificates
+                          Parents: {s.fatherName} / {s.motherName} · {s.session} ·{" "}
+                          {s.certificateCount} certificates
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -2295,25 +2287,13 @@ export default function AdminPage() {
                         {role !== "approver" && (
                           <button
                             onClick={() => {
-                              const studentName = prompt(
-                                "Student name",
-                                s.studentName,
-                              );
+                              const studentName = prompt("Student name", s.studentName);
                               if (!studentName) return;
-                              const fatherName = prompt(
-                                "Father name",
-                                s.fatherName,
-                              );
+                              const fatherName = prompt("Father name", s.fatherName);
                               if (!fatherName) return;
-                              const motherName = prompt(
-                                "Mother name",
-                                s.motherName,
-                              );
+                              const motherName = prompt("Mother name", s.motherName);
                               if (!motherName) return;
-                              const session = prompt(
-                                "Session (YYYY-YY)",
-                                s.session,
-                              );
+                              const session = prompt("Session (YYYY-YY)", s.session);
                               if (!session) return;
                               const admissionNumber =
                                 prompt(
@@ -2369,8 +2349,7 @@ export default function AdminPage() {
                     Previous
                   </button>
                   <span>
-                    Page {page + 1} of{" "}
-                    {Math.max(1, Math.ceil(filtered.length / 10))}
+                    Page {page + 1} of {Math.max(1, Math.ceil(filtered.length / 10))}
                   </span>
                   <button
                     disabled={(page + 1) * 10 >= filtered.length}
@@ -2387,13 +2366,11 @@ export default function AdminPage() {
             <section className="rounded-xl border bg-white p-5">
               <h2 className="text-lg font-bold">Certificate management</h2>
               {role !== "approver" && (
-                <form
-                  onSubmit={uploadMany}
-                  className="mt-4 grid gap-3 sm:grid-cols-2"
-                >
+                <form onSubmit={uploadMany} className="mt-4 grid gap-3 sm:grid-cols-2">
                   <label className="text-sm">
                     Student
                     <select
+                      translate="no"
                       required
                       value={selectedStudent}
                       onChange={(e) => setSelectedStudent(e.target.value)}
@@ -2410,11 +2387,10 @@ export default function AdminPage() {
                   <label className="text-sm">
                     Session
                     <select
+                      translate="no"
                       required
                       value={form.session}
-                      onChange={(e) =>
-                        setForm((v) => ({ ...v, session: e.target.value }))
-                      }
+                      onChange={(e) => setForm((v) => ({ ...v, session: e.target.value }))}
                       className="mt-1 w-full rounded border p-2.5"
                     >
                       <option value="">Choose session</option>
@@ -2428,6 +2404,7 @@ export default function AdminPage() {
                   <label className="text-sm">
                     Certificate type
                     <select
+                      translate="no"
                       required
                       value={form.certificateType}
                       onChange={(e) =>
@@ -2449,6 +2426,7 @@ export default function AdminPage() {
                   <label className="text-sm">
                     Certificate number
                     <input
+                      translate="no"
                       required
                       value={form.certificateNumber}
                       onChange={(e) =>
@@ -2463,41 +2441,34 @@ export default function AdminPage() {
                   <label className="text-sm">
                     Issue date
                     <input
+                      translate="no"
                       type="date"
                       required
                       value={form.issuedAt}
-                      onChange={(e) =>
-                        setForm((v) => ({ ...v, issuedAt: e.target.value }))
-                      }
+                      onChange={(e) => setForm((v) => ({ ...v, issuedAt: e.target.value }))}
                       className="mt-1 w-full rounded border p-2.5"
                     />
                   </label>
                   <label className="text-sm">
                     Finished certificate file
                     <input
+                      translate="no"
                       type="file"
                       required
                       accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) =>
-                        setFiles(
-                          e.target.files ? Array.from(e.target.files) : [],
-                        )
-                      }
+                      onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])}
                       className="mt-1 block w-full"
                     />
                   </label>
                   {duplicateHashWarning && (
                     <div className="sm:col-span-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-4">
-                      <p className="font-bold text-amber-950">
-                        {duplicateHashWarning}
-                      </p>
+                      <p className="font-bold text-amber-950">{duplicateHashWarning}</p>
                       <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-amber-950">
                         <input
+                          translate="no"
                           type="checkbox"
                           checked={duplicateHashAcknowledged}
-                          onChange={(e) =>
-                            setDuplicateHashAcknowledged(e.target.checked)
-                          }
+                          onChange={(e) => setDuplicateHashAcknowledged(e.target.checked)}
                           className="h-5 w-5"
                         />{" "}
                         I confirm this is intentional
@@ -2505,10 +2476,9 @@ export default function AdminPage() {
                       <label className="mt-2 block text-sm font-semibold text-amber-950">
                         Reason
                         <textarea
+                          translate="no"
                           value={duplicateHashReason}
-                          onChange={(e) =>
-                            setDuplicateHashReason(e.target.value)
-                          }
+                          onChange={(e) => setDuplicateHashReason(e.target.value)}
                           minLength={10}
                           maxLength={500}
                           rows={2}
@@ -2521,10 +2491,9 @@ export default function AdminPage() {
                     disabled={
                       busy ||
                       (Boolean(duplicateHashWarning) &&
-                        (!duplicateHashAcknowledged ||
-                          duplicateHashReason.trim().length < 10))
+                        (!duplicateHashAcknowledged || duplicateHashReason.trim().length < 10))
                     }
-                    className="rounded-lg bg-[#173b68] p-3 text-white sm:col-span-2"
+                    className="rounded-lg bg-[var(--primary)] p-3 text-[var(--primary-contrast)] sm:col-span-2"
                   >
                     Upload certificate
                   </button>
@@ -2554,10 +2523,7 @@ export default function AdminPage() {
                               "Enter the new unique certificate number (the existing number is stored only as a hash):",
                             );
                             if (!number) return;
-                            const issueDate = prompt(
-                              "Issue date (YYYY-MM-DD)",
-                              c.issueDate,
-                            );
+                            const issueDate = prompt("Issue date (YYYY-MM-DD)", c.issueDate);
                             if (issueDate)
                               act(async () => {
                                 await api(`/api/admin/certificates/${c.id}`, {
@@ -2584,6 +2550,7 @@ export default function AdminPage() {
                         <label className="cursor-pointer text-blue-800">
                           Replace certificate
                           <input
+                            translate="no"
                             type="file"
                             accept=".pdf,.jpg,.jpeg,.png"
                             className="hidden"
@@ -2595,54 +2562,33 @@ export default function AdminPage() {
                                     "Enter the unique certificate number for the replacement file:",
                                   );
                                   if (!certificateNumber?.trim())
-                                    throw new Error(
-                                      "A certificate number is required.",
-                                    );
+                                    throw new Error("A certificate number is required.");
                                   const f = new FormData();
                                   f.append("file", file);
                                   f.append("session", c.session);
                                   f.append("type", c.type);
-                                  f.append(
-                                    "certificateNumber",
-                                    certificateNumber,
-                                  );
+                                  f.append("certificateNumber", certificateNumber);
                                   f.append("issueDate", c.issueDate);
                                   f.append(
                                     "confirmDuplicateHash",
                                     String(duplicateHashAcknowledged),
                                   );
-                                  f.append(
-                                    "duplicateHashReason",
-                                    duplicateHashReason,
-                                  );
-                                  const response = await fetch(
-                                    `/api/admin/certificates/${c.id}`,
-                                    {
-                                      method: "PUT",
-                                      body: f,
-                                      headers: {
-                                        "x-csrf-token":
-                                          decodeURIComponent(csrf()),
-                                        ...(await appCheckHeaders()),
-                                      },
+                                  f.append("duplicateHashReason", duplicateHashReason);
+                                  const response = await fetch(`/api/admin/certificates/${c.id}`, {
+                                    method: "PUT",
+                                    body: f,
+                                    headers: {
+                                      "x-csrf-token": decodeURIComponent(csrf()),
+                                      ...(await appCheckHeaders()),
                                     },
-                                  );
+                                  });
                                   if (!response.ok) {
-                                    const data = await response
-                                      .json()
-                                      .catch(() => ({}));
+                                    const data = await response.json().catch(() => ({}));
                                     if (data.duplicateFileWarning === true)
                                       setDuplicateHashWarning(
-                                        String(
-                                          data.error ??
-                                            "Duplicate file detected.",
-                                        ),
+                                        String(data.error ?? "Duplicate file detected."),
                                       );
-                                    throw new Error(
-                                      String(
-                                        data.error ?? "Replacement failed.",
-                                      ),
-                                    );
+                                    throw new Error(String(data.error ?? "Replacement failed."));
                                   }
                                   setDuplicateHashWarning("");
                                   setDuplicateHashAcknowledged(false);
@@ -2670,16 +2616,13 @@ export default function AdminPage() {
                               )
                             )
                               act(async () => {
-                                await api(
-                                  `/api/admin/certificates/${c.id}/revoke`,
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({ reason }),
+                                await api(`/api/admin/certificates/${c.id}/revoke`, {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
                                   },
-                                );
+                                  body: JSON.stringify({ reason }),
+                                });
                                 await load();
                               });
                           }}
@@ -2689,9 +2632,7 @@ export default function AdminPage() {
                         </button>
                       )}
                       {c.status === "revoked" && (
-                        <span className="font-semibold text-amber-700">
-                          Revoked
-                        </span>
+                        <span className="font-semibold text-amber-700">Revoked</span>
                       )}
                       {role !== "uploader" && (
                         <button
@@ -2725,10 +2666,7 @@ export default function AdminPage() {
                   </article>
                 ))}
                 {Object.entries(certificateHistory).map(([id, events]) => (
-                  <section
-                    key={id}
-                    className="mt-3 rounded border bg-slate-50 p-3"
-                  >
+                  <section key={id} className="mt-3 rounded border bg-slate-50 p-3">
                     <b className="text-sm">History · {id}</b>
                     <ol className="mt-2 space-y-1 text-xs">
                       {(events as Record<string, unknown>[]).map((event) => (
@@ -2745,16 +2683,13 @@ export default function AdminPage() {
           )}
           {tab === "catalog" && (
             <section className="rounded-xl border bg-white p-5">
-              <h2 className="text-lg font-bold">
-                Sessions and certificate types
-              </h2>
+              <h2 className="text-lg font-bold">Sessions and certificate types</h2>
               {role === "superadmin" && (
                 <div className="mt-4 flex flex-wrap gap-3">
                   <select
+                    translate="no"
                     value={catalogKind}
-                    onChange={(e) =>
-                      setCatalogKind(e.target.value as typeof catalogKind)
-                    }
+                    onChange={(e) => setCatalogKind(e.target.value as typeof catalogKind)}
                     className="rounded border p-2"
                   >
                     <option value="sessions">Sessions</option>
@@ -2762,13 +2697,14 @@ export default function AdminPage() {
                   </select>
                   <form onSubmit={saveCatalog} className="flex gap-2">
                     <input
+                      translate="no"
                       required
                       value={catalogName}
                       onChange={(e) => setCatalogName(e.target.value)}
                       placeholder="New item name"
                       className="rounded border px-3 py-2"
                     />
-                    <button className="rounded bg-[#173b68] px-4 text-white">
+                    <button className="rounded bg-[var(--primary)] px-4 text-[var(--primary-contrast)]">
                       Add
                     </button>
                   </form>
@@ -2783,10 +2719,9 @@ export default function AdminPage() {
                         onClick={() => {
                           if (confirm("Delete this catalog item?"))
                             act(async () => {
-                              await api(
-                                `/api/admin/catalog/${catalogKind}?id=${c.id}`,
-                                { method: "DELETE" },
-                              );
+                              await api(`/api/admin/catalog/${catalogKind}?id=${c.id}`, {
+                                method: "DELETE",
+                              });
                               await load();
                             });
                         }}
@@ -2806,32 +2741,32 @@ export default function AdminPage() {
                 <h2 className="text-lg font-bold">Audit logs</h2>
                 <div className="flex gap-2">
                   <input
+                    translate="no"
                     placeholder="Filter action"
                     value={auditAction}
                     onChange={(e) => setAuditAction(e.target.value)}
                     className="rounded border px-3 py-2"
                   />
                   <input
+                    translate="no"
                     type="date"
                     value={auditStart}
                     onChange={(e) => setAuditStart(e.target.value)}
                     className="rounded border px-2 py-2"
                   />
                   <input
+                    translate="no"
                     type="date"
                     value={auditEnd}
                     onChange={(e) => setAuditEnd(e.target.value)}
                     className="rounded border px-2 py-2"
                   />
-                  <button
-                    onClick={() => load()}
-                    className="rounded border px-3"
-                  >
+                  <button onClick={() => load()} className="rounded border px-3">
                     Filter
                   </button>
                   <a
                     href={`/api/admin/audit?format=csv${auditAction ? `&action=${encodeURIComponent(auditAction)}` : ""}${auditStart ? `&start=${encodeURIComponent(new Date(auditStart).toISOString())}` : ""}${auditEnd ? `&end=${encodeURIComponent(new Date(auditEnd + "T23:59:59").toISOString())}` : ""}`}
-                    className="rounded bg-[#173b68] px-3 py-2 text-white"
+                    className="rounded bg-[var(--primary)] px-3 py-2 text-[var(--primary-contrast)]"
                   >
                     Export CSV
                   </a>
@@ -2839,15 +2774,10 @@ export default function AdminPage() {
               </div>
               <div className="mt-4 space-y-2">
                 {logs.map((l, i) => (
-                  <article
-                    key={String(l.id ?? i)}
-                    className="rounded border p-3 text-sm"
-                  >
-                    <b>{String(l.action ?? "")}</b> ·{" "}
-                    {String(l.timestamp ?? "")}
+                  <article key={String(l.id ?? i)} className="rounded border p-3 text-sm">
+                    <b>{String(l.action ?? "")}</b> · {String(l.timestamp ?? "")}
                     <p className="text-xs text-slate-500">
-                      Actor: {String(l.actorUid ?? "")} · IP hash:{" "}
-                      {String(l.ipHash ?? "")}
+                      Actor: {String(l.actorUid ?? "")} · IP hash: {String(l.ipHash ?? "")}
                     </p>
                   </article>
                 ))}
@@ -2856,9 +2786,7 @@ export default function AdminPage() {
           )}
           {tab === "rights" && (
             <section className="rounded-xl border bg-white p-5">
-              <h2 className="text-lg font-bold">
-                Student / parent data-rights requests
-              </h2>
+              <h2 className="text-lg font-bold">Student / parent data-rights requests</h2>
               <div className="mt-4 space-y-3">
                 {rights.map((r) => (
                   <article key={String(r.id)} className="rounded-lg border p-4">
@@ -2871,11 +2799,12 @@ export default function AdminPage() {
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
                       Ack: {String(r.acknowledgmentId ?? r.id)} · Contact:{" "}
-                      {String(r.contactEmail ?? "Not provided")} · Student:{" "}
+                      {String(r.contactEmail ?? "No data found")} · Student:{" "}
                       {String(r.studentName ?? "")}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <input
+                        translate="no"
                         value={resolution[String(r.id)] ?? ""}
                         onChange={(e) =>
                           setResolution((v) => ({
@@ -2888,7 +2817,7 @@ export default function AdminPage() {
                       />
                       <button
                         onClick={() => resolveRight(String(r.id))}
-                        className="rounded bg-[#173b68] px-4 py-2 text-white"
+                        className="rounded bg-[var(--primary)] px-4 py-2 text-[var(--primary-contrast)]"
                       >
                         Resolve
                       </button>
@@ -2941,19 +2870,15 @@ export default function AdminPage() {
           )}
           {tab === "breaches" && (
             <section className="rounded-xl border bg-white p-5">
-              <h2 className="text-lg font-bold">
-                Personal data breach register
-              </h2>
+              <h2 className="text-lg font-bold">Personal data breach register</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Record suspected or confirmed incidents immediately. This log
-                does not itself send statutory notifications; the incident lead
-                must follow the approved notification procedure.
+                Record suspected or confirmed incidents immediately. This log does not itself send
+                statutory notifications; the incident lead must follow the approved notification
+                procedure.
               </p>
               <button
                 onClick={() => {
-                  const summary = prompt(
-                    "Incident summary (no unnecessary personal data)",
-                  );
+                  const summary = prompt("Incident summary (no unnecessary personal data)");
                   if (!summary) return;
                   const affectedData = prompt("Categories of data affected");
                   if (!affectedData) return;
@@ -2976,31 +2901,25 @@ export default function AdminPage() {
                     await load();
                   });
                 }}
-                className="mt-4 rounded-lg bg-[#173b68] px-4 py-2 text-sm font-semibold text-white"
+                className="mt-4 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-contrast)]"
               >
                 Record incident
               </button>
               <div className="mt-5 space-y-3">
                 {breaches.map((b) => (
                   <article key={String(b.id)} className="rounded-lg border p-4">
-                    <p className="font-semibold">
-                      {String(b.summary ?? "Incident")}
-                    </p>
+                    <p className="font-semibold">{String(b.summary ?? "Incident")}</p>
                     <p className="mt-1 text-sm text-slate-600">
-                      Discovered: {String(b.discoveredAt ?? "")} · Status:{" "}
-                      {String(b.status ?? "")}
+                      Discovered: {String(b.discoveredAt ?? "")} · Status: {String(b.status ?? "")}
                     </p>
                     <p className="text-sm">
-                      Affected data: {String(b.affectedData ?? "")} · Estimated
-                      people: {String(b.affectedPrincipalsEstimate ?? "")}
+                      Affected data: {String(b.affectedData ?? "")} · Estimated people:{" "}
+                      {String(b.affectedPrincipalsEstimate ?? "")}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
-                      Board initial notice:{" "}
-                      {String(b.boardNotifiedAt ?? "Not recorded")} · Board
-                      detailed report:{" "}
-                      {String(b.boardDetailedReportAt ?? "Not recorded")} ·
-                      People notified:{" "}
-                      {String(b.principalsNotifiedAt ?? "Not recorded")}
+                      Board initial notice: {String(b.boardNotifiedAt ?? "Not recorded")} · Board
+                      detailed report: {String(b.boardDetailedReportAt ?? "Not recorded")} · People
+                      notified: {String(b.principalsNotifiedAt ?? "Not recorded")}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
@@ -3088,9 +3007,7 @@ export default function AdminPage() {
             <section className="rounded-xl border bg-white p-5">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold">
-                  {timelineStudentId
-                    ? "Student activity timeline"
-                    : "Global activity timeline"}
+                  {timelineStudentId ? "Student activity timeline" : "Global activity timeline"}
                 </h2>
                 <button
                   onClick={() => setTimelineStudentId("")}
@@ -3100,23 +3017,17 @@ export default function AdminPage() {
                 </button>
               </div>
               <p className="mt-1 text-sm text-slate-600">
-                Recent uploads, approvals, rejections, edits, revocations and
-                public verification activity.
+                Recent uploads, approvals, rejections, edits, revocations and public verification
+                activity.
               </p>
               <ol className="mt-4 space-y-3">
                 {timeline.map((e) => (
-                  <li
-                    key={String(e.id)}
-                    className="flex gap-3 border-l-2 border-slate-200 pl-4"
-                  >
+                  <li key={String(e.id)} className="flex gap-3 border-l-2 border-slate-200 pl-4">
                     <div>
-                      <p className="font-semibold">
-                        {String(e.action ?? "Activity")}
-                      </p>
+                      <p className="font-semibold">{String(e.action ?? "Activity")}</p>
                       <p className="text-xs text-slate-500">
-                        {String(e.actor ?? "System")} ·{" "}
-                        {String(e.timestamp ?? "Time unavailable")} ·{" "}
-                        {String(e.targetId ?? "")}
+                        {String(e.actor ?? "System")} · {String(e.timestamp ?? "Time unavailable")}{" "}
+                        · {String(e.targetId ?? "")}
                       </p>
                     </div>
                   </li>
@@ -3128,16 +3039,14 @@ export default function AdminPage() {
             <section className="rounded-xl border bg-white p-5">
               <h2 className="text-lg font-bold">Public site branding</h2>
               <p className="mt-1 text-sm text-slate-600">
-                All public school identity, principal and contact information is
-                read from the <code>siteSettings/main</code> Firestore document.
+                All public school identity, principal and contact information is read from the{" "}
+                <code>siteSettings/main</code> Firestore document.
               </p>
-              <form
-                onSubmit={saveBranding}
-                className="mt-5 grid gap-4 sm:grid-cols-2"
-              >
+              <form onSubmit={saveBranding} className="mt-5 grid gap-4 sm:grid-cols-2">
                 <label className="text-sm font-semibold text-slate-700">
                   Retention period after the end of the academic session (years)
                   <input
+                    translate="no"
                     type="number"
                     min="1"
                     max="30"
@@ -3149,6 +3058,7 @@ export default function AdminPage() {
                 <label className="text-sm font-semibold text-slate-700">
                   Encrypted backup rotation (days)
                   <input
+                    translate="no"
                     type="number"
                     min="7"
                     max="365"
@@ -3159,23 +3069,24 @@ export default function AdminPage() {
                 </label>
                 <label className="flex items-center gap-2 text-sm font-semibold">
                   <input
+                    translate="no"
                     type="checkbox"
                     checked={retentionConfirmed}
                     onChange={(e) => setRetentionConfirmed(e.target.checked)}
                     className="h-5 w-5"
                   />{" "}
-                  I confirm this retention schedule has been reviewed against
-                  applicable school/legal requirements
+                  I confirm this retention schedule has been reviewed against applicable
+                  school/legal requirements
                 </label>
                 <label className="flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950 sm:col-span-2">
                   <input
+                    translate="no"
                     type="checkbox"
                     checked={maintenanceMode}
                     onChange={(e) => setMaintenanceMode(e.target.checked)}
                     className="h-5 w-5"
                   />{" "}
-                  Enable public maintenance mode (staff admin pages remain
-                  available)
+                  Enable public maintenance mode (staff admin pages remain available)
                 </label>
                 {(
                   [
@@ -3194,25 +3105,19 @@ export default function AdminPage() {
                     ["statusPageUrl", "Public system status page (HTTPS)"],
                     ["email", "School email"],
                     ["jurisdiction", "Legal jurisdiction / city"],
-                    [
-                      "grievanceOfficerName",
-                      "Data Protection / Grievance Officer",
-                    ],
+                    ["grievanceOfficerName", "Data Protection / Grievance Officer"],
                     ["grievanceOfficerEmail", "Officer email"],
                     ["grievanceOfficerPhone", "Officer phone"],
                     ["lastUpdated", "Last updated date (display text)"],
+                    ["includedLanguages", "Google Translate language codes (comma-separated)"],
                   ] as const
                 ).map(([key, label]) => (
-                  <label
-                    key={key}
-                    className="text-sm font-semibold text-slate-700"
-                  >
+                  <label key={key} className="text-sm font-semibold text-slate-700">
                     {label}
                     <input
+                      translate="no"
                       value={branding[key] ?? ""}
-                      onChange={(e) =>
-                        setBranding((v) => ({ ...v, [key]: e.target.value }))
-                      }
+                      onChange={(e) => setBranding((v) => ({ ...v, [key]: e.target.value }))}
                       className="mt-1 w-full rounded border p-2.5"
                     />
                   </label>
@@ -3220,6 +3125,7 @@ export default function AdminPage() {
                 <label className="text-sm font-semibold text-slate-700 sm:col-span-2">
                   Principal&apos;s message
                   <textarea
+                    translate="no"
                     rows={5}
                     maxLength={1800}
                     value={branding.principalMessage}
@@ -3235,6 +3141,7 @@ export default function AdminPage() {
                 <label className="text-sm font-semibold text-slate-700 sm:col-span-2">
                   Social links (one per line: Label|https://... )
                   <textarea
+                    translate="no"
                     rows={4}
                     value={branding.socialLinks}
                     onChange={(e) =>
@@ -3249,152 +3156,134 @@ export default function AdminPage() {
                 </label>
                 <button
                   disabled={busy}
-                  className="rounded-lg bg-[#173b68] px-5 py-3 font-semibold text-white sm:col-span-2"
+                  className="rounded-lg bg-[var(--primary)] px-5 py-3 font-semibold text-[var(--primary-contrast)] sm:col-span-2"
                 >
                   Save site branding
                 </button>
               </form>
             </section>
           )}
-          {tab === "announcement" &&
-            (role === "superadmin" || role === "approver") && (
-              <section className="rounded-xl border bg-white p-5">
-                <h2 className="text-lg font-bold">
-                  Public announcement banner
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  The notice appears at the top of the home page only during its
-                  scheduled date range. Text is plain text; HTML is removed.
-                </p>
-                <form
-                  onSubmit={saveAnnouncement}
-                  className="mt-5 grid gap-4 sm:grid-cols-2"
-                >
-                  <label className="flex items-center gap-2 text-sm font-semibold">
-                    <input
-                      type="checkbox"
-                      checked={announcement.enabled}
-                      onChange={(e) =>
-                        setAnnouncement((v) => ({
-                          ...v,
-                          enabled: e.target.checked,
-                        }))
-                      }
-                      className="h-5 w-5"
-                    />{" "}
-                    Enable announcement
-                  </label>
-                  <label className="text-sm font-semibold">
-                    Type
-                    <select
-                      value={announcement.type}
-                      onChange={(e) =>
-                        setAnnouncement((v) => ({
-                          ...v,
-                          type: e.target.value as "info" | "warning",
-                        }))
-                      }
-                      className="mt-1 w-full rounded border p-2.5"
-                    >
-                      <option value="info">Information</option>
-                      <option value="warning">Warning</option>
-                    </select>
-                  </label>
-                  <label className="text-sm font-semibold">
-                    Notice text (English)
-                    <textarea
-                      required
-                      maxLength={240}
-                      rows={3}
-                      value={announcement.textEn}
-                      onChange={(e) =>
-                        setAnnouncement((v) => ({
-                          ...v,
-                          textEn: e.target.value,
-                        }))
-                      }
-                      className="mt-1 w-full rounded border p-2.5"
-                    />
-                  </label>
-                  <label className="text-sm font-semibold">
-                    Notice text (Hindi)
-                    <textarea
-                      required
-                      maxLength={240}
-                      rows={3}
-                      value={announcement.textHi}
-                      onChange={(e) =>
-                        setAnnouncement((v) => ({
-                          ...v,
-                          textHi: e.target.value,
-                        }))
-                      }
-                      className="mt-1 w-full rounded border p-2.5"
-                    />
-                  </label>
-                  <label className="text-sm font-semibold">
-                    Optional HTTPS link
-                    <input
-                      type="url"
-                      value={announcement.linkUrl}
-                      onChange={(e) =>
-                        setAnnouncement((v) => ({
-                          ...v,
-                          linkUrl: e.target.value,
-                        }))
-                      }
-                      placeholder="https://..."
-                      className="mt-1 w-full rounded border p-2.5"
-                    />
-                  </label>
-                  <div className="text-xs text-slate-500 self-end">
-                    The link opens in a new tab.
-                  </div>
-                  <label className="text-sm font-semibold">
-                    Start date and time
-                    <input
-                      type="datetime-local"
-                      required
-                      value={announcement.startAt}
-                      onChange={(e) =>
-                        setAnnouncement((v) => ({
-                          ...v,
-                          startAt: e.target.value,
-                        }))
-                      }
-                      className="mt-1 w-full rounded border p-2.5"
-                    />
-                  </label>
-                  <label className="text-sm font-semibold">
-                    End date and time
-                    <input
-                      type="datetime-local"
-                      required
-                      value={announcement.endAt}
-                      onChange={(e) =>
-                        setAnnouncement((v) => ({
-                          ...v,
-                          endAt: e.target.value,
-                        }))
-                      }
-                      className="mt-1 w-full rounded border p-2.5"
-                    />
-                  </label>
-                  <button
-                    disabled={busy}
-                    className="rounded-lg bg-[#173b68] px-5 py-3 font-semibold text-white sm:col-span-2"
+          {tab === "announcement" && (role === "superadmin" || role === "approver") && (
+            <section className="rounded-xl border bg-white p-5">
+              <h2 className="text-lg font-bold">Public announcement banner</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                The notice appears at the top of the home page only during its scheduled date range.
+                Text is plain text; HTML is removed.
+              </p>
+              <form onSubmit={saveAnnouncement} className="mt-5 grid gap-4 sm:grid-cols-2">
+                <label className="flex items-center gap-2 text-sm font-semibold">
+                  <input
+                    translate="no"
+                    type="checkbox"
+                    checked={announcement.enabled}
+                    onChange={(e) =>
+                      setAnnouncement((v) => ({
+                        ...v,
+                        enabled: e.target.checked,
+                      }))
+                    }
+                    className="h-5 w-5"
+                  />{" "}
+                  Enable announcement
+                </label>
+                <label className="text-sm font-semibold">
+                  Type
+                  <select
+                    translate="no"
+                    value={announcement.type}
+                    onChange={(e) =>
+                      setAnnouncement((v) => ({
+                        ...v,
+                        type: e.target.value as "info" | "warning",
+                      }))
+                    }
+                    className="mt-1 w-full rounded border p-2.5"
                   >
-                    Save announcement
-                  </button>
-                </form>
-              </section>
-            )}
+                    <option value="info">Information</option>
+                    <option value="warning">Warning</option>
+                  </select>
+                </label>
+                <label className="text-sm font-semibold">
+                  Notice text (English)
+                  <textarea
+                    translate="no"
+                    required
+                    maxLength={240}
+                    rows={3}
+                    value={announcement.textEn}
+                    onChange={(e) =>
+                      setAnnouncement((v) => ({
+                        ...v,
+                        textEn: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full rounded border p-2.5"
+                  />
+                </label>
+                <label className="text-sm font-semibold">
+                  Optional HTTPS link
+                  <input
+                    translate="no"
+                    type="url"
+                    value={announcement.linkUrl}
+                    onChange={(e) =>
+                      setAnnouncement((v) => ({
+                        ...v,
+                        linkUrl: e.target.value,
+                      }))
+                    }
+                    placeholder="https://..."
+                    className="mt-1 w-full rounded border p-2.5"
+                  />
+                </label>
+                <div className="text-xs text-slate-500 self-end">The link opens in a new tab.</div>
+                <label className="text-sm font-semibold">
+                  Start date and time
+                  <input
+                    translate="no"
+                    type="datetime-local"
+                    required
+                    value={announcement.startAt}
+                    onChange={(e) =>
+                      setAnnouncement((v) => ({
+                        ...v,
+                        startAt: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full rounded border p-2.5"
+                  />
+                </label>
+                <label className="text-sm font-semibold">
+                  End date and time
+                  <input
+                    translate="no"
+                    type="datetime-local"
+                    required
+                    value={announcement.endAt}
+                    onChange={(e) =>
+                      setAnnouncement((v) => ({
+                        ...v,
+                        endAt: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full rounded border p-2.5"
+                  />
+                </label>
+                <button
+                  disabled={busy}
+                  className="rounded-lg bg-[var(--primary)] px-5 py-3 font-semibold text-[var(--primary-contrast)] sm:col-span-2"
+                >
+                  Save announcement
+                </button>
+              </form>
+            </section>
+          )}
           {tab === "retention" && role === "superadmin" && (
             <section className="rounded-xl border bg-white p-5">
               <h2 className="text-lg font-bold">Retention review queue</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Expired records are flagged for human review only. The scheduled
-                job never deletes records automatically.
+                Expired records are flagged for human review only. The scheduled job never deletes
+                records automatically.
               </p>
               <div className="mt-5 space-y-4">
                 {retentionRetryJobs.length > 0 && (
@@ -3411,8 +3300,7 @@ export default function AdminPage() {
                           <div>
                             <b className="text-sm">{String(job.id)}</b>
                             <p className="text-xs text-slate-600">
-                              Status: retry required ·{" "}
-                              {String(job.lastErrorCode ?? "")}
+                              Status: retry required · {String(job.lastErrorCode ?? "")}
                             </p>
                           </div>
                           <button
@@ -3441,15 +3329,9 @@ export default function AdminPage() {
                   </section>
                 )}
                 {retentionRecords.map((record) => {
-                  const student = (record.student ?? {}) as Record<
-                    string,
-                    unknown
-                  >;
+                  const student = (record.student ?? {}) as Record<string, unknown>;
                   return (
-                    <article
-                      key={String(record.id)}
-                      className="rounded-lg border p-4"
-                    >
+                    <article key={String(record.id)} className="rounded-lg border p-4">
                       <div className="flex flex-wrap justify-between gap-2">
                         <b>{String(student.studentName ?? "Student record")}</b>
                         <span className="text-xs text-slate-500">
@@ -3468,9 +3350,7 @@ export default function AdminPage() {
                               "Reason for extending retention (minimum 10 characters):",
                             );
                             if (!reason) return;
-                            const years = Number(
-                              prompt("Extend by how many years?", "3"),
-                            );
+                            const years = Number(prompt("Extend by how many years?", "3"));
                             void act(async () => {
                               await api("/api/admin/retention-review", {
                                 method: "PATCH",
@@ -3556,8 +3436,8 @@ export default function AdminPage() {
             <section className="rounded-xl border bg-white p-5">
               <h2 className="text-lg font-bold">Wrong-record reports</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Reference IDs submitted by the public portal. Limit access to
-                staff handling student records.
+                Reference IDs submitted by the public portal. Limit access to staff handling student
+                records.
               </p>
               <div className="mt-5 space-y-3">
                 {reports.map((r) => (
@@ -3575,13 +3455,11 @@ export default function AdminPage() {
                       {String(r.issue ?? "")}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
-                      Contact: {String(r.contact ?? "")} · Created:{" "}
-                      {String(r.createdAt ?? "")}
+                      Contact: {String(r.contact ?? "")} · Created: {String(r.createdAt ?? "")}
                     </p>
                     <textarea
-                      value={
-                        reportNotes[String(r.id)] ?? String(r.adminNote ?? "")
-                      }
+                      translate="no"
+                      value={reportNotes[String(r.id)] ?? String(r.adminNote ?? "")}
                       onChange={(e) =>
                         setReportNotes((v) => ({
                           ...v,
@@ -3593,9 +3471,7 @@ export default function AdminPage() {
                       className="mt-3 w-full rounded border p-2 text-sm"
                     />
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {(
-                        ["open", "reviewing", "resolved", "rejected"] as const
-                      ).map((status) => (
+                      {(["open", "reviewing", "resolved", "rejected"] as const).map((status) => (
                         <button
                           key={status}
                           onClick={() => updateReport(String(r.id), status)}
@@ -3614,21 +3490,16 @@ export default function AdminPage() {
             <section className="rounded-xl border bg-white p-5">
               <h2 className="text-lg font-bold">Editable public FAQs</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Content is saved in siteSettings/main and displayed on the
-                public FAQ page. English and Hindi fields are supported.
+                Content is saved in siteSettings/main and displayed on the public FAQ page. Visitors
+                can request machine translation using the public language control.
               </p>
               <div className="mt-5 space-y-5">
                 {faqs.map((faq, index) => (
-                  <article
-                    key={index}
-                    className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2"
-                  >
+                  <article key={index} className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2">
                     <div className="sm:col-span-2 flex items-center justify-between">
                       <b>FAQ {index + 1}</b>
                       <button
-                        onClick={() =>
-                          setFaqs((v) => v.filter((_, i) => i !== index))
-                        }
+                        onClick={() => setFaqs((v) => v.filter((_, i) => i !== index))}
                         className="text-sm text-red-700"
                       >
                         Remove
@@ -3638,22 +3509,19 @@ export default function AdminPage() {
                       [
                         ["questionEn", "Question (English)"],
                         ["answerEn", "Answer (English)"],
-                        ["questionHi", "Question (Hindi)"],
-                        ["answerHi", "Answer (Hindi)"],
                       ] as const
                     ).map(([key, label]) => (
                       <label key={key} className="text-sm font-semibold">
                         {label}
                         {key.startsWith("answer") ? (
                           <textarea
+                            translate="no"
                             rows={4}
                             value={faq[key]}
                             onChange={(e) =>
                               setFaqs((v) =>
                                 v.map((x, i) =>
-                                  i === index
-                                    ? { ...x, [key]: e.target.value }
-                                    : x,
+                                  i === index ? { ...x, [key]: e.target.value } : x,
                                 ),
                               )
                             }
@@ -3661,13 +3529,12 @@ export default function AdminPage() {
                           />
                         ) : (
                           <input
+                            translate="no"
                             value={faq[key]}
                             onChange={(e) =>
                               setFaqs((v) =>
                                 v.map((x, i) =>
-                                  i === index
-                                    ? { ...x, [key]: e.target.value }
-                                    : x,
+                                  i === index ? { ...x, [key]: e.target.value } : x,
                                 ),
                               )
                             }
@@ -3687,8 +3554,6 @@ export default function AdminPage() {
                       {
                         questionEn: "",
                         answerEn: "",
-                        questionHi: "",
-                        answerHi: "",
                       },
                     ])
                   }
@@ -3699,7 +3564,7 @@ export default function AdminPage() {
                 <button
                   onClick={saveFaqs}
                   disabled={busy}
-                  className="rounded bg-[#173b68] px-4 py-2 text-sm font-semibold text-white"
+                  className="rounded bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-contrast)]"
                 >
                   Save FAQs
                 </button>
@@ -3708,9 +3573,7 @@ export default function AdminPage() {
           )}
           {tab === "admins" && role === "superadmin" && (
             <section className="rounded-xl border bg-white p-5">
-              <h2 className="text-lg font-bold">
-                Admin users (superadmin only)
-              </h2>
+              <h2 className="text-lg font-bold">Admin users (superadmin only)</h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   onClick={() => exportData("json")}
@@ -3724,15 +3587,13 @@ export default function AdminPage() {
                 >
                   Export encrypted CSV
                 </button>
-                <button
-                  onClick={createBackup}
-                  className="rounded border px-3 py-2 text-sm"
-                >
+                <button onClick={createBackup} className="rounded border px-3 py-2 text-sm">
                   Create private R2 backup
                 </button>
               </div>
               <form onSubmit={invite} className="mt-4 flex flex-wrap gap-2">
                 <input
+                  translate="no"
                   type="email"
                   required
                   value={adminEmail}
@@ -3741,17 +3602,16 @@ export default function AdminPage() {
                   className="rounded border px-3 py-2"
                 />
                 <select
+                  translate="no"
                   value={inviteRole}
-                  onChange={(e) =>
-                    setInviteRole(e.target.value as typeof inviteRole)
-                  }
+                  onChange={(e) => setInviteRole(e.target.value as typeof inviteRole)}
                   className="rounded border px-3 py-2"
                 >
                   <option value="uploader">Uploader</option>
                   <option value="approver">Approver</option>
                   <option value="superadmin">Superadmin</option>
                 </select>
-                <button className="rounded bg-[#173b68] px-4 py-2 text-white">
+                <button className="rounded bg-[var(--primary)] px-4 py-2 text-[var(--primary-contrast)]">
                   Invite admin
                 </button>
               </form>
@@ -3765,15 +3625,13 @@ export default function AdminPage() {
                       {String(a.email)} · {String(a.role)} · {String(a.status)}
                     </span>
                     <select
+                      translate="no"
                       aria-label={`Role for ${String(a.email)}`}
                       value={String(a.role)}
                       onChange={(e) =>
                         changeRole(
                           String(a.uid),
-                          e.target.value as
-                            | "uploader"
-                            | "approver"
-                            | "superadmin",
+                          e.target.value as "uploader" | "approver" | "superadmin",
                         )
                       }
                       className="rounded border p-1"
@@ -3785,11 +3643,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => {
                         const disabled = a.status !== "disabled";
-                        if (
-                          confirm(
-                            `${disabled ? "Disable" : "Enable"} this administrator?`,
-                          )
-                        )
+                        if (confirm(`${disabled ? "Disable" : "Enable"} this administrator?`))
                           act(async () => {
                             await api("/api/admin/users", {
                               method: "PATCH",
@@ -3809,8 +3663,7 @@ export default function AdminPage() {
             </section>
           )}
           <p className="mt-6 text-xs text-slate-500">
-            All admin actions are server-authorized, CSRF-protected, and
-            audited.{" "}
+            All admin actions are server-authorized, CSRF-protected, and audited.{" "}
             <Link to="/" className="underline">
               Public portal
             </Link>

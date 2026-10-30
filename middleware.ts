@@ -15,12 +15,12 @@ function buildCsp(nonce: string): string {
     .filter((value, index, values) => values.indexOf(value) === index);
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com`,
-    `style-src 'self' 'nonce-${nonce}'`,
-    "img-src 'self' data: blob: https:",
-    "font-src 'self' data:",
-    `connect-src 'self' https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
-    "frame-src https://challenges.cloudflare.com https://www.google.com https://www.recaptcha.net",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com https://translate.google.com https://translate.googleapis.com`,
+    `style-src 'self' 'nonce-${nonce}' https://translate.google.com https://translate.googleapis.com https://fonts.googleapis.com`,
+    "img-src 'self' data: blob: https://translate.google.com https://translate.googleapis.com https://www.gstatic.com",
+    "font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com",
+    `connect-src 'self' https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://translate.google.com https://translate.googleapis.com https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
+    "frame-src https://challenges.cloudflare.com https://www.google.com https://www.recaptcha.net https://translate.google.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -97,6 +97,14 @@ export async function middleware(request: NextRequest) {
     });
   }
   const path = request.nextUrl.pathname;
+  const isAdminPage = path === "/admin" || path.startsWith("/admin/");
+  const isAdminAuthPage = path === "/admin/login" || path === "/admin/mfa";
+  if (isAdminPage && !isAdminAuthPage && !request.cookies.get("sis_admin_session")?.value) {
+    const login = request.nextUrl.clone();
+    login.pathname = "/admin/login";
+    login.searchParams.set("next", path);
+    return NextResponse.redirect(login);
+  }
   const isAdminPath =
     path === "/admin" ||
     path.startsWith("/admin/") ||

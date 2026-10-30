@@ -12,6 +12,8 @@ async function notify(count: number) {
   const key = process.env.RESEND_API_KEY,
     from = process.env.RESEND_FROM_EMAIL;
   if (!key || !from || count === 0) return;
+  const siteSettings = await db.collection("siteSettings").doc("main").get();
+  const schoolName = String(siteSettings.get("schoolName") || "Satyam International School");
   const admins = await db
     .collection("admins")
     .where("role", "==", "superadmin")
@@ -30,8 +32,8 @@ async function notify(count: number) {
     body: JSON.stringify({
       from,
       to,
-      subject: "School certificate retention review required",
-      text: `The weekly retention review identified ${count} student record(s) requiring review. No records were deleted. Sign in to the admin portal and review the retention queue.`,
+      subject: `${schoolName}: certificate retention review required`,
+      text: `${schoolName}: the weekly retention review identified ${count} student record(s) requiring review. No records were deleted. Sign in to the admin area and review the retention queue.`,
     }),
   }).catch(() => undefined);
 }

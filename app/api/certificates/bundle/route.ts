@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     const claims = verifyStudentAccessToken(token, request);
     if (!claims) return unavailable();
     const settings = await db.collection("siteSettings").doc("main").get();
-    const schoolName = String(settings.get("schoolName") ?? "School");
+    const schoolName = String(settings.get("schoolName") || "Satyam International School");
     const requestedIds = (request.nextUrl.searchParams.get("ids") ?? "").split(
       ",",
     );

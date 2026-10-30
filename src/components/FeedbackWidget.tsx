@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { appCheckHeaders } from "@/src/lib/firebase-client";
 
 type Choice = boolean | null;
-export default function FeedbackWidget() {
+export default function FeedbackWidget({ page = "/" }: { page?: string }) {
   const [choice, setChoice] = useState<Choice>(null);
   const [comment, setComment] = useState("");
   const [token, setToken] = useState("");
@@ -17,16 +17,13 @@ export default function FeedbackWidget() {
   useEffect(() => {
     if (choice === null) return;
     if (!siteKey) {
-      setError(
-        "Security verification is not configured. Feedback is temporarily unavailable.",
-      );
+      setError("Security verification is not configured. Feedback is temporarily unavailable.");
       return;
     }
     if (!captcha.current) return;
     let cancelled = false;
     const render = () => {
-      if (cancelled || !captcha.current || !window.turnstile || widget.current)
-        return;
+      if (cancelled || !captcha.current || !window.turnstile || widget.current) return;
       try {
         widget.current = window.turnstile.render(captcha.current, {
           sitekey: siteKey,
@@ -48,13 +45,11 @@ export default function FeedbackWidget() {
     const id = "cloudflare-turnstile-script";
     const existing = document.getElementById(id) as HTMLScriptElement | null;
     if (window.turnstile) render();
-    else if (existing)
-      existing.addEventListener("load", render, { once: true });
+    else if (existing) existing.addEventListener("load", render, { once: true });
     else {
       const script = document.createElement("script");
       script.id = id;
-      script.src =
-        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
       script.async = true;
       script.defer = true;
       script.onload = render;
@@ -63,8 +58,7 @@ export default function FeedbackWidget() {
     }
     return () => {
       cancelled = true;
-      if (widget.current && window.turnstile)
-        window.turnstile.remove(widget.current);
+      if (widget.current && window.turnstile) window.turnstile.remove(widget.current);
       widget.current = null;
     };
   }, [choice, siteKey]);
@@ -82,7 +76,7 @@ export default function FeedbackWidget() {
         body: JSON.stringify({
           helpful: choice,
           comment: choice ? "" : comment,
-          page: "/",
+          page,
           turnstileToken: token,
         }),
         cache: "no-store",
@@ -90,26 +84,22 @@ export default function FeedbackWidget() {
       const data = (await response.json().catch(() => ({}))) as {
         error?: string;
       };
-      if (!response.ok)
-        throw new Error(data.error ?? "Feedback could not be submitted.");
+      if (!response.ok) throw new Error(data.error ?? "Feedback could not be submitted.");
       setSent(true);
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Feedback could not be submitted.",
-      );
+      setError(e instanceof Error ? e.message : "Feedback could not be submitted.");
       setToken("");
       setReady(false);
-      if (widget.current && window.turnstile)
-        window.turnstile.reset(widget.current);
+      if (widget.current && window.turnstile) window.turnstile.reset(widget.current);
     }
   }
 
   return (
     <section
       aria-labelledby="feedback-title"
-      className="mt-8 rounded-xl border border-[#dfe3e7] bg-white p-5"
+      className="mt-8 rounded-xl border border-[var(--border)] bg-white p-5"
     >
-      <h2 id="feedback-title" className="text-base font-bold text-[#263746]">
+      <h2 id="feedback-title" className="text-base font-bold text-[var(--text)]">
         Was this helpful?
       </h2>
       {sent ? (
@@ -128,7 +118,7 @@ export default function FeedbackWidget() {
                 setReady(false);
                 setError("");
               }}
-              className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold ${choice === true ? "border-[#315f91] bg-blue-50" : "border-slate-300"}`}
+              className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold ${choice === true ? "border-[var(--primary)] bg-[var(--surface-2)]" : "border-slate-300"}`}
             >
               👍 Yes
             </button>
@@ -141,7 +131,7 @@ export default function FeedbackWidget() {
                 setReady(false);
                 setError("");
               }}
-              className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold ${choice === false ? "border-[#315f91] bg-blue-50" : "border-slate-300"}`}
+              className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold ${choice === false ? "border-[var(--primary)] bg-[var(--surface-2)]" : "border-slate-300"}`}
             >
               👎 No
             </button>
@@ -150,6 +140,7 @@ export default function FeedbackWidget() {
             <label className="mt-4 block text-sm font-medium text-slate-700">
               What could be improved? (optional)
               <textarea
+                translate="no"
                 value={comment}
                 onChange={(e) => setComment(e.target.value.slice(0, 200))}
                 maxLength={200}
@@ -173,7 +164,7 @@ export default function FeedbackWidget() {
                 type="button"
                 disabled={!token || !ready}
                 onClick={() => void submit()}
-                className="mt-3 rounded-lg bg-[#263746] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="mt-3 rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-semibold text-[var(--primary-contrast)] disabled:opacity-50"
               >
                 Submit feedback
               </button>

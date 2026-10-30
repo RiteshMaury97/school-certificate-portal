@@ -10,7 +10,7 @@ import { z } from "zod";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const requestSchema = z.object({
-  requestType: z.enum(["access", "correction", "erasure"]),
+  requestType: z.enum(["access", "correction", "erasure", "withdraw_consent"]),
   requesterName: z.string().trim().min(2).max(100),
   contactEmail: z.string().trim().email().max(254),
   studentName: z.string().trim().min(2).max(100),

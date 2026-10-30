@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       !decoded.email_verified ||
       !email ||
       !admin.exists ||
+      admin.get("status") !== "active" ||
       admin.get("email")?.toLowerCase() !== email ||
       !["uploader", "approver", "superadmin"].includes(
         String(admin.get("role")),

@@ -17,6 +17,8 @@ async function notifySuperadmins(email: string, count: number) {
   const apiKey = process.env.RESEND_API_KEY,
     from = process.env.RESEND_FROM_EMAIL;
   if (!apiKey || !from) return;
+  const siteSettings = await db.collection("siteSettings").doc("main").get();
+  const schoolName = String(siteSettings.get("schoolName") || "Satyam International School");
   const admins = await db
     .collection("admins")
     .where("role", "==", "superadmin")
@@ -35,8 +37,8 @@ async function notifySuperadmins(email: string, count: number) {
     body: JSON.stringify({
       from,
       to: recipients,
-      subject: "Repeated administrator sign-in failures",
-      text: `Repeated sign-in failures detected for an administrator account. Attempts: ${count}. Account identifier: ${email}. The account is temporarily locked for 15 minutes.`,
+      subject: `${schoolName}: repeated administrator sign-in failures`,
+      text: `${schoolName}: repeated sign-in failures detected for an administrator account. Attempts: ${count}. Account identifier: ${email}. The account is temporarily locked for 15 minutes.`,
     }),
   }).catch(() => undefined);
 }

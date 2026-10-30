@@ -1,7 +1,5 @@
 "use client";
-import LegalPageLayout, {
-  LegalSection,
-} from "@/src/components/LegalPageLayout";
+import LegalPageLayout, { LegalSection } from "@/src/components/LegalPageLayout";
 import { usePublicSiteSettings } from "@/src/lib/use-site-settings";
 
 const version = process.env.NEXT_PUBLIC_TERMS_VERSION || "1.0";
@@ -12,7 +10,7 @@ export default function TermsPage() {
   const address = settings.address ?? "";
   const email = settings.email ?? "";
   const jurisdiction = settings.jurisdiction ?? "";
-  const updated = settings.lastUpdated ?? "Not provided";
+  const updated = settings.lastUpdated ?? "No data found";
   const sections: LegalSection[] = [
     {
       id: "acceptance",
@@ -20,15 +18,13 @@ export default function TermsPage() {
       content: (
         <>
           <p>
-            These Terms govern your access to the student certificate retrieval
-            portal operated by {school} (the “School”). By using the portal, you
-            agree to these Terms. If you do not agree, do not use the portal;
-            contact the School office for assistance.
+            These Terms govern your access to the student certificate retrieval portal operated by{" "}
+            {school} (the “School”). By using the portal, you agree to these Terms. If you do not
+            agree, do not use the portal; contact the School office for assistance.
           </p>
           <p>
-            The portal is a limited facility for locating and retrieving
-            certificate records maintained by the School. It is not a general
-            student-information service.
+            The portal is a limited facility for locating and retrieving certificate records
+            maintained by the School. It is not a general student-information service.
           </p>
         </>
       ),
@@ -39,18 +35,15 @@ export default function TermsPage() {
       content: (
         <>
           <p>
-            Use the portal only for a genuine certificate-retrieval purpose and
-            only for records you are entitled to access. You must provide
-            accurate details, keep downloaded documents secure and promptly tell
-            the School if you believe a record or access link has been disclosed
-            improperly.
+            Use the portal only for a genuine certificate-retrieval purpose and only for records you
+            are entitled to access. You must provide accurate details, keep downloaded documents
+            secure and promptly tell the School if you believe a record or access link has been
+            disclosed improperly.
           </p>
           <p>
-            You must not access another person’s record without authority,
-            impersonate a student or guardian, probe or bypass security
-            controls, interfere with the portal, upload malicious content, or
-            use retrieved documents for fraud, harassment or any unlawful
-            purpose.
+            You must not access another person’s record without authority, impersonate a student or
+            guardian, probe or bypass security controls, interfere with the portal, upload malicious
+            content, or use retrieved documents for fraud, harassment or any unlawful purpose.
           </p>
         </>
       ),
@@ -61,16 +54,14 @@ export default function TermsPage() {
       content: (
         <>
           <p>
-            Scraping, crawling, bulk querying, enumeration, scripted requests,
-            bots, headless-browser automation and other automated access are
-            prohibited unless the School has given prior written permission. You
-            must not reverse engineer the portal or attempt to discover records
-            by varying names, sessions or other identifiers.
+            Scraping, crawling, bulk querying, enumeration, scripted requests, bots,
+            headless-browser automation and other automated access are prohibited unless the School
+            has given prior written permission. You must not reverse engineer the portal or attempt
+            to discover records by varying names, sessions or other identifiers.
           </p>
           <p>
-            The School may apply rate limits, bot checks, monitoring and
-            technical restrictions to protect student information and service
-            availability.
+            The School may apply rate limits, bot checks, monitoring and technical restrictions to
+            protect student information and service availability.
           </p>
         </>
       ),
@@ -81,24 +72,21 @@ export default function TermsPage() {
       content: (
         <>
           <p>
-            A file retrieved through this portal is an electronic copy provided
-            for reference and convenience. It is not a newly issued original, a
-            certified true copy or a guarantee that a third party will accept
-            it.
+            A file retrieved through this portal is an electronic copy provided for reference and
+            convenience. It is not a newly issued original, a certified true copy or a guarantee
+            that a third party will accept it.
           </p>
           <p>
-            Copies delivered through preview, print, download or ZIP are
-            watermarked with the School name and delivery date/time. The
-            original file held by the School remains unchanged. A watermark may
-            affect the validity of an embedded digital signature in the
-            delivered copy.
+            Copies delivered through preview, print, download or ZIP are watermarked with the School
+            name and delivery date/time. The original file held by the School remains unchanged. A
+            watermark may affect the validity of an embedded digital signature in the delivered
+            copy.
           </p>
           <p>
-            Where an original, duplicate, certified copy or verification is
-            required, the official document issued or confirmed by the School is
-            authoritative. Contact the School office to obtain an original or to
-            verify a certificate. Receiving institutions may have their own
-            document requirements.
+            Where an original, duplicate, certified copy or verification is required, the official
+            document issued or confirmed by the School is authoritative. Contact the School office
+            to obtain an original or to verify a certificate. Receiving institutions may have their
+            own document requirements.
           </p>
         </>
       ),
@@ -109,17 +97,16 @@ export default function TermsPage() {
       content: (
         <>
           <p>
-            The portal is provided on an “as available” basis. The School does
-            not guarantee uninterrupted, error-free or continuous availability,
-            that every historical record will be present, or that a download
-            will be compatible with every device or third-party system.
+            The portal is provided on an “as available” basis. The School does not guarantee
+            uninterrupted, error-free or continuous availability, that every historical record will
+            be present, or that a download will be compatible with every device or third-party
+            system.
           </p>
           <p>
-            The School may maintain, modify, suspend or discontinue any part of
-            the portal, including for maintenance, legal, security or
-            operational reasons. To the extent permitted by law, the School is
-            not liable for loss caused solely by temporary unavailability or
-            interruptions.
+            The School may maintain, modify, suspend or discontinue any part of the portal,
+            including for maintenance, legal, security or operational reasons. To the extent
+            permitted by law, the School is not liable for loss caused solely by temporary
+            unavailability or interruptions.
           </p>
         </>
       ),
@@ -130,17 +117,14 @@ export default function TermsPage() {
       content: (
         <>
           <p>
-            The School may suspend, restrict or revoke access, without prior
-            notice where reasonably necessary, if it suspects misuse,
-            unauthorized access, a security risk, inaccurate or abusive
-            submissions, a breach of these Terms, or where required by law. The
-            School may preserve relevant security records and investigate
-            suspected misuse.
+            The School may suspend, restrict or revoke access, without prior notice where reasonably
+            necessary, if it suspects misuse, unauthorized access, a security risk, inaccurate or
+            abusive submissions, a breach of these Terms, or where required by law. The School may
+            preserve relevant security records and investigate suspected misuse.
           </p>
           <p>
-            Suspension of portal access does not remove any rights you may have
-            to request records or exercise rights under applicable law through
-            the School’s official contact channels.
+            Suspension of portal access does not remove any rights you may have to request records
+            or exercise rights under applicable law through the School’s official contact channels.
           </p>
         </>
       ),
@@ -152,16 +136,19 @@ export default function TermsPage() {
         <>
           <p>
             Use of the portal also involves the processing described in the{" "}
-            <a
-              className="font-semibold text-blue-800 underline underline-offset-2"
-              href="/privacy"
-            >
+            <a className="font-semibold text-blue-800 underline underline-offset-2" href="/privacy">
               Privacy Policy
             </a>
-            . The School processes personal data for certificate retrieval and
-            related security and recordkeeping purposes in accordance with
-            applicable law, including the Digital Personal Data Protection Act,
-            2023, to the extent in force and applicable.
+            . The School processes personal data for certificate retrieval and related security and
+            recordkeeping purposes in accordance with applicable law, including the Digital Personal
+            Data Protection Act, 2023, to the extent in force and applicable.
+          </p>
+          <p>
+            If you choose a language other than English, the optional Google Translate feature may
+            send visible page text to Google for machine translation. The feature is loaded only
+            after you open the language menu and choose a language. Google may set the functional
+            “googtrans” cookie after that choice. Review the Privacy Policy and Google’s privacy
+            information before using this optional service.
           </p>
         </>
       ),
@@ -172,14 +159,13 @@ export default function TermsPage() {
       content: (
         <>
           <p>
-            You are responsible for protecting your device, downloaded files and
-            any access token or link. You should check that a retrieved copy is
-            complete and contact the School if it appears incorrect or damaged.
+            You are responsible for protecting your device, downloaded files and any access token or
+            link. You should check that a retrieved copy is complete and contact the School if it
+            appears incorrect or damaged.
           </p>
           <p>
-            Nothing in these Terms excludes or limits liability where such
-            exclusion or limitation is prohibited by applicable law, or affects
-            statutory rights that cannot be waived.
+            Nothing in these Terms excludes or limits liability where such exclusion or limitation
+            is prohibited by applicable law, or affects statutory rights that cannot be waived.
           </p>
         </>
       ),
@@ -190,10 +176,9 @@ export default function TermsPage() {
       content: (
         <>
           <p>
-            These Terms are governed by the laws of India. Subject to any
-            mandatory jurisdiction or dispute-resolution requirements under
-            applicable law, the courts at {jurisdiction} shall have jurisdiction
-            over disputes arising from these Terms.
+            These Terms are governed by the laws of India. Subject to any mandatory jurisdiction or
+            dispute-resolution requirements under applicable law, the courts at {jurisdiction} shall
+            have jurisdiction over disputes arising from these Terms.
           </p>
         </>
       ),
@@ -217,9 +202,9 @@ export default function TermsPage() {
             </a>
           </p>
           <p>
-            The School may update these Terms from time to time. The version and
-            last-updated date shown above identify the current published text.
-            Material changes will be reflected on this page.
+            The School may update these Terms from time to time. The version and last-updated date
+            shown above identify the current published text. Material changes will be reflected on
+            this page.
           </p>
         </>
       ),
@@ -234,10 +219,9 @@ export default function TermsPage() {
       sections={sections}
     >
       <p className="mt-10 border-t border-slate-200 pt-5 text-xs leading-6 text-slate-500">
-        School identity and contact details on this page are loaded from the
-        public site settings maintained by the superadmin. These Terms require
-        review and approval by the School and qualified Indian legal counsel
-        before production.
+        School identity and contact details on this page are loaded from the public site settings
+        maintained by the superadmin. These Terms require review and approval by the School and
+        qualified Indian legal counsel before production.
       </p>
     </LegalPageLayout>
   );

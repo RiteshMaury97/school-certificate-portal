@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { db } from "@/src/lib/firebase-admin";
 import { Suspense } from "react";
 import Script from "next/script";
+import { headers } from "next/headers";
 import "./globals.css";
 export const dynamic = "force-dynamic";
 const siteUrl = (
@@ -20,7 +21,7 @@ export const viewport: Viewport = {
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const settings = await db.collection("siteSettings").doc("main").get();
-    const name = String(settings.get("schoolName") ?? "Certificate Portal");
+    const name = String(settings.get("schoolName") || "Satyam International School");
     const description = String(
       settings.get("tagline") ??
         "Secure school certificate retrieval and verification portal",
@@ -28,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       metadataBase: new URL(siteUrl),
       title: {
-        default: `${name} | Certificate Portal`,
+        default: name,
         template: `%s | ${name}`,
       },
       description,
@@ -45,7 +46,7 @@ export async function generateMetadata(): Promise<Metadata> {
       openGraph: {
         type: "website",
         siteName: name,
-        title: `${name} | Certificate Portal`,
+        title: name,
         description,
         url: siteUrl,
         images: [
@@ -53,13 +54,13 @@ export async function generateMetadata(): Promise<Metadata> {
             url: "/og-image.png",
             width: 1200,
             height: 630,
-            alt: `${name} certificate portal`,
+            alt: `${name} official school records`,
           },
         ],
       },
       twitter: {
         card: "summary_large_image",
-        title: `${name} | Certificate Portal`,
+        title: name,
         description,
         images: ["/og-image.png"],
       },
@@ -68,7 +69,7 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     return {
       metadataBase: new URL(siteUrl),
-      title: "Certificate Portal",
+      title: "Satyam International School",
       description:
         "Secure school certificate retrieval and verification portal",
       alternates: { canonical: "/" },
@@ -82,7 +83,7 @@ export async function generateMetadata(): Promise<Metadata> {
       manifest: "/manifest.webmanifest",
       openGraph: {
         type: "website",
-        title: "Certificate Portal",
+        title: "Satyam International School",
         description:
           "Secure school certificate retrieval and verification portal",
         url: siteUrl,
@@ -90,7 +91,7 @@ export async function generateMetadata(): Promise<Metadata> {
       },
       twitter: {
         card: "summary_large_image",
-        title: "Certificate Portal",
+        title: "Satyam International School",
         description:
           "Secure school certificate retrieval and verification portal",
         images: ["/og-image.png"],
@@ -102,8 +103,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const themeInit = `(function(){try{var t=localStorage.getItem("sis-theme")||"system";var d=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var c=localStorage.getItem("sis-high-contrast")==="true";var r=document.documentElement;r.dataset.theme=d?"dark":"light";r.dataset.contrast=c?"high":"normal";r.style.colorScheme=d?"dark":"light";}catch(e){var p=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)").matches:false;document.documentElement.dataset.theme=p?"dark":"light";document.documentElement.dataset.contrast="normal";document.documentElement.style.colorScheme=p?"dark":"light";}})();`;
   return (
     <html lang="en" suppressHydrationWarning>
+      <head><script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInit }} /></head>
       <body>
         <a className="skip-link" href="#main-content">
           Skip to main content

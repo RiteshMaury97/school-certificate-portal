@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
       schoolName: String(
         (await db.collection("siteSettings").doc("main").get()).get(
           "schoolName",
-        ) ?? "School",
+        ) || "Satyam International School",
       ),
       studentName: maskStudentName(studentName),
       verifiedOn: new Date().toISOString(),

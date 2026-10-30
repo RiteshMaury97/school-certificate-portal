@@ -10,8 +10,6 @@ const schema = z
     z.object({
       questionEn: z.string().trim().min(3).max(180),
       answerEn: z.string().trim().min(5).max(1500),
-      questionHi: z.string().trim().max(180),
-      answerHi: z.string().trim().max(1500),
     }),
   )
   .max(30);
@@ -25,7 +23,14 @@ export async function GET(request: NextRequest) {
       );
     const s = await db.collection("siteSettings").doc("main").get();
     return NextResponse.json(
-      { faqs: s.get("faqs") ?? [] },
+      {
+        faqs: Array.isArray(s.get("faqs"))
+          ? (s.get("faqs") as Record<string, unknown>[]).slice(0, 30).map((item) => ({
+              questionEn: String(item.questionEn ?? "").slice(0, 180),
+              answerEn: String(item.answerEn ?? "").slice(0, 1500),
+            }))
+          : [],
+      },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (e) {

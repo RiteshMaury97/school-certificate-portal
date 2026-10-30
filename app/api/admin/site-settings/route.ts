@@ -15,6 +15,16 @@ const schema = z.object({
   tagline: z.string().trim().max(240),
   logoUrl: url,
   statusPageUrl: url.optional().default(""),
+  includedLanguages: z
+    .string()
+    .trim()
+    .max(150)
+    .optional()
+    .default("en,hi,bn,mr,gu,pa,ta,te,ur")
+    .refine(
+      (value) => value.split(",").every((code) => /^[a-z]{2,3}(?:-[a-z]{2})?$/i.test(code.trim())),
+      "Use comma-separated language codes",
+    ),
   boardName: z.string().trim().max(160),
   affiliationNumber: z.string().trim().max(80),
   schoolCode: z.string().trim().max(80),
@@ -92,6 +102,7 @@ export async function PATCH(request: NextRequest) {
       .set(
         {
           ...parsed.data,
+          includedLanguages: Array.from(new Set(["en", ...parsed.data.includedLanguages.split(",").map((code) => code.trim().toLowerCase()).filter(Boolean)])).join(","),
           lastUpdated,
           updatedAt: FieldValue.serverTimestamp(),
           updatedBy: admin.uid,

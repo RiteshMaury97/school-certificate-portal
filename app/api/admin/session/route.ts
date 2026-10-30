@@ -39,6 +39,8 @@ async function sendAlert(to: string, body: string) {
   const key = process.env.RESEND_API_KEY,
     from = process.env.RESEND_FROM_EMAIL;
   if (!key || !from) return;
+  const siteSettings = await db.collection("siteSettings").doc("main").get();
+  const schoolName = String(siteSettings.get("schoolName") || "Satyam International School");
   await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -48,8 +50,8 @@ async function sendAlert(to: string, body: string) {
     body: JSON.stringify({
       from,
       to,
-      subject: "New sign-in to the school admin panel",
-      html: body,
+      subject: `${schoolName}: new staff sign-in`,
+      html: `<p>${schoolName}</p>${body}`,
     }),
   });
 }
@@ -101,6 +103,7 @@ export async function POST(request: NextRequest) {
     const role = admin.get("role");
     if (
       !admin.exists ||
+      admin.get("status") !== "active" ||
       !email ||
       admin.get("email")?.toLowerCase() !== email ||
       (role !== "uploader" && role !== "approver" && role !== "superadmin") ||
@@ -276,6 +279,7 @@ export async function GET(request: NextRequest) {
     if (
       !decoded.email_verified ||
       !admin.exists ||
+      admin.get("status") !== "active" ||
       (role !== "uploader" && role !== "approver" && role !== "superadmin") ||
       admin.get("email")?.toLowerCase() !== decoded.email?.toLowerCase() ||
       decoded.role !== role

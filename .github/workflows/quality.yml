@@ -1,0 +1,50 @@
+name: Quality checks
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, typecheck and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run ESLint and save reports
+        run: |
+          npm run lint:report
+          npm run lint -- --max-warnings=0
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Upload ESLint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-report
+          path: |
+            reports/eslint-report.html
+            reports/eslint-report.json
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,13 +1,10 @@
 "use client";
 import { FormEvent, useState } from "react";
-import LegalPageLayout, {
-  LegalSection,
-} from "@/src/components/LegalPageLayout";
+import LegalPageLayout, { LegalSection } from "@/src/components/LegalPageLayout";
 import { appCheckHeaders } from "@/src/lib/firebase-client";
 import { usePublicSiteSettings } from "@/src/lib/use-site-settings";
 
-const region =
-  process.env.NEXT_PUBLIC_DATA_HOSTING_REGION || "{{HOSTING_REGION}}";
+const region = process.env.NEXT_PUBLIC_DATA_HOSTING_REGION || "{{HOSTING_REGION}}";
 const version = process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION || "2026-10";
 
 export default function PrivacyPage() {
@@ -18,10 +15,9 @@ export default function PrivacyPage() {
   const officer = settings.grievanceOfficerName ?? "";
   const officerEmail = settings.grievanceOfficerEmail ?? "";
   const officerPhone = settings.grievanceOfficerPhone ?? "";
-  const updated = settings.lastUpdated ?? "Not provided";
+  const updated = settings.lastUpdated ?? "No data found";
   const retentionYears =
-    settings.retentionYears ??
-    Number(process.env.NEXT_PUBLIC_RETENTION_YEARS || 7);
+    settings.retentionYears ?? Number(process.env.NEXT_PUBLIC_RETENTION_YEARS || 7);
   const retentionText = settings.retentionScheduleConfirmed
     ? `${retentionYears} years`
     : `provisional ${retentionYears} years (awaiting School confirmation)`;
@@ -59,8 +55,7 @@ export default function PrivacyPage() {
         cache: "no-store",
       });
       const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error ?? "Unable to submit request.");
+      if (!response.ok) throw new Error(data.error ?? "Unable to submit request.");
       setAcknowledgment(String(data.acknowledgmentId));
       setDescription("");
     } catch (e) {
@@ -77,17 +72,13 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            {school} (“School”) is the Data Fiduciary for personal data
-            processed through this portal. The School decides the purposes and
-            means of processing and is responsible for handling requests and
-            grievances.
+            {school} (“School”) is the Data Fiduciary for personal data processed through this
+            portal. The School decides the purposes and means of processing and is responsible for
+            handling requests and grievances.
           </p>
           <p>
             Postal address: {address}. General contact:{" "}
-            <a
-              className="font-semibold text-blue-800 underline"
-              href={`mailto:${email}`}
-            >
+            <a className="font-semibold text-blue-800 underline" href={`mailto:${email}`}>
               {email}
             </a>
             .
@@ -101,32 +92,28 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            For certificate retrieval, the portal collects the student’s name,
-            father’s name, mother’s name, academic/passing session and the
-            certificate file. Limited certificate metadata (such as certificate
-            type, number and issue date) is used to identify and deliver the
-            requested document.
+            For certificate retrieval, the portal collects the student’s name, father’s name,
+            mother’s name, academic/passing session and the certificate file. Limited certificate
+            metadata (such as certificate type, number and issue date) is used to identify and
+            deliver the requested document.
           </p>
           <p>
-            For security and administration, the system may also record consent
-            version and timestamp, hashed network identifiers, request outcomes,
-            administrator audit events and technical security data. Do not
-            submit information that the form does not request.
+            For security and administration, the system may also record consent version and
+            timestamp, hashed network identifiers, request outcomes, administrator audit events and
+            technical security data. Do not submit information that the form does not request.
           </p>
           <p>
-            If you submit a wrong-record report, the School receives the name,
-            passing session, issue description, contact detail and consent you
-            provide. The portal assigns a reference ID and records ticket
-            status, staff handling notes and a hashed network identifier for
-            abuse prevention and audit purposes.
+            If you submit a wrong-record report, the School receives the name, passing session,
+            issue description, contact detail and consent you provide. The portal assigns a
+            reference ID and records ticket status, staff handling notes and a hashed network
+            identifier for abuse prevention and audit purposes.
           </p>
           <p>
-            If you use the optional “Was this helpful?” widget, the portal
-            stores only your helpful/not-helpful choice, an optional comment of
-            up to 200 characters, the submission timestamp and the page path. Do
-            not enter personal details in the comment. A separate short-lived
-            abuse counter uses a hashed network identifier to rate-limit
-            submissions; that identifier is not added to the feedback record.
+            If you use the optional “Was this helpful?” widget, the portal stores only your
+            helpful/not-helpful choice, an optional comment of up to 200 characters, the submission
+            timestamp and the page path. Do not enter personal details in the comment. A separate
+            short-lived abuse counter uses a hashed network identifier to rate-limit submissions;
+            that identifier is not added to the feedback record.
           </p>
         </>
       ),
@@ -137,30 +124,25 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            Student and certificate information is used to verify a certificate
-            lookup, retrieve the matching school-issued document, maintain the
-            accuracy and integrity of school certificate records, prevent abuse
-            and meet applicable legal obligations. The portal is not used for
-            advertising, behavioural profiling, unrelated marketing or student
-            ranking.
+            Student and certificate information is used to verify a certificate lookup, retrieve the
+            matching school-issued document, maintain the accuracy and integrity of school
+            certificate records, prevent abuse and meet applicable legal obligations. The portal is
+            not used for advertising, behavioural profiling, unrelated marketing or student ranking.
           </p>
           <p>
-            Where consent is required, the portal displays a plain-language
-            notice and an unticked checkbox. The user must actively agree before
-            a lookup is submitted. Consent is recorded with the policy version,
-            purpose and timestamp and may be withdrawn by contacting the School.
-            Withdrawal does not invalidate processing already lawfully
-            completed; it may prevent further portal retrieval using that
-            consent.
+            Where consent is required, the portal displays a plain-language notice and an unticked
+            checkbox. The user must actively agree before a lookup is submitted. Consent is recorded
+            with the policy version, purpose and timestamp and may be withdrawn by contacting the
+            School. Withdrawal does not invalidate processing already lawfully completed; it may
+            prevent further portal retrieval using that consent.
           </p>
           <p>
-            Where applicable under the DPDP Act, 2023, the School may process
-            personal data for a “certain legitimate use” recognised by the Act
-            (including applicable school-related or legal purposes under section
-            7), or to comply with a legal obligation. This is not a broad
-            commercial legitimate-interest basis. The School will identify the
-            applicable basis for the specific processing activity and will not
-            use this statement to bypass consent where consent is required.
+            Where applicable under the DPDP Act, 2023, the School may process personal data for a
+            “certain legitimate use” recognised by the Act (including applicable school-related or
+            legal purposes under section 7), or to comply with a legal obligation. This is not a
+            broad commercial legitimate-interest basis. The School will identify the applicable
+            basis for the specific processing activity and will not use this statement to bypass
+            consent where consent is required.
           </p>
         </>
       ),
@@ -171,29 +153,21 @@ export default function PrivacyPage() {
       content: (
         <>
           <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
-            <strong>Guardian notice:</strong> Many records belong to students
-            under 18. If the student is a minor, a parent or guardian should use
-            this portal or be present. The School processes this data only to
-            provide certificates. See our Privacy Policy.{" "}
-            <span lang="hi" className="mt-2 block">
-              कई रिकॉर्ड 18 वर्ष से कम आयु के विद्यार्थियों के हैं। यदि
-              विद्यार्थी नाबालिग है, तो माता-पिता या अभिभावक को इस पोर्टल का
-              उपयोग करना चाहिए या उपस्थित रहना चाहिए। विद्यालय इस डेटा का उपयोग
-              केवल प्रमाणपत्र उपलब्ध कराने के लिए करता है। गोपनीयता नीति देखें।
-            </span>
+            <strong>Guardian notice:</strong> Many records belong to students under 18. If the
+            student is a minor, a parent or guardian should use this portal or be present. The
+            School processes this data only to provide certificates. See our Privacy Policy.{" "}
           </p>
           <p>
-            Student records may relate to children. A parent or legal guardian
-            must be involved in the portal process and should submit or confirm
-            the request on the student’s behalf where required. The School
-            relies on its verified school records and approved parent/guardian
-            verification procedures; ticking a checkbox alone is not proof of
+            Student records may relate to children. A parent or legal guardian must be involved in
+            the portal process and should submit or confirm the request on the student’s behalf
+            where required. The School relies on its verified school records and approved
+            parent/guardian verification procedures; ticking a checkbox alone is not proof of
             identity or parental authority.
           </p>
           <p>
-            The portal does not use behavioural tracking, targeted advertising
-            or profiling analytics for children. The School applies access
-            restrictions and other safeguards appropriate to student records.
+            The portal does not use behavioural tracking, targeted advertising or profiling
+            analytics for children. The School applies access restrictions and other safeguards
+            appropriate to student records.
           </p>
         </>
       ),
@@ -204,29 +178,48 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            The School uses Firebase / Google Cloud Firestore for application
-            data and Cloudflare R2 for private certificate-file storage. These
-            providers act as processors/service providers on the School’s
-            behalf, subject to the applicable service terms and configured
-            security controls. Cloudflare R2 stores finished certificate files
-            in a private, access-restricted bucket. Cloudflare Turnstile is used
-            for abuse prevention and may process technical request information.
+            The School uses Firebase / Google Cloud Firestore for application data and Cloudflare R2
+            for private certificate-file storage. These providers act as processors/service
+            providers on the School’s behalf, subject to the applicable service terms and configured
+            security controls. Cloudflare R2 stores finished certificate files in a private,
+            access-restricted bucket. Cloudflare Turnstile is used for abuse prevention and may
+            process technical request information. When a visitor actively chooses a language using
+            the optional Google Translate control, the page text may be sent to Google Translate for
+            machine translation. This can include text displayed on the current page. Visitors
+            should avoid using translation on pages containing personal certificate results; result
+            and print views are excluded from translation by the portal. Google may process the text
+            and related technical data under its own service terms and privacy policy. The
+            translation feature is not loaded until the visitor opens the language menu.
           </p>
           <p>
-            The original uploaded certificate is retained unchanged in private
-            storage. When a certificate is previewed, printed, downloaded or
-            included in a ZIP, the portal creates a separate copy with a light
-            diagonal school watermark and a download-time footer. The watermark
-            is not written back to the stored original. Successful file and ZIP
-            downloads update anonymous aggregate counters on the certificate and
-            by academic session; the download metrics do not record who
-            downloaded a certificate, an IP address or a user-agent.
+            Google Translate is an external service provider used only after the visitor requests
+            translation. The School does not control Google’s translation processing, retention or
+            any cross-border handling; visitors can continue using the portal in English without
+            activating the service. See Google’s{" "}
+            <a
+              href="https://policies.google.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold underline"
+            >
+              Privacy Policy
+            </a>{" "}
+            for its own data practices.
           </p>
           <p>
-            Configured hosting and storage region: {region}. The School should
-            confirm the actual region, processor terms, data-location settings
-            and any cross-border transfer requirements before launch. Access to
-            processors is limited to the services needed to operate the portal.
+            The original uploaded certificate is retained unchanged in private storage. When a
+            certificate is previewed, printed, downloaded or included in a ZIP, the portal creates a
+            separate copy with a light diagonal school watermark and a download-time footer. The
+            watermark is not written back to the stored original. Successful file and ZIP downloads
+            update anonymous aggregate counters on the certificate and by academic session; the
+            download metrics do not record who downloaded a certificate, an IP address or a
+            user-agent.
+          </p>
+          <p>
+            Configured hosting and storage region: {region}. The School should confirm the actual
+            region, processor terms, data-location settings and any cross-border transfer
+            requirements before launch. Access to processors is limited to the services needed to
+            operate the portal.
           </p>
         </>
       ),
@@ -237,28 +230,23 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            Authorized School administrators can correct inaccurate student
-            details and certificate metadata. Wrong-record reports are retained
-            under the School’s approved support-ticket and recordkeeping
-            schedule; the School should publish and configure that schedule
-            before launch. The configured student-record retention period is{" "}
-            {retentionText} after the end of the passing session. When that
-            period expires, records are flagged for a human retention review;
-            they are not automatically deleted. Erasure occurs only after an
-            authorized superadministrator reviews and approves it, and only
-            where no legal hold, statutory requirement, legitimate
-            school-recordkeeping need or pending dispute requires continued
-            retention.
+            Authorized School administrators can correct inaccurate student details and certificate
+            metadata. Wrong-record reports are retained under the School’s approved support-ticket
+            and recordkeeping schedule; the School should publish and configure that schedule before
+            launch. The configured student-record retention period is {retentionText} after the end
+            of the passing session. When that period expires, records are flagged for a human
+            retention review; they are not automatically deleted. Erasure occurs only after an
+            authorized superadministrator reviews and approves it, and only where no legal hold,
+            statutory requirement, legitimate school-recordkeeping need or pending dispute requires
+            continued retention.
           </p>
           <p>
-            The School must validate this schedule against applicable education,
-            archival, limitation and other recordkeeping requirements. Deletion
-            from active systems may be followed by expiry from encrypted backups
-            under the documented backup rotation schedule. The configured backup
-            rotation period is {backupRotationDays} days. The School must
-            confirm this period and align the operational R2 lifecycle policy
-            before production launch; copies expire when the rotation period
-            ends.
+            The School must validate this schedule against applicable education, archival,
+            limitation and other recordkeeping requirements. Deletion from active systems may be
+            followed by expiry from encrypted backups under the documented backup rotation schedule.
+            The configured backup rotation period is {backupRotationDays} days. The School must
+            confirm this period and align the operational R2 lifecycle policy before production
+            launch; copies expire when the rotation period ends.
           </p>
         </>
       ),
@@ -269,20 +257,18 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            Subject to the DPDP Act and other applicable law, a Data Principal
-            or a person legally entitled to act for them may request access to
-            information about processing, correction or completion of personal
-            data, erasure where retention is not legally required, withdrawal of
-            consent and grievance redressal. Requests may require identity and
+            Subject to the DPDP Act and other applicable law, a Data Principal or a person legally
+            entitled to act for them may request access to information about processing, correction
+            or completion of personal data, erasure where retention is not legally required,
+            withdrawal of consent and grievance redressal. Requests may require identity and
             authority verification before the School acts.
           </p>
           <p>
-            Use the request form below or contact the School. The form creates a
-            tracking acknowledgment ID; it does not itself verify identity or
-            guarantee that a request will be granted. The School aims to
-            acknowledge requests promptly and respond within 30 calendar days as
-            an internal service target, or within any shorter/other period
-            required by applicable law.
+            Use the request form below or contact the School. The form creates a tracking
+            acknowledgment ID; it does not itself verify identity or guarantee that a request will
+            be granted. The School aims to acknowledge requests promptly and respond within 30
+            calendar days as an internal service target, or within any shorter/other period required
+            by applicable law.
           </p>
         </>
       ),
@@ -293,14 +279,10 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            <strong>Grievance Officer / Data Protection contact:</strong>{" "}
-            {officer}
+            <strong>Grievance Officer / Data Protection contact:</strong> {officer}
             <br />
             <strong>Email:</strong>{" "}
-            <a
-              className="font-semibold text-blue-800 underline"
-              href={`mailto:${officerEmail}`}
-            >
+            <a className="font-semibold text-blue-800 underline" href={`mailto:${officerEmail}`}>
               {officerEmail}
             </a>
             <br />
@@ -309,12 +291,11 @@ export default function PrivacyPage() {
             <strong>Postal address:</strong> {address}
           </p>
           <p>
-            Please include your acknowledgment ID, if you have one, and avoid
-            sending unnecessary sensitive documents by email. If you are not
-            satisfied with the School’s response, you may use the escalation
-            mechanism available under applicable law, including the Data
-            Protection Board of India when legally constituted and the relevant
-            provisions are in force.
+            Please include your acknowledgment ID, if you have one, and avoid sending unnecessary
+            sensitive documents by email. If you are not satisfied with the School’s response, you
+            may use the escalation mechanism available under applicable law, including the Data
+            Protection Board of India when legally constituted and the relevant provisions are in
+            force.
           </p>
         </>
       ),
@@ -325,17 +306,15 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            The School uses reasonable technical and organisational safeguards,
-            including administrator multi-factor authentication, role-based
-            access controls, server-side authorization, encrypted connections,
-            restricted private certificate storage, audit records, rate limits,
-            bot protection and access reviews. Firestore client access is denied
-            and service credentials are kept server-side.
+            The School uses reasonable technical and organisational safeguards, including
+            administrator multi-factor authentication, role-based access controls, server-side
+            authorization, encrypted connections, restricted private certificate storage, audit
+            records, rate limits, bot protection and access reviews. Firestore client access is
+            denied and service credentials are kept server-side.
           </p>
           <p>
-            No system can be guaranteed completely secure. Users should protect
-            their devices, avoid sharing access links and report suspected
-            unauthorized access promptly.
+            No system can be guaranteed completely secure. Users should protect their devices, avoid
+            sharing access links and report suspected unauthorized access promptly.
           </p>
         </>
       ),
@@ -346,19 +325,17 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            If a personal data breach is suspected, the School will activate its
-            incident-response process: contain the incident, preserve evidence,
-            assess affected data and Data Principals, document decisions,
-            remediate vulnerabilities and make notifications required by
-            applicable law. Where the relevant DPDP provisions and Rules apply,
-            the School will notify affected Data Principals without delay and
-            notify the Data Protection Board in the form and timeline prescribed
-            by the Rules, including the detailed intimation within 72 hours of
-            awareness or any extended period allowed by the Board.
+            If a personal data breach is suspected, the School will activate its incident-response
+            process: contain the incident, preserve evidence, assess affected data and Data
+            Principals, document decisions, remediate vulnerabilities and make notifications
+            required by applicable law. Where the relevant DPDP provisions and Rules apply, the
+            School will notify affected Data Principals without delay and notify the Data Protection
+            Board in the form and timeline prescribed by the Rules, including the detailed
+            intimation within 72 hours of awareness or any extended period allowed by the Board.
           </p>
           <p>
-            The School maintains a restricted breach register and will not
-            publish details that could increase risk to affected individuals.
+            The School maintains a restricted breach register and will not publish details that
+            could increase risk to affected individuals.
           </p>
         </>
       ),
@@ -369,12 +346,15 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            The portal uses only essential cookies and technical storage
-            required for security, administrator authentication and session
-            integrity. It does not use marketing or advertising cookies, and
-            does not sell personal data or run child-profiling analytics.
-            Cloudflare Turnstile may use technical mechanisms necessary to
-            distinguish legitimate requests from automated abuse.
+            The portal uses essential cookies and technical storage required for security,
+            administrator authentication and session integrity. It does not use marketing or
+            advertising cookies, and does not sell personal data or run child-profiling analytics.
+            Cloudflare Turnstile may use technical mechanisms necessary to distinguish legitimate
+            requests from automated abuse. If you choose a language other than English, Google
+            Translate sets the functional “googtrans” cookie to remember and apply your language
+            choice. This cookie is not set merely by visiting the portal or opening the language
+            menu; it is set only after you select a language. Choosing English resets the
+            translation cookie.
           </p>
         </>
       ),
@@ -386,15 +366,12 @@ export default function PrivacyPage() {
         <>
           <p>
             Contact {school} at{" "}
-            <a
-              className="font-semibold text-blue-800 underline"
-              href={`mailto:${email}`}
-            >
+            <a className="font-semibold text-blue-800 underline" href={`mailto:${email}`}>
               {email}
             </a>{" "}
-            or {address}. This policy may be updated to reflect changes in the
-            portal, law or School practices. The version and last-updated date
-            at the top identify the currently published text.
+            or {address}. This policy may be updated to reflect changes in the portal, law or School
+            practices. The version and last-updated date at the top identify the currently published
+            text.
           </p>
         </>
       ),
@@ -413,16 +390,13 @@ export default function PrivacyPage() {
         title: "Request access, correction or erasure",
       }}
     >
-      <section
-        id="rights-request"
-        className="mt-10 scroll-mt-8 border-t border-slate-200 pt-8"
-      >
+      <section id="rights-request" className="mt-10 scroll-mt-8 border-t border-slate-200 pt-8">
         <h2 className="text-xl font-bold tracking-tight text-slate-950">
           Request access, correction or erasure
         </h2>
         <p className="mt-2 text-sm leading-7 text-slate-700">
-          Create a tracked privacy request. Share only the information needed
-          for the School to identify and verify your request.
+          Create a tracked privacy request. Share only the information needed for the School to
+          identify and verify your request.
         </p>
         <form
           onSubmit={submit}
@@ -431,6 +405,7 @@ export default function PrivacyPage() {
           <label className="text-sm font-semibold text-slate-800">
             Request type
             <select
+              translate="no"
               value={requestType}
               onChange={(e) => setRequestType(e.target.value)}
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3"
@@ -443,6 +418,7 @@ export default function PrivacyPage() {
           <label className="text-sm font-semibold text-slate-800">
             Your name
             <input
+              translate="no"
               required
               maxLength={100}
               value={requesterName}
@@ -453,6 +429,7 @@ export default function PrivacyPage() {
           <label className="text-sm font-semibold text-slate-800">
             Contact email
             <input
+              translate="no"
               type="email"
               required
               maxLength={254}
@@ -464,6 +441,7 @@ export default function PrivacyPage() {
           <label className="text-sm font-semibold text-slate-800">
             Student name
             <input
+              translate="no"
               required
               maxLength={100}
               value={studentName}
@@ -474,6 +452,7 @@ export default function PrivacyPage() {
           <label className="text-sm font-semibold text-slate-800 sm:col-span-2">
             Request details
             <textarea
+              translate="no"
               required
               minLength={10}
               maxLength={1500}
@@ -486,6 +465,7 @@ export default function PrivacyPage() {
           </label>
           <label className="flex items-start gap-3 text-sm leading-6 text-slate-700 sm:col-span-2">
             <input
+              translate="no"
               type="checkbox"
               required
               checked={guardianConfirmation}
@@ -493,9 +473,9 @@ export default function PrivacyPage() {
               className="mt-1 size-4"
             />
             <span>
-              I am the student, or the parent/guardian of the student (or an
-              authorized representative). I confirm that the School may contact
-              me to verify my identity and authority.
+              I am the student, or the parent/guardian of the student (or an authorized
+              representative). I confirm that the School may contact me to verify my identity and
+              authority.
             </span>
           </label>
           <button
@@ -505,10 +485,7 @@ export default function PrivacyPage() {
             {busy ? "Submitting…" : "Submit privacy request"}
           </button>
           {error && (
-            <p
-              role="alert"
-              className="text-sm font-medium text-red-700 sm:col-span-2"
-            >
+            <p role="alert" className="text-sm font-medium text-red-700 sm:col-span-2">
               {error}
             </p>
           )}
@@ -518,17 +495,16 @@ export default function PrivacyPage() {
               className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900 sm:col-span-2"
             >
               Request received. Your acknowledgment ID is{" "}
-              <span className="font-mono">{acknowledgment}</span>. Keep it for
-              follow-up.
+              <span className="font-mono">{acknowledgment}</span>. Keep it for follow-up.
             </p>
           )}
         </form>
       </section>
       <p className="mt-8 border-t border-slate-200 pt-5 text-xs leading-6 text-slate-500">
-        This is a configurable implementation template, not legal advice or a
-        certification of compliance. The School must complete the placeholders,
-        verify its retention schedule, processor arrangements and commencement
-        obligations, and obtain qualified Indian legal review before launch.
+        This is a configurable implementation template, not legal advice or a certification of
+        compliance. The School must complete the placeholders, verify its retention schedule,
+        processor arrangements and commencement obligations, and obtain qualified Indian legal
+        review before launch.
       </p>
     </LegalPageLayout>
   );

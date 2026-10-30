@@ -1,15 +1,9 @@
 "use client";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { appCheckHeaders } from "@/src/lib/firebase-client";
-import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-export default function ReportWrongRecordModal({
-  onClose,
-}: {
-  onClose: () => void;
-}) {
-  const { t, i18n } = useTranslation();
+export default function ReportWrongRecordModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [session, setSession] = useState("");
   const [issue, setIssue] = useState("");
@@ -56,8 +50,7 @@ export default function ReportWrongRecordModal({
     }
     let cancelled = false;
     const render = () => {
-      if (cancelled || !captcha.current || !window.turnstile || widget.current)
-        return;
+      if (cancelled || !captcha.current || !window.turnstile || widget.current) return;
       try {
         widget.current = window.turnstile.render(captcha.current, {
           sitekey: siteKey,
@@ -78,13 +71,11 @@ export default function ReportWrongRecordModal({
     const id = "cloudflare-turnstile-script";
     const existing = document.getElementById(id) as HTMLScriptElement | null;
     if (window.turnstile) render();
-    else if (existing)
-      existing.addEventListener("load", render, { once: true });
+    else if (existing) existing.addEventListener("load", render, { once: true });
     else {
       const script = document.createElement("script");
       script.id = id;
-      script.src =
-        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
       script.async = true;
       script.defer = true;
       script.onload = render;
@@ -93,8 +84,7 @@ export default function ReportWrongRecordModal({
     }
     return () => {
       cancelled = true;
-      if (widget.current && window.turnstile)
-        window.turnstile.remove(widget.current);
+      if (widget.current && window.turnstile) window.turnstile.remove(widget.current);
       widget.current = null;
     };
   }, [siteKey]);
@@ -102,7 +92,7 @@ export default function ReportWrongRecordModal({
     event.preventDefault();
     setError("");
     if (!consent || !token) {
-      setError(t("consentError"));
+      setError("Please provide consent and complete security verification.");
       return;
     }
     setBusy(true);
@@ -131,14 +121,11 @@ export default function ReportWrongRecordModal({
         throw new Error(data.error ?? "Unable to submit your report.");
       setReference(data.referenceId);
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Unable to submit your report.",
-      );
+      setError(e instanceof Error ? e.message : "Unable to submit your report.");
     } finally {
       setBusy(false);
     }
   }
-  const isHindi = i18n.language.startsWith("hi");
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4"
@@ -151,19 +138,21 @@ export default function ReportWrongRecordModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="report-title"
-        className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 text-[#20252b] shadow-2xl"
+        className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 text-[var(--text)] shadow-2xl"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 id="report-title" className="text-xl font-bold">
-              {t("reportTitle")}
+              {"Report a wrong record"}
             </h2>
-            <p className="mt-1 text-sm text-slate-600">{t("reportDesc")}</p>
+            <p className="mt-1 text-sm text-slate-600">
+              {"Share only the details needed to identify and review the issue."}
+            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label={t("close")}
+            aria-label={"Close"}
             className="rounded p-2 text-xl"
           >
             ×
@@ -171,64 +160,63 @@ export default function ReportWrongRecordModal({
         </div>
         {reference ? (
           <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-            <h3 className="font-bold text-emerald-900">
-              {t("reportSubmitted")}
-            </h3>
-            <p className="mt-2 text-sm text-emerald-800">{t("referenceId")}</p>
-            <p className="mt-1 text-xl font-bold tracking-wide text-emerald-950">
-              {reference}
-            </p>
+            <h3 className="font-bold text-emerald-900">{"Report submitted"}</h3>
+            <p className="mt-2 text-sm text-emerald-800">{"Your reference ID is:"}</p>
+            <p className="mt-1 text-xl font-bold tracking-wide text-emerald-950">{reference}</p>
             <p className="mt-2 text-xs text-emerald-800">
-              {t("keepReference")}
+              {"Keep this ID for future communication with the school."}
             </p>
             <button
               onClick={onClose}
               className="mt-4 rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white"
             >
-              {t("close")}
+              {"Close"}
             </button>
           </div>
         ) : (
           <form onSubmit={submit} className="mt-5 space-y-4">
             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
-              {isHindi
-                ? "कई रिकॉर्ड 18 वर्ष से कम आयु के विद्यार्थियों के हैं। यदि विद्यार्थी नाबालिग है, तो माता-पिता या अभिभावक को इस पोर्टल का उपयोग करना चाहिए या उपस्थित रहना चाहिए। विद्यालय इस डेटा का उपयोग केवल प्रमाणपत्र उपलब्ध कराने के लिए करता है। "
-                : "Many records belong to students under 18. If the student is a minor, a parent or guardian should use this portal or be present. The school processes this data only to provide certificates. "}
+              "Many records belong to students under 18. If the student is a minor, a parent or
+              guardian should use this portal or be present. The school processes this data only to
+              provide certificates. "
               <Link
                 to="/privacy"
                 target="_blank"
                 rel="noreferrer"
                 className="font-semibold underline"
               >
-                {isHindi ? "गोपनीयता नीति देखें" : "See our Privacy Policy"}
+                "See our Privacy Policy"
               </Link>
             </p>
             <label className="block text-sm font-semibold">
-              {t("studentNameLabel")}
+              {"Student name"}
               <input
+                translate="no"
                 required
                 minLength={2}
                 maxLength={100}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mt-1 w-full rounded-lg border p-3"
-                placeholder={t("namePlaceholder")}
+                placeholder={"Name as in school records"}
               />
             </label>
             <label className="block text-sm font-semibold">
-              {t("passingSession")}
+              {"Passing session"}
               <input
+                translate="no"
                 required
                 pattern="\d{4}-\d{2}"
                 value={session}
                 onChange={(e) => setSession(e.target.value)}
                 className="mt-1 w-full rounded-lg border p-3"
-                placeholder={t("sessionPlaceholder")}
+                placeholder={"2023-24"}
               />
             </label>
             <label className="block text-sm font-semibold">
-              {t("whatWrong")}
+              {"What is wrong?"}
               <textarea
+                translate="no"
                 required
                 minLength={10}
                 maxLength={2000}
@@ -236,22 +224,24 @@ export default function ReportWrongRecordModal({
                 value={issue}
                 onChange={(e) => setIssue(e.target.value)}
                 className="mt-1 w-full rounded-lg border p-3"
-                placeholder={t("issuePlaceholder")}
+                placeholder={"Describe the incorrect detail or certificate issue"}
               />
             </label>
             <label className="block text-sm font-semibold">
-              {t("contactLabel")}
+              {"Contact email or phone"}
               <input
+                translate="no"
                 required
                 maxLength={254}
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
                 className="mt-1 w-full rounded-lg border p-3"
-                placeholder={t("contactPlaceholder")}
+                placeholder={"How can the school contact you?"}
               />
             </label>
             <label className="flex items-start gap-2 text-sm leading-5">
               <input
+                translate="no"
                 type="checkbox"
                 required
                 checked={consent}
@@ -259,10 +249,12 @@ export default function ReportWrongRecordModal({
                 className="mt-1"
               />
               <span>
-                {isHindi
-                  ? "मैं विद्यार्थी हूँ, या विद्यार्थी का माता-पिता/अभिभावक हूँ। मैं इस रिपोर्ट को भेजने और विद्यालय द्वारा इस उद्देश्य के लिए विवरण उपयोग करने की पुष्टि करता/करती हूँ।"
-                  : "I am the student, or the parent/guardian of the student. I confirm that the School may use these details to review this report."}{" "}
-                ({t("reportConsent")})
+                "I am the student, or the parent/guardian of the student. I confirm that the School
+                may use these details to review this report." (
+                {
+                  "I consent to the school using these details to investigate and respond to this report. I confirm the information is accurate to the best of my knowledge."
+                }
+                )
               </span>
             </label>
             <div
@@ -272,10 +264,12 @@ export default function ReportWrongRecordModal({
             />
             {captchaError ? (
               <p role="alert" className="text-xs text-red-700">
-                {t("captchaUnavailable")}
+                {"Security verification is unavailable. Please refresh the page and try again."}
               </p>
             ) : (
-              <p className="text-xs text-slate-500">{t("securityRequired")}</p>
+              <p className="text-xs text-slate-500">
+                {"Security verification is required to reduce spam and abuse."}
+              </p>
             )}
             {error && (
               <p role="alert" className="text-sm text-red-700">
@@ -284,9 +278,9 @@ export default function ReportWrongRecordModal({
             )}
             <button
               disabled={busy || !token || !consent}
-              className="w-full rounded-lg bg-[#263746] px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+              className="w-full rounded-lg bg-[var(--primary)] px-4 py-3 text-sm font-bold text-[var(--primary-contrast)] disabled:opacity-50"
             >
-              {busy ? t("submittingReport") : t("submitReport")}
+              {busy ? "Submitting…" : "Submit report"}
             </button>
           </form>
         )}

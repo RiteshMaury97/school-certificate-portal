@@ -10,7 +10,6 @@ const schema = z
     enabled: z.boolean(),
     type: z.enum(["info", "warning"]),
     textEn: z.string().trim().min(1).max(240),
-    textHi: z.string().trim().min(1).max(240),
     linkUrl: z
       .string()
       .trim()
@@ -70,7 +69,6 @@ export async function GET(request: NextRequest) {
                 enabled: false,
                 type: "info",
                 textEn: "",
-                textHi: "",
                 linkUrl: "",
                 startAt: "",
                 endAt: "",
@@ -90,18 +88,17 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Provide both language notices, a valid date range and an optional HTTPS link.",
+            "Provide an announcement, a valid date range and an optional HTTPS link.",
         },
         { status: 400 },
       );
     const value = {
       ...parsed.data,
       textEn: plainText(parsed.data.textEn),
-      textHi: plainText(parsed.data.textHi),
       updatedAt: FieldValue.serverTimestamp(),
       updatedBy: admin.uid,
     };
-    if (!value.textEn || !value.textHi)
+    if (!value.textEn)
       return NextResponse.json(
         { error: "Announcement text must not be empty." },
         { status: 400 },

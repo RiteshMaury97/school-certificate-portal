@@ -142,6 +142,8 @@ export async function PATCH(request: NextRequest) {
         process.env.RESEND_API_KEY &&
         process.env.RESEND_FROM_EMAIL
       ) {
+        const siteSettings = await db.collection("siteSettings").doc("main").get();
+        const schoolName = String(siteSettings.get("schoolName") || "Satyam International School");
         await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -151,8 +153,8 @@ export async function PATCH(request: NextRequest) {
           body: JSON.stringify({
             from: process.env.RESEND_FROM_EMAIL,
             to: requesterEmail,
-            subject: "School data erasure request completed",
-            text: `Your data erasure request ${requestId} has been completed. Reference receipt: ${result.erasureId}. Please contact the school if you need assistance.`,
+            subject: `${schoolName}: data erasure request completed`,
+            text: `${schoolName}: your data erasure request ${requestId} has been completed. Reference receipt: ${result.erasureId}. Please contact the school if you need assistance.`,
           }),
         }).catch(() => undefined);
       }

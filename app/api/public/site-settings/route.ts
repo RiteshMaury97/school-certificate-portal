@@ -18,6 +18,15 @@ export async function GET() {
         Math.min(365, Number(data.backupRotationDays ?? 30)),
       ),
       schoolName: String(data.schoolName ?? ""),
+      includedLanguages:
+        typeof data.includedLanguages === "string"
+          ? data.includedLanguages
+              .split(",")
+              .map((code: string) => code.trim().toLowerCase())
+              .filter((code: string) => /^[a-z]{2,3}(?:-[a-z]{2})?$/i.test(code))
+              .slice(0, 30)
+              .join(",")
+          : "en,hi,bn,mr,gu,pa,ta,te,ur",
       tagline: String(data.tagline ?? ""),
       logoUrl: String(data.logoUrl ?? ""),
       statusPageUrl:
@@ -46,8 +55,6 @@ export async function GET() {
             .map((item: Record<string, unknown>) => ({
               questionEn: String(item.questionEn ?? "").slice(0, 180),
               answerEn: String(item.answerEn ?? "").slice(0, 1500),
-              questionHi: String(item.questionHi ?? "").slice(0, 180),
-              answerHi: String(item.answerHi ?? "").slice(0, 1500),
             }))
         : [],
       socialLinks: Array.isArray(data.socialLinks)
@@ -97,13 +104,11 @@ export async function GET() {
                 .replace(/[<>\u0000-\u001f\u007f]/g, " ")
                 .slice(0, 240)
             : "";
-        const textEn = text(a.textEn),
-          textHi = text(a.textHi);
-        if (!textEn || !textHi) return null;
+        const textEn = text(a.textEn);
+        if (!textEn) return null;
         return {
           type: a.type,
           textEn,
-          textHi,
           linkUrl:
             typeof a.linkUrl === "string" && /^https:\/\//i.test(a.linkUrl)
               ? a.linkUrl
