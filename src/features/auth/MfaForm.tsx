@@ -27,7 +27,7 @@ export default function MfaForm({ onVerify }: { onVerify: (code: string) => Prom
           maxLength={8}
           required
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={(e) => { setCode(e.target.value); }}
           className="mt-1 min-h-11 w-full rounded-lg border px-3"
         />
       </label>

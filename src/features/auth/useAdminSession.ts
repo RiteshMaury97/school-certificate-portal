@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { useEffect, useState } from "react";
+
 import { auth } from "@/src/lib/firebase-client";
 export function useAdminSession() {
   const [user, setUser] = useState<User | null>(null);

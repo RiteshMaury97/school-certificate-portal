@@ -1,8 +1,10 @@
 "use client";
 import { lazy, useEffect } from "react";
-import type { ReactNode } from "react";
 import { Route, Routes } from "react-router-dom";
+
 import ProtectedRoute from "@/src/app/ProtectedRoute";
+
+import type { ReactNode } from "react";
 
 const HomePage = lazy(() => import("@/src/pages/public/HomePage"));
 const CertificatesPage = lazy(() => import("@/src/pages/public/CertificatesPage"));

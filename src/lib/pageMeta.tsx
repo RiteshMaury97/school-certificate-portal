@@ -1,5 +1,6 @@
 "use client";
 import { Helmet } from "react-helmet-async";
+
 import { usePublicSiteSettings } from "@/src/lib/use-site-settings";
 export type PageMeta = { title: string; description: string; robots?: string };
 export function usePageMeta({ title, description, robots = "index, follow" }: PageMeta) {

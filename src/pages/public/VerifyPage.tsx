@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/VerifyPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/VerifyPage";
 export default function VerifyPage() {
   const pageMeta = usePageMeta({
     title: "Verify a Certificate",

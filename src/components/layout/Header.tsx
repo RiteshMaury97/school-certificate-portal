@@ -1,11 +1,12 @@
 "use client";
+import { Menu, X, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Menu, X, ShieldCheck } from "lucide-react";
+
 import IconButton from "@/src/components/ui/IconButton";
-import LanguageButton from "@/src/features/translate/LanguageButton";
-import ThemeToggle from "@/src/features/theme/ThemeToggle";
 import ContrastToggle from "@/src/features/theme/ContrastToggle";
+import ThemeToggle from "@/src/features/theme/ThemeToggle";
+import LanguageButton from "@/src/features/translate/LanguageButton";
 type Props = { schoolName?: string; logoUrl?: string; includedLanguages?: string };
 const links = [
   { label: "Home", to: "/" },
@@ -101,7 +102,7 @@ export default function Header({
               label={open ? "Close navigation menu" : "Open navigation menu"}
               aria-expanded={open}
               aria-controls="mobile-navigation-drawer"
-              onClick={() => setOpen((value) => !value)}
+              onClick={() => { setOpen((value) => !value); }}
             >
               {open ? <X size={21} /> : <Menu size={21} />}
             </IconButton>
@@ -124,7 +125,7 @@ export default function Header({
           >
             <div className="mb-5 flex items-center justify-between">
               <span className="font-bold text-[var(--text)]">Menu</span>
-              <IconButton label="Close navigation menu" onClick={() => setOpen(false)}>
+              <IconButton label="Close navigation menu" onClick={() => { setOpen(false); }}>
                 <X size={20} />
               </IconButton>
             </div>
@@ -134,7 +135,7 @@ export default function Header({
                   key={link.to}
                   end={link.to === "/"}
                   to={link.to}
-                  onClick={() => setOpen(false)}
+                  onClick={() => { setOpen(false); }}
                   className={({ isActive }) =>
                     `flex min-h-12 items-center rounded-xl px-3 text-base font-semibold ${isActive ? "bg-[var(--surface-2)] text-[var(--primary)]" : "text-[var(--text)] hover:bg-[var(--surface-2)]"}`
                   }

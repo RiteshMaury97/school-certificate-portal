@@ -1,6 +1,7 @@
 "use client";
-import { useState, type FormEvent } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { useState, type FormEvent } from "react";
+
 import { auth } from "@/src/lib/firebase-client";
 export default function EmailLoginForm() {
   const [email, setEmail] = useState("");
@@ -25,7 +26,7 @@ export default function EmailLoginForm() {
           required
           autoComplete="username"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => { setEmail(e.target.value); }}
           className="mt-1 min-h-11 w-full rounded-lg border px-3"
         />
       </label>
@@ -37,7 +38,7 @@ export default function EmailLoginForm() {
           required
           autoComplete="current-password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => { setPassword(e.target.value); }}
           className="mt-1 min-h-11 w-full rounded-lg border px-3"
         />
       </label>

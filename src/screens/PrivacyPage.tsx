@@ -1,8 +1,12 @@
 "use client";
-import { FormEvent, useState } from "react";
-import LegalPageLayout, { LegalSection } from "@/src/components/LegalPageLayout";
+import { useState } from "react";
+
+import LegalPageLayout from "@/src/components/LegalPageLayout";
 import { appCheckHeaders } from "@/src/lib/firebase-client";
 import { usePublicSiteSettings } from "@/src/lib/use-site-settings";
+
+import type { LegalSection } from "@/src/components/LegalPageLayout";
+import type { FormEvent} from "react";
 
 const region = process.env.NEXT_PUBLIC_DATA_HOSTING_REGION || "{{HOSTING_REGION}}";
 const version = process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION || "2026-10";
@@ -407,7 +411,7 @@ export default function PrivacyPage() {
             <select
               translate="no"
               value={requestType}
-              onChange={(e) => setRequestType(e.target.value)}
+              onChange={(e) => { setRequestType(e.target.value); }}
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3"
             >
               <option value="access">Access</option>
@@ -422,7 +426,7 @@ export default function PrivacyPage() {
               required
               maxLength={100}
               value={requesterName}
-              onChange={(e) => setRequesterName(e.target.value)}
+              onChange={(e) => { setRequesterName(e.target.value); }}
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3"
             />
           </label>
@@ -434,7 +438,7 @@ export default function PrivacyPage() {
               required
               maxLength={254}
               value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
+              onChange={(e) => { setContactEmail(e.target.value); }}
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3"
             />
           </label>
@@ -445,7 +449,7 @@ export default function PrivacyPage() {
               required
               maxLength={100}
               value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
+              onChange={(e) => { setStudentName(e.target.value); }}
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3"
             />
           </label>
@@ -458,7 +462,7 @@ export default function PrivacyPage() {
               maxLength={1500}
               rows={4}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => { setDescription(e.target.value); }}
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3"
               placeholder="Describe the access, correction or erasure you are requesting."
             />
@@ -469,7 +473,7 @@ export default function PrivacyPage() {
               type="checkbox"
               required
               checked={guardianConfirmation}
-              onChange={(e) => setGuardianConfirmation(e.target.checked)}
+              onChange={(e) => { setGuardianConfirmation(e.target.checked); }}
               className="mt-1 size-4"
             />
             <span>

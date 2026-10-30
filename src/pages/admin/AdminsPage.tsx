@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/admin/AdminUsersPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/admin/AdminUsersPage";
 export default function AdminsPage() {
   const pageMeta = usePageMeta({
     title: "Administrator accounts",

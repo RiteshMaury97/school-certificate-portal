@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/admin/AdminAuditPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/admin/AdminAuditPage";
 export default function AuditPage() {
   const pageMeta = usePageMeta({
     title: "Audit log",

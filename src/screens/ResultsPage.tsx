@@ -1,7 +1,9 @@
 "use client";
 import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+
 import SiteShell from "@/src/components/SiteShell";
+
 import type { StudentResult } from "@/src/types";
 export default function ResultsPage() {
   const location = useLocation();

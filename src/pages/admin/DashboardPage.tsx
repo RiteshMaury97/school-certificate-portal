@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/admin/AdminDashboardPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/admin/AdminDashboardPage";
 export default function DashboardPage() {
   const pageMeta = usePageMeta({
     title: "Administration dashboard",

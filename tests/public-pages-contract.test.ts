@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
+
+import { describe, expect, it } from "vitest";
 
 describe("public certificate portal page contracts", () => {
   it("home page includes the primary journeys and content sections", async () => {

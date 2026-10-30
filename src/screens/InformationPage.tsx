@@ -1,5 +1,6 @@
 "use client";
 import { Link } from "react-router-dom";
+
 import SiteShell from "@/src/components/SiteShell";
 type Kind = "contact" | "report" | "rights" | "offline" | "maintenance";
 const content: Record<

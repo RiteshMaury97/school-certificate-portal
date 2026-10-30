@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/NotFoundPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/NotFoundPage";
 export default function NotFoundPage() {
   const pageMeta = usePageMeta({
     title: "Page not found",

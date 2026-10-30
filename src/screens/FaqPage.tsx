@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import SiteShell from "@/src/components/SiteShell";
-import PublicServiceTabs from "@/src/components/PublicServiceTabs";
+
 import EmptyState from "@/src/components/EmptyState";
 import ErrorState from "@/src/components/feedback/ErrorState";
+import PublicServiceTabs from "@/src/components/PublicServiceTabs";
+import SiteShell from "@/src/components/SiteShell";
 type Faq = {
   questionEn: string;
   answerEn: string;
@@ -66,7 +67,7 @@ export default function FaqPage() {
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => { setQuery(event.target.value); }}
             placeholder="Type a question or keyword"
             className="mt-2 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 font-normal"
           />
@@ -79,7 +80,7 @@ export default function FaqPage() {
           </div>
         ) : loadError ? (
           <div className="mt-6">
-            <ErrorState onRetry={() => setRetry((value) => value + 1)} />
+            <ErrorState onRetry={() => { setRetry((value) => value + 1); }} />
           </div>
         ) : (
           <div className="mt-6 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white px-5 dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">

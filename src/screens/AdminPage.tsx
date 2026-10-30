@@ -1,7 +1,4 @@
 "use client";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { appCheckHeaders, auth } from "@/src/lib/firebase-client";
 import {
   getMultiFactorResolver,
   multiFactor,
@@ -9,10 +6,6 @@ import {
   signOut,
   TotpMultiFactorGenerator,
 } from "firebase/auth";
-import type { MultiFactorError, User } from "firebase/auth";
-import { usePublicSiteSettings } from "@/src/lib/use-site-settings";
-import EmptyState from "@/src/components/EmptyState";
-import ErrorState from "@/src/components/feedback/ErrorState";
 import {
   Bell,
   Sun,
@@ -37,7 +30,17 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+
+import EmptyState from "@/src/components/EmptyState";
+import ErrorState from "@/src/components/feedback/ErrorState";
+import { appCheckHeaders, auth } from "@/src/lib/firebase-client";
 import { ADMIN_IDLE_TIMEOUT_MS, ADMIN_IDLE_WARNING_MS } from "@/src/lib/session-policy";
+import { usePublicSiteSettings } from "@/src/lib/use-site-settings";
+
+import type { MultiFactorError, User } from "firebase/auth";
+import type { FormEvent} from "react";
 type Role = "uploader" | "approver" | "superadmin";
 type Student = {
   id: string;
@@ -361,7 +364,7 @@ export default function AdminPage() {
         throw new Error("Recent password and MFA verification failed.");
       return result.grant as string;
     } finally {
-      await signOut(auth).catch(() => undefined);
+      await signOut(auth).catch(() => {});
     }
   }, [email]);
   const api = useCallback(
@@ -371,7 +374,7 @@ export default function AdminPage() {
     ): Promise<T> => {
       const method = (init.method ?? "GET").toUpperCase();
       const headers = new Headers(init.headers);
-      Object.entries(await appCheckHeaders()).forEach(([key, value]) => headers.set(key, value));
+      for (const [key, value] of Object.entries(await appCheckHeaders())) headers.set(key, value);
       if (!["GET", "HEAD", "OPTIONS"].includes(method))
         headers.set("x-csrf-token", decodeURIComponent(csrf()));
       const options: RequestInit = {
@@ -609,8 +612,8 @@ export default function AdminPage() {
     if (email) {
       setBusy(true);
       load()
-        .catch((e) => setError(e.message))
-        .finally(() => setBusy(false));
+        .catch((e) => { setError(e.message); })
+        .finally(() => { setBusy(false); });
     }
   }, [email, load]);
   useEffect(() => {
@@ -630,7 +633,7 @@ export default function AdminPage() {
       setIdleWarning(false);
       lastActivity = Date.now();
       lastScheduled = lastActivity;
-      warningTimer = setTimeout(() => setIdleWarning(true), ADMIN_IDLE_WARNING_MS);
+      warningTimer = setTimeout(() => { setIdleWarning(true); }, ADMIN_IDLE_WARNING_MS);
       logoutTimer = setTimeout(() => {
         void logout();
       }, ADMIN_IDLE_TIMEOUT_MS);
@@ -639,9 +642,9 @@ export default function AdminPage() {
       lastActivity = Date.now();
       if (Date.now() - lastScheduled > 5_000) schedule();
     };
-    const externalActivity = () => schedule();
+    const externalActivity = () => { schedule(); };
     const events = ["pointerdown", "keydown", "mousemove", "scroll", "touchstart"];
-    events.forEach((event) => window.addEventListener(event, activity, { passive: true }));
+    for (const event of events) window.addEventListener(event, activity, { passive: true });
     window.addEventListener("sis-session-activity", externalActivity);
     schedule();
     const refreshSession = async () => {
@@ -665,17 +668,17 @@ export default function AdminPage() {
         );
       }
     };
-    void refreshSession().catch(() => undefined);
+    void refreshSession().catch(() => {});
     pingTimer = setInterval(() => {
       if (Date.now() - lastActivity < 20_000) {
-        void refreshSession().catch(() => undefined);
+        void refreshSession().catch(() => {});
       }
     }, 15_000);
     return () => {
       clear();
       if (hardExpiryTimer) clearTimeout(hardExpiryTimer);
       if (pingTimer) clearInterval(pingTimer);
-      events.forEach((event) => window.removeEventListener(event, activity));
+      for (const event of events) window.removeEventListener(event, activity);
       window.removeEventListener("sis-session-activity", externalActivity);
     };
   }, [email, logout]);
@@ -742,7 +745,7 @@ export default function AdminPage() {
     try {
       await fn();
       setToast("Changes saved successfully.");
-      setTimeout(() => setToast(""), 3500);
+      setTimeout(() => { setToast(""); }, 3500);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Action failed.");
     } finally {
@@ -754,7 +757,7 @@ export default function AdminPage() {
     let duplicateWarning = "";
     await act(async () => {
       const body = new FormData();
-      Object.entries(form).forEach(([k, v]) => body.append(k, String(v)));
+      for (const [k, v] of Object.entries(form)) body.append(k, String(v));
       const firstFile = files.at(0);
       if (firstFile instanceof File) body.append("file", firstFile);
       body.append("parentEmail", notify.email);
@@ -913,7 +916,7 @@ export default function AdminPage() {
             xhr.open("POST", "/api/admin/bulk-upload");
             void appCheckHeaders()
               .then((headers) => {
-                Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+                for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
                 xhr.setRequestHeader("x-csrf-token", decodeURIComponent(csrf()));
                 xhr.upload.onprogress = (e) => {
                   if (e.lengthComputable)
@@ -940,7 +943,7 @@ export default function AdminPage() {
                     );
                   }
                 };
-                xhr.onerror = () => reject(new Error(`Network error uploading ${row.fileName}`));
+                xhr.onerror = () => { reject(new Error(`Network error uploading ${row.fileName}`)); };
                 xhr.send(body);
               })
               .catch(reject);
@@ -1211,7 +1214,7 @@ export default function AdminPage() {
               <h2 id="sessions-title" className="text-xl font-bold">
                 Active sessions / recent logins
               </h2>
-              <button onClick={() => setShowSessions(false)} aria-label="Close">
+              <button onClick={() => { setShowSessions(false); }} aria-label="Close">
                 ✕
               </button>
             </div>
@@ -1285,7 +1288,7 @@ export default function AdminPage() {
                 type="button"
                 aria-label={mobileAdminNav ? "Close navigation" : "Open navigation"}
                 title={mobileAdminNav ? "Close navigation" : "Open navigation"}
-                onClick={() => setMobileAdminNav((value) => !value)}
+                onClick={() => { setMobileAdminNav((value) => !value); }}
                 className="utility-icon md:hidden"
               >
                 {mobileAdminNav ? <X size={18} /> : <Menu size={18} />}
@@ -1429,19 +1432,19 @@ export default function AdminPage() {
             <div
               className="fixed inset-0 z-[95] bg-black/50 md:hidden"
               role="presentation"
-              onClick={() => setMobileAdminNav(false)}
+              onClick={() => { setMobileAdminNav(false); }}
             >
               <nav
                 aria-label="Mobile admin navigation"
                 className="h-dvh w-[min(86vw,22rem)] overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--text)] shadow-xl"
-                onClick={(event) => event.stopPropagation()}
+                onClick={(event) => { event.stopPropagation(); }}
               >
                 <div className="mb-4 flex items-center justify-between">
                   <strong>Admin navigation</strong>
                   <button
                     type="button"
                     aria-label="Close navigation"
-                    onClick={() => setMobileAdminNav(false)}
+                    onClick={() => { setMobileAdminNav(false); }}
                     className="utility-icon"
                   >
                     <X size={18} />
@@ -1511,12 +1514,11 @@ export default function AdminPage() {
                   setError("");
                   setBusy(true);
                   void load()
-                    .catch((cause) =>
-                      setError(
+                    .catch((cause) => { setError(
                         cause instanceof Error ? cause.message : "Unable to reload admin data.",
-                      ),
+                      ); },
                     )
-                    .finally(() => setBusy(false));
+                    .finally(() => { setBusy(false); });
                 }}
               />
             </div>
@@ -1765,11 +1767,10 @@ export default function AdminPage() {
                           <textarea
                             translate="no"
                             value={rejectReason[c.id] ?? ""}
-                            onChange={(e) =>
-                              setRejectReason((v) => ({
+                            onChange={(e) => { setRejectReason((v) => ({
                                 ...v,
                                 [c.id]: e.target.value,
-                              }))
+                              })); }
                             }
                             rows={2}
                             className="mt-1 w-full rounded border p-2"
@@ -1782,11 +1783,10 @@ export default function AdminPage() {
                             type="checkbox"
                             checked={approvalChecks[c.id] === true}
                             disabled={!previewUrls[c.id]}
-                            onChange={(e) =>
-                              setApprovalChecks((v) => ({
+                            onChange={(e) => { setApprovalChecks((v) => ({
                                 ...v,
                                 [c.id]: e.target.checked,
-                              }))
+                              })); }
                             }
                             className="mt-0.5 h-4 w-4"
                           />
@@ -1894,11 +1894,10 @@ export default function AdminPage() {
                             translate="no"
                             required
                             value={form.session}
-                            onChange={(e) =>
-                              setForm((v) => ({
+                            onChange={(e) => { setForm((v) => ({
                                 ...v,
                                 session: e.target.value,
-                              }))
+                              })); }
                             }
                             className="mt-1 w-full rounded-lg border p-2.5"
                           >
@@ -1914,11 +1913,10 @@ export default function AdminPage() {
                             translate="no"
                             required
                             value={form.certificateType}
-                            onChange={(e) =>
-                              setForm((v) => ({
+                            onChange={(e) => { setForm((v) => ({
                                 ...v,
                                 certificateType: e.target.value,
-                              }))
+                              })); }
                             }
                             className="mt-1 w-full rounded-lg border p-2.5"
                           >
@@ -1935,7 +1933,7 @@ export default function AdminPage() {
                             required={false}
                             type={k === "issuedAt" || k === "dateOfBirth" ? "date" : "text"}
                             value={form[k]}
-                            onChange={(e) => setForm((v) => ({ ...v, [k]: e.target.value }))}
+                            onChange={(e) => { setForm((v) => ({ ...v, [k]: e.target.value })); }}
                             className="mt-1 w-full rounded-lg border p-2.5"
                           />
                         )}
@@ -1948,7 +1946,7 @@ export default function AdminPage() {
                         required
                         type="file"
                         accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])}
+                        onChange={(e) => { setFiles(e.target.files ? Array.from(e.target.files) : []); }}
                         className="mt-1 block w-full text-sm"
                       />
                     </label>
@@ -1961,14 +1959,14 @@ export default function AdminPage() {
                           translate="no"
                           type="email"
                           value={notify.email}
-                          onChange={(e) => setNotify((v) => ({ ...v, email: e.target.value }))}
+                          onChange={(e) => { setNotify((v) => ({ ...v, email: e.target.value })); }}
                           placeholder="Parent email"
                           className="rounded border p-2"
                         />
                         <input
                           translate="no"
                           value={notify.mobile}
-                          onChange={(e) => setNotify((v) => ({ ...v, mobile: e.target.value }))}
+                          onChange={(e) => { setNotify((v) => ({ ...v, mobile: e.target.value })); }}
                           placeholder="Mobile with country code"
                           className="rounded border p-2"
                         />
@@ -1978,11 +1976,10 @@ export default function AdminPage() {
                           translate="no"
                           type="checkbox"
                           checked={notify.consent}
-                          onChange={(e) =>
-                            setNotify((v) => ({
+                          onChange={(e) => { setNotify((v) => ({
                               ...v,
                               consent: e.target.checked,
-                            }))
+                            })); }
                           }
                         />{" "}
                         Parent/guardian has consented to receive a generic certificate-availability
@@ -1998,7 +1995,7 @@ export default function AdminPage() {
                             translate="no"
                             type="checkbox"
                             checked={duplicateHashAcknowledged}
-                            onChange={(e) => setDuplicateHashAcknowledged(e.target.checked)}
+                            onChange={(e) => { setDuplicateHashAcknowledged(e.target.checked); }}
                             className="h-5 w-5"
                           />{" "}
                           I confirm this is intentional
@@ -2008,7 +2005,7 @@ export default function AdminPage() {
                           <textarea
                             translate="no"
                             value={duplicateHashReason}
-                            onChange={(e) => setDuplicateHashReason(e.target.value)}
+                            onChange={(e) => { setDuplicateHashReason(e.target.value); }}
                             minLength={10}
                             maxLength={500}
                             rows={2}
@@ -2055,7 +2052,7 @@ export default function AdminPage() {
                       translate="no"
                       type="file"
                       accept=".csv,text/csv"
-                      onChange={(e) => setCsv(e.target.files?.[0] ?? null)}
+                      onChange={(e) => { setCsv(e.target.files?.[0] ?? null); }}
                       className="mt-3 block text-sm"
                     />
                     <div className="mt-3 flex gap-2">
@@ -2104,7 +2101,7 @@ export default function AdminPage() {
                     </p>
                     <label
                       className="mt-3 block rounded-xl border-2 border-dashed border-slate-300 p-5 text-center text-sm"
-                      onDragOver={(e) => e.preventDefault()}
+                      onDragOver={(e) => { e.preventDefault(); }}
                       onDrop={(e) => {
                         e.preventDefault();
                         setBulkFiles(Array.from(e.dataTransfer.files));
@@ -2117,8 +2114,7 @@ export default function AdminPage() {
                         type="file"
                         multiple
                         accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) =>
-                          setBulkFiles(e.target.files ? Array.from(e.target.files) : [])
+                        onChange={(e) => { setBulkFiles(e.target.files ? Array.from(e.target.files) : []); }
                         }
                       />
                     </label>
@@ -2129,7 +2125,7 @@ export default function AdminPage() {
                         className="mt-1 block w-full"
                         type="file"
                         accept=".csv,text/csv"
-                        onChange={(e) => setBulkCsv(e.target.files?.[0] ?? null)}
+                        onChange={(e) => { setBulkCsv(e.target.files?.[0] ?? null); }}
                       />
                     </label>
                     <button
@@ -2184,7 +2180,7 @@ export default function AdminPage() {
                                 translate="no"
                                 type="checkbox"
                                 checked={duplicateHashAcknowledged}
-                                onChange={(e) => setDuplicateHashAcknowledged(e.target.checked)}
+                                onChange={(e) => { setDuplicateHashAcknowledged(e.target.checked); }}
                                 className="h-5 w-5"
                               />{" "}
                               I confirm this is intentional
@@ -2194,7 +2190,7 @@ export default function AdminPage() {
                               <textarea
                                 translate="no"
                                 value={duplicateHashReason}
-                                onChange={(e) => setDuplicateHashReason(e.target.value)}
+                                onChange={(e) => { setDuplicateHashReason(e.target.value); }}
                                 minLength={10}
                                 maxLength={500}
                                 rows={2}
@@ -2343,7 +2339,7 @@ export default function AdminPage() {
                 <div className="mt-4 flex items-center justify-between text-sm">
                   <button
                     disabled={page === 0}
-                    onClick={() => setPage((v) => v - 1)}
+                    onClick={() => { setPage((v) => v - 1); }}
                     className="rounded border px-3 py-2 disabled:opacity-40"
                   >
                     Previous
@@ -2353,7 +2349,7 @@ export default function AdminPage() {
                   </span>
                   <button
                     disabled={(page + 1) * 10 >= filtered.length}
-                    onClick={() => setPage((v) => v + 1)}
+                    onClick={() => { setPage((v) => v + 1); }}
                     className="rounded border px-3 py-2 disabled:opacity-40"
                   >
                     Next
@@ -2373,7 +2369,7 @@ export default function AdminPage() {
                       translate="no"
                       required
                       value={selectedStudent}
-                      onChange={(e) => setSelectedStudent(e.target.value)}
+                      onChange={(e) => { setSelectedStudent(e.target.value); }}
                       className="mt-1 w-full rounded border p-2.5"
                     >
                       <option value="">Choose student</option>
@@ -2390,7 +2386,7 @@ export default function AdminPage() {
                       translate="no"
                       required
                       value={form.session}
-                      onChange={(e) => setForm((v) => ({ ...v, session: e.target.value }))}
+                      onChange={(e) => { setForm((v) => ({ ...v, session: e.target.value })); }}
                       className="mt-1 w-full rounded border p-2.5"
                     >
                       <option value="">Choose session</option>
@@ -2407,11 +2403,10 @@ export default function AdminPage() {
                       translate="no"
                       required
                       value={form.certificateType}
-                      onChange={(e) =>
-                        setForm((v) => ({
+                      onChange={(e) => { setForm((v) => ({
                           ...v,
                           certificateType: e.target.value,
-                        }))
+                        })); }
                       }
                       className="mt-1 w-full rounded border p-2.5"
                     >
@@ -2429,11 +2424,10 @@ export default function AdminPage() {
                       translate="no"
                       required
                       value={form.certificateNumber}
-                      onChange={(e) =>
-                        setForm((v) => ({
+                      onChange={(e) => { setForm((v) => ({
                           ...v,
                           certificateNumber: e.target.value,
-                        }))
+                        })); }
                       }
                       className="mt-1 w-full rounded border p-2.5"
                     />
@@ -2445,7 +2439,7 @@ export default function AdminPage() {
                       type="date"
                       required
                       value={form.issuedAt}
-                      onChange={(e) => setForm((v) => ({ ...v, issuedAt: e.target.value }))}
+                      onChange={(e) => { setForm((v) => ({ ...v, issuedAt: e.target.value })); }}
                       className="mt-1 w-full rounded border p-2.5"
                     />
                   </label>
@@ -2456,7 +2450,7 @@ export default function AdminPage() {
                       type="file"
                       required
                       accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])}
+                      onChange={(e) => { setFiles(e.target.files ? Array.from(e.target.files) : []); }}
                       className="mt-1 block w-full"
                     />
                   </label>
@@ -2468,7 +2462,7 @@ export default function AdminPage() {
                           translate="no"
                           type="checkbox"
                           checked={duplicateHashAcknowledged}
-                          onChange={(e) => setDuplicateHashAcknowledged(e.target.checked)}
+                          onChange={(e) => { setDuplicateHashAcknowledged(e.target.checked); }}
                           className="h-5 w-5"
                         />{" "}
                         I confirm this is intentional
@@ -2478,7 +2472,7 @@ export default function AdminPage() {
                         <textarea
                           translate="no"
                           value={duplicateHashReason}
-                          onChange={(e) => setDuplicateHashReason(e.target.value)}
+                          onChange={(e) => { setDuplicateHashReason(e.target.value); }}
                           minLength={10}
                           maxLength={500}
                           rows={2}
@@ -2669,7 +2663,7 @@ export default function AdminPage() {
                   <section key={id} className="mt-3 rounded border bg-slate-50 p-3">
                     <b className="text-sm">History · {id}</b>
                     <ol className="mt-2 space-y-1 text-xs">
-                      {(events as Record<string, unknown>[]).map((event) => (
+                      {(events).map((event) => (
                         <li key={String(event.id)}>
                           {String(event.action)} · {String(event.actorUid)} ·{" "}
                           {String(event.timestamp ?? "Time unavailable")}
@@ -2689,7 +2683,7 @@ export default function AdminPage() {
                   <select
                     translate="no"
                     value={catalogKind}
-                    onChange={(e) => setCatalogKind(e.target.value as typeof catalogKind)}
+                    onChange={(e) => { setCatalogKind(e.target.value as typeof catalogKind); }}
                     className="rounded border p-2"
                   >
                     <option value="sessions">Sessions</option>
@@ -2700,7 +2694,7 @@ export default function AdminPage() {
                       translate="no"
                       required
                       value={catalogName}
-                      onChange={(e) => setCatalogName(e.target.value)}
+                      onChange={(e) => { setCatalogName(e.target.value); }}
                       placeholder="New item name"
                       className="rounded border px-3 py-2"
                     />
@@ -2744,21 +2738,21 @@ export default function AdminPage() {
                     translate="no"
                     placeholder="Filter action"
                     value={auditAction}
-                    onChange={(e) => setAuditAction(e.target.value)}
+                    onChange={(e) => { setAuditAction(e.target.value); }}
                     className="rounded border px-3 py-2"
                   />
                   <input
                     translate="no"
                     type="date"
                     value={auditStart}
-                    onChange={(e) => setAuditStart(e.target.value)}
+                    onChange={(e) => { setAuditStart(e.target.value); }}
                     className="rounded border px-2 py-2"
                   />
                   <input
                     translate="no"
                     type="date"
                     value={auditEnd}
-                    onChange={(e) => setAuditEnd(e.target.value)}
+                    onChange={(e) => { setAuditEnd(e.target.value); }}
                     className="rounded border px-2 py-2"
                   />
                   <button onClick={() => load()} className="rounded border px-3">
@@ -2806,11 +2800,10 @@ export default function AdminPage() {
                       <input
                         translate="no"
                         value={resolution[String(r.id)] ?? ""}
-                        onChange={(e) =>
-                          setResolution((v) => ({
+                        onChange={(e) => { setResolution((v) => ({
                             ...v,
                             [String(r.id)]: e.target.value,
-                          }))
+                          })); }
                         }
                         placeholder="Resolution notes"
                         className="min-w-60 flex-1 rounded border px-3 py-2"
@@ -3010,7 +3003,7 @@ export default function AdminPage() {
                   {timelineStudentId ? "Student activity timeline" : "Global activity timeline"}
                 </h2>
                 <button
-                  onClick={() => setTimelineStudentId("")}
+                  onClick={() => { setTimelineStudentId(""); }}
                   className="rounded border px-3 py-1 text-xs"
                 >
                   Show global
@@ -3051,7 +3044,7 @@ export default function AdminPage() {
                     min="1"
                     max="30"
                     value={retentionYears}
-                    onChange={(e) => setRetentionYears(e.target.value)}
+                    onChange={(e) => { setRetentionYears(e.target.value); }}
                     className="mt-1 w-full rounded border p-2.5"
                   />
                 </label>
@@ -3063,7 +3056,7 @@ export default function AdminPage() {
                     min="7"
                     max="365"
                     value={backupRotationDays}
-                    onChange={(e) => setBackupRotationDays(e.target.value)}
+                    onChange={(e) => { setBackupRotationDays(e.target.value); }}
                     className="mt-1 w-full rounded border p-2.5"
                   />
                 </label>
@@ -3072,7 +3065,7 @@ export default function AdminPage() {
                     translate="no"
                     type="checkbox"
                     checked={retentionConfirmed}
-                    onChange={(e) => setRetentionConfirmed(e.target.checked)}
+                    onChange={(e) => { setRetentionConfirmed(e.target.checked); }}
                     className="h-5 w-5"
                   />{" "}
                   I confirm this retention schedule has been reviewed against applicable
@@ -3083,7 +3076,7 @@ export default function AdminPage() {
                     translate="no"
                     type="checkbox"
                     checked={maintenanceMode}
-                    onChange={(e) => setMaintenanceMode(e.target.checked)}
+                    onChange={(e) => { setMaintenanceMode(e.target.checked); }}
                     className="h-5 w-5"
                   />{" "}
                   Enable public maintenance mode (staff admin pages remain available)
@@ -3117,7 +3110,7 @@ export default function AdminPage() {
                     <input
                       translate="no"
                       value={branding[key] ?? ""}
-                      onChange={(e) => setBranding((v) => ({ ...v, [key]: e.target.value }))}
+                      onChange={(e) => { setBranding((v) => ({ ...v, [key]: e.target.value })); }}
                       className="mt-1 w-full rounded border p-2.5"
                     />
                   </label>
@@ -3129,11 +3122,10 @@ export default function AdminPage() {
                     rows={5}
                     maxLength={1800}
                     value={branding.principalMessage}
-                    onChange={(e) =>
-                      setBranding((v) => ({
+                    onChange={(e) => { setBranding((v) => ({
                         ...v,
                         principalMessage: e.target.value,
-                      }))
+                      })); }
                     }
                     className="mt-1 w-full rounded border p-2.5"
                   />
@@ -3144,11 +3136,10 @@ export default function AdminPage() {
                     translate="no"
                     rows={4}
                     value={branding.socialLinks}
-                    onChange={(e) =>
-                      setBranding((v) => ({
+                    onChange={(e) => { setBranding((v) => ({
                         ...v,
                         socialLinks: e.target.value,
-                      }))
+                      })); }
                     }
                     placeholder="Facebook|https://facebook.com/..."
                     className="mt-1 w-full rounded border p-2.5"
@@ -3176,11 +3167,10 @@ export default function AdminPage() {
                     translate="no"
                     type="checkbox"
                     checked={announcement.enabled}
-                    onChange={(e) =>
-                      setAnnouncement((v) => ({
+                    onChange={(e) => { setAnnouncement((v) => ({
                         ...v,
                         enabled: e.target.checked,
-                      }))
+                      })); }
                     }
                     className="h-5 w-5"
                   />{" "}
@@ -3191,11 +3181,10 @@ export default function AdminPage() {
                   <select
                     translate="no"
                     value={announcement.type}
-                    onChange={(e) =>
-                      setAnnouncement((v) => ({
+                    onChange={(e) => { setAnnouncement((v) => ({
                         ...v,
                         type: e.target.value as "info" | "warning",
-                      }))
+                      })); }
                     }
                     className="mt-1 w-full rounded border p-2.5"
                   >
@@ -3211,11 +3200,10 @@ export default function AdminPage() {
                     maxLength={240}
                     rows={3}
                     value={announcement.textEn}
-                    onChange={(e) =>
-                      setAnnouncement((v) => ({
+                    onChange={(e) => { setAnnouncement((v) => ({
                         ...v,
                         textEn: e.target.value,
-                      }))
+                      })); }
                     }
                     className="mt-1 w-full rounded border p-2.5"
                   />
@@ -3226,11 +3214,10 @@ export default function AdminPage() {
                     translate="no"
                     type="url"
                     value={announcement.linkUrl}
-                    onChange={(e) =>
-                      setAnnouncement((v) => ({
+                    onChange={(e) => { setAnnouncement((v) => ({
                         ...v,
                         linkUrl: e.target.value,
-                      }))
+                      })); }
                     }
                     placeholder="https://..."
                     className="mt-1 w-full rounded border p-2.5"
@@ -3244,11 +3231,10 @@ export default function AdminPage() {
                     type="datetime-local"
                     required
                     value={announcement.startAt}
-                    onChange={(e) =>
-                      setAnnouncement((v) => ({
+                    onChange={(e) => { setAnnouncement((v) => ({
                         ...v,
                         startAt: e.target.value,
-                      }))
+                      })); }
                     }
                     className="mt-1 w-full rounded border p-2.5"
                   />
@@ -3260,11 +3246,10 @@ export default function AdminPage() {
                     type="datetime-local"
                     required
                     value={announcement.endAt}
-                    onChange={(e) =>
-                      setAnnouncement((v) => ({
+                    onChange={(e) => { setAnnouncement((v) => ({
                         ...v,
                         endAt: e.target.value,
-                      }))
+                      })); }
                     }
                     className="mt-1 w-full rounded border p-2.5"
                   />
@@ -3460,11 +3445,10 @@ export default function AdminPage() {
                     <textarea
                       translate="no"
                       value={reportNotes[String(r.id)] ?? String(r.adminNote ?? "")}
-                      onChange={(e) =>
-                        setReportNotes((v) => ({
+                      onChange={(e) => { setReportNotes((v) => ({
                           ...v,
                           [String(r.id)]: e.target.value,
-                        }))
+                        })); }
                       }
                       placeholder="Internal handling note"
                       rows={2}
@@ -3499,7 +3483,7 @@ export default function AdminPage() {
                     <div className="sm:col-span-2 flex items-center justify-between">
                       <b>FAQ {index + 1}</b>
                       <button
-                        onClick={() => setFaqs((v) => v.filter((_, i) => i !== index))}
+                        onClick={() => { setFaqs((v) => v.filter((_, i) => i !== index)); }}
                         className="text-sm text-red-700"
                       >
                         Remove
@@ -3518,12 +3502,11 @@ export default function AdminPage() {
                             translate="no"
                             rows={4}
                             value={faq[key]}
-                            onChange={(e) =>
-                              setFaqs((v) =>
+                            onChange={(e) => { setFaqs((v) =>
                                 v.map((x, i) =>
                                   i === index ? { ...x, [key]: e.target.value } : x,
                                 ),
-                              )
+                              ); }
                             }
                             className="mt-1 w-full rounded border p-2"
                           />
@@ -3531,12 +3514,11 @@ export default function AdminPage() {
                           <input
                             translate="no"
                             value={faq[key]}
-                            onChange={(e) =>
-                              setFaqs((v) =>
+                            onChange={(e) => { setFaqs((v) =>
                                 v.map((x, i) =>
                                   i === index ? { ...x, [key]: e.target.value } : x,
                                 ),
-                              )
+                              ); }
                             }
                             className="mt-1 w-full rounded border p-2"
                           />
@@ -3548,14 +3530,13 @@ export default function AdminPage() {
               </div>
               <div className="mt-4 flex gap-2">
                 <button
-                  onClick={() =>
-                    setFaqs((v) => [
+                  onClick={() => { setFaqs((v) => [
                       ...v,
                       {
                         questionEn: "",
                         answerEn: "",
                       },
-                    ])
+                    ]); }
                   }
                   className="rounded border px-4 py-2 text-sm"
                 >
@@ -3597,14 +3578,14 @@ export default function AdminPage() {
                   type="email"
                   required
                   value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
+                  onChange={(e) => { setAdminEmail(e.target.value); }}
                   placeholder="New staff email"
                   className="rounded border px-3 py-2"
                 />
                 <select
                   translate="no"
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as typeof inviteRole)}
+                  onChange={(e) => { setInviteRole(e.target.value as typeof inviteRole); }}
                   className="rounded border px-3 py-2"
                 >
                   <option value="uploader">Uploader</option>

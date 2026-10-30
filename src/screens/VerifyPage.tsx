@@ -1,10 +1,13 @@
 "use client";
-import { FormEvent, useEffect, useId, useRef, useState } from "react";
-import SiteShell from "@/src/components/SiteShell";
-import PublicServiceTabs from "@/src/components/PublicServiceTabs";
-import { appCheckHeaders } from "@/src/lib/firebase-client";
-import ErrorState from "@/src/components/feedback/ErrorState";
+import { useEffect, useId, useRef, useState } from "react";
+
 import EmptyState from "@/src/components/EmptyState";
+import ErrorState from "@/src/components/feedback/ErrorState";
+import PublicServiceTabs from "@/src/components/PublicServiceTabs";
+import SiteShell from "@/src/components/SiteShell";
+import { appCheckHeaders } from "@/src/lib/firebase-client";
+
+import type { FormEvent} from "react";
 
 type Verification =
   | {
@@ -74,7 +77,7 @@ export default function VerifyPage() {
             setCaptchaToken(token);
             setCaptchaError(false);
           },
-          "expired-callback": () => setCaptchaToken(""),
+          "expired-callback": () => { setCaptchaToken(""); },
           "error-callback": () => {
             setCaptchaToken("");
             setCaptchaError(true);
@@ -94,7 +97,7 @@ export default function VerifyPage() {
       script.async = true;
       script.defer = true;
       script.onload = render;
-      script.onerror = () => setCaptchaError(true);
+      script.onerror = () => { setCaptchaError(true); };
       document.head.appendChild(script);
     }
     return () => {
@@ -192,7 +195,7 @@ export default function VerifyPage() {
                   maxLength={80}
                   autoComplete="off"
                   value={certificateNumber}
-                  onChange={(event) => setCertificateNumber(event.target.value)}
+                  onChange={(event) => { setCertificateNumber(event.target.value); }}
                   placeholder="Enter the certificate number"
                   className="mt-2 min-h-12 w-full rounded-lg border border-[var(--border)] px-3.5 py-3 text-base font-normal outline-none focus-visible:border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--border)]/20"
                 />
@@ -208,7 +211,7 @@ export default function VerifyPage() {
                   maxLength={7}
                   pattern="\d{4}-\d{2}"
                   value={session}
-                  onChange={(event) => setSession(event.target.value)}
+                  onChange={(event) => { setSession(event.target.value); }}
                   placeholder="e.g. 2023-24"
                   className="mt-2 min-h-12 w-full rounded-lg border border-[var(--border)] px-3.5 py-3 text-base font-normal outline-none focus-visible:border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--border)]/20"
                 />

@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/admin/AdminCertificatesPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/admin/AdminCertificatesPage";
 export default function CertificatesPage() {
   const pageMeta = usePageMeta({
     title: "Certificates",

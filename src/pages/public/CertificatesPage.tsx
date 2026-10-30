@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/FinderPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/FinderPage";
 export default function CertificatesPage() {
   const pageMeta = usePageMeta({
     title: "Find My Certificates",

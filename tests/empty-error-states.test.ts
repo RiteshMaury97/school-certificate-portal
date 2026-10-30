@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
+
+import { describe, expect, it } from "vitest";
 
 describe("empty and error state contracts", () => {
   it("exposes reusable EmptyState and retryable ErrorState APIs", async () => {

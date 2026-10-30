@@ -1,16 +1,19 @@
 "use client";
-import { FormEvent, useEffect, useId, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { motion, useReducedMotion } from "framer-motion";
-import SiteShell from "@/src/components/SiteShell";
+
 import EmptyState from "@/src/components/EmptyState";
 import ErrorState from "@/src/components/feedback/ErrorState";
-import PublicServiceTabs from "@/src/components/PublicServiceTabs";
 import FeedbackWidget from "@/src/components/FeedbackWidget";
-import { studentLookupSchema } from "@/src/lib/validation";
+import PublicServiceTabs from "@/src/components/PublicServiceTabs";
+import SiteShell from "@/src/components/SiteShell";
 import { appCheckHeaders } from "@/src/lib/firebase-client";
+import { studentLookupSchema } from "@/src/lib/validation";
+
 import type { StudentResult } from "@/src/types";
+import type { FormEvent} from "react";
 
 const formSchema = z.object({
   studentName: z
@@ -157,7 +160,7 @@ export default function FinderPage() {
             setCaptchaToken(token);
             setCaptchaError(false);
           },
-          "expired-callback": () => setCaptchaToken(""),
+          "expired-callback": () => { setCaptchaToken(""); },
           "error-callback": () => {
             setCaptchaToken("");
             setCaptchaError(true);
@@ -177,7 +180,7 @@ export default function FinderPage() {
       script.async = true;
       script.defer = true;
       script.onload = renderWidget;
-      script.onerror = () => setCaptchaError(true);
+      script.onerror = () => { setCaptchaError(true); };
       document.head.appendChild(script);
     }
     return () => {
@@ -217,7 +220,7 @@ export default function FinderPage() {
       anchor.href = url;
       anchor.download = "school-certificates.zip";
       anchor.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      window.setTimeout(() => { URL.revokeObjectURL(url); }, 1000);
     } catch (downloadError) {
       setError(
         downloadError instanceof Error
@@ -341,17 +344,17 @@ export default function FinderPage() {
           {[
             {
               icon: "edit",
-              title: `1. ${"Enter your details"}`,
+              title: `1. Enter your details`,
               desc: "Use the details in your school records.",
             },
             {
               icon: "shield",
-              title: `2. ${"We verify your record"}`,
+              title: `2. We verify your record`,
               desc: "A secure check matches the school register.",
             },
             {
               icon: "download",
-              title: `3. ${"View and download your certificates"}`,
+              title: `3. View and download your certificates`,
               desc: "Access your available certificates.",
             },
           ].map((step) => (
@@ -468,8 +471,8 @@ export default function FinderPage() {
                     value={form[key]}
                     aria-invalid={Boolean(touched[key] && fieldErrors[key])}
                     aria-describedby={`${formId}-${key}-help ${formId}-${key}-error`}
-                    onBlur={() => setTouched((v) => ({ ...v, [key]: true }))}
-                    onChange={(event) => update(key, event.target.value)}
+                    onBlur={() => { setTouched((v) => ({ ...v, [key]: true })); }}
+                    onChange={(event) => { update(key, event.target.value); }}
                     placeholder={placeholder}
                     className="min-h-12 w-full rounded-lg border border-[var(--border)] bg-white px-3.5 py-3 text-base text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] hover:border-[var(--border)] focus-visible:border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--border)]/20"
                   />
@@ -507,8 +510,8 @@ export default function FinderPage() {
                   value={form.session}
                   aria-invalid={Boolean(sessions.length > 0 && touched.session && !form.session)}
                   aria-describedby={`${formId}-session-help ${formId}-session-error`}
-                  onBlur={() => setTouched((v) => ({ ...v, session: true }))}
-                  onChange={(event) => update("session", event.target.value)}
+                  onBlur={() => { setTouched((v) => ({ ...v, session: true })); }}
+                  onChange={(event) => { update("session", event.target.value); }}
                   disabled={sessionsLoading || sessionsLoadError || sessions.length === 0}
                   className="min-h-12 w-full rounded-lg border border-[var(--border)] bg-white px-3.5 py-3 text-base text-[var(--text)] outline-none transition focus-visible:border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--border)]/20 disabled:cursor-not-allowed disabled:bg-[var(--border)]"
                 >
@@ -604,7 +607,7 @@ export default function FinderPage() {
                   translate="no"
                   type="checkbox"
                   checked={form.consent}
-                  onChange={(event) => update("consent", event.target.checked)}
+                  onChange={(event) => { update("consent", event.target.checked); }}
                   required
                   className="mt-1 h-4 w-4 shrink-0 accent-[var(--primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--border)]"
                 />
@@ -643,7 +646,7 @@ export default function FinderPage() {
                   id={`${formId}-disambiguation`}
                   autoComplete="off"
                   value={disambiguationValue}
-                  onChange={(event) => setDisambiguationValue(event.target.value)}
+                  onChange={(event) => { setDisambiguationValue(event.target.value); }}
                   className="mt-2 min-h-11 w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-sm"
                   required
                   aria-describedby={`${formId}-disambiguation-help`}

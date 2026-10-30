@@ -13,7 +13,7 @@ export default function VerifyForm({ onSubmit }: { onSubmit: (number: string) =>
         required
         maxLength={80}
         value={number}
-        onChange={(e) => setNumber(e.target.value)}
+        onChange={(e) => { setNumber(e.target.value); }}
         placeholder="Certificate number"
         className="min-h-11 min-w-0 flex-1 rounded-lg border px-3"
       />

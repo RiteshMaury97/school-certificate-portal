@@ -1,5 +1,4 @@
 "use client";
-import { FormEvent, useEffect, useState } from "react";
 import {
   getMultiFactorResolver,
   multiFactor,
@@ -12,11 +11,15 @@ import {
   sendPasswordResetEmail,
   TotpMultiFactorGenerator,
 } from "firebase/auth";
-import type { MultiFactorError, User } from "firebase/auth";
-import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import { usePublicSiteSettings } from "@/src/lib/use-site-settings";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+
 import { appCheckHeaders, auth } from "@/src/lib/firebase-client";
+import { usePublicSiteSettings } from "@/src/lib/use-site-settings";
+
+import type { MultiFactorError, User } from "firebase/auth";
+import type { FormEvent} from "react";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -115,7 +118,7 @@ export default function LoginPage() {
           /* generic message below */
         }
       }
-      await signOut(auth).catch(() => undefined);
+      await signOut(auth).catch(() => {});
       setError(
         cause instanceof Error &&
           (cause.message === "This account is not authorized." ||
@@ -150,7 +153,7 @@ export default function LoginPage() {
         if (result) await beginSecondFactor(result.user);
       })
       .catch(async () => {
-        await signOut(auth).catch(() => undefined);
+        await signOut(auth).catch(() => {});
         setError("Unable to sign in. This account is not authorized.");
       });
   }, []);
@@ -209,7 +212,7 @@ export default function LoginPage() {
           },
           body: JSON.stringify({ email, action: "failure" }),
           cache: "no-store",
-        }).catch(() => undefined);
+        }).catch(() => {});
       }
       if (authError.code === "auth/multi-factor-auth-required") {
         try {
@@ -252,7 +255,7 @@ export default function LoginPage() {
         },
         body: JSON.stringify({ email, action: "failure" }),
         cache: "no-store",
-      }).catch(() => undefined);
+      }).catch(() => {});
       setError("The authenticator code is invalid or expired.");
     } finally {
       setBusy(false);
@@ -312,7 +315,7 @@ export default function LoginPage() {
                 autoComplete="username"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); }}
                 className="mt-2 w-full rounded-lg border p-3"
               />
             </label>
@@ -324,14 +327,14 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); }}
                 className="mt-2 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 pr-14 text-[var(--text)]"
               />
               <button
                 type="button"
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 title={showPassword ? "Hide password" : "Show password"}
-                onClick={() => setShowPassword((value) => !value)}
+                onClick={() => { setShowPassword((value) => !value); }}
                 className="mt-2 min-h-11 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--text)]"
               >
                 {showPassword ? (
@@ -363,7 +366,7 @@ export default function LoginPage() {
                 maxLength={6}
                 required
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e) => { setCode(e.target.value); }}
                 className="mt-2 w-full rounded-lg border p-3 tracking-[.3em]"
               />
             </label>
@@ -392,7 +395,7 @@ export default function LoginPage() {
                 maxLength={6}
                 required
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e) => { setCode(e.target.value); }}
                 className="mt-2 w-full rounded-lg border p-3 tracking-[.3em]"
               />
             </label>

@@ -8,11 +8,11 @@ export default function useInactivityTimer(onIdle: () => void, timeoutMs: number
       timer = setTimeout(onIdle, timeoutMs);
     };
     const events = ["pointerdown", "keydown", "touchstart", "mousemove"];
-    events.forEach((event) => window.addEventListener(event, reset, { passive: true }));
+    for (const event of events) window.addEventListener(event, reset, { passive: true });
     reset();
     return () => {
       clearTimeout(timer);
-      events.forEach((event) => window.removeEventListener(event, reset));
+      for (const event of events) window.removeEventListener(event, reset);
     };
   }, [onIdle, timeoutMs]);
 }

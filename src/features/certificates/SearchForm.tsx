@@ -40,7 +40,7 @@ export default function SearchForm({
             translate="no"
             required
             value={values[key]}
-            onChange={(e) => update(key, e.target.value)}
+            onChange={(e) => { update(key, e.target.value); }}
             className="mt-1 min-h-11 w-full rounded-lg border px-3 text-base"
           />
         </label>

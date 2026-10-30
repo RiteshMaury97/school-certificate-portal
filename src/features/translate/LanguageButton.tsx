@@ -1,7 +1,8 @@
 "use client";
+import { Languages } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Languages } from "lucide-react";
+
 import IconButton from "@/src/components/ui/IconButton";
 
 type Language = { code: string; name: string };
@@ -109,7 +110,7 @@ export default function LanguageButton({ includedLanguages }: { includedLanguage
         detail: { language: "en", cookieUsed: false },
       }),
     );
-    window.setTimeout(() => setToast(false), 5000);
+    window.setTimeout(() => { setToast(false); }, 5000);
   }
   function showFirstTranslationNotice() {
     try {
@@ -126,7 +127,7 @@ export default function LanguageButton({ includedLanguages }: { includedLanguage
       .getElementById(widgetId)
       ?.querySelector<HTMLSelectElement>(".goog-te-combo");
     if (!combo) {
-      if (attempt < 12) window.setTimeout(() => applyToWidget(language, attempt + 1), 250);
+      if (attempt < 12) window.setTimeout(() => { applyToWidget(language, attempt + 1); }, 250);
       else if (language !== "en") notifyUnavailable();
       return;
     }
@@ -150,9 +151,9 @@ export default function LanguageButton({ includedLanguages }: { includedLanguage
             : DEFAULT_CODES,
         )
         .catch(() => DEFAULT_CODES)
-        .finally(() => setConfigLoading(false));
+        .finally(() => { setConfigLoading(false); });
     }
-    const codes = await configPromise.current!;
+    const codes = await configPromise.current;
     setLanguageCodes(codes);
     return codes;
   }
@@ -176,7 +177,7 @@ export default function LanguageButton({ includedLanguages }: { includedLanguage
       );
       initialized.current = true;
       setLoading(false);
-      window.setTimeout(() => applyToWidget(readSavedLanguage()), 500);
+      window.setTimeout(() => { applyToWidget(readSavedLanguage()); }, 500);
     } catch {
       notifyUnavailable();
     }
@@ -235,7 +236,7 @@ export default function LanguageButton({ includedLanguages }: { includedLanguage
       if (detail?.language) setSelected(detail.language);
     };
     window.addEventListener("sis-google-translate-choice", onChoice);
-    return () => window.removeEventListener("sis-google-translate-choice", onChoice);
+    return () => { window.removeEventListener("sis-google-translate-choice", onChoice); };
   }, []);
   useEffect(() => {
     if (!open) return;
@@ -311,7 +312,7 @@ export default function LanguageButton({ includedLanguages }: { includedLanguage
               role="menuitemradio"
               aria-checked={selected === language.code}
               disabled={loading || configLoading}
-              onClick={() => chooseLanguage(language.code)}
+              onClick={() => { chooseLanguage(language.code); }}
               className={`flex min-h-11 w-full items-center justify-between rounded-lg px-3 text-left text-sm hover:bg-[var(--surface-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus)] ${selected === language.code ? "font-bold text-[var(--primary)]" : "text-[var(--text)]"}`}
             >
               {language.name}
@@ -331,7 +332,7 @@ export default function LanguageButton({ includedLanguages }: { includedLanguage
           className="absolute right-0 top-[calc(100%+8px)] z-[79] mt-1 w-64 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-xs text-[var(--text)] shadow-lg"
         >
           Page text is translated by Google Translate{" "}
-          <button type="button" onClick={() => setFirstNotice(false)} className="ml-1 underline">
+          <button type="button" onClick={() => { setFirstNotice(false); }} className="ml-1 underline">
             Dismiss
           </button>
         </p>

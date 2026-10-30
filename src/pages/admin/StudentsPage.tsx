@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/admin/AdminStudentsPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/admin/AdminStudentsPage";
 export default function StudentsPage() {
   const pageMeta = usePageMeta({
     title: "Students",

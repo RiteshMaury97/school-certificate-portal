@@ -10,7 +10,7 @@ export default function MobileDrawer({ open, onClose }: { open: boolean; onClose
     >
       <div
         className="ml-auto flex h-dvh w-[min(86vw,22rem)] flex-col gap-2 bg-white p-6"
-        onClick={(event) => event.stopPropagation()}
+        onClick={(event) => { event.stopPropagation(); }}
       >
         <button className="min-h-11 self-end" aria-label="Close menu" onClick={onClose}>
           ✕

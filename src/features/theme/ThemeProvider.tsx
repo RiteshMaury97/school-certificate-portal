@@ -48,9 +48,9 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(theme);
     if (theme !== "system") return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const update = () => applyTheme("system");
+    const update = () => { applyTheme("system"); };
     media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
+    return () => { media.removeEventListener("change", update); };
   }, [theme]);
   const value = useMemo<ThemeContextValue>(
     () => ({

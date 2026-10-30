@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/TermsPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/TermsPage";
 export default function TermsPage() {
   const pageMeta = usePageMeta({
     title: "Terms and Conditions",

@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/admin/AdminApprovalsPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/admin/AdminApprovalsPage";
 export default function ApprovalsPage() {
   const pageMeta = usePageMeta({
     title: "Approval queue",

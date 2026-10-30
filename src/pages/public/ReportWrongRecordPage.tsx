@@ -1,6 +1,6 @@
 "use client";
-import InformationPage from "@/src/screens/InformationPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import InformationPage from "@/src/screens/InformationPage";
 export default function ReportWrongRecordPage() {
   const pageMeta = usePageMeta({
     title: "Report a wrong record",

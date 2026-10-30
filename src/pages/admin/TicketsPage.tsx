@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/admin/AdminTicketsPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/admin/AdminTicketsPage";
 export default function TicketsPage() {
   const pageMeta = usePageMeta({
     title: "Support tickets and data rights",

@@ -1,6 +1,8 @@
 "use client";
 import { Contrast } from "lucide-react";
+
 import IconButton from "@/src/components/ui/IconButton";
+
 import { useTheme } from "./ThemeProvider";
 export default function ContrastToggle() {
   const { contrast, toggleContrast } = useTheme();

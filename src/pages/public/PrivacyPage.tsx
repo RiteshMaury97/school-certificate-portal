@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/PrivacyPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/PrivacyPage";
 export default function PrivacyPage() {
   const pageMeta = usePageMeta({
     title: "Privacy Policy",

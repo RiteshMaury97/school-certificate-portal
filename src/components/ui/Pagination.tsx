@@ -12,7 +12,7 @@ export default function Pagination({
       <button
         className="min-h-11 rounded-lg border px-4 disabled:opacity-40"
         disabled={page <= 1}
-        onClick={() => onChange(page - 1)}
+        onClick={() => { onChange(page - 1); }}
       >
         Previous
       </button>
@@ -22,7 +22,7 @@ export default function Pagination({
       <button
         className="min-h-11 rounded-lg border px-4 disabled:opacity-40"
         disabled={page >= pages}
-        onClick={() => onChange(page + 1)}
+        onClick={() => { onChange(page + 1); }}
       >
         Next
       </button>

@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/FaqPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/FaqPage";
 export default function FaqPage() {
   const pageMeta = usePageMeta({
     title: "Frequently Asked Questions",

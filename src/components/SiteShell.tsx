@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import Header from "@/src/components/layout/Header";
+
 import Footer from "@/src/components/layout/Footer";
+import Header from "@/src/components/layout/Header";
 import ReportWrongRecordModal from "@/src/components/ReportWrongRecordModal";
 type SiteSettings = {
   schoolName?: string;
@@ -33,7 +34,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   useEffect(() => {
     if ("serviceWorker" in navigator)
-      void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);
+      void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
     try {
       setAnnouncementDismissed(sessionStorage.getItem("sis-announcement-dismissed") === "true");
     } catch {
@@ -49,7 +50,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
       const hasGoogleCookie = document.cookie
         .split("; ")
         .some((cookie) => cookie.startsWith("googtrans=") && cookie.split("=")[1] !== "");
-      setTranslationCookieUsed(detail?.cookieUsed === true && hasGoogleCookie);
+      setTranslationCookieUsed((detail?.cookieUsed) && hasGoogleCookie);
     };
     window.addEventListener("sis-google-translate-choice", onTranslationChoice);
 
@@ -60,7 +61,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
         if (active && data && typeof data.settings === "object" && data.settings)
           setSettings(data.settings as SiteSettings);
       })
-      .catch(() => undefined);
+      .catch(() => {});
     return () => {
       active = false;
       window.removeEventListener("sis-google-translate-choice", onTranslationChoice);
@@ -188,9 +189,9 @@ export default function SiteShell({ children }: { children: ReactNode }) {
         statusPageUrl={settings.statusPageUrl}
         socialLinks={settings.socialLinks}
         translationCookieUsed={translationCookieUsed}
-        onReport={() => setReportOpen(true)}
+        onReport={() => { setReportOpen(true); }}
       />
-      {reportOpen && <ReportWrongRecordModal onClose={() => setReportOpen(false)} />}
+      {reportOpen && <ReportWrongRecordModal onClose={() => { setReportOpen(false); }} />}
     </div>
   );
 }

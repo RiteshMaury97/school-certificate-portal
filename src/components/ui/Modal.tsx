@@ -22,7 +22,7 @@ export default function Modal({
         aria-modal="true"
         aria-label={title}
         className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
-        onMouseDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => { e.stopPropagation(); }}
       >
         <div className="mb-4 flex justify-between">
           <h2 className="font-bold">{title}</h2>

@@ -1,6 +1,6 @@
 "use client";
-import InformationPage from "@/src/screens/InformationPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import InformationPage from "@/src/screens/InformationPage";
 export default function DataRightsPage() {
   const pageMeta = usePageMeta({
     title: "Data protection and rights",

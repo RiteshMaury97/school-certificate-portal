@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
 import SiteShell from "@/src/components/SiteShell";
+
+import type { ReactNode } from "react";
 
 export type LegalSection = { id: string; title: string; content: ReactNode };
 export default function LegalPageLayout({
@@ -35,7 +36,7 @@ export default function LegalPageLayout({
             <span className="rounded-full bg-slate-100 px-3 py-1.5">Last updated {updated}</span>
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={() => { window.print(); }}
               className="ml-auto min-h-10 rounded-lg border border-[var(--border)] px-3 text-sm font-semibold text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus)]"
             >
               Print this page

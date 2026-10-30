@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
+
+import { describe, expect, it } from "vitest";
 
 describe("school site header and theme", () => {
   it("provides responsive nav and icon-only utility controls", async () => {

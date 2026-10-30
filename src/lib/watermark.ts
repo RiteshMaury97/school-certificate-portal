@@ -1,8 +1,9 @@
 import "server-only";
-import { PDFDocument, degrees, rgb } from "pdf-lib";
-import fontkit from "@pdf-lib/fontkit";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+
+import fontkit from "@pdf-lib/fontkit";
+import { PDFDocument, degrees, rgb } from "pdf-lib";
 import sharp from "sharp";
 
 const regularFontPromise = readFile(

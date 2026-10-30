@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
+
+import { describe, expect, it } from "vitest";
 
 describe("administrator authentication and shell contracts", () => {
   it("offers email, password visibility, password reset, Google sign-in and mandatory TOTP", async () => {

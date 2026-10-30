@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+
 import SiteShell from "@/src/components/SiteShell";
 export default function NotFoundPage() {
   return (

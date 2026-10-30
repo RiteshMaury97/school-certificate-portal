@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
 import EmptyState from "@/src/components/EmptyState";
+
+import type { ReactNode } from "react";
 
 export default function Table({
   headers,

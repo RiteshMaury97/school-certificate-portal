@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/ResultsPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/ResultsPage";
 export default function ResultsPage() {
   const pageMeta = usePageMeta({
     title: "Certificates found",

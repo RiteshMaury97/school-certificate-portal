@@ -1,6 +1,6 @@
 "use client";
-import LegacyPage from "@/src/screens/admin/AdminSessionsPage";
 import { usePageMeta } from "@/src/lib/pageMeta";
+import LegacyPage from "@/src/screens/admin/AdminSessionsPage";
 export default function SessionsPage() {
   const pageMeta = usePageMeta({
     title: "Sessions and certificate types",

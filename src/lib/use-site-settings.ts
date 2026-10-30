@@ -36,7 +36,7 @@ export function usePublicSiteSettings() {
         if (active && data && typeof data.settings === "object")
           setSettings(data.settings as PublicSiteSettings);
       })
-      .catch(() => undefined);
+      .catch(() => {});
     return () => {
       active = false;
     };
