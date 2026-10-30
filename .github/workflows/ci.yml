@@ -1,0 +1,57 @@
+name: CI and Vercel deployment
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_PROJECT_ID: sis-ci-build
+      SITE_URL: https://ci.example.invalid
+      APP_ORIGIN: https://ci.example.invalid
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --audit-level=high
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm run test:a11y
+  deploy-preview:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: npx vercel link --yes --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID" --token=${{ secrets.VERCEL_TOKEN }}
+        env: { VERCEL_PROJECT_ID: "${{ secrets.VERCEL_PROJECT_ID }}", VERCEL_ORG_ID: "${{ secrets.VERCEL_ORG_ID }}" }
+      - run: npx vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+      - run: npx vercel build --token=${{ secrets.VERCEL_TOKEN }}
+      - run: npx vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: npx vercel link --yes --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID" --token=${{ secrets.VERCEL_TOKEN }}
+        env: { VERCEL_PROJECT_ID: "${{ secrets.VERCEL_PROJECT_ID }}", VERCEL_ORG_ID: "${{ secrets.VERCEL_ORG_ID }}" }
+      - run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

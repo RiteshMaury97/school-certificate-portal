@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Every collection is accessed only by trusted Next.js Route Handlers
+    // using Firebase Admin SDK. Client SDK access is explicitly denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/backup",
+      "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/retention",
+      "schedule": "15 3 * * 1"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+name: Retention safety notice
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  notice:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Retention is flag-only. Use the secured Vercel Cron endpoint; no records are automatically deleted."
