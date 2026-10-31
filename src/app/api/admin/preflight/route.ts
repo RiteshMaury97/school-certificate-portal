@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth, db } from "@/server/firebase-admin";
+import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
 import { sameOrigin, verifyRequestAppCheck } from "@/server/security";
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
@@ -14,10 +14,9 @@ export async function POST(request: NextRequest) {
     const email = decoded.email?.toLowerCase() ?? "";
     const admin = await db.collection("admins").doc(decoded.uid).get();
     if (
-      !decoded.email_verified ||
       !email ||
       !admin.exists ||
-      // "invited" accounts must be able to enrol their authenticator on first sign-in.
+      // "invited" accounts must be able to complete email verification on first sign-in.
       !["active", "invited"].includes(String(admin.get("status"))) ||
       admin.get("email")?.toLowerCase() !== email ||
       !["uploader", "approver", "superadmin"].includes(
@@ -33,10 +32,24 @@ export async function POST(request: NextRequest) {
       { authorized: true },
       { headers: { "Cache-Control": "no-store" } },
     );
-  } catch {
+  } catch (error) {
+    const code = String((error as { code?: unknown } | null)?.code ?? "");
+    if (error instanceof Error && error.message === "APP_CHECK") {
+      return NextResponse.json(
+        { error: "App verification failed. Reload the page and try again." },
+        { status: 403 },
+      );
+    }
+    if (code.startsWith("auth/")) {
+      return NextResponse.json(
+        { error: "Your Google sign-in session is invalid or expired. Sign in again." },
+        { status: 401 },
+      );
+    }
+    console.error("[admin/preflight POST]", describeFirebaseError(error));
     return NextResponse.json(
-      { error: "Unable to verify administrator account." },
-      { status: 401 },
+      { error: "Administrator verification is temporarily unavailable." },
+      { status: 503 },
     );
   }
 }

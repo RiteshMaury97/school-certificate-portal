@@ -1,6 +1,7 @@
 import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 import { db } from "@/server/firebase-admin";
+import { escapeHtml, sendMail } from "@/server/mailer";
 
 function secret() {
   const value = process.env.NOTIFICATION_OPT_OUT_SECRET;
@@ -64,73 +65,27 @@ export async function sendCertificateAvailableNotice(studentId: string): Promise
   )
     return;
   const email = String(latestConsent.get("parentEmail") ?? "").trim();
-  const mobile = String(latestConsent.get("parentMobile") ?? "").trim();
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? "").replace(
     /\/$/,
     "",
   );
   const siteSettings = await db.collection("siteSettings").doc("main").get();
-  const schoolName = String(siteSettings.get("schoolName") || "Satyam International School");
+  const schoolName = (String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School");
   if (!siteUrl) return;
   const token = await makeOptOutToken(studentId);
   const optOutUrl = `${siteUrl}/api/public/notifications/opt-out?token=${encodeURIComponent(token)}`;
   let sent = false;
   let channel = "none";
-  if (email && process.env.RESEND_API_KEY && process.env.NOTIFICATION_FROM_EMAIL) {
+  if (email) {
     channel = "email";
     try {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: process.env.NOTIFICATION_FROM_EMAIL,
-          to: [email],
-          subject: `${schoolName}: your certificate is now available`,
-          text: `${schoolName} has made your certificate available at ${siteUrl}. No personal details are included in this message. To stop future notifications, visit: ${optOutUrl}`,
-          html: `<p>${schoolName} has made your certificate available at <a href="${siteUrl}">${siteUrl}</a>.</p><p>No personal details are included in this message.</p><p><a href="${optOutUrl}">Opt out of future notifications</a>.</p>`,
-        }),
-        cache: "no-store",
-        signal: AbortSignal.timeout(8000),
+      await sendMail({
+        to: email,
+        subject: `${schoolName}: your certificate is now available`,
+        text: `${schoolName} has made your certificate available at ${siteUrl}. No personal details are included. To stop future notifications, visit: ${optOutUrl}`,
+        html: `<p>${escapeHtml(schoolName)} has made your certificate available at <a href="${escapeHtml(siteUrl)}">${escapeHtml(siteUrl)}</a>.</p><p>No personal details are included in this message.</p><p><a href="${escapeHtml(optOutUrl)}">Opt out of future notifications</a>.</p>`,
       });
-      sent = response.ok;
-    } catch {
-      sent = false;
-    }
-  }
-  if (
-    !sent &&
-    mobile &&
-    process.env.MSG91_AUTH_KEY &&
-    process.env.MSG91_TEMPLATE_ID &&
-    process.env.MSG91_SENDER_ID
-  ) {
-    channel = "sms";
-    try {
-      const response = await fetch("https://control.msg91.com/api/v5/flow/", {
-        method: "POST",
-        headers: {
-          authkey: process.env.MSG91_AUTH_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          template_id: process.env.MSG91_TEMPLATE_ID,
-          sender: process.env.MSG91_SENDER_ID,
-          recipients: [
-            {
-              mobiles: mobile,
-              site_url: siteUrl,
-              opt_out_url: optOutUrl,
-              opt_out_text: "Opt out using this link",
-            },
-          ],
-        }),
-        cache: "no-store",
-        signal: AbortSignal.timeout(8000),
-      });
-      sent = response.ok;
+      sent = true;
     } catch {
       sent = false;
     }

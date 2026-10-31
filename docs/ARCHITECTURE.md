@@ -13,7 +13,7 @@ browser storage and is discarded when the visitor leaves `/certificates`.
 ## Admin console
 `app/admin/(console)/layout.tsx` mounts `AdminSessionProvider` → `AdminGate` → `AdminConsole` once. The
 section shown is derived from the pathname; the `page.tsx` files only provide the page title. Login
-(`/admin/login`, `/admin/mfa`) sits outside this layout.
+(`/admin/login`) sits outside this layout.
 
 ## Known follow-up
 `features/admin/AdminConsole.tsx` is still one ~3,600-line component (the ESLint `max-lines` rule of 600

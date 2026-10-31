@@ -210,11 +210,10 @@ export async function POST(request: NextRequest) {
       certificateType,
       session,
       issueDate,
-      schoolName: String(
-        (await db.collection("siteSettings").doc("main").get()).get(
-          "schoolName",
-        ) || "Satyam International School",
-      ),
+      schoolName:
+        String(
+          (await db.collection("siteSettings").doc("main").get()).get("schoolName") ?? "",
+        ).trim() || "Satyam International School",
       studentName: maskStudentName(studentName),
       verifiedOn: new Date().toISOString(),
     });

@@ -1,20 +1,20 @@
 "use client";
 import Link from "next/link";
 type Props = {
-  schoolName?: string;
-  logoUrl?: string;
-  address?: string;
-  affiliation?: string;
-  boardName?: string;
-  schoolCode?: string;
-  email?: string;
-  phone?: string;
-  officeHours?: string;
-  lastUpdated?: string;
-  statusPageUrl?: string;
-  socialLinks?: { label: string; url: string }[];
-  translationCookieUsed?: boolean;
-  onReport?: () => void;
+  schoolName?: string | undefined;
+  logoUrl?: string | undefined;
+  address?: string | undefined;
+  affiliation?: string | undefined;
+  boardName?: string | undefined;
+  schoolCode?: string | undefined;
+  email?: string | undefined;
+  phone?: string | undefined;
+  officeHours?: string | undefined;
+  lastUpdated?: string | undefined;
+  statusPageUrl?: string | undefined;
+  socialLinks?: { label: string; url: string }[] | undefined;
+  translationCookieUsed?: boolean | undefined;
+  onReport?: (() => void) | undefined;
 };
 export default function Footer({
   schoolName = "Satyam International School",

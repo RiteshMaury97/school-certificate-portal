@@ -6,42 +6,24 @@ import {
   isRetentionExpired,
 } from "@/shared/retention-policy";
 import { db } from "@/server/firebase-admin";
+import { sendMail } from "@/server/mailer";
+import { deleteExpiredAdminOtpChallenges } from "@/server/admin-otp";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 async function notify(count: number) {
-  const key = process.env.RESEND_API_KEY,
-    from = process.env.RESEND_FROM_EMAIL;
-  if (!key || !from || count === 0) return;
+  if (count === 0) return;
   const siteSettings = await db.collection("siteSettings").doc("main").get();
-  const schoolName = String(siteSettings.get("schoolName") || "Satyam International School");
-  const admins = await db
-    .collection("admins")
-    .where("role", "==", "superadmin")
-    .limit(10)
-    .get();
-  const to = admins.docs
-    .map((d) => String(d.get("email") ?? ""))
-    .filter(Boolean);
-  if (!to.length) return;
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to,
-      subject: `${schoolName}: certificate retention review required`,
-      text: `${schoolName}: the weekly retention review identified ${count} student record(s) requiring review. No records were deleted. Sign in to the admin area and review the retention queue.`,
-    }),
-  }).catch(() => undefined);
+  const schoolName = String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
+  const admins = await db.collection("admins").where("role", "==", "superadmin").limit(10).get();
+  const to = admins.docs.map((doc) => String(doc.get("email") ?? "")).filter(Boolean);
+  if (to.length) await sendMail({ to, subject: `${schoolName}: certificate retention review required`, text: `${schoolName}: the weekly retention review identified ${count} student record(s) requiring review. No records were deleted. Sign in to the admin area and review the retention queue.` }).catch(() => undefined);
 }
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`)
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   try {
+    const otpChallengesDeleted = await deleteExpiredAdminOtpChallenges();
     const settings = await db.collection("siteSettings").doc("main").get();
     if (settings.get("retentionScheduleConfirmed") !== true)
       return NextResponse.json(
@@ -121,7 +103,7 @@ export async function GET(request: NextRequest) {
         retentionYears: years,
       });
     return NextResponse.json(
-      { ok: true, scanned, flagged, deleted: 0 },
+      { ok: true, scanned, flagged, deleted: 0, otpChallengesDeleted },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {

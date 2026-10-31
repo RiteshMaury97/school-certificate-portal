@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedRequestOrigin } from "./shared/origin-policy";
 const APP_ORIGIN = process.env.APP_ORIGIN;
 function buildCsp(nonce: string): string {
   const dev = process.env.NODE_ENV !== "production";
@@ -89,7 +90,7 @@ export async function middleware(request: NextRequest) {
   const origin = request.headers.get("origin");
   const isMutation = !["GET", "HEAD", "OPTIONS"].includes(request.method);
   const expectedOrigin = APP_ORIGIN ?? request.nextUrl.origin;
-  if (origin && origin !== expectedOrigin) {
+  if (origin && !isAllowedRequestOrigin(origin, expectedOrigin, !production)) {
     return NextResponse.json(
       { error: "Request origin is not allowed." },
       { status: 403 },
@@ -102,7 +103,7 @@ export async function middleware(request: NextRequest) {
     );
   }
   if (request.method === "OPTIONS") {
-    if (origin !== expectedOrigin)
+    if (!isAllowedRequestOrigin(origin, expectedOrigin, !production))
       return new NextResponse(null, { status: 403 });
     return new NextResponse(null, {
       status: 204,
@@ -115,7 +116,7 @@ export async function middleware(request: NextRequest) {
   }
   const path = request.nextUrl.pathname;
   const isAdminPage = path === "/admin" || path.startsWith("/admin/");
-  const isAdminAuthPage = path === "/admin/login" || path === "/admin/mfa";
+  const isAdminAuthPage = path === "/admin/login";
   if (isAdminPage && !isAdminAuthPage && !request.cookies.get("sis_admin_session")?.value) {
     const login = request.nextUrl.clone();
     login.pathname = "/admin/login";

@@ -3,11 +3,17 @@ import { getApps, initializeApp } from "firebase/app";
 import { getToken, initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from "firebase/app-check";
 import { getAuth } from "firebase/auth";
 
+function requiredFirebaseConfig(value: string | undefined, name: string): string {
+  const normalized = value?.trim();
+  if (!normalized) throw new Error(`Missing Firebase client configuration: ${name}`);
+  return normalized;
+}
+
 const config = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_API_KEY, "NEXT_PUBLIC_FIREBASE_API_KEY"),
+  authDomain: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"),
+  projectId: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, "NEXT_PUBLIC_FIREBASE_PROJECT_ID"),
+  appId: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_APP_ID, "NEXT_PUBLIC_FIREBASE_APP_ID"),
 };
 
 export const firebaseApp = getApps().length ? getApps()[0]! : initializeApp(config);

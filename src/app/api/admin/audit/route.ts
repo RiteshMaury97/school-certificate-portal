@@ -27,11 +27,28 @@ export async function GET(request: NextRequest) {
     if (end) query = query.where("timestamp", "<=", new Date(end));
     if (action) query = query.where("action", "==", action);
     const snap = await query.get();
-    const logs = snap.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-      timestamp: d.get("timestamp")?.toDate?.().toISOString?.() ?? null,
-    }));
+    type AuditRow = {
+      id: string;
+      timestamp: string | null;
+      actorUid: string | undefined;
+      action: string | undefined;
+      targetId: string | undefined;
+      ipHash: string | undefined;
+    };
+    const logs: AuditRow[] = snap.docs.map((d) => {
+      const data = d.data() as Record<string, unknown>;
+      const timestampValue = d.get("timestamp") as
+        | { toDate?: () => Date }
+        | undefined;
+      return {
+        id: d.id,
+        timestamp: timestampValue?.toDate?.().toISOString?.() ?? null,
+        actorUid: typeof data.actorUid === "string" ? data.actorUid : undefined,
+        action: typeof data.action === "string" ? data.action : undefined,
+        targetId: typeof data.targetId === "string" ? data.targetId : undefined,
+        ipHash: typeof data.ipHash === "string" ? data.ipHash : undefined,
+      };
+    });
     if (exporting) {
       const lines = [
         "timestamp,actorUid,action,targetId,ipHash",

@@ -6,11 +6,11 @@ const version = process.env.NEXT_PUBLIC_TERMS_VERSION || "1.0";
 
 export default function TermsPage() {
   const settings = usePublicSiteSettings();
-  const school = settings.schoolName ?? "";
-  const address = settings.address ?? "";
-  const email = settings.email ?? "";
-  const jurisdiction = settings.jurisdiction ?? "";
-  const updated = settings.lastUpdated ?? "No data found";
+  const school = settings.schoolName?.trim() || "Satyam International School";
+  const address = settings.address?.trim() || "";
+  const email = settings.email?.trim() || "";
+  const jurisdiction = settings.jurisdiction?.trim() || "";
+  const updated = settings.lastUpdated?.trim() || "No data found";
   const sections: LegalSection[] = [
     {
       id: "acceptance",

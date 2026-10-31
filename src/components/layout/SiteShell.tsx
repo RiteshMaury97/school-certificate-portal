@@ -81,7 +81,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
     };
   }, []);
   const announcementText = settings.announcement?.textEn?.trim();
-  const schoolName = settings.schoolName || "Satyam International School";
+  const schoolName = settings.schoolName?.trim() || "Satyam International School";
   const includedLanguages = settings.includedLanguages;
   return (
     <div className="site-frame flex min-h-dvh flex-col bg-[var(--bg)] text-[var(--text)] transition-colors duration-200">

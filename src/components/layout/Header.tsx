@@ -6,7 +6,7 @@ import { Menu, X, ShieldCheck } from "lucide-react";
 import IconButton from "@/components/ui/IconButton";
 import LanguageButton from "@/features/translate/LanguageButton";
 import ThemeToggle from "@/features/theme/ThemeToggle";
-type Props = { schoolName?: string; logoUrl?: string; includedLanguages?: string };
+type Props = { schoolName?: string | undefined; logoUrl?: string | undefined; includedLanguages?: string | undefined };
 const links = [
   { label: "Home", to: "/" },
   { label: "Certificates", to: "/certificates" },
@@ -17,10 +17,10 @@ const links = [
 function isActive(pathname: string, to: string): boolean {
   return to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
 }
-function Utilities({ includedLanguages }: { includedLanguages?: string }) {
+function Utilities({ includedLanguages }: { includedLanguages?: string | undefined }) {
   return (
     <div className="flex items-center gap-1.5">
-      <LanguageButton includedLanguages={includedLanguages} />
+      <LanguageButton {...(includedLanguages !== undefined ? { includedLanguages } : {})} />
       <ThemeToggle />
       <Link
         href="/admin/login"

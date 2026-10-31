@@ -35,8 +35,8 @@ async function readSiteIdentity(): Promise<{ name: string; description: string }
   try {
     const settings = await db.collection("siteSettings").doc("main").get();
     return {
-      name: String(settings.get("schoolName") || FALLBACK_NAME),
-      description: String(settings.get("tagline") || FALLBACK_DESCRIPTION),
+      name: String(settings.get("schoolName") ?? "").trim() || FALLBACK_NAME,
+      description: String(settings.get("tagline") ?? "").trim() || FALLBACK_DESCRIPTION,
     };
   } catch {
     // The page must still render when Firestore is unreachable.

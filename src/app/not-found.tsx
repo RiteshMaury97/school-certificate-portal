@@ -11,9 +11,9 @@ export default async function NotFound() {
     phone = "";
   try {
     const settings = await db.collection("siteSettings").doc("main").get();
-    schoolName = String(settings.get("schoolName") || schoolName);
-    email = String(settings.get("email") || "");
-    phone = String(settings.get("phone") || "");
+    schoolName = String(settings.get("schoolName") ?? "").trim() || schoolName;
+    email = String(settings.get("email") ?? "").trim();
+    phone = String(settings.get("phone") ?? "").trim();
   } catch {
     /* fallback page */
   }

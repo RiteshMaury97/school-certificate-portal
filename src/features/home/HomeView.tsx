@@ -12,7 +12,7 @@ export default function HomePage() {
           Official school services
         </p>
         <h1 className="mt-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
-          Welcome to {settings.schoolName || "Satyam International School"}
+          Welcome to {settings.schoolName?.trim() || "Satyam International School"}
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--on-primary)]">
           Access school certificates securely and verify issued records through our official digital

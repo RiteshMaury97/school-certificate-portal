@@ -9,16 +9,17 @@ Sentry.init({
     delete event.contexts;
     delete event.tags;
     delete event.transaction;
-    delete event.culprit;
     if (event.request) {
       delete event.request.data;
       delete event.request.cookies;
       delete event.request.headers;
       if (event.request.query_string) event.request.query_string = "[redacted]";
-      if (event.request.url)
-        event.request.url = event.request.url
-          .split("?")[0]
+      const requestUrl = event.request.url;
+      if (requestUrl) {
+        event.request.url = requestUrl
+          .split("?")[0]!
           .replace(/(certificates|students|reports)\/[^/]+/g, "$1/[id]");
+      }
     }
     if (event.message) event.message = "[redacted application error]";
     if (event.logentry?.message)

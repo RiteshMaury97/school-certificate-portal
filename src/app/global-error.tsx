@@ -34,12 +34,12 @@ export default function GlobalError({
           <button onClick={() => reset()}>Try again</button>
           <a href="/">Return to home</a>
           <p className="error-support">
-            {support.schoolName ?? "School"} support:{" "}
-            {support.email ? (
-              <a href={`mailto:${support.email}`}>{support.email}</a>
+            {support.schoolName?.trim() || "School"} support:{" "}
+            {support.email?.trim() ? (
+              <a href={`mailto:${support.email.trim()}`}>{support.email.trim()}</a>
             ) : null}{" "}
-            {support.phone ? (
-              <a href={`tel:${support.phone}`}>{support.phone}</a>
+            {support.phone?.trim() ? (
+              <a href={`tel:${support.phone.trim()}`}>{support.phone.trim()}</a>
             ) : null}
           </p>
         </main>

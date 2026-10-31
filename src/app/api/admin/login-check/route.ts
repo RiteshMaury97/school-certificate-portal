@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "@/server/firebase-admin";
+import { sendMail } from "@/server/mailer";
 import {
   hashRequesterIp,
   verifyRequestAppCheck,
@@ -14,33 +15,9 @@ const key = () => {
   return value;
 };
 async function notifySuperadmins(email: string, count: number) {
-  const apiKey = process.env.RESEND_API_KEY,
-    from = process.env.RESEND_FROM_EMAIL;
-  if (!apiKey || !from) return;
-  const siteSettings = await db.collection("siteSettings").doc("main").get();
-  const schoolName = String(siteSettings.get("schoolName") || "Satyam International School");
-  const admins = await db
-    .collection("admins")
-    .where("role", "==", "superadmin")
-    .limit(10)
-    .get();
-  const recipients = admins.docs
-    .map((d) => String(d.get("email") ?? ""))
-    .filter(Boolean);
-  if (!recipients.length) return;
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: recipients,
-      subject: `${schoolName}: repeated administrator sign-in failures`,
-      text: `${schoolName}: repeated sign-in failures detected for an administrator account. Attempts: ${count}. Account identifier: ${email}. The account is temporarily locked for 15 minutes.`,
-    }),
-  }).catch(() => undefined);
+  const admins = await db.collection("admins").where("role", "==", "superadmin").limit(10).get();
+  const recipients = admins.docs.map((doc) => String(doc.get("email") ?? "")).filter(Boolean);
+  if (recipients.length) await sendMail({ to: recipients, subject: "School Portal: repeated administrator sign-in failures", text: `Repeated sign-in failures detected. Attempts: ${count}. Account: ${email}.` }).catch(() => undefined);
 }
 export async function POST(request: NextRequest) {
   try {
@@ -133,10 +110,21 @@ export async function POST(request: NextRequest) {
     if (lock && Number(snap.get("count") ?? 0) < 5)
       await notifySuperadmins(email, nextCount);
     return NextResponse.json({ recorded: true, locked: lock });
-  } catch {
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message.replace(/[\\r\\n]/g, " ").slice(0, 180)
+        : "Unknown error";
+    console.error("[admin/login-check POST]", message);
+    if (error instanceof Error && error.message === "APP_CHECK") {
+      return NextResponse.json(
+        { error: "App verification failed. Reload the page and try again." },
+        { status: 403 },
+      );
+    }
     return NextResponse.json(
-      { error: "Unable to check sign-in status." },
-      { status: 500 },
+      { error: "Unable to check sign-in status. Check the server configuration." },
+      { status: 503 },
     );
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { adminAuth, db } from "@/server/firebase-admin";
+import { escapeHtml, sendMail } from "@/server/mailer";
 import {
   requireAdmin,
   requireSensitiveReauth,
@@ -55,14 +56,17 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         createdBy: actor.uid,
       });
-    const inviteLink = await adminAuth.generatePasswordResetLink(email);
-    const verificationLink =
-      await adminAuth.generateEmailVerificationLink(email);
+    const inviteLink = await adminAuth.generatePasswordResetLink(email, {
+      url: `${process.env.APP_ORIGIN ?? request.nextUrl.origin}/admin/login`,
+    });
+    await sendMail({
+      to: email,
+      subject: "School Portal: administrator invitation",
+      text: `You have been invited as a ${role}. Set your password using this secure link: ${inviteLink}`,
+      html: `<p>You have been invited as a ${escapeHtml(role)}.</p><p><a href="${escapeHtml(inviteLink)}">Set your password</a></p>`,
+    });
     await writeAuditLog(request, actor.uid, "admin.invite", user.uid);
-    return NextResponse.json(
-      { ok: true, email, role, inviteLink, verificationLink },
-      { status: 201 },
-    );
+    return NextResponse.json({ ok: true, email, role }, { status: 201 });
   } catch (e) {
     return apiError(e);
   }

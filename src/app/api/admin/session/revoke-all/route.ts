@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, db } from "@/server/firebase-admin";
+import { isAllowedRequestOrigin } from "@/shared/origin-policy";
 import {
   adminSessionCookieOptions,
   csrfCookieOptions,
@@ -69,8 +70,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const origin = request.headers.get("origin");
-    if (origin !== (process.env.APP_ORIGIN ?? request.nextUrl.origin))
+    if (
+      !isAllowedRequestOrigin(
+        origin,
+        process.env.APP_ORIGIN ?? request.nextUrl.origin,
+        process.env.NODE_ENV !== "production",
+      )
+    ) {
       return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
+    }
     const form = await request.formData();
     const token = String(form.get("token") ?? "");
     if (token.length < 32)

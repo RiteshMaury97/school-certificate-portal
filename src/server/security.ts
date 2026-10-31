@@ -24,6 +24,7 @@ import {
   type DisambiguationClaims,
 } from "./student-pii";
 import { hasAnyRole as hasRole } from "../shared/role-policy";
+import { isAllowedRequestOrigin } from "../shared/origin-policy";
 import {
   ADMIN_HARD_SESSION_LIMIT_MS,
   isAdminSessionExpired,
@@ -478,9 +479,20 @@ export async function requireRoles(
 export async function verifyRequestAppCheck(
   request: NextRequest,
 ): Promise<void> {
-  // Local development only: App Check can be switched off explicitly. This
-  // never applies in production builds.
-  if (process.env.NODE_ENV !== "production" && process.env.APP_CHECK_ENFORCE === "false") return;
+  // Keep the browser and server policies aligned in local development.
+  // The browser SDK deliberately omits an App Check token when no reCAPTCHA
+  // site key is configured. In development, mirror that behaviour unless
+  // APP_CHECK_ENFORCE=true explicitly opts into testing App Check.
+  // Production always requires a valid App Check token.
+  if (process.env.NODE_ENV !== "production") {
+    if (process.env.APP_CHECK_ENFORCE === "false") return;
+    if (
+      process.env.APP_CHECK_ENFORCE !== "true" &&
+      !process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY
+    ) {
+      return;
+    }
+  }
   const token = request.headers.get("x-firebase-appcheck") ?? "";
   if (!token) throw new Error("APP_CHECK");
   try {
@@ -503,7 +515,7 @@ export async function requireAdmin(
   if (!session) throw new Error("UNAUTHORIZED");
   const decoded = await adminAuth.verifySessionCookie(session, true);
   const email = decoded.email?.toLowerCase() ?? "";
-  if (!decoded.email_verified || !email) throw new Error("FORBIDDEN");
+  if (!email) throw new Error("FORBIDDEN");
   const admin = await db.collection("admins").doc(decoded.uid).get();
   const role = admin.get("role");
   if (
@@ -617,7 +629,7 @@ export function apiError(error: unknown): NextResponse {
     );
   if (message === "REAUTH_REQUIRED")
     return NextResponse.json(
-      { error: "Re-authentication with password and MFA is required." },
+      { error: "Re-authentication with password and email code is required." },
       { status: 428 },
     );
   if (message === "FORBIDDEN")
@@ -670,8 +682,9 @@ export function apiError(error: unknown): NextResponse {
 
 export function sameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
-  return (
-    Boolean(origin) &&
-    origin === (process.env.APP_ORIGIN ?? new URL(request.url).origin)
+  return isAllowedRequestOrigin(
+    origin,
+    process.env.APP_ORIGIN ?? new URL(request.url).origin,
+    process.env.NODE_ENV !== "production",
   );
 }

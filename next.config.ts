@@ -41,6 +41,7 @@ const config: NextConfig = {
     "sharp",
     "archiver",
     "exceljs",
+    "nodemailer",
   ],
   outputFileTracingIncludes: {
     "/api/certificates/[certId]/file": ["./public/fonts/*.ttf"],

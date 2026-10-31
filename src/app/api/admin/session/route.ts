@@ -1,6 +1,7 @@
 import { createHmac, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
+import { escapeHtml, sendMail } from "@/server/mailer";
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
 import {
   adminSessionCookieOptions,
@@ -12,6 +13,7 @@ import {
   verifyCsrf,
   hashRequesterIp,
 } from "@/server/security";
+import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
 import {
   ADMIN_HARD_SESSION_LIMIT_MS,
   isAdminSessionExpired,
@@ -36,24 +38,9 @@ function browser(ua: string) {
   return "Unknown browser";
 }
 async function sendAlert(to: string, body: string) {
-  const key = process.env.RESEND_API_KEY,
-    from = process.env.RESEND_FROM_EMAIL;
-  if (!key || !from) return;
   const siteSettings = await db.collection("siteSettings").doc("main").get();
-  const schoolName = String(siteSettings.get("schoolName") || "Satyam International School");
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to,
-      subject: `${schoolName}: new staff sign-in`,
-      html: `<p>${schoolName}</p>${body}`,
-    }),
-  });
+  const schoolName = String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
+  await sendMail({ to, subject: `${schoolName}: new staff sign-in`, html: `<p>${escapeHtml(schoolName)}</p>${body}` });
 }
 export async function POST(request: NextRequest) {
   try {
@@ -72,14 +59,8 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     const decoded = await adminAuth.verifyIdToken(body.idToken, true);
-    const secondFactor = (
-      decoded.firebase as { sign_in_second_factor?: string } | undefined
-    )?.sign_in_second_factor;
-    if (!decoded.email_verified || secondFactor !== "totp")
-      return NextResponse.json(
-        { error: "Complete the required MFA challenge." },
-        { status: 403 },
-      );
+    if (!("challengeId" in body) || typeof body.challengeId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.challengeId))
+      return NextResponse.json({ error: "Complete email verification before continuing." }, { status: 403 });
     const email = decoded.email?.toLowerCase() ?? "";
     const emailHash = createHmac("sha256", secret())
       .update(email)
@@ -112,7 +93,18 @@ export async function POST(request: NextRequest) {
         { status: 403 },
       );
 
-    // First complete sign-in (verified email + authenticator) activates an invited account.
+    const challengeRef = db.collection("adminOtpChallenges").doc(body.challengeId);
+    const challengeConsumed = await db.runTransaction((transaction) =>
+      consumeVerifiedAdminOtpChallenge(transaction, challengeRef, decoded.uid),
+    );
+    if (!challengeConsumed) {
+      return NextResponse.json(
+        { error: "Email verification is missing, expired, or already used. Sign in again." },
+        { status: 403 },
+      );
+    }
+
+    // A completed email-code sign-in activates an invited account.
     if (status === "invited")
       await admin.ref.update({
         status: "active",
@@ -228,7 +220,7 @@ export async function POST(request: NextRequest) {
         }).format(now) + " IST";
       await sendAlert(
         email,
-        `<p>New sign-in to the admin panel from ${browser(ua)}, ${safeCity}, ${localTime}.</p><p>If this wasn't you, <a href="${link}">sign out everywhere</a>.</p>`,
+        `<p>New sign-in to the admin panel from ${escapeHtml(browser(ua))}, ${safeCity}, ${escapeHtml(localTime)}.</p><p>If this wasn't you, <a href="${escapeHtml(link)}">sign out everywhere</a>.</p>`,
       ).catch(() => undefined);
     }
     const csrf = createCsrfToken();
@@ -295,7 +287,6 @@ export async function GET(request: NextRequest) {
       lastSeenAt: FieldValue.serverTimestamp(),
     });
     if (
-      !decoded.email_verified ||
       !admin.exists ||
       admin.get("status") !== "active" ||
       (role !== "uploader" && role !== "approver" && role !== "superadmin") ||

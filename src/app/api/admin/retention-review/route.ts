@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "@/server/firebase-admin";
+import { sendMail } from "@/server/mailer";
 import {
   apiError,
   requireRoles,
@@ -136,27 +137,10 @@ export async function PATCH(request: NextRequest) {
         requestId,
         requesterEmail || undefined,
       );
-      if (
-        requesterEmail &&
-        requestId &&
-        process.env.RESEND_API_KEY &&
-        process.env.RESEND_FROM_EMAIL
-      ) {
+      if (requesterEmail && requestId) {
         const siteSettings = await db.collection("siteSettings").doc("main").get();
-        const schoolName = String(siteSettings.get("schoolName") || "Satyam International School");
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: process.env.RESEND_FROM_EMAIL,
-            to: requesterEmail,
-            subject: `${schoolName}: data erasure request completed`,
-            text: `${schoolName}: your data erasure request ${requestId} has been completed. Reference receipt: ${result.erasureId}. Please contact the school if you need assistance.`,
-          }),
-        }).catch(() => undefined);
+        const schoolName = String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
+        await sendMail({ to: requesterEmail, subject: `${schoolName}: data erasure request completed`, text: `${schoolName}: your data erasure request ${requestId} has been completed. Reference receipt: ${result.erasureId}. Please contact the school if you need assistance.` }).catch(() => undefined);
       }
       await writeAuditLog(
         request,

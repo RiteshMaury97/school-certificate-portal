@@ -86,7 +86,7 @@ export async function GET(
 
     const original = await readR2Object(r2Key);
     const settings = await db.collection("siteSettings").doc("main").get();
-    const schoolName = String(settings.get("schoolName") || "Satyam International School");
+    const schoolName = (String(settings.get("schoolName") ?? "").trim() || "Satyam International School");
     const watermarked = await watermarkCertificate(
       original,
       mimeType,

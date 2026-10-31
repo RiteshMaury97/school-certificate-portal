@@ -90,7 +90,7 @@ export default function FinderPage() {
   const [loading, setLoading] = useState(false);
   const [zipLoading, setZipLoading] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<keyof FormValues, boolean>>>({});
-  const fieldErrors: Partial<Record<keyof FormValues, string>> = {
+  const fieldErrors: Partial<Record<keyof FormValues, string | undefined>> = {
     studentName:
       form.studentName.trim().length < 2
         ? "Enter at least 2 characters."

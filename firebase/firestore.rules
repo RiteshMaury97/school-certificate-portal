@@ -1,22 +1,19 @@
 rules_version = '2';
 
-// ---------------------------------------------------------------------------
-// Firestore security rules
+// The browser uses Firebase Authentication only. All Firestore reads and writes
+// are performed by trusted Next.js route handlers using the Firebase Admin SDK.
+// Admin SDK access bypasses these rules; therefore application roles are
+// enforced in server code with requireAdmin/requireRoles, never in client UI.
 //
-// Architecture: the browser never talks to Firestore. The browser SDK is used
-// for Firebase Authentication only. Every read and write goes through Next.js
-// route handlers that use the Firebase Admin SDK, which authenticates with a
-// service account and BYPASSES these rules.
-//
-// Therefore the correct, safest rule set is "deny everything" for client
-// SDKs. This protects student PII, admin records, sessions and audit logs even
-// if the public Firebase web config (which is not secret) is abused.
-//
-// Do not add `allow` rules here. If a feature ever needs direct client access,
-// add a narrowly scoped match for that one collection and write a rules test.
-// ---------------------------------------------------------------------------
+// Default-deny is intentional: do not add broad client access. Any future
+// direct-client collection access must have a narrowly scoped rule and emulator
+// tests proving that unauthenticated users and every disallowed role are denied.
 service cloud.firestore {
   match /databases/{database}/documents {
+    // OTP challenge records are server-only; Admin SDK route handlers bypass rules.
+    match /adminOtpChallenges/{challengeId} {
+      allow read, write: if false;
+    }
     match /{document=**} {
       allow read, write: if false;
     }

@@ -7,6 +7,7 @@ import {
   writeAuditLog,
 } from "@/server/security";
 import { z } from "zod";
+import { isAllowedRequestOrigin } from "@/shared/origin-policy";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const requestSchema = z.object({
@@ -21,8 +22,11 @@ export async function POST(request: NextRequest) {
   try {
     await verifyRequestAppCheck(request);
     if (
-      !request.headers.get("origin") ||
-      request.headers.get("origin") !== process.env.APP_ORIGIN
+      !isAllowedRequestOrigin(
+        request.headers.get("origin"),
+        process.env.APP_ORIGIN ?? request.nextUrl.origin,
+        process.env.NODE_ENV !== "production",
+      )
     )
       return NextResponse.json(
         { error: "Request could not be submitted." },

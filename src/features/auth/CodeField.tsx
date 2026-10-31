@@ -3,7 +3,7 @@ import { useId } from "react";
 
 type Props = { label: string; value: string; onChange: (value: string) => void; autoFocus?: boolean };
 
-/** Six-digit one-time code input shared by sign-in and enrollment. */
+/** Six-digit one-time code input used for email-code verification. */
 export default function CodeField({ label, value, onChange, autoFocus }: Props) {
   const id = useId();
   return (

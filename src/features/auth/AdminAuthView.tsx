@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 import CredentialsStep from "./CredentialsStep";
-import { EnrollStep, MfaStep, VerifyEmailStep } from "./CodeSteps";
+import { EmailCodeStep, VerifyEmailStep } from "./CodeSteps";
 import { useAdminSignIn } from "./useAdminSignIn";
 
 export default function AdminAuthView() {
@@ -27,11 +27,11 @@ export default function AdminAuthView() {
             />
           )}
           <h1 className="text-2xl font-bold text-[var(--text)]">
-            {settings.schoolName ?? "Satyam International School"} – Administrator login
+            {settings.schoolName?.trim() || "Satyam International School"} – Administrator login
           </h1>
         </div>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          Authorized accounts only. Authenticator MFA is mandatory.
+          Authorized accounts only. A six-digit email security code is required after sign-in.
         </p>
         <div key={flow.step} className="page-enter">
           {flow.step === "credentials" && (
@@ -43,27 +43,10 @@ export default function AdminAuthView() {
               onReset={(email) => void flow.requestPasswordReset(email)}
             />
           )}
-          {flow.step === "mfa" && (
-            <MfaStep busy={flow.busy} onVerify={(code) => void flow.verifyCode(code)} onCancel={() => void flow.cancel()} />
+          {flow.step === "email-code" && (
+            <EmailCodeStep busy={flow.busy} email={flow.pendingEmail} onVerify={(code) => void flow.verifyCode(code)} onCancel={() => void flow.cancel()} onResend={() => void flow.resendCode()} resendAfterSeconds={flow.resendAfterSeconds} />
           )}
-          {flow.step === "verify-email" && (
-            <VerifyEmailStep
-              busy={flow.busy}
-              email={flow.pendingEmail}
-              onContinue={() => void flow.continueAfterEmailVerified()}
-              onResend={() => void flow.resendVerification()}
-              onCancel={() => void flow.cancel()}
-            />
-          )}
-          {flow.step === "enroll" && (
-            <EnrollStep
-              busy={flow.busy}
-              secretKey={flow.secretKey}
-              otpauthUri={flow.otpauthUri}
-              onEnroll={(code) => void flow.enroll(code)}
-              onCancel={() => void flow.cancel()}
-            />
-          )}
+
         </div>
         {flow.notice && (
           <p role="status" className="mt-4 rounded-lg border border-[var(--success)] bg-[var(--surface-2)] p-3 text-sm text-[var(--text)]">

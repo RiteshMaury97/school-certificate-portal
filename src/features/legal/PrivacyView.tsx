@@ -9,13 +9,13 @@ const version = process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION || "2026-10";
 
 export default function PrivacyPage() {
   const settings = usePublicSiteSettings();
-  const school = settings.schoolName ?? "";
-  const address = settings.address ?? "";
-  const email = settings.email ?? "";
-  const officer = settings.grievanceOfficerName ?? "";
-  const officerEmail = settings.grievanceOfficerEmail ?? "";
-  const officerPhone = settings.grievanceOfficerPhone ?? "";
-  const updated = settings.lastUpdated ?? "No data found";
+  const school = settings.schoolName?.trim() || "Satyam International School";
+  const address = settings.address?.trim() || "";
+  const email = settings.email?.trim() || "";
+  const officer = settings.grievanceOfficerName?.trim() || "";
+  const officerEmail = settings.grievanceOfficerEmail?.trim() || "";
+  const officerPhone = settings.grievanceOfficerPhone?.trim() || "";
+  const updated = settings.lastUpdated?.trim() || "No data found";
   const retentionYears =
     settings.retentionYears ?? Number(process.env.NEXT_PUBLIC_RETENTION_YEARS || 7);
   const retentionText = settings.retentionScheduleConfirmed

@@ -4,15 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAdminSession } from "@/features/auth/admin-session";
 import { useTheme } from "@/features/theme/ThemeProvider";
-import { appCheckHeaders, auth } from "@/lib/firebase-client";
-import {
-  getMultiFactorResolver,
-  multiFactor,
-  signInWithEmailAndPassword,
-  signOut,
-  TotpMultiFactorGenerator,
-} from "firebase/auth";
-import type { MultiFactorError, User } from "firebase/auth";
+import { appCheckHeaders } from "@/lib/firebase-client";
+import ReauthModal from "./ReauthModal";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
@@ -228,6 +221,9 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
+  const [reauthOpen, setReauthOpen] = useState(false);
+  const [reauthResolver, setReauthResolver] = useState<((grant: string) => void) | null>(null);
+  const [reauthRejecter, setReauthRejecter] = useState<((reason: Error) => void) | null>(null);
   useEffect(() => {
     setTab(routeTab);
   }, [routeTab]);
@@ -323,50 +319,21 @@ export default function AdminPage() {
     statusPageUrl: "",
     includedLanguages: "en,hi,bn,mr,gu,pa,ta,te,ur",
   });
-  const obtainReauthGrant = useCallback(async (): Promise<string> => {
-    const password = prompt("For this sensitive action, re-enter your administrator password:");
-    if (!password) throw new Error("Re-authentication cancelled.");
-    let user: User | null = null;
-    try {
-      const credential = await signInWithEmailAndPassword(auth, email, password);
-      user = credential.user;
-    } catch (cause) {
-      const authError = cause as { code?: string };
-      if (authError.code !== "auth/multi-factor-auth-required")
-        throw new Error("Password verification failed.");
-      const resolver = getMultiFactorResolver(auth, cause as MultiFactorError);
-      const factor = resolver.hints.find(
-        (item) => item.factorId === TotpMultiFactorGenerator.FACTOR_ID,
-      );
-      if (!factor) throw new Error("An authenticator factor is required for sensitive actions.");
-      const otp = prompt("Enter the six-digit authenticator code:");
-      if (!otp) throw new Error("MFA verification cancelled.");
-      const credential = await resolver.resolveSignIn(
-        TotpMultiFactorGenerator.assertionForSignIn(factor.uid, otp.trim()),
-      );
-      user = credential.user;
-    }
-    try {
-      if (!user) throw new Error("Password and MFA verification failed.");
-      const idToken = await user.getIdToken(true);
-      const headers = new Headers(await appCheckHeaders());
-      headers.set("Content-Type", "application/json");
-      headers.set("x-csrf-token", decodeURIComponent(csrf()));
-      const response = await fetch("/api/admin/reauth", {
-        method: "POST",
-        headers,
-        credentials: "same-origin",
-        body: JSON.stringify({ idToken }),
-        cache: "no-store",
-      });
-      const result = await response.json();
-      if (!response.ok || typeof result.grant !== "string")
-        throw new Error("Recent password and MFA verification failed.");
-      return result.grant as string;
-    } finally {
-      await signOut(auth).catch(() => undefined);
-    }
-  }, [email]);
+  const obtainReauthGrant = useCallback((): Promise<string> => {
+    setReauthOpen(true);
+    return new Promise<string>((resolve, reject) => {
+      setReauthResolver(() => resolve);
+      setReauthRejecter(() => reject);
+    });
+  }, []);
+  const completeReauth = useCallback((grant: string) => {
+    reauthResolver?.(grant);
+    setReauthOpen(false); setReauthResolver(null); setReauthRejecter(null);
+  }, [reauthResolver]);
+  const cancelReauth = useCallback(() => {
+    reauthRejecter?.(new Error("Re-authentication cancelled."));
+    setReauthOpen(false); setReauthResolver(null); setReauthRejecter(null);
+  }, [reauthRejecter]);
   const api = useCallback(
     async <T extends Record<string, unknown> = Record<string, unknown>>(
       url: string,
@@ -398,7 +365,7 @@ export default function AdminPage() {
         );
       return data as T;
     },
-    [email, obtainReauthGrant],
+    [obtainReauthGrant],
   );
   const loadStudents = useCallback(async () => {
     const d = await api<{ students: Student[] }>("/api/admin/students/list");
@@ -970,7 +937,7 @@ export default function AdminPage() {
   async function saveBranding(e: FormEvent) {
     e.preventDefault();
     await act(async () => {
-      const socialLinks = branding.socialLinks
+      const socialLinks = (branding.socialLinks ?? "")
         .split("\n")
         .map((line) => line.trim())
         .filter(Boolean)
@@ -1241,7 +1208,7 @@ export default function AdminPage() {
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5">
             <div>
               <h1 className="text-xl font-bold">
-                {siteSettings.schoolName || "Satyam International School"}
+                {siteSettings.schoolName?.trim() || "Satyam International School"}
               </h1>
               <p className="text-sm text-[var(--on-primary)]">
                 {email} · {role}
@@ -1786,21 +1753,25 @@ export default function AdminPage() {
                           )}
                         </div>
                         {previewUrls[c.id] ? (
-                          previewUrls[c.id].mimeType === "application/pdf" ? (
+                          (() => {
+                            const preview = previewUrls[c.id];
+                            if (!preview) return null;
+                            return preview.mimeType === "application/pdf" ? (
                             <iframe
                               title={`Preview ${c.fileName}`}
-                              src={previewUrls[c.id].url}
+                              src={preview.url}
                               sandbox="allow-scripts allow-same-origin"
                               referrerPolicy="no-referrer"
                               className="h-[520px] w-full rounded"
                             />
                           ) : (
                             <img
-                              src={previewUrls[c.id].url}
+                              src={preview.url}
                               alt={`Certificate preview for ${c.studentName ?? "student"}`}
                               className="max-h-[520px] max-w-full object-contain"
                             />
-                          )
+                            );
+                          })()
                         ) : (
                           <p className="grid min-h-56 place-items-center text-sm text-[var(--text-muted)]">
                             Preview is private and is not cached.
@@ -3629,6 +3600,7 @@ export default function AdminPage() {
           </p>
         </div>
       </main>
+      {reauthOpen && <ReauthModal email={email} onComplete={completeReauth} onCancel={cancelReauth} />}
     </>
   );
 }

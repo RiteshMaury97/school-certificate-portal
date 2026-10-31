@@ -26,7 +26,10 @@ export async function GET(
       return NextResponse.json({ error: "Unknown catalog." }, { status: 404 });
     const snap = await db.collection(name).limit(200).get();
     const items = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
+      .map((d) => {
+        const data = d.data() as Record<string, unknown>;
+        return { ...data, id: d.id };
+      })
       .sort((a, b) =>
         String(a.label ?? a.name ?? a.id).localeCompare(
           String(b.label ?? b.name ?? b.id),
