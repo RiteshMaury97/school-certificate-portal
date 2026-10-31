@@ -1,5 +1,5 @@
-import { pageMetadata } from "@/lib/page-metadata";
 import PrivacyView from "@/features/legal/PrivacyView";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata = pageMetadata(
   "Privacy Policy",

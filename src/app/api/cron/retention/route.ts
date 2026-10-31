@@ -1,13 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
 import { FieldPath, FieldValue } from "firebase-admin/firestore";
-import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+
+import { deleteExpiredAdminOtpChallenges } from "@/server/admin-otp";
+import { db } from "@/server/firebase-admin";
+import { sendMail } from "@/server/mailer";
 import {
   retentionExpiryFromSession,
   isRetentionExpired,
 } from "@/shared/retention-policy";
-import { db } from "@/server/firebase-admin";
-import { sendMail } from "@/server/mailer";
-import { deleteExpiredAdminOtpChallenges } from "@/server/admin-otp";
+
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 async function notify(count: number) {
@@ -16,7 +19,7 @@ async function notify(count: number) {
   const schoolName = String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
   const admins = await db.collection("admins").where("role", "==", "superadmin").limit(10).get();
   const to = admins.docs.map((doc) => String(doc.get("email") ?? "")).filter(Boolean);
-  if (to.length) await sendMail({ to, subject: `${schoolName}: certificate retention review required`, text: `${schoolName}: the weekly retention review identified ${count} student record(s) requiring review. No records were deleted. Sign in to the admin area and review the retention queue.` }).catch(() => undefined);
+  if (to.length) await sendMail({ to, subject: `${schoolName}: certificate retention review required`, text: `${schoolName}: the weekly retention review identified ${count} student record(s) requiring review. No records were deleted. Sign in to the admin area and review the retention queue.` }).catch(() => {});
 }
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;

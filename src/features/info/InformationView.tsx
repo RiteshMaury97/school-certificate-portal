@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+
 import SiteShell from "@/components/layout/SiteShell";
 type Kind = "contact" | "report" | "rights" | "offline" | "maintenance";
 const content: Record<

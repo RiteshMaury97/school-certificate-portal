@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
 import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
+import { useState } from "react";
+
 import { auth, appCheckHeaders } from "@/lib/firebase-client";
 
 function csrfToken() {
@@ -50,7 +51,7 @@ export default function ReauthModal({ email, onComplete, onCancel }: { email: st
       const result = await post("/api/admin/reauth", { idToken, challengeId }, true);
       if (!result.response.ok || typeof result.data !== "object" || result.data === null || !("grant" in result.data) || typeof result.data.grant !== "string") throw new Error(errorMessage(result.data, "Recent credential and email-code verification are required."));
       onComplete(result.data.grant);
-      await signOut(auth).catch(() => undefined);
+      await signOut(auth).catch(() => {});
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Verification failed."); }
     finally { setBusy(false); }
   };
@@ -60,18 +61,18 @@ export default function ReauthModal({ email, onComplete, onCancel }: { email: st
       {stage === "credential" ? <>
         <p className="text-sm text-[var(--text-muted)]">Confirm your administrator account before receiving a one-time email code.</p>
         <label className="block text-sm">Verification method
-          <select value={method} onChange={(event) => setMethod(event.target.value as typeof method)} className="mt-1 min-h-11 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3">
+          <select value={method} onChange={(event) => { setMethod(event.target.value as typeof method); }} className="mt-1 min-h-11 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3">
             <option value="password">Email and password</option><option value="google">Google</option>
           </select>
         </label>
         {method === "password" && <label className="block text-sm">Password
-          <input autoFocus type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1 min-h-11 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3" />
+          <input autoFocus type="password" autoComplete="current-password" value={password} onChange={(event) => { setPassword(event.target.value); }} className="mt-1 min-h-11 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3" />
         </label>}
         <button disabled={busy || (method === "password" && !password)} onClick={() => void finishCredential()} className="min-h-11 w-full rounded bg-[var(--primary)] px-4 font-semibold text-[var(--on-primary)]">{busy ? "Checking…" : "Continue"}</button>
       </> : <>
         <p className="text-sm text-[var(--text-muted)]">Enter the six-digit code sent to your administrator email.</p>
         <label className="block text-sm">Email code
-          <input autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\\D/g, "").slice(0, 6))} className="mt-1 min-h-12 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3 text-center text-xl tracking-[0.35em]" />
+          <input autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => { setCode(event.target.value.replace(/\\D/g, "").slice(0, 6)); }} className="mt-1 min-h-12 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3 text-center text-xl tracking-[0.35em]" />
         </label>
         <button disabled={busy || code.length !== 6} onClick={() => void verify()} className="min-h-11 w-full rounded bg-[var(--primary)] px-4 font-semibold text-[var(--on-primary)]">{busy ? "Verifying…" : "Verify"}</button>
       </>}

@@ -1,6 +1,7 @@
 "use client";
-import type { ReactNode } from "react";
 import { Inbox } from "lucide-react";
+
+import type { ReactNode } from "react";
 
 export type EmptyStateProps = {
   icon?: ReactNode;

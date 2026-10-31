@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
 test("public home has no serious or critical axe violations", async ({
   page,
 }) => {
@@ -14,8 +14,8 @@ test("public home has no serious or critical axe violations", async ({
           options.callback("e2e-token");
           return "e2e-widget";
         },
-        reset: () => undefined,
-        remove: () => undefined,
+        reset: () => {},
+        remove: () => {},
       },
     });
   });

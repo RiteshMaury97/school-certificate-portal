@@ -1,17 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+
 import { db } from "@/server/firebase-admin";
+import {
+  adjustPublicSessions,
+  ensurePublicSessions,
+  rebuildPublicSessions,
+} from "@/server/public-sessions";
 import {
   requireRoles,
   requireSensitiveReauth,
   writeAuditLog,
   apiError,
 } from "@/server/security";
-import {
-  adjustPublicSessions,
-  ensurePublicSessions,
-  rebuildPublicSessions,
-} from "@/server/public-sessions";
+
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -1,11 +1,12 @@
 "use client";
-import { useState } from "react";
+import { Menu, X, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+
 import IconButton from "@/components/ui/IconButton";
-import LanguageButton from "@/features/translate/LanguageButton";
 import ThemeToggle from "@/features/theme/ThemeToggle";
+import LanguageButton from "@/features/translate/LanguageButton";
 type Props = { schoolName?: string | undefined; logoUrl?: string | undefined; includedLanguages?: string | undefined };
 const links = [
   { label: "Home", to: "/" },
@@ -102,7 +103,7 @@ export default function Header({
               label={open ? "Close navigation menu" : "Open navigation menu"}
               aria-expanded={open}
               aria-controls="mobile-navigation-drawer"
-              onClick={() => setOpen((value) => !value)}
+              onClick={() => { setOpen((value) => !value); }}
             >
               {open ? <X size={21} /> : <Menu size={21} />}
             </IconButton>
@@ -125,7 +126,7 @@ export default function Header({
           >
             <div className="mb-5 flex items-center justify-between">
               <span className="font-bold text-[var(--text)]">Menu</span>
-              <IconButton label="Close navigation menu" onClick={() => setOpen(false)}>
+              <IconButton label="Close navigation menu" onClick={() => { setOpen(false); }}>
                 <X size={20} />
               </IconButton>
             </div>
@@ -134,7 +135,7 @@ export default function Header({
                 <Link
                   key={link.to}
                   href={link.to}
-                  onClick={() => setOpen(false)}
+                  onClick={() => { setOpen(false); }}
                   aria-current={isActive(pathname, link.to) ? "page" : undefined}
                   className={`flex min-h-12 items-center rounded-xl px-3 text-base font-semibold ${isActive(pathname, link.to) ? "bg-[var(--surface-2)] text-[var(--text)]" : "text-[var(--text)] hover:bg-[var(--surface-2)]"}`}
                 >

@@ -20,20 +20,21 @@ vi.mock("@/server/firebase-admin", () => ({
     }),
     runTransaction: async (callback: (transaction: { get: () => Promise<typeof state.snapshot>; update: () => void }) => Promise<unknown>) => callback({
       get: async () => state.snapshot,
-      update: () => undefined,
+      update: () => {},
     }),
   },
 }));
 vi.mock("@/server/security", () => ({
-  verifyRequestAppCheck: vi.fn(async () => undefined), sameOrigin: vi.fn(() => true),
+  verifyRequestAppCheck: vi.fn(async () => {}), sameOrigin: vi.fn(() => true),
   verifyCsrf: vi.fn(() => true), requireAdmin: state.requireAdmin,
-  writeAuditLog: vi.fn(async () => undefined), hashRequesterIp: vi.fn(() => "ip-hash"),
+  writeAuditLog: vi.fn(async () => {}), hashRequesterIp: vi.fn(() => "ip-hash"),
   adminSessionCookieOptions: vi.fn(() => ({})), csrfCookieOptions: vi.fn(() => ({})), createCsrfToken: vi.fn(() => "csrf"),
 }));
 
 import { NextRequest } from "next/server";
-import { POST as createSession } from "../src/app/api/admin/session/route";
+
 import { POST as createReauth } from "../src/app/api/admin/reauth/route";
+import { POST as createSession } from "../src/app/api/admin/session/route";
 
 function request(path: string, body: Record<string, string>): NextRequest {
   return new NextRequest(`http://localhost${path}`, {

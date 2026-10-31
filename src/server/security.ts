@@ -5,9 +5,11 @@ import {
   randomBytes,
   timingSafeEqual,
 } from "node:crypto";
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+
 import { FieldValue } from "firebase-admin/firestore";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+
 import { adminAuth, adminAppCheck, db } from "./firebase-admin";
 import {
   bindStudentId,
@@ -23,12 +25,14 @@ import {
   verifyDisambiguationChallenge,
   type DisambiguationClaims,
 } from "./student-pii";
-import { hasAnyRole as hasRole } from "../shared/role-policy";
 import { isAllowedRequestOrigin } from "../shared/origin-policy";
+import { hasAnyRole as hasRole } from "../shared/role-policy";
 import {
   ADMIN_HARD_SESSION_LIMIT_MS,
   isAdminSessionExpired,
 } from "../shared/session-policy";
+
+import type { NextRequest} from "next/server";
 
 function requiredSecret(name: string): string {
   const value = process.env[name];
@@ -184,7 +188,7 @@ async function consumeBudgets(
       if (!isWithinRateLimit(current, budgets[index]!.limit)) return false;
     }
 
-    budgets.forEach((budget, index) => {
+    for (const [index, budget] of budgets.entries()) {
       const current = Number(snapshots[index]?.get("count") ?? 0);
       transaction.set(
         refs[index]!,
@@ -195,7 +199,7 @@ async function consumeBudgets(
         },
         { merge: true },
       );
-    });
+    }
     return true;
   });
 }

@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, type ReactNode } from "react";
+
 import ErrorState from "@/components/feedback/ErrorState";
 import PageLoader from "@/components/feedback/PageLoader";
+
 import { useAdminSession } from "./admin-session";
 
 /** Shows a loader while the session is verified, then either the console or the sign-in page. */

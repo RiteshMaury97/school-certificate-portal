@@ -1,8 +1,10 @@
 import "server-only";
 
 import nodemailer from "nodemailer";
-import type { SendMailOptions } from "nodemailer";
+
 import { db } from "@/server/firebase-admin";
+
+import type { SendMailOptions } from "nodemailer";
 
 export type MailInput = {
   to: string | string[];

@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
-import { z } from "zod";
+
 import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
 import { db } from "@/server/firebase-admin";
 import {
   consumeSearchBudget,
@@ -9,6 +11,8 @@ import {
   verifyRequestAppCheck,
   writeAuditLog,
 } from "@/server/security";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const schema = z.object({
@@ -82,7 +86,7 @@ export async function POST(request: NextRequest) {
       "public",
       "record_report.created",
       referenceId,
-    ).catch(() => undefined);
+    ).catch(() => {});
     return NextResponse.json(
       { ok: true, referenceId },
       { headers: { "Cache-Control": "no-store" } },

@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
+
 import { ESLint } from "eslint";
 
 const reportDirectory = new URL("../reports/", import.meta.url);

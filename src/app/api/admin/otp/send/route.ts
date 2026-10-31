@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
+
 import { FieldValue } from "firebase-admin/firestore";
-import { NextRequest, NextResponse } from "next/server";
-import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
-import { sendAdminOtpEmail } from "@/server/mailer";
+import { NextResponse } from "next/server";
+import { after } from "next/server";
+
 import {
   adminOtpChallengeCollection,
   createAdminOtpCode,
@@ -13,12 +14,16 @@ import {
   createAdminOtpChallengeRecord,
   adminOtpRecipient,
 } from "@/server/admin-otp";
+import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
+import { sendAdminOtpEmail } from "@/server/mailer";
 import {
   hashRequesterIp,
   sameOrigin,
   verifyRequestAppCheck,
   writeAuditLog,
 } from "@/server/security";
+
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,7 +62,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "Unable to send verification code." }, { status: 423 });
     }
 
-    await deleteExpiredAdminOtpChallenges();
     const now = Date.now();
     const ipHash = hashRequesterIp(request);
     const deviceHash = createDeviceHash(request);
@@ -103,6 +107,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await writeAuditLog(request, decoded.uid, "otp.sent", challengeId).catch((auditError: unknown) => {
       console.error("[admin/otp/send audit]", describeFirebaseError(auditError));
     });
+    after(() => deleteExpiredAdminOtpChallenges().catch((cleanupError: unknown) => {
+      console.error("[admin/otp/send cleanup]", describeFirebaseError(cleanupError));
+    }));
     return NextResponse.json({ challengeId, resendAfterSeconds: 60 }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof Error && error.message === "APP_CHECK") {

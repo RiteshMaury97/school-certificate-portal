@@ -1,9 +1,15 @@
 import { randomBytes, createHmac } from "node:crypto";
-import { NextRequest, NextResponse } from "next/server";
+
+import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+
+
+import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
 import { adminAuth, db } from "@/server/firebase-admin";
 import { requireAdmin, sameOrigin, verifyRequestAppCheck, verifyCsrf, writeAuditLog } from "@/server/security";
-import { FieldValue } from "firebase-admin/firestore";
-import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
+
+import type { NextRequest} from "next/server";
+
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {

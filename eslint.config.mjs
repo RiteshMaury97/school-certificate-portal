@@ -1,14 +1,14 @@
+import next from "@next/eslint-plugin-next";
 import { defineConfig, globalIgnores } from "eslint/config";
-import tseslint from "typescript-eslint";
+import prettier from "eslint-config-prettier";
+import importPlugin from "eslint-plugin-import";
+import jsxA11y from "eslint-plugin-jsx-a11y";
+import promise from "eslint-plugin-promise";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
-import jsxA11y from "eslint-plugin-jsx-a11y";
-import next from "@next/eslint-plugin-next";
-import importPlugin from "eslint-plugin-import";
 import security from "eslint-plugin-security";
-import promise from "eslint-plugin-promise";
 import unicorn from "eslint-plugin-unicorn";
-import prettier from "eslint-config-prettier";
+import tseslint from "typescript-eslint";
 
 const typedFiles = ["**/*.{ts,tsx,mts,cts}"];
 const jsxA11yRules = {
@@ -34,8 +34,14 @@ export default defineConfig([
     "reports/**",
     "next-env.d.ts",
   ]),
-  ...tseslint.configs.strictTypeChecked,
-  ...tseslint.configs.stylisticTypeChecked,
+  ...tseslint.configs.strictTypeChecked.map((config) => ({
+    ...config,
+    files: typedFiles,
+  })),
+  ...tseslint.configs.stylisticTypeChecked.map((config) => ({
+    ...config,
+    files: typedFiles,
+  })),
   {
     files: typedFiles,
     languageOptions: {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { isAllowedRequestOrigin } from "../src/shared/origin-policy";
 
 describe("request origin policy", () => {

@@ -1,5 +1,5 @@
-import { pageMetadata } from "@/lib/page-metadata";
 import ResultsView from "@/features/certificates/ResultsView";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata = pageMetadata(
   "Certificates found",

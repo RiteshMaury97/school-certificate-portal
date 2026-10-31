@@ -1,4 +1,5 @@
 import { createCipheriv, randomBytes } from "node:crypto";
+
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;

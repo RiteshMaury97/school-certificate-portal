@@ -20,9 +20,9 @@ export default function GlobalError({
     document.head.appendChild(meta);
     fetch("/api/public/site-settings", { cache: "no-store" })
       .then((response) => response.json())
-      .then((data) => setSupport(data.settings ?? {}))
-      .catch(() => undefined);
-    return () => meta.remove();
+      .then((data) => { setSupport(data.settings ?? {}); })
+      .catch(() => {});
+    return () => { meta.remove(); };
   }, []);
   return (
     <html lang="en">
@@ -31,7 +31,7 @@ export default function GlobalError({
           <p className="error-code">500</p>
           <h1>Something went wrong</h1>
           <p>We could not complete that request. Please try again.</p>
-          <button onClick={() => reset()}>Try again</button>
+          <button onClick={() => { reset(); }}>Try again</button>
           <a href="/">Return to home</a>
           <p className="error-support">
             {support.schoolName?.trim() || "School"} support:{" "}

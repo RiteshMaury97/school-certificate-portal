@@ -1,11 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
-import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
-import { db } from "@/server/firebase-admin";
+import { NextResponse } from "next/server";
+
 import { decryptCertificateNumber } from "@/server/certificate-number";
-import {
-  studentDisambiguationSchema,
-  studentLookupSchema,
-} from "@/shared/validation";
+import { db } from "@/server/firebase-admin";
 import {
   completeDisambiguationChallenge,
   consumeDisambiguationAttempt,
@@ -22,11 +18,18 @@ import {
   writeAuditLog,
   writeConsentLog,
 } from "@/server/security";
-import { studentIdentifierHmac } from "@/server/student-pii";
 import {
   classifySearchMatchCount,
   selectUniqueDisambiguationMatch,
 } from "@/server/security-primitives";
+import { studentIdentifierHmac } from "@/server/student-pii";
+import {
+  studentDisambiguationSchema,
+  studentLookupSchema,
+} from "@/shared/validation";
+
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,7 +98,7 @@ async function audit(
     | "rate_limited",
 ): Promise<void> {
   await writeAuditLog(request, "public", "certificate.search", outcome).catch(
-    () => console.error("Search audit write failed"),
+    () => { console.error("Search audit write failed"); },
   );
 }
 async function retrieveStudent(
@@ -104,7 +107,7 @@ async function retrieveStudent(
   session: string,
 ) {
   if (student.get("erasurePending") === true) {
-    await recordLookupMiss(request).catch(() => undefined);
+    await recordLookupMiss(request).catch(() => {});
     await audit(request, "no_match");
     await delayFailedLookup();
     return genericResponse();
@@ -113,7 +116,7 @@ async function retrieveStudent(
     request,
     process.env.PRIVACY_POLICY_VERSION ?? "2026-10",
     student.id,
-  ).catch(() => undefined);
+  ).catch(() => {});
   const certificateSnapshot = await db
     .collection("certificates")
     .where("studentId", "==", student.id)
@@ -127,15 +130,13 @@ async function retrieveStudent(
       document.get("published") !== false,
   );
   if (active.length === 0) {
-    await recordLookupMiss(request).catch(() =>
-      console.error("Search miss counter failed"),
+    await recordLookupMiss(request).catch(() => { console.error("Search miss counter failed"); },
     );
     await audit(request, "no_match");
     await delayFailedLookup();
     return genericResponse();
   }
-  await recordLookupSuccess(request).catch(() =>
-    console.error("Search state reset failed"),
+  await recordLookupSuccess(request).catch(() => { console.error("Search state reset failed"); },
   );
   await audit(request, "success");
   const accessToken = issueStudentAccessToken(
@@ -194,27 +195,27 @@ export async function POST(request: NextRequest) {
       if (!challenge) {
         await consumeSearchBudget(request);
         await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => undefined);
+        await recordLookupMiss(request).catch(() => {});
         await delayFailedLookup();
         return genericResponse();
       }
       if (!(await consumeSearchBudget(request, challenge.sk))) {
         await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => undefined);
+        await recordLookupMiss(request).catch(() => {});
         await delayFailedLookup();
         return genericResponse();
       }
       const allowed = await consumeDisambiguationAttempt(challenge.nonce);
       if (!allowed) {
         await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => undefined);
+        await recordLookupMiss(request).catch(() => {});
         await delayFailedLookup();
         return genericResponse();
       }
       const parsedAnswer = studentDisambiguationSchema.safeParse(body);
       if (!parsedAnswer.success) {
         await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => undefined);
+        await recordLookupMiss(request).catch(() => {});
         await delayFailedLookup();
         return genericResponse();
       }
@@ -227,7 +228,7 @@ export async function POST(request: NextRequest) {
       );
       if (eligibleCandidates.length < 2) {
         await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => undefined);
+        await recordLookupMiss(request).catch(() => {});
         await delayFailedLookup();
         return genericResponse();
       }
@@ -249,7 +250,7 @@ export async function POST(request: NextRequest) {
           : null;
       if (!selected) {
         await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => undefined);
+        await recordLookupMiss(request).catch(() => {});
         await delayFailedLookup();
         return genericResponse();
       }
@@ -297,7 +298,7 @@ export async function POST(request: NextRequest) {
     const matchCount = eligibleCandidates.length;
     const matchKind = classifySearchMatchCount(matchCount);
     if (matchKind === "none") {
-      await recordLookupMiss(request).catch(() => undefined);
+      await recordLookupMiss(request).catch(() => {});
       await audit(request, "no_match");
       await delayFailedLookup();
       return genericResponse();
@@ -322,7 +323,7 @@ export async function POST(request: NextRequest) {
       });
     }
     if (studentSnapshot.docs.length !== 1) {
-      await recordLookupMiss(request).catch(() => undefined);
+      await recordLookupMiss(request).catch(() => {});
       await audit(request, "no_match");
       await delayFailedLookup();
       return genericResponse();

@@ -31,7 +31,7 @@ export default function NetworkProgress() {
     const start = () => {
       pending += 1;
       // Short requests finish before the bar appears, so it never flickers.
-      if (pending === 1) timer = window.setTimeout(() => setActive(true), 140);
+      if (pending === 1) timer = window.setTimeout(() => { setActive(true); }, 140);
     };
     const finish = () => {
       pending = Math.max(0, pending - 1);

@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
+
+import { describe, expect, it } from "vitest";
 
 describe("lazy Google Translate integration", () => {
   it("loads the Google script only from the language menu interaction", async () => {

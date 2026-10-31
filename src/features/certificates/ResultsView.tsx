@@ -1,7 +1,8 @@
 "use client";
-import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
 import SiteShell from "@/components/layout/SiteShell";
 import { useCertificateFlow } from "@/features/certificates/CertificateFlowProvider";
 export default function ResultsPage() {

@@ -1,4 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { decryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
 import {
   createCertificateNumberHash,
@@ -7,12 +10,12 @@ import {
   writeAuditLog,
   verifyRequestAppCheck,
 } from "@/server/security";
-import { z } from "zod";
 import {
   publicVerificationOutcome,
   isPubliclyDownloadableStatus,
 } from "@/shared/certificate-lifecycle";
-import { decryptCertificateNumber } from "@/server/certificate-number";
+
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,7 +104,7 @@ function maskStudentName(value: string): string {
 }
 async function audit(request: NextRequest, outcome: string): Promise<void> {
   await writeAuditLog(request, "public", "certificate.verify", outcome).catch(
-    () => console.error("Certificate verification audit write failed"),
+    () => { console.error("Certificate verification audit write failed"); },
   );
 }
 export async function POST(request: NextRequest) {

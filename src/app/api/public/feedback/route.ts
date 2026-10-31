@@ -1,8 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
 import { db } from "@/server/firebase-admin";
 import { hashRequesterIp } from "@/server/security";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const schema = z.object({

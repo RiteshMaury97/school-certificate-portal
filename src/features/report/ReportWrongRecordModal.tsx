@@ -1,7 +1,12 @@
 "use client";
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { appCheckHeaders } from "@/lib/firebase-client";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+
+import { appCheckHeaders } from "@/lib/firebase-client";
+
+import type { FormEvent} from "react";
+
+
 
 export default function ReportWrongRecordModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
@@ -41,7 +46,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => { document.removeEventListener("keydown", onKey); };
   }, [onClose]);
   useEffect(() => {
     if (!siteKey || !captcha.current) {
@@ -58,7 +63,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             setToken(value);
             setCaptchaError(false);
           },
-          "expired-callback": () => setToken(""),
+          "expired-callback": () => { setToken(""); },
           "error-callback": () => {
             setToken("");
             setCaptchaError(true);
@@ -79,7 +84,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       script.async = true;
       script.defer = true;
       script.onload = render;
-      script.onerror = () => setCaptchaError(true);
+      script.onerror = () => { setCaptchaError(true); };
       document.head.appendChild(script);
     }
     return () => {
@@ -196,7 +201,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 minLength={2}
                 maxLength={100}
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); }}
                 className="mt-1 w-full rounded-lg border p-3"
                 placeholder={"Name as in school records"}
               />
@@ -208,7 +213,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 required
                 pattern="\d{4}-\d{2}"
                 value={session}
-                onChange={(e) => setSession(e.target.value)}
+                onChange={(e) => { setSession(e.target.value); }}
                 className="mt-1 w-full rounded-lg border p-3"
                 placeholder={"2023-24"}
               />
@@ -222,7 +227,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 maxLength={2000}
                 rows={4}
                 value={issue}
-                onChange={(e) => setIssue(e.target.value)}
+                onChange={(e) => { setIssue(e.target.value); }}
                 className="mt-1 w-full rounded-lg border p-3"
                 placeholder={"Describe the incorrect detail or certificate issue"}
               />
@@ -234,7 +239,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 required
                 maxLength={254}
                 value={contact}
-                onChange={(e) => setContact(e.target.value)}
+                onChange={(e) => { setContact(e.target.value); }}
                 className="mt-1 w-full rounded-lg border p-3"
                 placeholder={"How can the school contact you?"}
               />
@@ -245,7 +250,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 type="checkbox"
                 required
                 checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
+                onChange={(e) => { setConsent(e.target.checked); }}
                 className="mt-1"
               />
               <span>

@@ -1,6 +1,6 @@
 "use client";
-import { useState, type FormEvent } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useState, type SyntheticEvent } from "react";
 
 type Props = {
   busy: boolean;
@@ -11,74 +11,77 @@ type Props = {
 };
 
 const field =
-  "mt-2 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-[var(--text)]";
+  "mt-2 min-h-11 w-full rounded-lg border border-[#d5dfd8] bg-white p-3 text-[#17251f] placeholder:text-[#9aa69e] focus:border-[#315d4c] focus:outline-none focus:ring-2 focus:ring-[#315d4c]/15";
 const primary =
-  "flex min-h-12 w-full items-center justify-center rounded-lg bg-[var(--primary)] py-3 font-semibold text-[var(--on-primary)] disabled:opacity-70";
+  "flex min-h-12 w-full items-center justify-center rounded-lg bg-[#315d4c] py-3 font-semibold text-white transition hover:bg-[#244b3b] disabled:opacity-70";
 
 export default function CredentialsStep({ busy, resetBusy, onSubmit, onGoogle, onReset }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
-  const submit = (event: FormEvent) => {
+  const submit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     onSubmit(email.trim(), password);
   };
   return (
     <>
       <form onSubmit={submit} className="mt-6 space-y-4">
-        <label className="block text-sm font-medium">
+        <label htmlFor="admin-email" className="block text-sm font-medium">
           Email
           <input
+            id="admin-email"
+            aria-label="Email address"
             translate="no"
             type="email"
             autoComplete="username"
             required
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => { setEmail(event.target.value); }}
             className={field}
           />
         </label>
         <div>
           <label htmlFor="admin-password" className="block text-sm font-medium">
             Password
+            <div className="mt-2 flex gap-2">
+              <input
+                id="admin-password"
+                aria-label="Password"
+                translate="no"
+                type={show ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => { setPassword(event.target.value); }}
+                className={`${field} mt-0`}
+              />
+              <button
+                type="button"
+                aria-label={show ? "Hide password" : "Show password"}
+                title={show ? "Hide password" : "Show password"}
+                onClick={() => { setShow((value) => !value); }}
+                className="min-h-11 shrink-0 rounded-lg border border-[var(--border)] px-3 text-[var(--text)]"
+              >
+                {show ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
+              </button>
+            </div>
           </label>
-          <div className="mt-2 flex gap-2">
-            <input
-              id="admin-password"
-              translate="no"
-              type={show ? "text" : "password"}
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className={`${field} mt-0`}
-            />
-            <button
-              type="button"
-              aria-label={show ? "Hide password" : "Show password"}
-              title={show ? "Hide password" : "Show password"}
-              onClick={() => setShow((value) => !value)}
-              className="min-h-11 shrink-0 rounded-lg border border-[var(--border)] px-3 text-[var(--text)]"
-            >
-              {show ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
-            </button>
-          </div>
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => { onReset(email); }}
+            disabled={resetBusy}
+            aria-busy={resetBusy}
+            className="inline-flex items-center text-xs font-medium text-[#315d4c] hover:underline"
+          >
+            {resetBusy ? "Sending…" : "Forgot password?"}
+          </button>
         </div>
         <button disabled={busy} aria-busy={busy} className={primary}>
-          {busy ? "Verifying…" : "Continue"}
+          {busy ? "Verifying…" : "Continue securely"}
         </button>
       </form>
-      <div className="mt-3 flex justify-end">
-        <button
-          type="button"
-          onClick={() => onReset(email)}
-          disabled={resetBusy}
-          aria-busy={resetBusy}
-          className="inline-flex items-center text-sm font-semibold text-[var(--text)] underline"
-        >
-          {resetBusy ? "Sending…" : "Forgot password?"}
-        </button>
-      </div>
       <div className="my-5 flex items-center gap-3">
         <span className="h-px flex-1 bg-[var(--divider)]" />
         <span className="text-xs text-[var(--text-muted)]">or</span>

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-  const sendMail = vi.fn(async (..._args: unknown[]) => undefined);
+  const sendMail = vi.fn(async (..._args: unknown[]) => {});
   const createTransport = vi.fn(() => ({ sendMail }));
   const set = vi.fn();
   const get = vi.fn(async () => ({ get: () => 0 }));
@@ -93,7 +93,7 @@ describe("central Gmail mailer", () => {
   it("uses the development OTP fallback without logging SMTP secrets", async () => {
     delete process.env.GMAIL_USER;
     delete process.env.GMAIL_APP_PASSWORD;
-    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
     await sendAdminOtpEmail({
       to: "admin@example.com",
       code: "012345",
@@ -108,7 +108,7 @@ describe("central Gmail mailer", () => {
     vi.stubEnv("NODE_ENV", "production");
     delete process.env.GMAIL_USER;
     delete process.env.GMAIL_APP_PASSWORD;
-    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
     await expect(sendAdminOtpEmail({
       to: "admin@example.com",
       code: "012345",

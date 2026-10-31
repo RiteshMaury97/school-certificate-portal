@@ -1,0 +1,39 @@
+import type { Cert } from "./admin.types";
+
+export type CatalogOption = { id: string; label?: string; name?: string };
+export type FaqItem = { questionEn: string; answerEn: string };
+export type StudentFormState = {
+  admissionNumber: string;
+  dateOfBirth: string;
+  studentName: string;
+  fatherName: string;
+  motherName: string;
+  session: string;
+  certificateType: string;
+  certificateNumber: string;
+  issuedAt: string;
+};
+export type BulkPreviewItem = {
+  fileName: string;
+  size: number;
+  valid: boolean;
+  errors: string[];
+  mapping: Record<string, string> | null;
+};
+export type NotifyState = { email: string; mobile: string; consent: boolean };
+export type AnnouncementState = {
+  enabled: boolean;
+  type: "info" | "warning";
+  textEn: string;
+  linkUrl: string;
+  startAt: string;
+  endAt: string;
+};
+export type PreviewUrl = { url: string; mimeType: string };
+export type CertificateHistory = Record<string, Record<string, unknown>[]>;
+export type CertificatePreviewMap = Record<string, PreviewUrl>;
+export type AdminRecord = Record<string, unknown>;
+export type BrandingState = Record<string, string>;
+export type AdminInviteRole = "uploader" | "approver" | "superadmin";
+export type CatalogKind = "sessions" | "certificateTypes";
+export type PendingCertificate = Cert;

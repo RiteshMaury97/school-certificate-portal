@@ -1,9 +1,10 @@
 import "server-only";
 import { FieldValue, type DocumentReference } from "firebase-admin/firestore";
+
 import { db } from "@/server/firebase-admin";
 
 export async function recordCertificateDownloads(
-  items: Array<{ ref: DocumentReference; session: string }>,
+  items: { ref: DocumentReference; session: string }[],
 ): Promise<void> {
   if (!items.length) return;
   await db.runTransaction(async (tx) => {

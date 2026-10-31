@@ -1,5 +1,5 @@
-import { pageMetadata } from "@/lib/page-metadata";
 import FaqView from "@/features/faq/FaqView";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata = pageMetadata(
   "Frequently Asked Questions",

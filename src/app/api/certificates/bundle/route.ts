@@ -1,16 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import archiver from "archiver";
-import { PDFDocument } from "pdf-lib";
-import type { DocumentReference } from "firebase-admin/firestore";
 import { PassThrough, Readable } from "node:stream";
+
+import archiver from "archiver";
+import { NextResponse } from "next/server";
+import { PDFDocument } from "pdf-lib";
+
+import { recordCertificateDownloads } from "@/server/download-metrics";
 import { db } from "@/server/firebase-admin";
 import { readR2Object } from "@/server/r2";
-import { watermarkCertificate } from "@/server/watermark";
 import {
   studentAccessTokenOwnsStudent,
   verifyStudentAccessToken,
 } from "@/server/security";
-import { recordCertificateDownloads } from "@/server/download-metrics";
+import { watermarkCertificate } from "@/server/watermark";
+
+import type { DocumentReference } from "firebase-admin/firestore";
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,11 +63,11 @@ export async function GET(request: NextRequest) {
       if (visible === undefined) {
         const student = await db.collection("students").doc(studentId).get();
         const visibleNow =
-          student.exists === true && student.get("erasurePending") !== true;
+          student.exists && student.get("erasurePending") !== true;
         visible = visibleNow;
         studentStates.set(studentId, visibleNow);
       }
-      if (d.status === "published" && d.published !== false && visible === true)
+      if (d.status === "published" && d.published !== false && visible)
         docs.push(doc);
     }
     if (!docs.length) return unavailable();
@@ -71,7 +75,7 @@ export async function GET(request: NextRequest) {
     const archive = archiver("zip", { zlib: { level: 5 } });
     archive.on("error", () => output.destroy(new Error("Archive failed")));
     archive.pipe(output);
-    const included: Array<{ ref: DocumentReference; session: string }> = [];
+    const included: { ref: DocumentReference; session: string }[] = [];
     for (const doc of docs) {
       const data = doc.data();
       const mime = String(data.mimeType ?? "application/pdf");

@@ -1,6 +1,8 @@
 "use client";
-import LegalPageLayout, { LegalSection } from "@/components/layout/LegalPageLayout";
+import LegalPageLayout from "@/components/layout/LegalPageLayout";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
+
+import type { LegalSection } from "@/components/layout/LegalPageLayout";
 
 const version = process.env.NEXT_PUBLIC_TERMS_VERSION || "1.0";
 

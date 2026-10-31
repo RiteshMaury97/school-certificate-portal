@@ -1,7 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
 import { db } from "@/server/firebase-admin";
-import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { apiError, requireRoles } from "@/server/security";
+
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {

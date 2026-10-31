@@ -1,5 +1,5 @@
-import { pageMetadata } from "@/lib/page-metadata";
 import FinderView from "@/features/certificates/FinderView";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata = pageMetadata(
   "Find My Certificates",

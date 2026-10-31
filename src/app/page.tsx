@@ -1,9 +1,9 @@
-import { pageMetadata } from "@/lib/page-metadata";
 import HomeView from "@/features/home/HomeView";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata = pageMetadata(
   "Home",
-  "Official digital services of Satyam International School.",
+  "Student certificate access, certificate verification and official school support for Satyam International School in Zamania, Ghazipur.",
 );
 
 export default function Page() {

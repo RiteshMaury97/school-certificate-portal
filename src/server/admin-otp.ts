@@ -1,10 +1,13 @@
 import "server-only";
 
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
+
 import { FieldValue, type DocumentReference, type Transaction } from "firebase-admin/firestore";
-import type { NextRequest } from "next/server";
+
 import { db } from "./firebase-admin";
 import { hashRequesterIp } from "./security";
+
+import type { NextRequest } from "next/server";
 
 const CHALLENGES = "adminOtpChallenges";
 const MINUTE = 60_000;
@@ -101,7 +104,7 @@ export async function recordAdminOtpFailure(
         to: recipients,
         subject: "School Portal: administrator OTP lock alert",
         text: `An administrator account was locked after repeated email-code failures. Account: ${email}. Attempts: ${result.count}.`,
-      }).catch(() => undefined);
+      }).catch(() => {});
     }
   }
   return { locked: result.locked, count: result.count };
@@ -112,7 +115,7 @@ export async function deleteExpiredAdminOtpChallenges(): Promise<number> {
     .where("expiresAt", "<=", new Date()).limit(400).get();
   if (snapshot.empty) return 0;
   const batch = db.batch();
-  snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+  for (const doc of snapshot.docs) batch.delete(doc.ref);
   await batch.commit();
   return snapshot.size;
 }

@@ -1,4 +1,5 @@
 import { createCipheriv, createHmac, randomBytes } from "node:crypto";
+
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
@@ -52,7 +53,7 @@ function encrypt(value) {
 }
 let scanned = 0,
   changed = 0;
-let cursor = undefined;
+let cursor;
 for (;;) {
   let query = db.collection("students").orderBy("__name__").limit(300);
   if (cursor) query = query.startAfter(cursor);

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+
+import { describe, expect, it } from "vitest";
 
 describe("admin OTP Firestore access policy", () => {
   it("explicitly denies all client access to challenge records", async () => {

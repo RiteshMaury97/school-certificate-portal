@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
 import { isAllowedRequestOrigin } from "./shared/origin-policy";
+
+import type { NextRequest} from "next/server";
 const APP_ORIGIN = process.env.APP_ORIGIN;
 function buildCsp(nonce: string): string {
   const dev = process.env.NODE_ENV !== "production";

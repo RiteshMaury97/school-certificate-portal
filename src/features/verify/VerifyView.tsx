@@ -1,10 +1,12 @@
 "use client";
-import { FormEvent, useEffect, useId, useRef, useState } from "react";
-import SiteShell from "@/components/layout/SiteShell";
-import PublicServiceTabs from "@/components/layout/PublicServiceTabs";
-import { appCheckHeaders } from "@/lib/firebase-client";
-import ErrorState from "@/components/feedback/ErrorState";
+import { useEffect, useId, useRef, useState } from "react";
+
 import EmptyState from "@/components/feedback/EmptyState";
+import ErrorState from "@/components/feedback/ErrorState";
+import SiteShell from "@/components/layout/SiteShell";
+import { appCheckHeaders } from "@/lib/firebase-client";
+
+import type { FormEvent} from "react";
 
 type Verification =
   | {
@@ -74,7 +76,7 @@ export default function VerifyPage() {
             setCaptchaToken(token);
             setCaptchaError(false);
           },
-          "expired-callback": () => setCaptchaToken(""),
+          "expired-callback": () => { setCaptchaToken(""); },
           "error-callback": () => {
             setCaptchaToken("");
             setCaptchaError(true);
@@ -94,7 +96,7 @@ export default function VerifyPage() {
       script.async = true;
       script.defer = true;
       script.onload = render;
-      script.onerror = () => setCaptchaError(true);
+      script.onerror = () => { setCaptchaError(true); };
       document.head.appendChild(script);
     }
     return () => {
@@ -164,7 +166,6 @@ export default function VerifyPage() {
   return (
     <SiteShell>
       <section className="mx-auto max-w-4xl">
-        <PublicServiceTabs />
         <div className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-6 py-8 text-center shadow-[var(--shadow-card)] sm:px-10 sm:py-10">
           <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--text-muted)]">
             {"Public certificate service"}
@@ -192,7 +193,7 @@ export default function VerifyPage() {
                   maxLength={80}
                   autoComplete="off"
                   value={certificateNumber}
-                  onChange={(event) => setCertificateNumber(event.target.value)}
+                  onChange={(event) => { setCertificateNumber(event.target.value); }}
                   placeholder="Enter the certificate number"
                   className="mt-2 min-h-12 w-full rounded-lg border border-[var(--border)] px-3.5 py-3 text-base font-normal outline-none focus-visible:border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--border)]/20"
                 />
@@ -208,7 +209,7 @@ export default function VerifyPage() {
                   maxLength={7}
                   pattern="\d{4}-\d{2}"
                   value={session}
-                  onChange={(event) => setSession(event.target.value)}
+                  onChange={(event) => { setSession(event.target.value); }}
                   placeholder="e.g. 2023-24"
                   className="mt-2 min-h-12 w-full rounded-lg border border-[var(--border)] px-3.5 py-3 text-base font-normal outline-none focus-visible:border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--border)]/20"
                 />

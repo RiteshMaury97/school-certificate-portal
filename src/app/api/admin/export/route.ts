@@ -1,12 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
 import { createEncryptedExport } from "@/server/encrypted-export";
+import { db } from "@/server/firebase-admin";
 import {
   apiError,
   requireRoles,
   requireSensitiveReauth,
   writeAuditLog,
 } from "@/server/security";
-import { db } from "@/server/firebase-admin";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
@@ -20,7 +23,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     const format =
-      "format" in body ? String((body as { format: unknown }).format) : "json";
+      "format" in body ? String((body).format) : "json";
     const passphrase =
       "passphrase" in body
         ? String((body as { passphrase?: unknown }).passphrase ?? "")

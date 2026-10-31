@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
+
+import { describe, expect, it } from "vitest";
 
 describe("empty and error state contracts", () => {
   it("exposes reusable EmptyState and retryable ErrorState APIs", async () => {
@@ -49,9 +50,10 @@ describe("empty and error state contracts", () => {
   });
 
   it("uses an actionable empty state for the admin student list", async () => {
-    const admin = await readFile("src/features/admin/AdminConsole.tsx", "utf8");
-    expect(admin).toContain('title="No data found"');
-    expect(admin).toContain("Add student");
-    expect(admin).toContain("student-create-form");
+    const list = await readFile("src/features/admin/components/students/StudentsList.tsx", "utf8");
+    const form = await readFile("src/features/admin/components/students/StudentCreatePanel.tsx", "utf8");
+    expect(list).toContain('title="No data found"');
+    expect(list).toContain("Add student");
+    expect(form).toContain("student-create-form");
   });
 });

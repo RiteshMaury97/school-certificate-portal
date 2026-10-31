@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
+import { eraseStudentData } from "@/server/erasure";
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
 import {
@@ -7,7 +9,8 @@ import {
   writeAuditLog,
   apiError,
 } from "@/server/security";
-import { eraseStudentData } from "@/server/erasure";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   try {
@@ -75,11 +78,11 @@ export async function PATCH(request: NextRequest) {
         admin.uid,
         "data_rights.erasure_complete",
         result.erasureId,
-      ).catch(() => undefined);
+      ).catch(() => {});
       if (requesterEmail) {
         const siteSettings = await db.collection("siteSettings").doc("main").get();
         const schoolName = String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
-        await sendMail({ to: requesterEmail, subject: `${schoolName}: data erasure request completed`, text: `${schoolName}: your data erasure request ${body.id} has been completed. Reference receipt: ${result.erasureId}. Please contact the school if you need assistance.` }).catch(() => undefined);
+        await sendMail({ to: requesterEmail, subject: `${schoolName}: data erasure request completed`, text: `${schoolName}: your data erasure request ${body.id} has been completed. Reference receipt: ${result.erasureId}. Please contact the school if you need assistance.` }).catch(() => {});
       }
       return NextResponse.json(
         {

@@ -1,11 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
 import { db } from "@/server/firebase-admin";
 import { readR2Object } from "@/server/r2";
-import { watermarkCertificate } from "@/server/watermark";
 import {
   studentAccessTokenOwnsStudent,
   verifyStudentAccessToken,
 } from "@/server/security";
+import { watermarkCertificate } from "@/server/watermark";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const unavailable = () =>
@@ -53,11 +56,11 @@ export async function GET(request: NextRequest) {
       if (visible === undefined) {
         const student = await db.collection("students").doc(studentId).get();
         const visibleNow =
-          student.exists === true && student.get("erasurePending") !== true;
+          student.exists && student.get("erasurePending") !== true;
         visible = visibleNow;
         studentStates.set(studentId, visibleNow);
       }
-      if (d.status === "published" && d.published !== false && visible === true)
+      if (d.status === "published" && d.published !== false && visible)
         docs.push(doc);
     }
     const pages: string[] = [];

@@ -43,8 +43,8 @@ async function checkPages(page: Page, populated: boolean) {
           options.callback("e2e-turnstile-token");
           return "e2e-turnstile-widget";
         },
-        reset: () => undefined,
-        remove: () => undefined,
+        reset: () => {},
+        remove: () => {},
       },
     });
   });
@@ -73,7 +73,7 @@ test("all public routes render cleanly with populated public data", async ({ pag
 test("certificate search has a neutral disabled empty-session state", async ({ page }) => {
   await mockPublicApi(page, false);
   await page.addInitScript(() => {
-    Object.defineProperty(window, "turnstile", { configurable: true, value: { render: () => "test", reset: () => undefined, remove: () => undefined } });
+    Object.defineProperty(window, "turnstile", { configurable: true, value: { render: () => "test", reset: () => {}, remove: () => {} } });
   });
   await page.goto("/certificates");
   const session = page.locator('select[name="session"]');

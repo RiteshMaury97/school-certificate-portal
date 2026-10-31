@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import Header from "@/components/layout/Header";
+import { useEffect, useState, type ReactNode } from "react";
+
 import Footer from "@/components/layout/Footer";
+import Header from "@/components/layout/Header";
 import ReportWrongRecordModal from "@/features/report/ReportWrongRecordModal";
 type SiteSettings = {
   schoolName?: string;
@@ -34,18 +35,18 @@ export default function SiteShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       if (process.env.NODE_ENV === "production") {
-        void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);
+        void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
       } else {
         void navigator.serviceWorker
           .getRegistrations()
           .then((items) => Promise.all(items.map((item) => item.unregister())))
-          .catch(() => undefined);
+          .catch(() => {});
         void caches
           .keys()
           .then((names) =>
             Promise.all(names.filter((n) => n.startsWith("sis-static-")).map((n) => caches.delete(n))),
           )
-          .catch(() => undefined);
+          .catch(() => {});
       }
     }
     try {
@@ -63,7 +64,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
       const hasGoogleCookie = document.cookie
         .split("; ")
         .some((cookie) => cookie.startsWith("googtrans=") && cookie.split("=")[1] !== "");
-      setTranslationCookieUsed(detail?.cookieUsed === true && hasGoogleCookie);
+      setTranslationCookieUsed((detail?.cookieUsed) && hasGoogleCookie);
     };
     window.addEventListener("sis-google-translate-choice", onTranslationChoice);
 
@@ -74,7 +75,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
         if (active && data && typeof data.settings === "object" && data.settings)
           setSettings(data.settings as SiteSettings);
       })
-      .catch(() => undefined);
+      .catch(() => {});
     return () => {
       active = false;
       window.removeEventListener("sis-google-translate-choice", onTranslationChoice);
@@ -190,6 +191,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
       )}
       <Footer
         schoolName={schoolName}
+        tagline={settings.tagline}
         logoUrl={settings.logoUrl}
         address={settings.address}
         affiliation={settings.affiliationNumber}
@@ -202,9 +204,9 @@ export default function SiteShell({ children }: { children: ReactNode }) {
         statusPageUrl={settings.statusPageUrl}
         socialLinks={settings.socialLinks}
         translationCookieUsed={translationCookieUsed}
-        onReport={() => setReportOpen(true)}
+        onReport={() => { setReportOpen(true); }}
       />
-      {reportOpen && <ReportWrongRecordModal onClose={() => setReportOpen(false)} />}
+      {reportOpen && <ReportWrongRecordModal onClose={() => { setReportOpen(false); }} />}
     </div>
   );
 }

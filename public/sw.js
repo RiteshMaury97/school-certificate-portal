@@ -8,7 +8,7 @@ self.addEventListener("install", event => {
   event.waitUntil((async () => {
     if (IS_DEV) { await self.skipWaiting(); return; }
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll([OFFLINE_URL, "/offline.css", "/icons/icon-192.png"]).catch(() => undefined);
+    await cache.addAll([OFFLINE_URL, "/offline.css", "/icons/icon-192.png"]).catch(() => {});
     await self.skipWaiting();
   })());
 });

@@ -1,5 +1,5 @@
-import { pageMetadata } from "@/lib/page-metadata";
 import AdminAuthView from "@/features/auth/AdminAuthView";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata = pageMetadata(
   "Administrator sign in",

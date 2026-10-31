@@ -1,15 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
-import { db } from "@/server/firebase-admin";
-import { apiError, requireRoles, writeAuditLog } from "@/server/security";
-import { sendCertificateAvailableNotice } from "@/server/notifications";
+import { NextResponse } from "next/server";
+
 import { removeCertificateNumberIndex } from "@/server/certificate-index";
-import { canReviewUpload } from "@/shared/role-policy";
+import { db } from "@/server/firebase-admin";
+import { sendCertificateAvailableNotice } from "@/server/notifications";
 import {
   adjustPublicSessions,
   ensurePublicSessions,
   rebuildPublicSessions,
 } from "@/server/public-sessions";
+import { apiError, requireRoles, writeAuditLog } from "@/server/security";
+import { canReviewUpload } from "@/shared/role-policy";
+
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +30,7 @@ export async function POST(
         { error: "Choose approve or reject." },
         { status: 400 },
       );
-    const decision = String((body as { decision: unknown }).decision);
+    const decision = String((body).decision);
     const reason =
       "reason" in body
         ? String((body as { reason?: unknown }).reason ?? "").trim()
@@ -116,7 +119,7 @@ export async function POST(
       };
     });
     if (decision === "approve") {
-      const changes: Array<{ session: string; delta: 1 | -1 }> = [
+      const changes: { session: string; delta: 1 | -1 }[] = [
         { session: result.session, delta: 1 },
       ];
       if (result.replacedCertificateId && result.replacedSession)
@@ -143,10 +146,9 @@ export async function POST(
         result.studentId,
       );
     if (decision === "approve" && result.studentId)
-      await sendCertificateAvailableNotice(result.studentId).catch(() =>
-        console.error(
+      await sendCertificateAvailableNotice(result.studentId).catch(() => { console.error(
           "Consent-based certificate notification could not be sent.",
-        ),
+        ); },
       );
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {

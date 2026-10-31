@@ -1,7 +1,6 @@
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
-import { PDFDocument, PDFArray, PDFDict, PDFName, PDFRef } from "pdf-lib";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
 import {
   S3Client,
   PutObjectCommand,
@@ -11,6 +10,8 @@ import {
   CopyObjectCommand,
   HeadObjectCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { PDFDocument, PDFArray, PDFDict, PDFName, PDFRef } from "pdf-lib";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const allowedTypes = {
@@ -119,11 +120,11 @@ async function validatePdf(buffer: Buffer): Promise<void> {
     if (value instanceof PDFRef) return inspect(document.context.lookup(value));
     if (value instanceof PDFName) return unsafeNames.has(value.toString());
     if (value instanceof PDFDict) {
-      for (const [key, child] of (value as PDFDict).entries())
+      for (const [key, child] of (value).entries())
         if (unsafeNames.has(key.toString()) || inspect(child)) return true;
     }
     if (value instanceof PDFArray)
-      for (const child of (value as PDFArray).asArray())
+      for (const child of (value).asArray())
         if (inspect(child)) return true;
     return false;
   };

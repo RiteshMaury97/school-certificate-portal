@@ -1,5 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+
+import { removeCertificateNumberIndex } from "@/server/certificate-index";
 import { db } from "@/server/firebase-admin";
+import {
+  ensurePublicSessions,
+  rebuildPublicSessions,
+} from "@/server/public-sessions";
+import { softDeleteR2Object } from "@/server/r2";
 import {
   createSearchKey,
   requireRoles,
@@ -7,20 +15,15 @@ import {
   writeAuditLog,
   apiError,
 } from "@/server/security";
-import { studentUpdateSchema } from "@/shared/validation";
-import { softDeleteR2Object } from "@/server/r2";
-import { removeCertificateNumberIndex } from "@/server/certificate-index";
-import {
-  ensurePublicSessions,
-  rebuildPublicSessions,
-} from "@/server/public-sessions";
-import { FieldValue } from "firebase-admin/firestore";
-import { retentionExpiryFromSession } from "@/shared/retention-policy";
 import {
   encryptStudentIdentifier,
   studentIdentifierHmac,
   studentIdentityMatches,
 } from "@/server/student-pii";
+import { retentionExpiryFromSession } from "@/shared/retention-policy";
+import { studentUpdateSchema } from "@/shared/validation";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export async function PATCH(
   request: NextRequest,
@@ -163,7 +166,7 @@ export async function DELETE(
       await removeCertificateNumberIndex(cert.id);
     }
     const batch = db.batch();
-    certs.docs.forEach((doc) => batch.delete(doc.ref));
+    for (const doc of certs.docs) batch.delete(doc.ref);
     batch.delete(ref);
     await batch.commit();
     if (certs.size > 0)

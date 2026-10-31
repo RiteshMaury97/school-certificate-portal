@@ -1,21 +1,25 @@
-import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
-import {
-  encryptCertificateNumber,
-  decryptCertificateNumber,
-} from "@/server/certificate-number";
-import { NextRequest, NextResponse } from "next/server";
 import { randomUUID, createHash } from "node:crypto";
+
 import { FieldValue } from "firebase-admin/firestore";
-import { db } from "@/server/firebase-admin";
-import { uploadCertificate, certificateTypeSlug } from "@/server/r2";
-import { requireRoles, writeAuditLog, apiError } from "@/server/security";
-import { certificateUploadMetadataSchema } from "@/shared/validation";
+import { NextResponse } from "next/server";
+
 import {
   createCertificateNumberIndex,
   DuplicateCertificateNumberError,
   removeCertificateNumberIndex,
 } from "@/server/certificate-index";
+import {
+  encryptCertificateNumber,
+  decryptCertificateNumber,
+} from "@/server/certificate-number";
+import { db } from "@/server/firebase-admin";
+import { uploadCertificate, certificateTypeSlug } from "@/server/r2";
 import { softDeleteR2Object } from "@/server/r2";
+import { requireRoles, writeAuditLog, apiError } from "@/server/security";
+import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
+import { certificateUploadMetadataSchema } from "@/shared/validation";
+
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -217,11 +221,9 @@ export async function POST(request: NextRequest) {
             }),
       });
     } catch (error) {
-      await removeCertificateNumberIndex(ref.id).catch(() =>
-        console.error("Certificate number index cleanup failed"),
+      await removeCertificateNumberIndex(ref.id).catch(() => { console.error("Certificate number index cleanup failed"); },
       );
-      await softDeleteR2Object(stored.r2Key, studentId).catch(() =>
-        console.error("Orphan R2 object cleanup failed"),
+      await softDeleteR2Object(stored.r2Key, studentId).catch(() => { console.error("Orphan R2 object cleanup failed"); },
       );
       if (error instanceof DuplicateCertificateNumberError) {
         return NextResponse.json(

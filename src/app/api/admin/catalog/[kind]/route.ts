@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
 import { db } from "@/server/firebase-admin";
+import { certificateTypeSlug } from "@/server/r2";
 import {
   requireRoles,
   requireSensitiveReauth,
@@ -7,7 +9,8 @@ import {
   apiError,
 } from "@/server/security";
 import { catalogItemSchema, documentIdSchema } from "@/shared/validation";
-import { certificateTypeSlug } from "@/server/r2";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 const allowed = ["sessions", "certificateTypes"] as const;
 type Kind = (typeof allowed)[number];
@@ -25,8 +28,8 @@ export async function GET(
     if (!name)
       return NextResponse.json({ error: "Unknown catalog." }, { status: 404 });
     const snap = await db.collection(name).limit(200).get();
-    const items = snap.docs
-      .map((d) => {
+    const items: Record<string, unknown>[] = snap.docs
+      .map((d): Record<string, unknown> => {
         const data = d.data() as Record<string, unknown>;
         return { ...data, id: d.id };
       })

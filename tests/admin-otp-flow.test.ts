@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   serverTimestamp: vi.fn(() => new Date("2026-01-01T00:00:00.000Z")),
-  sent: vi.fn(async (_message: unknown) => undefined),
+  sent: vi.fn(async (_message: unknown) => {}),
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("firebase-admin/firestore", () => ({

@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+
 import { adminAuth, db } from "@/server/firebase-admin";
 import {
   adminSessionCookieOptions,
@@ -8,6 +9,8 @@ import {
   requireAdmin,
   writeAuditLog,
 } from "@/server/security";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
@@ -18,16 +21,15 @@ export async function POST(request: NextRequest) {
       .where("uid", "==", admin.uid)
       .get();
     const batch = db.batch();
-    snap.docs.forEach((doc) =>
-      batch.set(
+    for (const doc of snap.docs) batch.set(
         doc.ref,
         {
           revokedAt: FieldValue.serverTimestamp(),
           revokeReason: "sign_out_all_devices",
         },
         { merge: true },
-      ),
-    );
+      )
+    ;
     if (!snap.empty) await batch.commit();
     await writeAuditLog(
       request,

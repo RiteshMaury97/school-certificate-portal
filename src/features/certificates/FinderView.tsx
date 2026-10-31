@@ -1,18 +1,21 @@
 "use client";
-import { FormEvent, useEffect, useId, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useId, useRef, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { z } from "zod";
-import { motion, useReducedMotion } from "framer-motion";
-import SiteShell from "@/components/layout/SiteShell";
+
 import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
-import PublicServiceTabs from "@/components/layout/PublicServiceTabs";
-import FeedbackWidget from "@/features/feedback/FeedbackWidget";
-import { studentLookupSchema } from "@/shared/validation";
-import { appCheckHeaders } from "@/lib/firebase-client";
+import SiteShell from "@/components/layout/SiteShell";
 import { useCertificateFlow } from "@/features/certificates/CertificateFlowProvider";
+import FeedbackWidget from "@/features/feedback/FeedbackWidget";
+import { appCheckHeaders } from "@/lib/firebase-client";
+import { studentLookupSchema } from "@/shared/validation";
+
 import type { StudentResult } from "@/types";
+import type { FormEvent} from "react";
 
 const formSchema = z.object({
   studentName: z
@@ -160,7 +163,7 @@ export default function FinderPage() {
             setCaptchaToken(token);
             setCaptchaError(false);
           },
-          "expired-callback": () => setCaptchaToken(""),
+          "expired-callback": () => { setCaptchaToken(""); },
           "error-callback": () => {
             setCaptchaToken("");
             setCaptchaError(true);
@@ -180,7 +183,7 @@ export default function FinderPage() {
       script.async = true;
       script.defer = true;
       script.onload = renderWidget;
-      script.onerror = () => setCaptchaError(true);
+      script.onerror = () => { setCaptchaError(true); };
       document.head.appendChild(script);
     }
     return () => {
@@ -220,7 +223,7 @@ export default function FinderPage() {
       anchor.href = url;
       anchor.download = "school-certificates.zip";
       anchor.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      window.setTimeout(() => { URL.revokeObjectURL(url); }, 1000);
     } catch (downloadError) {
       setError(
         downloadError instanceof Error
@@ -330,39 +333,62 @@ export default function FinderPage() {
 
   return (
     <SiteShell>
-      <section className="mx-auto max-w-4xl">
-        <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[var(--text-muted)]">
+      <section className="mx-auto max-w-6xl">
+        <nav aria-label="Breadcrumb" className="mb-4 text-xs text-[var(--text-muted)]">
           <Link href="/" className="underline">
             Home
           </Link>{" "}
           / Certificates
         </nav>
-        <PublicServiceTabs />
+        <div className="flex flex-col">
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.25 }}
+          className="order-1 mb-5 overflow-hidden rounded-3xl bg-[var(--primary)] px-6 py-8 text-[var(--on-primary)] shadow-[var(--shadow-card)] sm:px-9 sm:py-10"
+        >
+          <div className="grid items-center gap-7 sm:grid-cols-[minmax(0,1fr)_220px]">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color-mix(in_srgb,var(--on-primary)_75%,transparent)]">Student services / Certificates</p>
+              <h1 className="mt-3 max-w-xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Your school records,<br className="hidden sm:block" /> all in one place.</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[color-mix(in_srgb,var(--on-primary)_82%,transparent)]">Verify your details to securely view and download official school certificates.</p>
+              <p className="mt-3 text-xs text-[color-mix(in_srgb,var(--on-primary)_70%,transparent)]">Downloaded, previewed and printed copies include a light watermark. The original school file remains unchanged.</p>
+            </div>
+            <div className="rounded-2xl border border-[color-mix(in_srgb,var(--on-primary)_12%,transparent)] bg-[color-mix(in_srgb,var(--on-primary)_8%,transparent)] p-4">
+              <div className="rounded-xl bg-[var(--surface)] p-4 text-[var(--text)]">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-[var(--primary)]">Official certificate</p>
+                <p className="mt-2 text-sm font-semibold">Academic record</p>
+                <p className="mt-1 text-[10px] text-[var(--text-muted)]">Verified student document</p>
+                <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[var(--surface-2)] px-3 py-1 text-[10px] font-semibold text-[var(--primary)]"><ShieldCheck size={12} aria-hidden="true" /> Secure access</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
         <ol
           aria-label={"How it works"}
-          className="mb-5 grid gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:grid-cols-3"
+          className="order-2 mb-5 grid gap-3 rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm sm:grid-cols-3 sm:p-5"
         >
           {[
             {
               icon: "edit",
-              title: `1. ${"Enter your details"}`,
+              title: `1. Enter your details`,
               desc: "Use the details in your school records.",
             },
             {
               icon: "shield",
-              title: `2. ${"We verify your record"}`,
+              title: `2. We verify your record`,
               desc: "A secure check matches the school register.",
             },
             {
               icon: "download",
-              title: `3. ${"View and download your certificates"}`,
+              title: `3. View and download your certificates`,
               desc: "Access your available certificates.",
             },
           ].map((step) => (
             <li key={step.title} className="flex items-center gap-3">
               <span
                 aria-hidden="true"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--surface-2)] text-[var(--text)]"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--surface-2)] text-[var(--primary)]"
               >
                 {step.icon === "edit" ? (
                   <svg
@@ -400,34 +426,13 @@ export default function FinderPage() {
                 )}
               </span>
               <span>
-                <strong className="block text-sm text-[var(--text)]">{step.title}</strong>
-                <span className="text-xs text-[var(--text-muted)]">{step.desc}</span>
+                <strong className="block text-xs font-semibold text-[var(--text)]">{step.title}</strong>
+                <span className="mt-0.5 block text-[10px] leading-4 text-[var(--text-muted)]">{step.desc}</span>
               </span>
             </li>
           ))}
         </ol>
-        <motion.div
-          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: reduceMotion ? 0 : 0.25 }}
-          className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-6 py-8 text-center shadow-[var(--shadow-card)] sm:px-10 sm:py-10"
-        >
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--text-muted)]">
-            {"Student services"}
-          </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight text-[var(--text)] sm:text-4xl">
-            {"Access Your School Certificates"}
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-[var(--text-muted)] sm:text-base">
-            {
-              "Find and securely view or download certificates issued by the school. Enter your details as recorded in the school register."
-            }
-          </p>
-          <p className="mt-3 text-xs text-[var(--text-muted)]">
-            Downloaded, previewed, printed and ZIP copies receive a light watermark. The original
-            school file remains unchanged.
-          </p>
-        </motion.div>
+        </div>
 
         <motion.div
           initial={reduceMotion ? false : { opacity: 0, y: 10 }}
@@ -436,11 +441,13 @@ export default function FinderPage() {
             duration: reduceMotion ? 0 : 0.3,
             delay: reduceMotion ? 0 : 0.04,
           }}
-          className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] sm:p-8"
+          className="mb-8 grid gap-5 lg:grid-cols-[minmax(0,1.8fr)_minmax(250px,.8fr)]"
         >
+          <div className="min-w-0 rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] sm:p-7">
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-[var(--text)]">{"Student verification"}</h2>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">{"All fields are required."}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">Secure certificate lookup</p>
+            <h2 className="mt-1 text-xl font-bold text-[var(--text)]">Let’s verify your student record</h2>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">Enter your details exactly as they appear in your school records.</p>
           </div>
           <form ref={formRef} onSubmit={submit} noValidate aria-describedby={`${formId}-help`}>
             <div className="grid gap-5 sm:grid-cols-2">
@@ -472,10 +479,10 @@ export default function FinderPage() {
                     value={form[key]}
                     aria-invalid={Boolean(touched[key] && fieldErrors[key])}
                     aria-describedby={`${formId}-${key}-help ${formId}-${key}-error`}
-                    onBlur={() => setTouched((v) => ({ ...v, [key]: true }))}
-                    onChange={(event) => update(key, event.target.value)}
+                    onBlur={() => { setTouched((v) => ({ ...v, [key]: true })); }}
+                    onChange={(event) => { update(key, event.target.value); }}
                     placeholder={placeholder}
-                    className="min-h-12 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3 text-base text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] hover:border-[var(--border)] focus-visible:border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--border)]/20"
+                  className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
                   />
                   <p
                     id={`${formId}-${key}-help`}
@@ -518,10 +525,10 @@ export default function FinderPage() {
                   value={form.session}
                   aria-invalid={Boolean(sessions.length > 0 && touched.session && !form.session)}
                   aria-describedby={`${formId}-session-help ${formId}-session-error`}
-                  onBlur={() => setTouched((v) => ({ ...v, session: true }))}
-                  onChange={(event) => update("session", event.target.value)}
+                  onBlur={() => { setTouched((v) => ({ ...v, session: true })); }}
+                  onChange={(event) => { update("session", event.target.value); }}
                   disabled={sessionsLoading || sessionsLoadError || sessions.length === 0}
-                  className="min-h-12 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3 text-base text-[var(--text)] outline-none transition focus-visible:border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--border)]/20 disabled:cursor-not-allowed disabled:bg-[var(--surface-2)]"
+                  className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--text)] outline-none transition focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] disabled:cursor-not-allowed disabled:bg-[var(--surface-2)]"
                 >
                   {sessions.length === 0 ? (
                     <option value="">
@@ -616,7 +623,7 @@ export default function FinderPage() {
                   translate="no"
                   type="checkbox"
                   checked={form.consent}
-                  onChange={(event) => update("consent", event.target.checked)}
+                  onChange={(event) => { update("consent", event.target.checked); }}
                   required
                   className="mt-1 h-4 w-4 shrink-0 accent-[var(--primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
                 />
@@ -655,7 +662,7 @@ export default function FinderPage() {
                   id={`${formId}-disambiguation`}
                   autoComplete="off"
                   value={disambiguationValue}
-                  onChange={(event) => setDisambiguationValue(event.target.value)}
+                  onChange={(event) => { setDisambiguationValue(event.target.value); }}
                   className="mt-2 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
                   required
                   aria-describedby={`${formId}-disambiguation-help`}
@@ -721,6 +728,27 @@ export default function FinderPage() {
               Your information is used only to verify and retrieve the relevant school records.
             </p>
           </form>
+          </div>
+          <aside className="h-fit rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-5 shadow-sm lg:sticky lg:top-6">
+            <h2 className="text-sm font-bold text-[var(--text)]">What happens next</h2>
+            <ol className="mt-4 space-y-4">
+              {[
+                ["01", "We match your record", "Your details are checked against the school register."],
+                ["02", "You review documents", "See available certificates before downloading."],
+                ["03", "Download securely", "Get a print-ready PDF with a digital watermark."],
+              ].map(([number, title, description]) => (
+                <li key={number} className="flex gap-3">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--surface-2)] text-[10px] font-bold text-[var(--primary)]">{number}</span>
+                  <div><h3 className="text-xs font-semibold text-[var(--text)]">{title}</h3><p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">{description}</p></div>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-5 rounded-xl bg-[var(--surface-2)] p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text)]"><ShieldCheck size={15} aria-hidden="true" className="text-[var(--primary)]" /> Your information is protected</div>
+              <p className="mt-2 text-[10px] leading-4 text-[var(--text-muted)]">We use your details only to locate and verify the matching school certificate. Your information is not used for advertising or profiling.</p>
+              <Link href="/privacy" className="mt-3 inline-flex items-center text-[10px] font-semibold text-[var(--primary)] underline underline-offset-2">Read the privacy notice</Link>
+            </div>
+          </aside>
         </motion.div>
 
         {loading && (

@@ -1,5 +1,5 @@
-import { pageMetadata } from "@/lib/page-metadata";
 import InformationView from "@/features/info/InformationView";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata = pageMetadata(
   "Report a wrong record",

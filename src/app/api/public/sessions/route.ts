@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import { db, describeFirebaseError } from "@/server/firebase-admin";
 import { ensurePublicSessions } from "@/server/public-sessions";
 

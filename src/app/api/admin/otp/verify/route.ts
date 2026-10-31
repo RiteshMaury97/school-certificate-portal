@@ -1,16 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
-import { adminAuth, db } from "@/server/firebase-admin";
+import { NextResponse } from "next/server";
+
 import {
   adminOtpChallengeCollection,
   isAdminOtpLocked,
   recordAdminOtpFailure,
   verifyAdminOtpChallenge,
 } from "@/server/admin-otp";
+import { adminAuth, db } from "@/server/firebase-admin";
 import {
   sameOrigin,
   verifyRequestAppCheck,
   writeAuditLog,
 } from "@/server/security";
+
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

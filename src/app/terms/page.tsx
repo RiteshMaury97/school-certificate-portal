@@ -1,5 +1,5 @@
-import { pageMetadata } from "@/lib/page-metadata";
 import TermsView from "@/features/legal/TermsView";
+import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata = pageMetadata(
   "Terms and Conditions",

@@ -1,6 +1,6 @@
 import AdminConsole from "@/features/admin/AdminConsole";
-import AdminGate from "@/features/auth/AdminGate";
 import { AdminSessionProvider } from "@/features/auth/admin-session";
+import AdminGate from "@/features/auth/AdminGate";
 
 /**
  * One shared console for every admin section. It stays mounted while the

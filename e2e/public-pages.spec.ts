@@ -11,8 +11,8 @@ test.beforeEach(async ({ page }) => {
           options.callback("e2e-token");
           return "e2e-widget";
         },
-        reset: () => undefined,
-        remove: () => undefined,
+        reset: () => {},
+        remove: () => {},
       },
     });
   });

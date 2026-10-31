@@ -22,7 +22,7 @@ async function mockTurnstile(page: import("@playwright/test").Page) {
     Object.defineProperty(window, "grecaptcha", {
       configurable: true,
       value: {
-        ready: (callback: () => void) => callback(),
+        ready: (callback: () => void) => { callback(); },
         execute: () => Promise.resolve("e2e-recaptcha-token"),
       },
     });
@@ -36,8 +36,8 @@ async function mockTurnstile(page: import("@playwright/test").Page) {
           options.callback("e2e-turnstile-token");
           return "e2e-widget";
         },
-        reset: () => undefined,
-        remove: () => undefined,
+        reset: () => {},
+        remove: () => {},
       },
     });
   });

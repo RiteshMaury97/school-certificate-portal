@@ -1,12 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
 import { db } from "@/server/firebase-admin";
+import { certificateTypeSlug } from "@/server/r2";
 import {
   requireRoles,
   apiError,
   createCertificateNumberHash,
 } from "@/server/security";
-import { certificateTypeSlug } from "@/server/r2";
 import { studentIdentifierHmac } from "@/server/student-pii";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 function safeTypeSlug(value: string): string {
@@ -89,7 +92,7 @@ export async function POST(request: NextRequest) {
     const preview = [];
     const seenNumbers = new Set<string>();
     for (const file of files) {
-      const pattern = file.name.match(/^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i);
+      const pattern = /^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name);
       const row = values.find(
         (v) =>
           String(v.filename ?? v.file ?? "") === file.name ||
@@ -107,7 +110,7 @@ export async function POST(request: NextRequest) {
         errors.push("File extension must be PDF, JPG or PNG.");
       if (row) {
         const session = String(row.session ?? "");
-        const filePattern = file.name.match(/^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i);
+        const filePattern = /^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name);
         const inferredAdmission = filePattern?.[1] ?? "";
         const inferredType = (filePattern?.[2] ?? "").replace(/[-_]+/g, " ");
         const type = String(row.certificatetype ?? row.type ?? inferredType);
@@ -190,7 +193,7 @@ export async function POST(request: NextRequest) {
               admissionNo: String(
                 row.admissionnumber ??
                   row.admissionno ??
-                  file.name.match(/^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i)?.[1] ??
+                  (/^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name))?.[1] ??
                   "",
               ),
               studentId: String(row.studentid ?? ""),
@@ -199,7 +202,7 @@ export async function POST(request: NextRequest) {
                 row.certificatetype ??
                   row.type ??
                   (
-                    file.name.match(/^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i)?.[2] ??
+                    (/^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name))?.[2] ??
                     ""
                   ).replace(/[-_]+/g, " "),
               ),

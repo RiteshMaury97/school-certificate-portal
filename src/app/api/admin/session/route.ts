@@ -1,8 +1,12 @@
 import { createHmac, randomBytes } from "node:crypto";
-import { NextRequest, NextResponse } from "next/server";
+
 import { FieldValue } from "firebase-admin/firestore";
-import { escapeHtml, sendMail } from "@/server/mailer";
+import { NextResponse } from "next/server";
+import { after } from "next/server";
+
+import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
+import { escapeHtml, sendMail } from "@/server/mailer";
 import {
   adminSessionCookieOptions,
   createCsrfToken,
@@ -13,11 +17,12 @@ import {
   verifyCsrf,
   hashRequesterIp,
 } from "@/server/security";
-import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
 import {
   ADMIN_HARD_SESSION_LIMIT_MS,
   isAdminSessionExpired,
 } from "@/shared/session-policy";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const COOKIE = "sis_admin_session";
@@ -31,10 +36,10 @@ const secret = () => {
 const digest = (value: string) =>
   createHmac("sha256", secret()).update(value).digest("hex");
 function browser(ua: string) {
-  if (/Edg\//.test(ua)) return "Edge";
-  if (/Chrome\//.test(ua)) return "Chrome";
-  if (/Firefox\//.test(ua)) return "Firefox";
-  if (/Safari\//.test(ua)) return "Safari";
+  if (ua.includes('Edg/')) return "Edge";
+  if (ua.includes('Chrome/')) return "Chrome";
+  if (ua.includes('Firefox/')) return "Firefox";
+  if (ua.includes('Safari/')) return "Safari";
   return "Unknown browser";
 }
 async function sendAlert(to: string, body: string) {
@@ -218,10 +223,12 @@ export async function POST(request: NextRequest) {
           dateStyle: "medium",
           timeStyle: "short",
         }).format(now) + " IST";
-      await sendAlert(
+      after(() => sendAlert(
         email,
         `<p>New sign-in to the admin panel from ${escapeHtml(browser(ua))}, ${safeCity}, ${escapeHtml(localTime)}.</p><p>If this wasn't you, <a href="${escapeHtml(link)}">sign out everywhere</a>.</p>`,
-      ).catch(() => undefined);
+      ).catch((alertError: unknown) => {
+        console.error("[admin/session new-device alert]", describeFirebaseError(alertError));
+      }));
     }
     const csrf = createCsrfToken();
     await writeAuditLog(request, decoded.uid, "admin.login", "session");

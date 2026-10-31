@@ -1,13 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
+import { recordCertificateDownloads } from "@/server/download-metrics";
 import { db } from "@/server/firebase-admin";
 import { readR2Object } from "@/server/r2";
-import { watermarkCertificate } from "@/server/watermark";
-import { recordCertificateDownloads } from "@/server/download-metrics";
-import { isPubliclyDownloadableStatus } from "@/shared/certificate-lifecycle";
 import {
   studentAccessTokenOwnsStudent,
   verifyStudentAccessToken,
 } from "@/server/security";
+import { watermarkCertificate } from "@/server/watermark";
+import { isPubliclyDownloadableStatus } from "@/shared/certificate-lifecycle";
+
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

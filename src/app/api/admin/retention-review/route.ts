@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+
+import { eraseStudentData } from "@/server/erasure";
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
 import {
@@ -8,7 +10,8 @@ import {
   requireSensitiveReauth,
   writeAuditLog,
 } from "@/server/security";
-import { eraseStudentData } from "@/server/erasure";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   try {
@@ -140,14 +143,14 @@ export async function PATCH(request: NextRequest) {
       if (requesterEmail && requestId) {
         const siteSettings = await db.collection("siteSettings").doc("main").get();
         const schoolName = String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
-        await sendMail({ to: requesterEmail, subject: `${schoolName}: data erasure request completed`, text: `${schoolName}: your data erasure request ${requestId} has been completed. Reference receipt: ${result.erasureId}. Please contact the school if you need assistance.` }).catch(() => undefined);
+        await sendMail({ to: requesterEmail, subject: `${schoolName}: data erasure request completed`, text: `${schoolName}: your data erasure request ${requestId} has been completed. Reference receipt: ${result.erasureId}. Please contact the school if you need assistance.` }).catch(() => {});
       }
       await writeAuditLog(
         request,
         admin.uid,
         "student.erasure.retry",
         result.erasureId,
-      ).catch(() => undefined);
+      ).catch(() => {});
       return NextResponse.json(
         { ok: true, ...result },
         { headers: { "Cache-Control": "no-store" } },
@@ -239,7 +242,7 @@ export async function PATCH(request: NextRequest) {
         admin.uid,
         "student.erasure.complete",
         result.erasureId,
-      ).catch(() => undefined);
+      ).catch(() => {});
       return NextResponse.json(
         { ok: true, ...result },
         { headers: { "Cache-Control": "no-store" } },

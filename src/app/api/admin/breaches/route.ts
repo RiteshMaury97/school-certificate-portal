@@ -1,7 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
+
 import { db } from "@/server/firebase-admin";
 import { apiError, requireRoles, writeAuditLog } from "@/server/security";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 const schema = z.object({
   summary: z.string().trim().min(10).max(2000),

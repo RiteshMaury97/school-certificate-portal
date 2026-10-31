@@ -1,6 +1,8 @@
 import { createHmac } from "node:crypto";
-import { NextRequest, NextResponse } from "next/server";
+
 import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
 import {
@@ -8,6 +10,8 @@ import {
   verifyRequestAppCheck,
   sameOrigin,
 } from "@/server/security";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 const key = () => {
   const value = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
@@ -17,7 +21,7 @@ const key = () => {
 async function notifySuperadmins(email: string, count: number) {
   const admins = await db.collection("admins").where("role", "==", "superadmin").limit(10).get();
   const recipients = admins.docs.map((doc) => String(doc.get("email") ?? "")).filter(Boolean);
-  if (recipients.length) await sendMail({ to: recipients, subject: "School Portal: repeated administrator sign-in failures", text: `Repeated sign-in failures detected. Attempts: ${count}. Account: ${email}.` }).catch(() => undefined);
+  if (recipients.length) await sendMail({ to: recipients, subject: "School Portal: repeated administrator sign-in failures", text: `Repeated sign-in failures detected. Attempts: ${count}. Account: ${email}.` }).catch(() => {});
 }
 export async function POST(request: NextRequest) {
   try {

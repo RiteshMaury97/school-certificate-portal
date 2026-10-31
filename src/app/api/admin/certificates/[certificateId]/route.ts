@@ -1,32 +1,37 @@
-import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
-import { encryptCertificateNumber } from "@/server/certificate-number";
-import { NextRequest, NextResponse } from "next/server";
+
 import { randomUUID, createHash } from "node:crypto";
-import { db } from "@/server/firebase-admin";
+
 import { FieldValue } from "firebase-admin/firestore";
-import {
-  uploadCertificate,
-  softDeleteR2Object,
-  certificateTypeSlug,
-} from "@/server/r2";
-import { certificateMetadataSchema } from "@/shared/validation";
-import {
-  requireRoles,
-  requireSensitiveReauth,
-  writeAuditLog,
-  apiError,
-} from "@/server/security";
+import { NextResponse } from "next/server";
+
 import {
   createCertificateNumberIndex,
   replaceCertificateNumberIndex,
   DuplicateCertificateNumberError,
   removeCertificateNumberIndex,
 } from "@/server/certificate-index";
-import { canReplacePublishedCertificate } from "@/shared/certificate-lifecycle";
+import { encryptCertificateNumber } from "@/server/certificate-number";
+import { db } from "@/server/firebase-admin";
 import {
   ensurePublicSessions,
   rebuildPublicSessions,
 } from "@/server/public-sessions";
+import {
+  uploadCertificate,
+  softDeleteR2Object,
+  certificateTypeSlug,
+} from "@/server/r2";
+import {
+  requireRoles,
+  requireSensitiveReauth,
+  writeAuditLog,
+  apiError,
+} from "@/server/security";
+import { canReplacePublishedCertificate } from "@/shared/certificate-lifecycle";
+import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
+import { certificateMetadataSchema } from "@/shared/validation";
+
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -248,9 +253,9 @@ export async function PUT(
       });
     } catch (error) {
       await removeCertificateNumberIndex(replacementRef.id).catch(
-        () => undefined,
+        () => {},
       );
-      await softDeleteR2Object(stored.r2Key, studentId).catch(() => undefined);
+      await softDeleteR2Object(stored.r2Key, studentId).catch(() => {});
       if (error instanceof DuplicateCertificateNumberError)
         return NextResponse.json(
           { error: "That certificate number is already assigned." },

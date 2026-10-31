@@ -1,9 +1,11 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+
 import { FieldValue } from "firebase-admin/firestore";
+
 import { db } from "@/server/firebase-admin";
-import { deleteR2Object, purgeStudentR2Objects } from "@/server/r2";
 import { rebuildPublicSessions } from "@/server/public-sessions";
+import { deleteR2Object, purgeStudentR2Objects } from "@/server/r2";
 
 type ErasureReason = "retention" | "data-principal-request";
 const strings = (value: unknown): string[] =>
@@ -138,11 +140,9 @@ export async function eraseStudentData(
       );
     for (let offset = 0; offset < certs.docs.length; offset += 400) {
       const batch = db.batch();
-      certs.docs
-        .slice(offset, offset + 400)
-        .forEach((d) =>
-          batch.set(d.ref, { erasurePending: true }, { merge: true }),
-        );
+      for (const d of certs.docs
+        .slice(offset, offset + 400)) batch.set(d.ref, { erasurePending: true }, { merge: true })
+        ;
       if (offset < certs.docs.length) await batch.commit();
     }
     for (const key of keys) {
@@ -165,7 +165,7 @@ export async function eraseStudentData(
           .get();
         if (!matches.empty) {
           const batch = db.batch();
-          matches.docs.forEach((d) => batch.delete(d.ref));
+          for (const d of matches.docs) batch.delete(d.ref);
           await batch.commit();
           indexDeleted += matches.size;
         }
@@ -241,9 +241,8 @@ export async function eraseStudentData(
     }
     for (let offset = 0; offset < certs.docs.length; offset += 400) {
       const batch = db.batch();
-      certs.docs
-        .slice(offset, offset + 400)
-        .forEach((d) => batch.delete(d.ref));
+      for (const d of certs.docs
+        .slice(offset, offset + 400)) batch.delete(d.ref);
       await batch.commit();
       firestoreDeleted += Math.min(400, certs.docs.length - offset);
     }

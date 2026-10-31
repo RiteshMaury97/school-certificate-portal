@@ -1,8 +1,10 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
 import { getRedirectResult, GoogleAuthProvider, sendEmailVerification, reload, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, signOut, type User } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+
 import { appCheckHeaders, auth } from "@/lib/firebase-client";
+
 import { describeSignInError, errorCode, isBadCredentials, safeNextPath } from "./auth-errors";
 export type Step = "credentials" | "verify-email" | "email-code";
 const LOCK_MESSAGE = "This account is temporarily locked after repeated failed sign-ins. Try again in 15 minutes.";
@@ -27,10 +29,10 @@ export function useAdminSignIn() {
     if (response.status === 423) throw new Error(LOCK_MESSAGE);
     if (!response.ok) throw new Error(message(data) ?? "Unable to verify sign-in status.");
   };
-  const begin = useCallback(async (user: User) => {
+  const begin = useCallback(async (user: User, lockAlreadyChecked = false) => {
     setPendingUser(user);
     setEmail(user.email ?? "");
-    if (user.email) {
+    if (user.email && !lockAlreadyChecked) {
       const lock = await requestJson("/api/admin/login-check", { email: user.email, action: "check" });
       if (lock.response.status === 423) throw new Error(LOCK_MESSAGE);
       if (!lock.response.ok) throw new Error(message(lock.data) ?? "Unable to verify sign-in status.");
@@ -41,7 +43,7 @@ export function useAdminSignIn() {
       setNotice("Verify your email address using the link we sent, then continue here.");
       return;
     }
-    const idToken = await user.getIdToken(true);
+    const idToken = await user.getIdToken();
     const preflight = await fetch("/api/admin/preflight", {
       method: "POST",
       headers: { Authorization: `Bearer ${idToken}`, ...(await appCheckHeaders()) },
@@ -66,13 +68,13 @@ export function useAdminSignIn() {
     setNotice(`A sign-in code was sent to ${maskEmail(user.email ?? "your email")}.`);
   }, []);
   const handleError = async (cause: unknown, typedEmail: string) => {
-    if (isBadCredentials(cause) && typedEmail) await requestJson("/api/admin/login-check", { email: typedEmail, action: "failure" }).catch(() => undefined);
-    throw cause;
+    if (isBadCredentials(cause) && typedEmail) await requestJson("/api/admin/login-check", { email: typedEmail, action: "failure" }).catch(() => {});
+    throw new Error(describeSignInError(cause, "password"));
   };
   useEffect(() => { let active = true; getRedirectResult(auth).then(async result => { if (result && active) await run(() => begin(result.user)); }).catch(cause => { if (active) setError(describeSignInError(cause, "google")); }); return () => { active = false; }; }, [begin, run]);
   const submitCredentials = (typedEmail: string, password: string) => run(async () => {
     setEmail(typedEmail); await checkLock(typedEmail);
-    try { const credential = await signInWithEmailAndPassword(auth, typedEmail, password); await begin(credential.user); }
+    try { const credential = await signInWithEmailAndPassword(auth, typedEmail, password); await begin(credential.user, true); }
     catch (cause) { await handleError(cause, typedEmail); }
   });
   const signInWithGoogle = () => run(async () => {
@@ -89,7 +91,7 @@ export function useAdminSignIn() {
   });
   const resendCode = () => run(async () => {
     if (!pendingUser) throw new Error("Your sign-in session expired. Sign in again.");
-    const idToken = await pendingUser.getIdToken(true);
+    const idToken = await pendingUser.getIdToken();
     const { response, data } = await requestJson("/api/admin/otp/send", { idToken });
     if (!response.ok) throw new Error(message(data) ?? "Could not resend the sign-in code.");
     if (typeof data !== "object" || data === null || !("challengeId" in data) || typeof data.challengeId !== "string") throw new Error("Could not start email verification.");
@@ -99,7 +101,7 @@ export function useAdminSignIn() {
   });
   const verifyCode = (code: string) => run(async () => {
     if (!pendingUser) throw new Error("Your sign-in session expired. Sign in again.");
-    const idToken = await pendingUser.getIdToken(true);
+    const idToken = await pendingUser.getIdToken();
     const { response: verified, data } = await requestJson("/api/admin/otp/verify", { idToken, challengeId, code });
     if (!verified.ok || typeof data !== "object" || data === null || !("verified" in data) || data.verified !== true) {
       if (verified.status === 423) throw new Error("This account is locked after too many incorrect codes. Try again later.");
@@ -111,6 +113,6 @@ export function useAdminSignIn() {
     await signOut(auth); router.replace(safeNextPath(params.get("next")));
   });
   const requestPasswordReset = async (typedEmail: string) => { setResetBusy(true); try { await requestJson("/api/admin/password-reset", { email: typedEmail.trim() }); } catch { /* Keep account discovery impossible. */ } finally { setNotice("If the account is eligible, password reset instructions will be sent to the registered email address."); setResetBusy(false); } };
-  const cancel = async () => { await signOut(auth).catch(() => undefined); reset(); };
+  const cancel = async () => { await signOut(auth).catch(() => {}); reset(); };
   return { step, email, busy, resetBusy, error, notice, pendingEmail: pendingUser?.email ?? email, resendAfterSeconds, continueAfterEmailVerification, resendCode, submitCredentials, signInWithGoogle, verifyCode, cancel, requestPasswordReset };
 }

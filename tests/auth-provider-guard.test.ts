@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+
+import { describe, expect, it } from "vitest";
 const forbidden = [/totp/i, /TotpMultiFactorGenerator/, /multiFactor/i, /getMultiFactorResolver/, /MultiFactorResolver/, /sign_in_second_factor/i, /otpauth/i, /authenticator/i, /enroll/i, /\bMFA\b/i];
 async function sourceFiles(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });

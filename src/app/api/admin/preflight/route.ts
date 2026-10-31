@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
 import { sameOrigin, verifyRequestAppCheck } from "@/server/security";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {

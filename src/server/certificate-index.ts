@@ -46,6 +46,6 @@ export async function removeCertificateNumberIndex(certificateId: string): Promi
     .where("certificateId", "==", certificateId).limit(10).get();
   if (matches.empty) return;
   const batch = db.batch();
-  matches.docs.forEach(document => batch.delete(document.ref));
+  for (const document of matches.docs) batch.delete(document.ref);
   await batch.commit();
 }

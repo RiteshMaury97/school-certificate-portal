@@ -1,10 +1,11 @@
 import "server-only";
 import { FieldValue } from "firebase-admin/firestore";
+
 import { db } from "@/server/firebase-admin";
 
 /** Keep the public session picker backed by one compact document. */
 export async function adjustPublicSessions(
-  changes: Array<{ session: string; delta: 1 | -1 }>,
+  changes: { session: string; delta: 1 | -1 }[],
 ): Promise<void> {
   const ref = db.collection("publicSessions").doc("main");
   if (!(await ref.get()).exists) {

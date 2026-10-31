@@ -1,10 +1,12 @@
-import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import { headers } from "next/headers";
+import Script from "next/script";
 import { Suspense } from "react";
+
 import AppProviders from "@/components/providers/AppProviders";
 import { db } from "@/server/firebase-admin";
+
+import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 
 export const dynamic = "force-dynamic";

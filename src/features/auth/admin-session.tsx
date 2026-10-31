@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+
 import { appCheckHeaders } from "@/lib/firebase-client";
 
 export type AdminRole = "uploader" | "approver" | "superadmin";
@@ -68,7 +69,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     };
   }, [attempt]);
 
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const retry = useCallback(() => { setAttempt((value) => value + 1); }, []);
   const value = useMemo(() => ({ state, retry }), [state, retry]);
   return <AdminSessionContext.Provider value={value}>{children}</AdminSessionContext.Provider>;
 }

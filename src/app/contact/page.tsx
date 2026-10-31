@@ -1,5 +1,5 @@
+import ContactView from "@/features/info/ContactView";
 import { pageMetadata } from "@/lib/page-metadata";
-import InformationView from "@/features/info/InformationView";
 
 export const metadata = pageMetadata(
   "Contact and support",
@@ -7,5 +7,5 @@ export const metadata = pageMetadata(
 );
 
 export default function Page() {
-  return <InformationView kind="contact" />;
+  return <ContactView />;
 }

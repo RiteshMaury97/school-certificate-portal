@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import { PDFDocument } from "pdf-lib";
 import sharp from "sharp";
+
 import { watermarkCertificate } from "../src/server/watermark";
 
 describe("watermarked delivery copies", () => {

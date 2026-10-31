@@ -1,22 +1,26 @@
-import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
-import { encryptCertificateNumber } from "@/server/certificate-number";
-import { NextRequest, NextResponse } from "next/server";
 import { randomUUID, createHash } from "node:crypto";
+
 import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import {
+  createCertificateNumberIndex,
+  DuplicateCertificateNumberError,
+  removeCertificateNumberIndex,
+} from "@/server/certificate-index";
+import { encryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
 import {
   uploadCertificate,
   softDeleteR2Object,
   certificateTypeSlug,
 } from "@/server/r2";
-import {
-  createCertificateNumberIndex,
-  DuplicateCertificateNumberError,
-  removeCertificateNumberIndex,
-} from "@/server/certificate-index";
 import { apiError, requireRoles, writeAuditLog } from "@/server/security";
 import { studentIdentifierHmac } from "@/server/student-pii";
-import { z } from "zod";
+import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const mappingSchema = z
@@ -195,8 +199,8 @@ export async function POST(request: NextRequest) {
             }),
       });
     } catch (error) {
-      await removeCertificateNumberIndex(ref.id).catch(() => undefined);
-      await softDeleteR2Object(stored.r2Key, student.id).catch(() => undefined);
+      await removeCertificateNumberIndex(ref.id).catch(() => {});
+      await softDeleteR2Object(stored.r2Key, student.id).catch(() => {});
       if (error instanceof DuplicateCertificateNumberError)
         return NextResponse.json(
           { error: "Duplicate certificate number." },

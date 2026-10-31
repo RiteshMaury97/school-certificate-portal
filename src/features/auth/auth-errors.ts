@@ -1,6 +1,12 @@
 /** Authentication stages used for actionable provider guidance. */
 export type SignInStage = "password" | "google" | "email-code";
-const CREDENTIAL_CODES = ["auth/invalid-credential", "auth/wrong-password", "auth/user-not-found", "auth/invalid-email"];
+const CREDENTIAL_CODES = [
+  "auth/invalid-credential",
+  "auth/invalid-login-credentials",
+  "auth/wrong-password",
+  "auth/user-not-found",
+  "auth/invalid-email",
+];
 type FirebaseErrorLike = { code: string };
 function hasErrorCode(cause: unknown): cause is FirebaseErrorLike {
   return typeof cause === "object" && cause !== null && "code" in cause && typeof cause.code === "string";

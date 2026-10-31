@@ -1,7 +1,8 @@
 "use client";
-import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
 import { useCertificateFlow } from "@/features/certificates/CertificateFlowProvider";
 export default function PrintPage() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function PrintPage() {
           ← Back to results
         </Link>
         <button
-          onClick={() => window.print()}
+          onClick={() => { window.print(); }}
           className="rounded-lg bg-[var(--primary)] px-4 py-2 text-[var(--on-primary)]"
         >
           Print

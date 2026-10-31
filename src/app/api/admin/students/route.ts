@@ -1,21 +1,17 @@
-import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
-import { encryptCertificateNumber } from "@/server/certificate-number";
-import { NextRequest, NextResponse } from "next/server";
+
 import { randomUUID, createHash } from "node:crypto";
+
 import { FieldValue } from "firebase-admin/firestore";
-import { db } from "@/server/firebase-admin";
-import { uploadCertificate, softDeleteR2Object } from "@/server/r2";
+import { NextResponse } from "next/server";
+
 import {
   createCertificateNumberIndex,
   DuplicateCertificateNumberError,
   removeCertificateNumberIndex,
 } from "@/server/certificate-index";
-import { normalize, studentCreateSchema } from "@/shared/validation";
-import {
-  encryptStudentIdentifier,
-  studentIdentifierHmac,
-  studentIdentityMatches,
-} from "@/server/student-pii";
+import { encryptCertificateNumber } from "@/server/certificate-number";
+import { db } from "@/server/firebase-admin";
+import { uploadCertificate, softDeleteR2Object } from "@/server/r2";
 import {
   apiError,
   createSearchKey,
@@ -23,7 +19,16 @@ import {
   sameOrigin,
   writeAuditLog,
 } from "@/server/security";
+import {
+  encryptStudentIdentifier,
+  studentIdentifierHmac,
+  studentIdentityMatches,
+} from "@/server/student-pii";
+import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
 import { retentionExpiryFromSession } from "@/shared/retention-policy";
+import { normalize, studentCreateSchema } from "@/shared/validation";
+
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -321,18 +326,15 @@ export async function POST(request: NextRequest) {
               }),
         });
       } catch (error) {
-        await removeCertificateNumberIndex(certificateRef.id).catch(() =>
-          console.error("Certificate index cleanup failed"),
+        await removeCertificateNumberIndex(certificateRef.id).catch(() => { console.error("Certificate index cleanup failed"); },
         );
-        await softDeleteR2Object(stored.r2Key, studentRef.id).catch(() =>
-          console.error("Orphan R2 cleanup failed"),
+        await softDeleteR2Object(stored.r2Key, studentRef.id).catch(() => { console.error("Orphan R2 cleanup failed"); },
         );
         if (error instanceof DuplicateCertificateNumberError) {
           if (!reuseExisting)
             await studentRef
               .delete()
-              .catch(() =>
-                console.error("Empty student record cleanup failed"),
+              .catch(() => { console.error("Empty student record cleanup failed"); },
               );
           return NextResponse.json(
             { error: "That certificate number is already assigned." },

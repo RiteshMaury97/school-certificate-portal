@@ -26,7 +26,7 @@ export function normalizeStudentIdentifier(value: string): string {
     .trim()
     .replace(/\s+/g, " ")
     .toUpperCase();
-  const dmy = normalized.match(/^(\d{2})[-/.](\d{2})[-/.](\d{4})$/);
+  const dmy = /^(\d{2})[-/.](\d{2})[-/.](\d{4})$/.exec(normalized);
   if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
   return normalized;
 }

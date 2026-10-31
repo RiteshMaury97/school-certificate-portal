@@ -1,13 +1,17 @@
 import { createHmac } from "node:crypto";
-import { NextRequest, NextResponse } from "next/server";
+
 import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+
 import { adminAuth, db } from "@/server/firebase-admin";
-import { isAllowedRequestOrigin } from "@/shared/origin-policy";
 import {
   adminSessionCookieOptions,
   csrfCookieOptions,
   writeAuditLog,
 } from "@/server/security";
+import { isAllowedRequestOrigin } from "@/shared/origin-policy";
+
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 const tokenRef = (token: string) => {
   const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
@@ -93,16 +97,15 @@ export async function POST(request: NextRequest) {
       .where("uid", "==", uid)
       .get();
     const batch = db.batch();
-    sessions.docs.forEach((doc) =>
-      batch.set(
+    for (const doc of sessions.docs) batch.set(
         doc.ref,
         {
           revokedAt: FieldValue.serverTimestamp(),
           revokeReason: "email_security_link",
         },
         { merge: true },
-      ),
-    );
+      )
+    ;
     if (!sessions.empty) await batch.commit();
     await writeAuditLog(
       request,

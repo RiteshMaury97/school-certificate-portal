@@ -1,5 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
 import { createDecipheriv, scryptSync } from "node:crypto";
+import { readFile, writeFile } from "node:fs/promises";
 const [input, output, ...passphraseParts] = process.argv.slice(2);
 if (!input || !output)
   throw new Error(

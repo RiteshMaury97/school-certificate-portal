@@ -7,7 +7,7 @@ test("superadmin can upload a certificate and approve a pending record", async (
     Object.defineProperty(window, "grecaptcha", {
       configurable: true,
       value: {
-        ready: (callback: () => void) => callback(),
+        ready: (callback: () => void) => { callback(); },
         execute: () => Promise.resolve("e2e-recaptcha-token"),
       },
     });
