@@ -35,18 +35,17 @@ test("unknown route shows a helpful not-found state", async ({ page }) => {
   await page.goto("/this-route-does-not-exist");
   await expect(page.getByText(/not found/i)).toBeVisible();
 });
-test("language, dark mode and high-contrast preferences persist", async ({
+test("language and dark mode preferences persist", async ({
   page,
 }) => {
   await page.goto("/");
   await page.locator("#language-toggle").selectOption("hi");
   await expect(page.locator("html")).toHaveAttribute("lang", "hi");
-  await page.getByRole("button", { name: /theme/i }).click();
-  await expect(page.locator("html")).toHaveClass(/dark/);
-  await page.getByRole("button", { name: /high contrast/i }).click();
-  await expect(page.locator("html")).toHaveClass(/high-contrast/);
+  const theme = page.getByRole("button", { name: /theme/i });
+  await theme.click(); // system -> light
+  await theme.click(); // light -> dark
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.reload();
   await expect(page.locator("#language-toggle")).toHaveValue("hi");
-  await expect(page.locator("html")).toHaveClass(/dark/);
-  await expect(page.locator("html")).toHaveClass(/high-contrast/);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });

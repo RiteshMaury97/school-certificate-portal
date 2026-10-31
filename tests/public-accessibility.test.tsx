@@ -1,9 +1,20 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+import FaqPage from "@/features/faq/FaqView";
 
-import FaqPage from "@/src/screens/FaqPage";
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/faq",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+}));
 
 describe("public FAQ accessibility", () => {
   beforeEach(() => {
@@ -30,11 +41,7 @@ describe("public FAQ accessibility", () => {
     vi.unstubAllGlobals();
   });
   it("uses native keyboard-operable disclosure controls for FAQs", () => {
-    render(
-      <BrowserRouter>
-        <FaqPage />
-      </BrowserRouter>,
-    );
+    render(<FaqPage />);
     expect(screen.getByRole("heading", { name: "Frequently Asked Questions" })).toBeTruthy();
     expect(screen.getAllByText("Name not found").length).toBeGreaterThan(0);
     expect(document.querySelectorAll("details > summary").length).toBeGreaterThan(0);

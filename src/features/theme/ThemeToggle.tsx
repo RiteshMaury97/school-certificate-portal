@@ -1,8 +1,6 @@
 "use client";
 import { Monitor, Moon, Sun } from "lucide-react";
-
-import IconButton from "@/src/components/ui/IconButton";
-
+import IconButton from "@/components/ui/IconButton";
 import { useTheme } from "./ThemeProvider";
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();

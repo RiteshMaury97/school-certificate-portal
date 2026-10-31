@@ -4,7 +4,7 @@ import {
   ADMIN_IDLE_TIMEOUT_MS,
   ADMIN_IDLE_WARNING_MS,
   isAdminSessionExpired,
-} from "@/src/lib/session-policy";
+} from "@/shared/session-policy";
 describe("administrator session policy", () => {
   it("warns before idle timeout", () => {
     expect(ADMIN_IDLE_WARNING_MS).toBe(13 * 60_000);

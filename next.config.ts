@@ -33,6 +33,7 @@ const config: NextConfig = {
     ];
   },
   poweredByHeader: false,
+  devIndicators: { position: "bottom-right" },
   serverExternalPackages: [
     "@aws-sdk/client-s3",
     "@aws-sdk/s3-request-presigner",
@@ -42,10 +43,10 @@ const config: NextConfig = {
     "exceljs",
   ],
   outputFileTracingIncludes: {
-    "/api/certificates/[certId]/file": ["./assets/fonts/*.ttf"],
-    "/api/certificates/bundle": ["./assets/fonts/*.ttf"],
-    "/api/certificates/print": ["./assets/fonts/*.ttf"],
-    "/api/public/report": ["./assets/fonts/*.ttf"],
+    "/api/certificates/[certId]/file": ["./public/fonts/*.ttf"],
+    "/api/certificates/bundle": ["./public/fonts/*.ttf"],
+    "/api/certificates/print": ["./public/fonts/*.ttf"],
+    "/api/public/report": ["./public/fonts/*.ttf"],
   },
   experimental: { serverActions: { bodySizeLimit: "10mb" } },
 };

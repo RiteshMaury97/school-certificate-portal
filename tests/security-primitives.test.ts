@@ -9,7 +9,7 @@ import {
   classifySearchMatchCount,
   selectUniqueDisambiguationMatch,
   canConsumeDisambiguationAttempt,
-} from "../src/lib/security-primitives";
+} from "../src/server/security-primitives";
 import {
   decryptStudentIdentifier,
   encryptStudentIdentifier,
@@ -17,7 +17,7 @@ import {
   studentIdentityMatches,
   signDisambiguationChallenge,
   verifyDisambiguationChallenge,
-} from "../src/lib/student-pii";
+} from "../src/server/student-pii";
 
 const secret = "test-only-secret-that-is-at-least-32-bytes-long";
 const claims = {

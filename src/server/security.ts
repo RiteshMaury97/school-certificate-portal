@@ -1,0 +1,677 @@
+import "server-only";
+import {
+  createHmac,
+  randomInt,
+  randomBytes,
+  timingSafeEqual,
+} from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminAuth, adminAppCheck, db } from "./firebase-admin";
+import {
+  bindStudentId,
+  createCertificateNumberHash as makeCertificateNumberHash,
+  createSearchKey as makeSearchKey,
+  isWithinRateLimit,
+  canConsumeDisambiguationAttempt,
+  signStudentAccessToken,
+  verifyStudentAccessToken as verifyAccessToken,
+} from "./security-primitives";
+import {
+  signDisambiguationChallenge,
+  verifyDisambiguationChallenge,
+  type DisambiguationClaims,
+} from "./student-pii";
+import { hasAnyRole as hasRole } from "../shared/role-policy";
+import {
+  ADMIN_HARD_SESSION_LIMIT_MS,
+  isAdminSessionExpired,
+} from "../shared/session-policy";
+
+function requiredSecret(name: string): string {
+  const value = process.env[name];
+  if (!value || Buffer.byteLength(value, "utf8") < 32) {
+    throw new Error(`${name} must be configured with at least 32 bytes`);
+  }
+  return value;
+}
+
+function requesterIp(request: NextRequest): string {
+  // Trust only Cloudflare's edge-injected address header. Other forwarded headers
+  // can be client-spoofed unless the deployment proxy explicitly strips and sets them.
+  return request.headers.get("cf-connecting-ip") ?? "unknown";
+}
+
+export function hashRequesterIp(request: NextRequest): string {
+  return createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET"))
+    .update(requesterIp(request), "utf8")
+    .digest("hex");
+}
+
+export function createSearchKey(input: {
+  studentName: string;
+  fatherName: string;
+  motherName: string;
+  session: string;
+}): string {
+  return makeSearchKey(input, requiredSecret("SEARCH_HMAC_SECRET"));
+}
+
+export async function writeAuditLog(
+  request: NextRequest,
+  actorUid: string | "public",
+  action: string,
+  targetId: string,
+  studentId?: string,
+): Promise<void> {
+  const timestamp = FieldValue.serverTimestamp();
+  await db
+    .collection("auditLogs")
+    .add({
+      actorUid,
+      action,
+      targetId,
+      ...(studentId ? { studentId } : {}),
+      ipHash: hashRequesterIp(request),
+      timestamp,
+    });
+  const counters = db.collection("metricsCounters");
+  const weeklyId = new Date().toISOString().slice(0, 10);
+  const updates: Record<string, unknown> = {};
+  if (action === "certificate.search")
+    updates.searchesTotal = FieldValue.increment(1);
+  if (action === "certificate.verify")
+    updates.verificationChecks = FieldValue.increment(1);
+  if (
+    action === "certificate.search" &&
+    [
+      "no_match",
+      "no_certificates",
+      "invalid_request",
+      "rate_limited",
+      "search_key_rate_limited",
+      "turnstile_failed",
+      "internal_error",
+      "failed",
+    ].includes(targetId)
+  )
+    updates.failedLookups = FieldValue.increment(1);
+  if (action === "certificate.upload")
+    updates.totalCertificates = FieldValue.increment(1);
+  if (action === "student.create")
+    updates.totalStudents = FieldValue.increment(1);
+  if (action === "student.delete")
+    updates.totalStudents = FieldValue.increment(-1);
+  if (action === "certificate.delete")
+    updates.totalCertificates = FieldValue.increment(-1);
+  if (Object.keys(updates).length)
+    await counters
+      .doc("portal")
+      .set({ ...updates, updatedAt: timestamp }, { merge: true });
+  if (action === "certificate.search") {
+    await counters
+      .doc(`searches_${weeklyId}`)
+      .set(
+        {
+          date: weeklyId,
+          count: FieldValue.increment(1),
+          updatedAt: timestamp,
+        },
+        { merge: true },
+      );
+  }
+}
+
+export async function writeConsentLog(
+  request: NextRequest,
+  policyVersion: string,
+  studentId?: string,
+): Promise<void> {
+  await db.collection("consentLogs").add({
+    ipHash: hashRequesterIp(request),
+    ...(studentId ? { studentId } : {}),
+    timestamp: FieldValue.serverTimestamp(),
+    policyVersion,
+    purpose: "certificate_retrieval",
+    consentGiven: true,
+    collectionPoint: "public_lookup",
+    noticeVersion: policyVersion,
+  });
+}
+
+type Budget = { id: string; limit: number; windowMs: number };
+function bucketId(
+  prefix: string,
+  identity: string,
+  windowMs: number,
+  now: number,
+): string {
+  return `${prefix}_${identity}_${Math.floor(now / windowMs)}`;
+}
+
+/**
+ * Firestore transaction-based abuse limits. Unlike process memory, these counters
+ * are shared by serverless instances. Configure Firestore TTL on expiresAt for cleanup.
+ */
+async function consumeBudgets(
+  request: NextRequest,
+  budgets: Budget[],
+  lockoutIpHash?: string,
+): Promise<boolean> {
+  const now = Date.now();
+  const ipHash = hashRequesterIp(request);
+  const refs = budgets.map((item) =>
+    db.collection("abuseCounters").doc(item.id),
+  );
+  const lockoutRef = lockoutIpHash
+    ? db.collection("abuseCounters").doc(`miss_state_${lockoutIpHash}`)
+    : null;
+
+  return db.runTransaction(async (transaction) => {
+    const snapshots = await Promise.all(
+      refs.map((ref) => transaction.get(ref)),
+    );
+    const lockoutSnapshot = lockoutRef
+      ? await transaction.get(lockoutRef)
+      : null;
+    const lockoutUntil = Number(lockoutSnapshot?.get("lockoutUntil") ?? 0);
+    if (lockoutUntil > now) return false;
+
+    for (let index = 0; index < budgets.length; index += 1) {
+      const current = Number(snapshots[index]?.get("count") ?? 0);
+      if (!isWithinRateLimit(current, budgets[index]!.limit)) return false;
+    }
+
+    budgets.forEach((budget, index) => {
+      const current = Number(snapshots[index]?.get("count") ?? 0);
+      transaction.set(
+        refs[index]!,
+        {
+          count: current + 1,
+          updatedAt: FieldValue.serverTimestamp(),
+          expiresAt: new Date(now + budget.windowMs * 2),
+        },
+        { merge: true },
+      );
+    });
+    return true;
+  });
+}
+
+export async function consumeSearchBudget(
+  request: NextRequest,
+  searchKey?: string,
+): Promise<boolean> {
+  const now = Date.now();
+  const ipHash = hashRequesterIp(request);
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const budgets: Budget[] = [
+    {
+      id: bucketId("search_ip_min", ipHash, minute, now),
+      limit: 5,
+      windowMs: minute,
+    },
+    {
+      id: bucketId("search_ip_hour", ipHash, hour, now),
+      limit: 20,
+      windowMs: hour,
+    },
+  ];
+  if (searchKey) {
+    budgets.push(
+      {
+        id: bucketId("search_key_min", searchKey, minute, now),
+        limit: 5,
+        windowMs: minute,
+      },
+      {
+        id: bucketId("search_key_hour", searchKey, hour, now),
+        limit: 20,
+        windowMs: hour,
+      },
+    );
+  }
+  return consumeBudgets(request, budgets, ipHash);
+}
+
+function disambiguationChallengeSecret(): string {
+  return requiredSecret("DISAMBIGUATION_CHALLENGE_SECRET");
+}
+export function issueDisambiguationChallenge(
+  searchKey: string,
+  ipHash: string,
+): string {
+  const now = Math.floor(Date.now() / 1000);
+  return signDisambiguationChallenge(
+    {
+      v: 1,
+      sk: searchKey,
+      iph: ipHash,
+      iat: now,
+      exp: now + 120,
+      nonce: randomBytes(16).toString("hex"),
+    },
+    disambiguationChallengeSecret(),
+  );
+}
+export function verifyDisambiguationChallengeToken(
+  token: string,
+  request: NextRequest,
+): DisambiguationClaims | null {
+  return verifyDisambiguationChallenge(
+    token,
+    disambiguationChallengeSecret(),
+    hashRequesterIp(request),
+  );
+}
+export async function consumeDisambiguationAttempt(
+  nonce: string,
+): Promise<boolean> {
+  const ref = db.collection("abuseCounters").doc(`disambiguation_${nonce}`);
+  const now = Date.now();
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    const count = Number(snapshot.get("count") ?? 0);
+    if (
+      !canConsumeDisambiguationAttempt(
+        count,
+        snapshot.get("completed") === true,
+      )
+    )
+      return false;
+    transaction.set(
+      ref,
+      {
+        count: count + 1,
+        updatedAt: FieldValue.serverTimestamp(),
+        expiresAt: new Date(now + 10 * 60_000),
+      },
+      { merge: true },
+    );
+    return true;
+  });
+}
+export async function completeDisambiguationChallenge(
+  nonce: string,
+): Promise<void> {
+  await db
+    .collection("abuseCounters")
+    .doc(`disambiguation_${nonce}`)
+    .set(
+      {
+        count: 3,
+        completed: true,
+        updatedAt: FieldValue.serverTimestamp(),
+        expiresAt: new Date(Date.now() + 10 * 60_000),
+      },
+      { merge: true },
+    );
+}
+
+export function createCertificateNumberHash(certificateNumber: string): string {
+  return makeCertificateNumberHash(
+    certificateNumber,
+    requiredSecret("CERTIFICATE_NUMBER_HMAC_SECRET"),
+  );
+}
+
+export async function consumeVerificationBudget(
+  request: NextRequest,
+  certificateHash?: string,
+): Promise<boolean> {
+  const now = Date.now();
+  const ipHash = hashRequesterIp(request);
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const budgets: Budget[] = [
+    {
+      id: bucketId("verify_ip_min", ipHash, minute, now),
+      limit: 10,
+      windowMs: minute,
+    },
+    {
+      id: bucketId("verify_ip_hour", ipHash, hour, now),
+      limit: 60,
+      windowMs: hour,
+    },
+  ];
+  if (certificateHash)
+    budgets.push(
+      {
+        id: bucketId("verify_number_min", certificateHash, minute, now),
+        limit: 5,
+        windowMs: minute,
+      },
+      {
+        id: bucketId("verify_number_hour", certificateHash, hour, now),
+        limit: 20,
+        windowMs: hour,
+      },
+    );
+  return consumeBudgets(request, budgets, ipHash);
+}
+
+export async function recordLookupMiss(request: NextRequest): Promise<void> {
+  const ipHash = hashRequesterIp(request);
+  const ref = db.collection("abuseCounters").doc(`miss_state_${ipHash}`);
+  const now = Date.now();
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    const windowStart = Number(snapshot.get("missWindowStart") ?? 0);
+    const priorMisses =
+      windowStart > 0 && now - windowStart < 10 * 60_000
+        ? Number(snapshot.get("misses") ?? 0)
+        : 0;
+    const misses = priorMisses + 1;
+    transaction.set(
+      ref,
+      {
+        misses,
+        missWindowStart: priorMisses === 0 ? now : windowStart,
+        lockoutUntil:
+          misses >= 5
+            ? now + 15 * 60_000
+            : Number(snapshot.get("lockoutUntil") ?? 0),
+        updatedAt: FieldValue.serverTimestamp(),
+        expiresAt: new Date(now + 24 * 60 * 60_000),
+      },
+      { merge: true },
+    );
+  });
+}
+
+export async function recordLookupSuccess(request: NextRequest): Promise<void> {
+  const ipHash = hashRequesterIp(request);
+  await db
+    .collection("abuseCounters")
+    .doc(`miss_state_${ipHash}`)
+    .set(
+      {
+        misses: 0,
+        missWindowStart: Date.now(),
+        lockoutUntil: 0,
+        updatedAt: FieldValue.serverTimestamp(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60_000),
+      },
+      { merge: true },
+    );
+}
+
+export async function delayFailedLookup(): Promise<void> {
+  await new Promise<void>((resolve) =>
+    setTimeout(resolve, 120 + randomInt(180)),
+  );
+}
+
+type AccessClaims = {
+  v: 1;
+  sid: string;
+  iph: string;
+  iat: number;
+  exp: number;
+  nonce: string;
+};
+
+function accessTokenSecret(): string {
+  return requiredSecret("CERTIFICATE_ACCESS_TOKEN_SECRET");
+}
+
+function studentBinding(studentId: string): string {
+  return bindStudentId(studentId, accessTokenSecret());
+}
+
+export function issueStudentAccessToken(
+  studentId: string,
+  ipHash: string,
+): string {
+  const now = Math.floor(Date.now() / 1000);
+  return signStudentAccessToken(
+    {
+      v: 1,
+      sid: studentBinding(studentId),
+      iph: ipHash,
+      iat: now,
+      exp: now + 5 * 60,
+      nonce: randomInt(0, 2 ** 31).toString(36),
+    },
+    accessTokenSecret(),
+  );
+}
+
+export function verifyStudentAccessToken(
+  token: string,
+  request: NextRequest,
+): AccessClaims | null {
+  return verifyAccessToken(
+    token,
+    accessTokenSecret(),
+    hashRequesterIp(request),
+  );
+}
+
+export function studentAccessTokenOwnsStudent(
+  claims: AccessClaims,
+  studentId: string,
+): boolean {
+  return claims.sid === studentBinding(studentId);
+}
+
+export type AdminRole = "uploader" | "approver" | "superadmin";
+export type AdminIdentity = { uid: string; email: string; role: AdminRole };
+export function hasAnyRole(
+  admin: AdminIdentity,
+  roles: readonly AdminRole[],
+): boolean {
+  return hasRole(admin.role, roles);
+}
+export async function requireRoles(
+  request: NextRequest,
+  roles: readonly AdminRole[],
+): Promise<AdminIdentity> {
+  const admin = await requireAdmin(request);
+  if (!hasAnyRole(admin, roles)) throw new Error("FORBIDDEN");
+  return admin;
+}
+
+export async function verifyRequestAppCheck(
+  request: NextRequest,
+): Promise<void> {
+  // Local development only: App Check can be switched off explicitly. This
+  // never applies in production builds.
+  if (process.env.NODE_ENV !== "production" && process.env.APP_CHECK_ENFORCE === "false") return;
+  const token = request.headers.get("x-firebase-appcheck") ?? "";
+  if (!token) throw new Error("APP_CHECK");
+  try {
+    await adminAppCheck.verifyToken(token);
+  } catch {
+    throw new Error("APP_CHECK");
+  }
+}
+
+export async function requireAdmin(
+  request: NextRequest,
+): Promise<AdminIdentity> {
+  await verifyRequestAppCheck(request);
+  if (
+    !["GET", "HEAD", "OPTIONS"].includes(request.method) &&
+    !verifyCsrf(request)
+  )
+    throw new Error("CSRF");
+  const session = request.cookies.get("sis_admin_session")?.value;
+  if (!session) throw new Error("UNAUTHORIZED");
+  const decoded = await adminAuth.verifySessionCookie(session, true);
+  const email = decoded.email?.toLowerCase() ?? "";
+  if (!decoded.email_verified || !email) throw new Error("FORBIDDEN");
+  const admin = await db.collection("admins").doc(decoded.uid).get();
+  const role = admin.get("role");
+  if (
+    !admin.exists ||
+    // A disabled or still-invited account must not keep working on an old cookie.
+    admin.get("status") !== "active" ||
+    admin.get("email")?.toLowerCase() !== email ||
+    (role !== "uploader" && role !== "approver" && role !== "superadmin") ||
+    decoded.role !== role
+  )
+    throw new Error("FORBIDDEN");
+
+  // Server-side inactivity and hard-expiry checks on every protected endpoint.
+  const sessionKey = createHmac(
+    "sha256",
+    requiredSecret("AUDIT_LOG_HMAC_SECRET"),
+  )
+    .update(session)
+    .digest("hex");
+  const sessionRef = db.collection("adminSessions").doc(sessionKey);
+  const sessionSnapshot = await sessionRef.get();
+  if (
+    !sessionSnapshot.exists ||
+    sessionSnapshot.get("uid") !== decoded.uid ||
+    sessionSnapshot.get("revokedAt")
+  ) {
+    throw new Error("UNAUTHORIZED");
+  }
+  const now = Date.now();
+  const lastActivity =
+    sessionSnapshot.get("lastActivityAt")?.toDate?.()?.getTime?.() ?? 0;
+  const absoluteExpiry =
+    sessionSnapshot.get("absoluteExpiresAt")?.toDate?.()?.getTime?.() ?? 0;
+  if (isAdminSessionExpired(lastActivity, absoluteExpiry, now)) {
+    await sessionRef.set(
+      { revokedAt: FieldValue.serverTimestamp(), revokeReason: "timeout" },
+      { merge: true },
+    );
+    throw new Error("UNAUTHORIZED");
+  }
+  // Activity is refreshed only by the dedicated session heartbeat endpoint,
+  // which the client calls after real user interaction (not background API polling).
+  return { uid: decoded.uid, email, role };
+}
+
+export async function requireSensitiveReauth(
+  request: NextRequest,
+  admin: AdminIdentity,
+): Promise<void> {
+  const token = request.headers.get("x-admin-reauth") ?? "";
+  if (token.length < 32) throw new Error("REAUTH_REQUIRED");
+  const hash = createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET"))
+    .update(token)
+    .digest("hex");
+  const ref = db.collection("adminReauthGrants").doc(hash);
+  await db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(ref);
+    const expiry = snap.get("expiresAt")?.toDate?.()?.getTime?.() ?? 0;
+    if (
+      !snap.exists ||
+      snap.get("uid") !== admin.uid ||
+      snap.get("usedAt") ||
+      Date.now() > expiry
+    )
+      throw new Error("REAUTH_REQUIRED");
+    transaction.update(ref, { usedAt: FieldValue.serverTimestamp() });
+  });
+}
+
+export function verifyCsrf(request: NextRequest): boolean {
+  const cookie = request.cookies.get("sis_admin_csrf")?.value ?? "";
+  const header = request.headers.get("x-csrf-token") ?? "";
+  return (
+    cookie.length >= 32 &&
+    header.length === cookie.length &&
+    timingSafeEqual(Buffer.from(cookie), Buffer.from(header)) &&
+    sameOrigin(request)
+  );
+}
+
+export function createCsrfToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function adminSessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict" as const,
+    path: "/",
+    maxAge: Math.floor(ADMIN_HARD_SESSION_LIMIT_MS / 1000),
+  };
+}
+
+export function csrfCookieOptions() {
+  return {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict" as const,
+    path: "/",
+    maxAge: Math.floor(ADMIN_HARD_SESSION_LIMIT_MS / 1000),
+  };
+}
+
+export function apiError(error: unknown): NextResponse {
+  const message = error instanceof Error ? error.message : "Unexpected error";
+  if (message === "UNAUTHORIZED")
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 },
+    );
+  if (message === "REAUTH_REQUIRED")
+    return NextResponse.json(
+      { error: "Re-authentication with password and MFA is required." },
+      { status: 428 },
+    );
+  if (message === "FORBIDDEN")
+    return NextResponse.json(
+      { error: "Administrator access required" },
+      { status: 403 },
+    );
+  if (message === "CSRF")
+    return NextResponse.json(
+      { error: "CSRF validation failed" },
+      { status: 403 },
+    );
+  if (message === "APP_CHECK")
+    return NextResponse.json(
+      { error: "App verification failed" },
+      { status: 403 },
+    );
+  if (message === "ERASURE_STORAGE_RECONCILIATION_REQUIRED")
+    return NextResponse.json(
+      {
+        error:
+          "Legacy R2 objects need manual ownership reconciliation before erasure can be confirmed. No other student's objects were deleted.",
+      },
+      { status: 409 },
+    );
+  if (message === "ERASURE_JOB_NOT_RETRYABLE")
+    return NextResponse.json(
+      { error: "This erasure job is not in a retryable state." },
+      { status: 409 },
+    );
+  if (message === "STUDENT_NOT_FOUND")
+    return NextResponse.json(
+      { error: "Student record not found." },
+      { status: 404 },
+    );
+  if (message === "ERASURE_LEGAL_HOLD")
+    return NextResponse.json(
+      {
+        error:
+          "A legal or statutory retention hold prevents erasure. The School must review the obligation before proceeding.",
+      },
+      { status: 409 },
+    );
+  console.error("Admin API request failed");
+  return NextResponse.json(
+    { error: "The request could not be completed" },
+    { status: 500 },
+  );
+}
+
+export function sameOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get("origin");
+  return (
+    Boolean(origin) &&
+    origin === (process.env.APP_ORIGIN ?? new URL(request.url).origin)
+  );
+}

@@ -1,5 +1,5 @@
 "use client";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 type Props = {
   schoolName?: string;
   logoUrl?: string;
@@ -87,19 +87,19 @@ export default function Footer({
             <h2 className="font-bold">Quick links</h2>
             <ul className="mt-3 space-y-2 text-sm text-[var(--text-muted)]">
               <li>
-                <Link to="/">Home</Link>
+                <Link href="/">Home</Link>
               </li>
               <li>
-                <Link to="/certificates">Find my certificates</Link>
+                <Link href="/certificates">Find my certificates</Link>
               </li>
               <li>
-                <Link to="/verify">Verify a certificate</Link>
+                <Link href="/verify">Verify a certificate</Link>
               </li>
               <li>
-                <Link to="/faq">FAQ</Link>
+                <Link href="/faq">FAQ</Link>
               </li>
               <li>
-                <Link to="/contact">Contact</Link>
+                <Link href="/contact">Contact</Link>
               </li>
             </ul>
           </nav>
@@ -140,13 +140,13 @@ export default function Footer({
             <h2 className="font-bold">Legal</h2>
             <ul className="mt-3 space-y-2 text-sm text-[var(--text-muted)]">
               <li>
-                <Link to="/terms">Terms and Conditions</Link>
+                <Link href="/terms">Terms and Conditions</Link>
               </li>
               <li>
-                <Link to="/privacy">Privacy Policy</Link>
+                <Link href="/privacy">Privacy Policy</Link>
               </li>
               <li>
-                <Link to="/data-rights">Data rights</Link>
+                <Link href="/data-rights">Data rights</Link>
               </li>
             </ul>
           </nav>

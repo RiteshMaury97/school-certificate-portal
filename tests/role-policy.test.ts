@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canReviewUpload, hasAnyRole } from "../src/lib/role-policy";
+import { canReviewUpload, hasAnyRole } from "../src/shared/role-policy";
 describe("server role policy", () => {
   it("grants superadmins all explicitly gated capabilities", () => {
     expect(hasAnyRole("superadmin", ["approver"])).toBe(true);

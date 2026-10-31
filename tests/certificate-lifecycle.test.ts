@@ -4,7 +4,7 @@ import {
   duplicateFileDecision,
   isPubliclyDownloadableStatus,
   publicVerificationOutcome,
-} from "../src/lib/certificate-lifecycle";
+} from "../src/shared/certificate-lifecycle";
 
 describe("certificate lifecycle", () => {
   it("exposes only published certificates to public download flows", () => {

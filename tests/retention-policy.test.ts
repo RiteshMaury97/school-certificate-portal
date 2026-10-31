@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isRetentionExpired,
   retentionExpiryFromSession,
-} from "@/src/lib/retention-policy";
+} from "@/shared/retention-policy";
 describe("retention schedule", () => {
   it("calculates retention after the end of the academic session", () => {
     expect(retentionExpiryFromSession("2023-24", 7)?.toISOString()).toBe(

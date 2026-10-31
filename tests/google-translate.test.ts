@@ -1,6 +1,5 @@
-import { readFile } from "node:fs/promises";
-
 import { describe, expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
 
 describe("lazy Google Translate integration", () => {
   it("loads the Google script only from the language menu interaction", async () => {
@@ -12,7 +11,7 @@ describe("lazy Google Translate integration", () => {
     );
     expect(source).toContain('pageLanguage: "en"');
     expect(source).toContain("api.TranslateElement.InlineLayout.SIMPLE");
-    expect(source).toContain('id="google_translate_element"');
+    expect(source).toContain("id={widgetId}");
   });
   it("stores language choice, updates document language and manages the functional cookie", async () => {
     const source = await readFile("src/features/translate/LanguageButton.tsx", "utf8");
@@ -23,9 +22,9 @@ describe("lazy Google Translate integration", () => {
     expect(source).toContain("Translation is unavailable right now");
   });
   it("excludes personal results and admin pages from translation", async () => {
-    const results = await readFile("src/screens/ResultsPage.tsx", "utf8");
-    const print = await readFile("src/screens/PrintPage.tsx", "utf8");
-    const finder = await readFile("src/screens/FinderPage.tsx", "utf8");
+    const results = await readFile("src/features/certificates/ResultsView.tsx", "utf8");
+    const print = await readFile("src/features/certificates/PrintView.tsx", "utf8");
+    const finder = await readFile("src/features/certificates/FinderView.tsx", "utf8");
     const routes = await readFile("src/app/routes.tsx", "utf8");
     expect(results).toContain('className="mx-auto max-w-5xl notranslate"');
     expect(print).toContain('className="mx-auto max-w-4xl p-6 print:p-0 notranslate"');
@@ -33,7 +32,7 @@ describe("lazy Google Translate integration", () => {
     expect(routes).toContain('className="notranslate" translate="no"');
   });
   it("documents Google translation processing and the googtrans functional cookie", async () => {
-    const privacy = await readFile("src/screens/PrivacyPage.tsx", "utf8");
+    const privacy = await readFile("src/features/legal/PrivacyView.tsx", "utf8");
     const footer = await readFile("src/components/layout/Footer.tsx", "utf8");
     expect(privacy).toContain("page text may be sent to Google");
     expect(privacy).toContain("googtrans");
