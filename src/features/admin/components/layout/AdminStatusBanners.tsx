@@ -77,21 +77,9 @@ export default function AdminStatusBanners({
         </div>
       )}
       {busy && (
-        <section
-          aria-label="Loading admin data"
-          aria-live="polite"
-          className="mb-5 grid gap-3 sm:grid-cols-3"
-        >
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="h-20 animate-pulse rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-4"
-            >
-              <div className="h-3 w-2/3 rounded bg-[var(--surface-2)]" />
-              <div className="mt-4 h-3 w-1/2 rounded bg-[var(--surface-2)]" />
-            </div>
-          ))}
-        </section>
+        <p role="status" aria-live="polite" className="mb-5 text-sm text-[var(--text-muted)]">
+          Loading admin data…
+        </p>
       )}
     </>
   );

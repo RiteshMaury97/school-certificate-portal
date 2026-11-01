@@ -8,6 +8,7 @@ import type { SendMailOptions } from "nodemailer";
 
 export type MailInput = {
   to: string | string[];
+  replyTo?: string;
   subject: string;
   text?: string;
   html?: string;
@@ -105,7 +106,13 @@ function senderAddress(): string {
   return address;
 }
 
-export async function sendMail({ to, subject, text, html }: MailInput): Promise<void> {
+function replyToAddress(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const address = cleanHeader(value);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) ? address : undefined;
+}
+
+export async function sendMail({ to, subject, text, html, replyTo }: MailInput): Promise<void> {
   const recipients = (Array.isArray(to) ? to : [to])
     .map((address) => cleanHeader(address))
     .filter(Boolean);
@@ -115,12 +122,14 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
   const name = cleanHeader(await schoolName()).replace(/["\\]/g, "");
   const from = `"${name}" <${cleanHeader(senderAddress())}>`;
   const safeSubject = cleanHeader(subject);
+  const safeReplyTo = replyToAddress(replyTo);
   const smtp = getTransport();
   await reserveDailyRecipients(recipients.length);
 
   const options: SendMailOptions = {
     from,
     to: recipients,
+    ...(safeReplyTo ? { replyTo: safeReplyTo } : {}),
     subject: safeSubject,
     ...(text ? { text } : {}),
     ...(html ? { html } : {}),

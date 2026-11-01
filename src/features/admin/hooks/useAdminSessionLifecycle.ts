@@ -17,7 +17,6 @@ export function useAdminSessionLifecycle({ sessionState, api, onLogin }: Props) 
   const [idleWarning, setIdleWarning] = useState(false);
   const [sessions, setSessions] = useState<Record<string, unknown>[]>([]);
   const [recentLogins, setRecentLogins] = useState<Record<string, unknown>[]>([]);
-  const [showSessions, setShowSessions] = useState(false);
   const [sessionsError, setSessionsError] = useState("");
   const logout = useCallback(async () => {
     try {
@@ -121,7 +120,7 @@ export function useAdminSessionLifecycle({ sessionState, api, onLogin }: Props) 
       await logout();
     }
   }
-  async function loadSessions() {
+  const loadSessions = useCallback(async () => {
     setSessionsError("");
     try {
       const d = await api<{
@@ -132,10 +131,8 @@ export function useAdminSessionLifecycle({ sessionState, api, onLogin }: Props) 
       setRecentLogins(d.recentLogins ?? []);
     } catch (error) {
       setSessionsError(error instanceof Error ? error.message : "Could not load account sessions.");
-    } finally {
-      setShowSessions(true);
     }
-  }
+  }, [api]);
   async function revokeSession(sessionId: string) {
     const current = sessions.some((item) => item.sessionId === sessionId && item.current === true);
     try {
@@ -155,14 +152,12 @@ export function useAdminSessionLifecycle({ sessionState, api, onLogin }: Props) 
     }
   }
   async function revokeAllSessions() {
-    if (!confirm("Sign out of every device? You will need to sign in again.")) return;
     try {
       await api("/api/admin/sessions/revoke-all", { method: "POST" });
       onLogin();
     } catch (error) {
       setSessionsError(error instanceof Error ? error.message : "Could not revoke all sessions.");
-      setShowSessions(true);
     }
   }
-  return { uid, role, email, idleWarning, setIdleWarning, sessions, recentLogins, showSessions, setShowSessions, sessionsError, loadSessions, revokeSession, revokeAllSessions, logout, staySignedIn };
+  return { uid, role, email, idleWarning, setIdleWarning, sessions, recentLogins, sessionsError, loadSessions, revokeSession, revokeAllSessions, logout, staySignedIn };
 }

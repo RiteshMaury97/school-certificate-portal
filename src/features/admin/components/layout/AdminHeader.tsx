@@ -14,7 +14,7 @@ type AdminHeaderProps = {
   themeMode: string;
   toggleTheme: () => void;
   onTickets: () => void;
-  loadSessions: () => void;
+  onSessions: () => void;
   revokeAllSessions: () => void;
   logout: () => void;
   onProfile: MouseEventHandler<HTMLButtonElement>;
@@ -28,7 +28,7 @@ export default function AdminHeader({
   themeMode,
   toggleTheme,
   onTickets,
-  loadSessions,
+  onSessions,
   revokeAllSessions,
   logout,
   onProfile,
@@ -40,7 +40,7 @@ export default function AdminHeader({
         <div>
           <p className="sis-admin-breadcrumb">Workspace <span>/</span> Administration <span>/</span> {tabLabels[tab]}</p>
           <h1 className="text-lg font-semibold leading-tight text-[var(--text)]">
-            {tab === "dashboard" ? `Welcome back, ${username ? username : "Administrator"}` : tabLabels[tab]}
+            {tab === "dashboard" ? `Welcome back, ${username ?? "Administrator"}` : tabLabels[tab]}
           </h1>
           <p className="text-xs text-[var(--text-muted)]">Here’s what’s happening across your school portal today.</p>
         </div>
@@ -62,7 +62,7 @@ export default function AdminHeader({
             </summary>
             <div className="absolute right-0 z-50 mt-2 min-w-56 rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-2 text-[var(--text)] shadow-xl">
               <button type="button" onClick={onProfile} className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]">My profile</button>
-              <button onClick={() => { loadSessions(); }} className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]">Active sessions / recent logins</button>
+              <button onClick={onSessions} className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]">Sessions &amp; sign-ins</button>
               <button onClick={() => { revokeAllSessions(); }} className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-[var(--danger)] hover:bg-[var(--surface-2)]">Sign out of all devices</button>
               <button onClick={logout} className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]">Sign out</button>
             </div>

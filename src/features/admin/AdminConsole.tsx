@@ -25,8 +25,8 @@ import AdminMobileNav from "./components/layout/AdminMobileNav";
 import AdminSidebar from "./components/layout/AdminSidebar";
 import AdminStatusBanners from "./components/layout/AdminStatusBanners";
 import IdleWarningModal from "./components/modals/IdleWarningModal";
-import SessionsModal from "./components/modals/SessionsModal";
 import ProfileTab from "./components/profile/ProfileTab";
+import SessionsTab from "./components/profile/SessionsTab";
 import AnnouncementTab from "./components/site/AnnouncementTab";
 import BrandingTab from "./components/site/BrandingTab";
 import FaqsTab from "./components/site/FaqsTab";
@@ -98,6 +98,7 @@ export default function AdminPage() {
   const [contactEnquiryNotes, setContactEnquiryNotes] = useState<Record<string, string>>({});
   const [admins, setAdmins] = useState<Record<string, unknown>[]>([]);
   const [reportNotes, setReportNotes] = useState<Record<string, string>>({});
+  const [reportReplies, setReportReplies] = useState<Record<string, string>>({});
   const { busy, setBusy, toast, setToast, error, setError, act } = useAdminFeedback();
   const { api, reauthOpen, completeReauth, cancelReauth } = useAdminApi();
   const siteAdmin = useSiteSettingsAdmin(api, act, setToast);
@@ -141,8 +142,6 @@ export default function AdminPage() {
     idleWarning,
     sessions,
     recentLogins,
-    showSessions,
-    setShowSessions,
     sessionsError,
     logout,
     staySignedIn,
@@ -282,6 +281,9 @@ export default function AdminPage() {
         });
     }
   }, [email, load, setBusy, setError]);
+  useEffect(() => {
+    if (email && tab === "sessions") void loadSessions();
+  }, [email, tab, loadSessions]);
   async function saveCatalog(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     await act(async () => {
@@ -316,15 +318,27 @@ export default function AdminPage() {
       await load();
     });
   }
+  async function sendReportReply(id: string, reply: string) {
+    await act(async () => {
+      await api("/api/admin/reports", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, reply }),
+      });
+      setReportReplies((current) => ({ ...current, [id]: "" }));
+      await load();
+    });
+  }
   async function updateContactEnquiry(
     id: string,
     status: "open" | "reviewing" | "resolved" | "closed",
+    reply?: string,
   ) {
     await act(async () => {
       await api("/api/admin/contact-enquiries", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status, adminNote: contactEnquiryNotes[id] ?? "" }),
+        body: JSON.stringify({ id, status, adminNote: contactEnquiryNotes[id] ?? "", ...(reply ? { reply } : {}) }),
       });
       await load();
     });
@@ -343,19 +357,6 @@ export default function AdminPage() {
           onStaySignedIn={() => void staySignedIn()}
         />
       )}
-      {showSessions && (
-        <SessionsModal
-          sessions={sessions}
-          recentLogins={recentLogins}
-          error={sessionsError}
-          onRetry={() => void loadSessions()}
-          onClose={() => {
-            setShowSessions(false);
-          }}
-          onRevokeSession={(sessionId) => void revokeSession(sessionId)}
-          onRevokeAll={() => void revokeAllSessions()}
-        />
-      )}
       <AdminLayout>
         <AdminSidebar
           role={role}
@@ -365,7 +366,7 @@ export default function AdminPage() {
           onSettings={() => {
             router.push("/admin/settings");
           }}
-          onLoadSessions={() => void loadSessions()}
+          onLoadSessions={() => { router.push("/admin/account-sessions"); }}
         />
         <div className="min-w-0 flex-1">
           <AdminHeader
@@ -381,7 +382,7 @@ export default function AdminPage() {
             onProfile={() => {
               router.push("/admin/profile");
             }}
-            loadSessions={() => void loadSessions()}
+            onSessions={() => { router.push("/admin/account-sessions"); }}
             revokeAllSessions={() => void revokeAllSessions()}
             logout={() => void logout()}
           />
@@ -429,7 +430,17 @@ export default function AdminPage() {
                 act={act}
                 email={email}
                 role={role}
-                loadSessions={loadSessions}
+                loadSessions={() => { router.push("/admin/account-sessions"); return Promise.resolve(); }}
+              />
+            )}
+            {tab === "sessions" && (
+              <SessionsTab
+                sessions={sessions}
+                recentLogins={recentLogins}
+                error={sessionsError}
+                onRetry={() => void loadSessions()}
+                onRevokeSession={(sessionId) => void revokeSession(sessionId)}
+                onRevokeAll={() => void revokeAllSessions()}
               />
             )}
             {tab === "approvals" && (
@@ -650,6 +661,9 @@ export default function AdminPage() {
                 loaded={reportsLoaded}
                 reportNotes={reportNotes}
                 setReportNotes={setReportNotes}
+                reportReplies={reportReplies}
+                setReportReplies={setReportReplies}
+                sendReportReply={(id, reply) => { void sendReportReply(id, reply); }}
                 updateReport={(id, status) => {
                   void updateReport(id, status);
                 }}

@@ -681,37 +681,174 @@ body {
 }
 
 
-/* SIS admin dashboard — forest green, warm gold and soft ivory */
-.sis-admin-shell { background: #f7f8f5; color: #17221d; }
-.sis-admin-sidebar { min-height: 0; position: sticky; top: 0; height: 100dvh; background: #18241f; color: #f7faf7; }
-.sis-admin-brand { min-height: 80px; color: #fff; text-decoration: none; }
-.sis-admin-brand small { color: #aebdb4; }
-.sis-admin-logo { display:grid; place-items:center; width:42px; height:42px; border-radius:12px; background:#d5ae67; color:#18241f; font-size:21px; font-weight:800; }
-.sis-admin-sidebar-divider { height:1px; background:#34463d; }
-.sis-admin-nav-label { color:#879b8e; font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-.sis-admin-sidebar-nav { min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
-.sis-admin-sidebar-nav::-webkit-scrollbar { display:none; }
-.sis-admin-nav-item { display:flex; width:100%; min-height:42px; align-items:center; gap:13px; margin:3px 0; padding:0 12px; border:0; border-radius:9px; background:transparent; color:#ced7d1; text-align:left; font-size:12px; font-weight:500; transition:background .16s ease,color .16s ease; }
-.sis-admin-nav-item svg { flex:none; color:#aebdb4; }
-.sis-admin-nav-item:hover { background:#24372e; color:#fff; }
-.sis-admin-nav-item.is-active { background:#2d5c47; color:#fff; font-weight:650; }
-.sis-admin-nav-item.is-active svg { color:#d5ae67; }
-.sis-admin-user-footer { display:flex; align-items:center; gap:10px; min-height:72px; margin:0 18px; border-top:1px solid #34463d; color:#fff; }
-.sis-admin-user-footer small { color:#aebdb4; }
-.sis-admin-avatar { display:grid; width:34px; height:34px; flex:none; place-items:center; border-radius:50%; background:#d5ae67; color:#18241f; font-size:10px; font-weight:800; }
-.sis-admin-header { position:sticky; z-index:30; top:0; border-bottom:1px solid #e5eae5; background:rgb(255 255 255 / 96%); color:#17221d; backdrop-filter:blur(12px); }
-.sis-admin-breadcrumb { margin:0 0 5px; color:#748078; font-size:10px; }
-.sis-admin-breadcrumb span { margin:0 7px; color:#aab4ad; }
-.sis-admin-header .utility-icon { border-color:#e1e8e2; background:#fff; color:#263b30; }
-.sis-admin-header details summary { border-color:#e1e8e2; color:#263b30; }
-.sis-admin-header details summary:hover,.sis-admin-header .utility-icon:hover { background:#f1f4f0; }
-#main-content > div > div > nav[aria-label="Admin sections"] { display:none !important; }
-#main-content > div > div { max-width:1440px; }
-#main-content section, #main-content article { border-color:#e5eae5; }
-#main-content .rounded-xl.border, #main-content .rounded-lg.border { border-color:#e1e8e2; }
-@media (max-width:767px) {
-  .sis-admin-shell { display:block; }
-  .sis-admin-sidebar { display:none; }
-  .sis-admin-header { position:sticky; }
-  .sis-admin-header > div { padding-left:16px; padding-right:16px; }
+/* Admin workspace: calm forest navigation, airy paper surfaces, clearer hierarchy. */
+.sis-admin-shell {
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse at 90% 0%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 32rem),
+    var(--bg);
+  color: var(--text);
+}
+.sis-admin-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  min-height: 0;
+  width: 276px;
+  background: linear-gradient(165deg, #1b3027 0%, #14251e 72%);
+  color: #f7faf7;
+  box-shadow: 12px 0 36px rgb(19 35 27 / 8%);
+}
+.sis-admin-brand {
+  min-height: 92px;
+  padding-inline: 24px;
+  color: #fff;
+  text-decoration: none;
+}
+.sis-admin-brand strong { letter-spacing: -.02em; }
+.sis-admin-brand small { margin-top: 3px; color: #b4c3ba; letter-spacing: .1em; }
+.sis-admin-logo {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 15px;
+  background: linear-gradient(145deg, #e6c47d, #c49a4e);
+  color: #1b3027;
+  font-size: 21px;
+  font-weight: 800;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+}
+.sis-admin-sidebar-divider { height: 1px; background: rgb(255 255 255 / 10%); }
+.sis-admin-nav-label {
+  padding-top: 22px;
+  color: #91a79a;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.sis-admin-sidebar-nav { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.sis-admin-sidebar-nav::-webkit-scrollbar { display: none; }
+.sis-admin-nav-item {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  align-items: center;
+  gap: 13px;
+  margin: 4px 0;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #c6d3cb;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 550;
+  transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+}
+.sis-admin-nav-item svg { flex: none; color: #a8b9ae; }
+.sis-admin-nav-item:hover { transform: translateX(2px); background: rgb(255 255 255 / 7%); color: #fff; }
+.sis-admin-nav-item.is-active {
+  border-color: rgb(221 190 124 / 28%);
+  background: linear-gradient(100deg, rgb(213 174 103 / 19%), rgb(213 174 103 / 8%));
+  color: #fff;
+  font-weight: 700;
+  box-shadow: inset 3px 0 #d5ae67;
+}
+.sis-admin-nav-item.is-active svg { color: #e7c77f; }
+.sis-admin-user-footer {
+  display: flex;
+  min-height: 82px;
+  align-items: center;
+  gap: 11px;
+  margin: 0 18px;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  color: #fff;
+}
+.sis-admin-user-footer small { color: #b4c3ba; }
+.sis-admin-avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 13px;
+  background: rgb(255 255 255 / 9%);
+  color: #e7c77f;
+  font-size: 10px;
+  font-weight: 800;
+}
+.sis-admin-header {
+  position: sticky;
+  z-index: 30;
+  top: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 74%, transparent);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  color: var(--text);
+  backdrop-filter: blur(18px);
+}
+.sis-admin-header > div { min-height: 92px; padding-inline: clamp(24px, 4vw, 54px); }
+.sis-admin-header h1 { font-size: clamp(19px, 2vw, 24px); font-weight: 750; letter-spacing: -.035em; }
+.sis-admin-header > div > div:first-child > p:last-child { margin-top: 5px; }
+.sis-admin-breadcrumb { margin: 0 0 6px; color: var(--text-muted); font-size: 10px; font-weight: 650; letter-spacing: .04em; }
+.sis-admin-breadcrumb span { margin: 0 7px; color: var(--accent); }
+.sis-admin-header .utility-icon,
+.sis-admin-header details summary {
+  min-width: 42px;
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 2px 6px rgb(25 40 31 / 4%);
+}
+.sis-admin-header .utility-icon:hover,
+.sis-admin-header details summary:hover { border-color: var(--accent); background: var(--surface-2); }
+.sis-admin-header details summary { padding-inline: 12px; }
+.sis-admin-header details > div { border-color: var(--border); border-radius: 15px; box-shadow: var(--shadow-lift); }
+.sis-admin-header details button { border-radius: 10px; }
+#main-content > div > div > nav[aria-label="Admin sections"] { display: none !important; }
+#main-content > div > div { max-width: 1520px; padding-inline: clamp(24px, 4vw, 58px); padding-top: 34px; }
+.sis-admin-shell #main-content section,
+.sis-admin-shell #main-content article { border-color: var(--border); }
+.sis-admin-shell #main-content > div > div > section,
+.sis-admin-shell #main-content > div > div > div > section {
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 96%, var(--primary) 4%);
+  box-shadow: var(--shadow-card);
+}
+.sis-admin-shell #main-content h2 { letter-spacing: -.025em; }
+.sis-admin-shell #main-content input:not([type="checkbox"]):not([type="radio"]),
+.sis-admin-shell #main-content select,
+.sis-admin-shell #main-content textarea {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background-color: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(20 38 27 / 3%);
+}
+.sis-admin-shell #main-content textarea { min-height: 92px; padding: 11px 13px; }
+.sis-admin-shell #main-content input:focus,
+.sis-admin-shell #main-content select:focus,
+.sis-admin-shell #main-content textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 16%, transparent);
+}
+.sis-admin-shell #main-content button:not(.sis-admin-nav-item) { border-radius: 10px; }
+.sis-admin-shell #main-content button[class*="bg-[var(--primary)]"] {
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 17%, transparent);
+}
+.sis-admin-shell #main-content table thead { background: var(--surface-2); }
+.sis-admin-shell #main-content table th { color: var(--text-muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.sis-admin-shell #main-content table tbody tr:hover { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+@media (max-width: 767px) {
+  .sis-admin-shell { display: block; }
+  .sis-admin-sidebar { display: none; }
+  .sis-admin-header { position: sticky; }
+  .sis-admin-header > div { min-height: 78px; padding: 12px 16px; }
+  #main-content > div > div { padding: 22px 16px; }
 }

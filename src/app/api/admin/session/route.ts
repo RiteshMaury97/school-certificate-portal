@@ -149,14 +149,14 @@ export async function POST(request: NextRequest) {
     const ua = request.headers.get("user-agent") ?? "";
     const deviceHash = digest(`${ua}|${deviceId}`);
     const requestOrigin = getRequestOrigin(request);
-    const rawCity = requestOrigin.city ?? "Unknown city";
-    const city = (() => {
+    const rawCity = requestOrigin.city;
+    const city = rawCity ? (() => {
       try {
         return decodeURIComponent(rawCity).slice(0, 80);
       } catch {
         return rawCity.slice(0, 80);
       }
-    })();
+    })() : "";
     const country = (requestOrigin.country ?? "").slice(0, 8);
     const deviceRef = db.collection("adminDevices").doc(`${decoded.uid}_${deviceHash}`);
     const loginLocationRef = db.collection("adminLoginLocations").doc(decoded.uid);

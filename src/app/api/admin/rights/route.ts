@@ -154,6 +154,18 @@ export async function PATCH(request: NextRequest) {
         resolvedAt: new Date(),
       });
     await writeAuditLog(request, admin.uid, "data_rights.resolve", body.id);
+    const requestSnapshot = await db.collection("dataRightsRequests").doc(body.id).get();
+    const requesterEmail = String(requestSnapshot.get("contactEmail") ?? "").trim();
+    if (requesterEmail) {
+      const siteSettings = await db.collection("siteSettings").doc("main").get();
+      const schoolName = String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
+      await sendMail({
+        to: requesterEmail,
+        replyTo: admin.email,
+        subject: `${schoolName}: response to privacy request ${body.id}`,
+        text: `${schoolName} has reviewed your privacy request ${body.id}.\n\nResponse:\n${body.resolution.trim()}\n\nYou can reply directly to this email to continue the conversation.`,
+      });
+    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     return apiError(e);

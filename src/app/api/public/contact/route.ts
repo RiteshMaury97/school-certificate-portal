@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
+import { sendMail } from "@/server/mailer";
 import { requesterIp } from "@/server/request-origin";
 import { consumeSearchBudget, hashRequesterIp, verifyRequestAppCheck, writeAuditLog } from "@/server/security";
 
@@ -13,11 +14,14 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({
   fullName: z.string().trim().min(2).max(100),
-  mobile: z.string().trim().min(7).max(30).regex(/^[+\d() .-]+$/),
+  mobile: z.string().trim().min(7).max(30).regex(/^[+\d() .-]+$/).refine((value) => {
+    const digits = value.replace(/\D/g, "").length;
+    return digits >= 8 && digits <= 15;
+  }),
   email: z.email().trim().max(254),
   enquiryType: z.enum(["certificate", "student-record", "admission", "general", "other"]),
-  studentName: z.string().trim().max(100).optional().default(""),
-  classSession: z.string().trim().max(80).optional().default(""),
+  studentName: z.string().trim().min(2).max(100),
+  classSession: z.string().trim().min(2).max(80),
   subject: z.string().trim().min(3).max(160),
   message: z.string().trim().min(10).max(3000),
   consent: z.literal(true),
@@ -72,6 +76,12 @@ export async function POST(request: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     });
     await writeAuditLog(request, "public", "contact_enquiry.created", record.id).catch(() => false);
+    const schoolName = process.env.GMAIL_FROM_NAME?.trim() || "Satyam International School";
+    await sendMail({
+      to: enquiry.email,
+      subject: `${schoolName}: copy of your enquiry (${record.id})`,
+      text: `${schoolName} has received your enquiry.\n\nReference: ${record.id}\nSubject: ${enquiry.subject}\nType: ${enquiry.enquiryType}\n\nYour message:\n${enquiry.message}\n\nWe will respond to this email address.`,
+    }).catch((error: unknown) => console.error("[public/contact] confirmation email failed", error));
     return NextResponse.json({ ok: true, referenceId: record.id }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Unable to submit your enquiry right now. Please contact the school office." }, { status: 503 });

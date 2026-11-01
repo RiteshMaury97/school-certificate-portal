@@ -131,9 +131,12 @@ async function adminLocationGate(
   nonce: string,
   production: boolean,
 ): Promise<NextResponse | null> {
-  if (!isAdminPath(request.nextUrl.pathname)) return null;
+  // Location headers are supplied by the trusted production edge. Local
+  // development has no reliable country/IP context and must not replace an
+  // admin page with the middleware's JSON denial response.
+  if (!production || !isAdminPath(request.nextUrl.pathname)) return null;
   const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
-  if (secret.length < 32) return production ? locationGateResponse(nonce, production, 503) : null;
+  if (secret.length < 32) return locationGateResponse(nonce, production, 503);
   try {
     const decision = await checkLocationPolicy(request, secret);
     if (decision.allowed) return null;

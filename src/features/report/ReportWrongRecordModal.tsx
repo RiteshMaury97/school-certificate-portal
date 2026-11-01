@@ -19,6 +19,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [sessionsError, setSessionsError] = useState(false);
   const [issue, setIssue] = useState("");
+  const [email, setEmail] = useState("");
   const [contact, setContact] = useState("");
   const [contactMethod, setContactMethod] = useState<"email" | "phone">("email");
   const [phoneOptIn, setPhoneOptIn] = useState(false);
@@ -171,6 +172,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
           name,
           session,
           issue,
+          email,
           contact,
           contactMethod,
           phoneOptIn,
@@ -374,6 +376,20 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                   placeholder={contactMethod === "email" ? "name@example.com" : "+91 98765 43210"}
                 />
               </label>
+            <label className="block text-sm font-semibold">
+              Email address for your report copy (required)
+              <input
+                translate="no"
+                required
+                type="email"
+                maxLength={254}
+                autoComplete="email"
+                value={email}
+                onChange={(event) => { setEmail(event.target.value); }}
+                className="mt-1 w-full rounded-lg border p-3"
+                placeholder="name@example.com"
+              />
+            </label>
               {contactMethod === "email" && (
                 <div>
                   <label className="flex items-start gap-2 text-sm leading-5">
@@ -430,7 +446,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 "I am the student, or the parent/guardian of the student. I confirm that the School
                 may use these details to review this report." (
                 {
-                  "I consent to the school using these details to investigate and respond to this report. I confirm the information is accurate to the best of my knowledge."
+                "I consent to the school using these details to investigate and respond to this report, and emailing a copy to the address provided. I confirm the information is accurate to the best of my knowledge."
                 }
                 )
               </span>

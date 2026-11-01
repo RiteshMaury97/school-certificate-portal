@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
+import { sendMail } from "@/server/mailer";
 import { requesterIp } from "@/server/request-origin";
 import {
   consumeSearchBudget,
@@ -25,6 +26,7 @@ const schema = z.object({
   name: z.string().trim().min(2).max(100),
   session: z.string().regex(/^\d{4}-\d{2}$/),
   issue: z.string().trim().min(10).max(2000),
+  email: z.email().trim().max(254),
   contact: z.string().trim().min(5).max(254),
   contactMethod: z.enum(["email", "phone"]),
   phoneOptIn: z.boolean(),
@@ -107,6 +109,12 @@ export async function POST(request: NextRequest) {
       "record_report.created",
       referenceId,
     ).catch(() => null);
+    const schoolName = process.env.GMAIL_FROM_NAME?.trim() || "Satyam International School";
+    await sendMail({
+      to: parsed.data.email,
+      subject: `${schoolName}: copy of wrong-record report ${referenceId}`,
+      text: `${schoolName} has received your wrong-record report.\n\nReference: ${referenceId}\nStudent: ${parsed.data.name}\nPassing session: ${parsed.data.session}\n\nYour reported issue:\n${parsed.data.issue}\n\nPreferred contact: ${parsed.data.contactMethod} (${parsed.data.contact})\n\nKeep this reference to check your report status.`,
+    }).catch((error: unknown) => console.error("[public/report] confirmation email failed", error));
     return NextResponse.json(
       { ok: true, referenceId },
       { headers: { "Cache-Control": "no-store" } },

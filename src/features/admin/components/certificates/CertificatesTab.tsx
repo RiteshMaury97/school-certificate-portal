@@ -1,3 +1,5 @@
+import { BadgeCheck, Clock3, FileText, ShieldCheck, Upload, UserRound } from "lucide-react";
+
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import {
@@ -81,24 +83,60 @@ export default function CertificatesTab(props: Props) {
   } = props;
   const selectedStudentRecord = students.find((student) => student.id === selectedStudent);
   const selectedStudentSession = normalizeAcademicSession(selectedStudentRecord?.session ?? "");
+  const publishedCount = certs.filter((certificate) => certificate.status === "published").length;
+  const pendingCount = certs.filter((certificate) => certificate.status === "pending").length;
   return (
-    <section className="rounded-xl border bg-[var(--surface)] p-5">
-      <h2 className="text-lg font-bold">Certificate management</h2>
+    <div className="space-y-6">
+      <header className="relative overflow-hidden rounded-2xl bg-[var(--primary)] p-6 text-[var(--on-primary)] shadow-[var(--shadow-card)] sm:p-8">
+        <div className="absolute -right-10 -top-20 h-64 w-64 rounded-full border-[32px] border-white/10" />
+        <div className="relative flex flex-wrap items-center justify-between gap-5">
+          <div className="flex items-start gap-4">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/10 text-[var(--accent)]">
+              <FileText size={23} aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[var(--accent)]">Records workspace</p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Certificate management</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 opacity-85">
+                Add finished certificates to student records, track publication status, and manage replacements.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <span className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-center">
+              <b className="block text-xl">{certs.length}</b><small className="text-[10px] opacity-80">Total files</small>
+            </span>
+            <span className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-center">
+              <b className="block text-xl">{publishedCount}</b><small className="text-[10px] opacity-80">Published</small>
+            </span>
+          </div>
+        </div>
+      </header>
       {role !== "approver" && (
-        <form onSubmit={uploadMany} className="mt-4 grid gap-3 sm:grid-cols-2">
-          <p className="text-xs text-[var(--text-muted)] sm:col-span-2">
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <form onSubmit={uploadMany} className="overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
+          <div className="border-b border-[var(--divider)] px-5 py-4 sm:px-7">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--surface-2)] text-[var(--primary)]"><Upload size={18} aria-hidden="true" /></span>
+              <div><h3 className="font-bold">Upload a certificate</h3><p className="mt-0.5 text-xs text-[var(--text-muted)]">Attach one finished file to a student record.</p></div>
+            </div>
+          </div>
+          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-7">
+          <p className="rounded-xl bg-[var(--surface-2)] px-4 py-3 text-xs leading-5 text-[var(--text-muted)] sm:col-span-2">
             {UPLOAD_LIMITS_HELP} Mapped bulk intake accepts a CSV up to {Math.round(MAX_CSV_BYTES / (1024 * 1024))} MB, {MAX_CSV_ROWS} mapping rows, and {MAX_BULK_FILES} files up to {Math.round(UPLOAD_MAX_BYTES / (1024 * 1024))} MB each.
           </p>
-          <label className="text-sm">
+          <label htmlFor="certificate-student" className="text-sm font-semibold text-[var(--text)]">
             Student
             <select
+              id="certificate-student"
+              aria-label="Student"
               translate="no"
               required
               value={selectedStudent}
               onChange={(e) => {
                 setSelectedStudent(e.target.value);
               }}
-              className="mt-1 w-full rounded border p-2.5"
+              className="mt-2 min-h-11 w-full rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-sm"
             >
               <option value="">Choose student</option>
               {students.map((s) => (
@@ -108,9 +146,11 @@ export default function CertificatesTab(props: Props) {
               ))}
             </select>
           </label>
-          <label className="text-sm">
+          <label htmlFor="certificate-session" className="text-sm font-semibold text-[var(--text)]">
             Session
             <select
+              id="certificate-session"
+              aria-label="Session"
               translate="no"
               required
               value={selectedStudentSession ?? form.session}
@@ -118,7 +158,7 @@ export default function CertificatesTab(props: Props) {
               onChange={(e) => {
                 setForm((v) => ({ ...v, session: e.target.value }));
               }}
-              className="mt-1 w-full rounded border p-2.5"
+              className="mt-2 min-h-11 w-full rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-sm"
             >
               <option value="">Choose session</option>
               {selectedStudentSession ? (
@@ -138,9 +178,11 @@ export default function CertificatesTab(props: Props) {
               )}
             </select>
           </label>
-          <label className="text-sm">
+          <label htmlFor="certificate-type" className="text-sm font-semibold text-[var(--text)]">
             Certificate type
             <select
+              id="certificate-type"
+              aria-label="Certificate type"
               translate="no"
               required
               value={form.certificateType}
@@ -150,7 +192,7 @@ export default function CertificatesTab(props: Props) {
                   certificateType: e.target.value,
                 }));
               }}
-              className="mt-1 w-full rounded border p-2.5"
+              className="mt-2 min-h-11 w-full rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-sm"
             >
               <option value="">Choose certificate type</option>
               {typeOptions.map((x) => (
@@ -160,9 +202,11 @@ export default function CertificatesTab(props: Props) {
               ))}
             </select>
           </label>
-          <label className="text-sm">
+          <label htmlFor="certificate-number" className="text-sm font-semibold text-[var(--text)]">
             Certificate number
             <input
+              id="certificate-number"
+              aria-label="Certificate number"
               translate="no"
               required
               value={form.certificateNumber}
@@ -172,12 +216,14 @@ export default function CertificatesTab(props: Props) {
                   certificateNumber: e.target.value,
                 }));
               }}
-              className="mt-1 w-full rounded border p-2.5"
+              className="mt-2 min-h-11 w-full rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-sm"
             />
           </label>
-          <label className="text-sm">
+          <label htmlFor="certificate-issue-date" className="text-sm font-semibold text-[var(--text)]">
             Issue date
             <input
+              id="certificate-issue-date"
+              aria-label="Issue date"
               translate="no"
               type="date"
               required
@@ -185,12 +231,14 @@ export default function CertificatesTab(props: Props) {
               onChange={(e) => {
                 setForm((v) => ({ ...v, issuedAt: e.target.value }));
               }}
-              className="mt-1 w-full rounded border p-2.5"
+              className="mt-2 min-h-11 w-full rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-sm"
             />
           </label>
-          <label className="text-sm">
+          <label htmlFor="certificate-file" className="text-sm font-semibold text-[var(--text)] sm:col-span-2">
             Finished certificate file
             <input
+              id="certificate-file"
+              aria-label="Finished certificate file"
               translate="no"
               type="file"
               required
@@ -198,8 +246,9 @@ export default function CertificatesTab(props: Props) {
               onChange={(e) => {
                 setFiles(e.target.files ? Array.from(e.target.files) : []);
               }}
-              className="mt-1 block w-full"
+              className="mt-2 block min-h-12 w-full cursor-pointer rounded-xl border border-dashed border-[var(--primary)] bg-[var(--surface-2)] p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--primary)] file:px-3 file:py-2 file:font-semibold file:text-[var(--on-primary)]"
             />
+            {files.length > 0 && <span className="mt-2 block text-xs text-[var(--primary)]">Selected: {files.map((file) => file.name).join(", ")}</span>}
           </label>
           <DuplicateHashWarning
             warning={duplicateHashWarning}
@@ -207,7 +256,7 @@ export default function CertificatesTab(props: Props) {
             reason={duplicateHashReason}
             setAcknowledged={setDuplicateHashAcknowledged}
             setReason={setDuplicateHashReason}
-            className="sm:col-span-2 rounded-lg border-2 border-[var(--text)] bg-[var(--surface-2)] p-4"
+            className="sm:col-span-2 rounded-xl border border-[var(--warning)]/30 bg-[var(--surface-2)] p-4"
           />
           <button
             disabled={
@@ -216,29 +265,57 @@ export default function CertificatesTab(props: Props) {
                 (!duplicateHashAcknowledged || duplicateHashReason.trim().length < 10))
             }
             aria-busy={busy}
-            className="rounded-lg bg-[var(--primary)] p-3 text-[var(--on-primary)] sm:col-span-2"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] p-3 font-semibold text-[var(--on-primary)] shadow-md transition hover:brightness-105 disabled:opacity-60 sm:col-span-2"
           >
-            Upload certificate
+            <Upload size={17} aria-hidden="true" /> Upload certificate
           </button>
+          </div>
         </form>
+        <aside className="space-y-4 rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-2"><ShieldCheck size={18} className="text-[var(--primary)]" aria-hidden="true" /><h3 className="font-bold">Upload requirements</h3></div>
+          <p className="text-xs leading-5 text-[var(--text-muted)]">{UPLOAD_LIMITS_HELP}</p>
+          <div className="space-y-2 rounded-xl bg-[var(--surface-2)] p-3 text-xs">
+            <p className="flex items-center justify-between gap-2"><span>Per file</span><b>{Math.round(UPLOAD_MAX_BYTES / (1024 * 1024))} MB max</b></p>
+            <p className="flex items-center justify-between gap-2"><span>PDF pages</span><b>Up to 10</b></p>
+            <p className="flex items-center justify-between gap-2"><span>Bulk CSV</span><b>{Math.round(MAX_CSV_BYTES / (1024 * 1024))} MB · {MAX_CSV_ROWS} rows</b></p>
+            <p className="flex items-center justify-between gap-2"><span>Mapped files</span><b>{MAX_BULK_FILES} max</b></p>
+          </div>
+          <div className="space-y-3 border-t border-[var(--divider)] pt-4">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Quick steps</p>
+            <p className="flex items-start gap-2 text-xs leading-5"><UserRound size={15} className="mt-0.5 text-[var(--primary)]" aria-hidden="true" /> Select the student and confirm the academic session.</p>
+            <p className="flex items-start gap-2 text-xs leading-5"><FileText size={15} className="mt-0.5 text-[var(--primary)]" aria-hidden="true" /> Add certificate details and choose the final PDF or image.</p>
+            <p className="flex items-start gap-2 text-xs leading-5"><BadgeCheck size={15} className="mt-0.5 text-[var(--primary)]" aria-hidden="true" /> Review and publish it through the approval workflow.</p>
+          </div>
+        </aside>
+        </div>
       )}
-      <div className="mt-6 space-y-2">
+      <section className="overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--divider)] px-5 py-4 sm:px-6">
+        <div><h3 className="text-lg font-bold">Certificate records</h3><p className="mt-0.5 text-xs text-[var(--text-muted)]">Review publication, downloads, replacements, and history.</p></div>
+        <div className="flex gap-2 text-xs">
+          <span className="rounded-full bg-[var(--surface-2)] px-3 py-1.5 font-semibold">{pendingCount} pending</span>
+          <span className="rounded-full bg-[color-mix(in_srgb,var(--success)_12%,var(--surface))] px-3 py-1.5 font-semibold text-[var(--success)]">{publishedCount} published</span>
+        </div>
+      </div>
+      <div className="space-y-3 p-4 sm:p-5">
         {certs.map((c) => (
           <article
             key={c.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"
+            className="flex flex-col justify-between gap-4 rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-4 text-sm transition hover:border-[var(--primary)]/35 hover:shadow-sm lg:flex-row lg:items-center"
           >
-            <span>
-              {c.fileName} · {c.type} · {c.session} ·{" "}
-              <b className="capitalize">{c.status ?? "pending"}</b>
-              <span className="ml-2 text-xs text-[var(--text-muted)]">
-                Downloads: {c.downloadCount ?? 0}
-                {c.lastDownloadedAt
-                  ? ` · Last: ${new Date(c.lastDownloadedAt).toLocaleString()}`
-                  : ""}
-              </span>
-            </span>
-            <div className="flex items-center gap-3">
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-[var(--text)]">{c.fileName}</p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
+                {c.type} <span className="px-1">·</span> {c.session}
+                <span className="px-1">·</span> Certificate {c.certificateNumber || "number protected"}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
+                <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 font-semibold capitalize text-[var(--text)]">{c.status ?? "pending"}</span>
+                <span>{c.downloadCount ?? 0} downloads</span>
+                {c.lastDownloadedAt && <span className="inline-flex items-center gap-1"><Clock3 size={12} aria-hidden="true" /> Last {new Date(c.lastDownloadedAt).toLocaleString()}</span>}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               {role !== "uploader" && c.status === "pending" && (
                 <button
                   onClick={() => {
@@ -264,15 +341,17 @@ export default function CertificatesTab(props: Props) {
                         await load();
                       });
                   }}
-                  className="text-[var(--text)]"
+                  className="min-h-9 rounded-lg border border-[var(--divider)] px-3 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
                 >
                   Edit
                 </button>
               )}{" "}
               {role !== "approver" && c.status === "published" && (
-                <label className="cursor-pointer text-[var(--text)]">
+                <label htmlFor={`replace-certificate-${c.id}`} className="inline-flex min-h-9 cursor-pointer items-center rounded-lg border border-[var(--divider)] px-3 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]">
                   Replace certificate
                   <input
+                    id={`replace-certificate-${c.id}`}
+                    aria-label={`Replace certificate ${c.fileName}`}
                     translate="no"
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
@@ -344,7 +423,7 @@ export default function CertificatesTab(props: Props) {
                         await load();
                       });
                   }}
-                  className="font-semibold text-[var(--text)]"
+                  className="min-h-9 rounded-lg border border-[var(--warning)]/30 px-3 text-xs font-semibold text-[var(--warning)] hover:bg-[var(--surface-2)]"
                 >
                   Revoke
                 </button>
@@ -353,7 +432,7 @@ export default function CertificatesTab(props: Props) {
                 <span className="font-semibold text-[var(--text)]">Revoked</span>
               )}
               {role !== "uploader" && (
-                <button onClick={() => loadCertificateHistory(c.id)} className="text-[var(--text)]">
+                <button onClick={() => { void loadCertificateHistory(c.id); }} className="min-h-9 rounded-lg border border-[var(--divider)] px-3 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]">
                   History
                 </button>
               )}
@@ -372,7 +451,7 @@ export default function CertificatesTab(props: Props) {
                         await load();
                       });
                   }}
-                  className="text-[var(--danger)]"
+                  className="min-h-9 rounded-lg px-3 text-xs font-semibold text-[var(--danger)] hover:bg-[var(--surface-2)]"
                 >
                   Delete
                 </button>
@@ -381,7 +460,7 @@ export default function CertificatesTab(props: Props) {
           </article>
         ))}
         {Object.entries(certificateHistory).map(([id, events]) => (
-          <section key={id} className="mt-3 rounded border bg-[var(--surface-2)] p-3">
+          <section key={id} className="mt-3 rounded-xl border border-[var(--divider)] bg-[var(--surface-2)] p-4">
             <b className="text-sm">History · {id}</b>
             <ol className="mt-2 space-y-1 text-xs">
               {events.map((event) => (
@@ -394,6 +473,7 @@ export default function CertificatesTab(props: Props) {
           </section>
         ))}
       </div>
-    </section>
+      </section>
+    </div>
   );
 }

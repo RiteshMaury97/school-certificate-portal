@@ -49,4 +49,5 @@ export type Tab =
   | "announcement"
   | "faqs"
   | "contacts"
-  | "profile";
+  | "profile"
+  | "sessions";

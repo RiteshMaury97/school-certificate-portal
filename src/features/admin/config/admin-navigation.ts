@@ -40,6 +40,7 @@ export const tabIcons = {
   faqs: FileText,
   contacts: Mail,
   profile: ContactRound,
+  sessions: History,
 } satisfies Record<Tab, typeof LayoutDashboard>;
 export const tabs: Tab[] = [
   "dashboard",
@@ -60,6 +61,7 @@ export const tabs: Tab[] = [
   "announcement",
   "faqs",
   "profile",
+  "sessions",
 ];
 
 export const tabRoutes: Record<Tab, string> = {
@@ -81,6 +83,7 @@ export const tabRoutes: Record<Tab, string> = {
   announcement: "/admin/announcements",
   faqs: "/admin/faqs",
   profile: "/admin/profile",
+  sessions: "/admin/account-sessions",
 };
 
 export const tabLabels: Record<Tab, string> = {
@@ -102,4 +105,5 @@ export const tabLabels: Record<Tab, string> = {
   announcement: "Announcements",
   faqs: "FAQ Editor",
   profile: "My Profile",
+  sessions: "Sessions & sign-ins",
 };
