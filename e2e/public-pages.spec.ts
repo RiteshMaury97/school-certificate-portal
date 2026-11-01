@@ -4,16 +4,15 @@ test.beforeEach(async ({ page }) => {
     Object.defineProperty(window, "turnstile", {
       configurable: true,
       value: {
-        render: (_element: HTMLElement, options: { callback: (token: string) => void }) => {
+        render: (
+          _element: HTMLElement,
+          options: { callback: (token: string) => void },
+        ) => {
           options.callback("e2e-token");
           return "e2e-widget";
         },
-        reset: () => {
-          return;
-        },
-        remove: () => {
-          return;
-        },
+        reset: () => { return; },
+        remove: () => { return; },
       },
     });
   });
@@ -36,7 +35,9 @@ test("unknown route shows a helpful not-found state", async ({ page }) => {
   await page.goto("/this-route-does-not-exist");
   await expect(page.getByText(/not found/i)).toBeVisible();
 });
-test("language and dark mode preferences persist", async ({ page }) => {
+test("language and dark mode preferences persist", async ({
+  page,
+}) => {
   await page.goto("/");
   await page.locator("#language-toggle").selectOption("hi");
   await expect(page.locator("html")).toHaveAttribute("lang", "hi");

@@ -34,7 +34,11 @@ export default function ThemeToggle() {
   const Icon = theme === "system" ? Monitor : theme === "light" ? Sun : Moon;
 
   return (
-    <IconButton label={label} aria-pressed={theme !== "system"} onClick={toggleTheme}>
+    <IconButton
+      label={label}
+      aria-pressed={theme !== "system"}
+      onClick={toggleTheme}
+    >
       <Icon size={19} aria-hidden="true" />
     </IconButton>
   );

@@ -4,31 +4,51 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-const encryptionKey = Buffer.from(process.env.STUDENT_PII_ENCRYPTION_KEY ?? "", "base64");
-const hmacSecret = Buffer.from(process.env.DISAMBIGUATION_HMAC_SECRET ?? "", "utf8");
+const encryptionKey = Buffer.from(
+  process.env.STUDENT_PII_ENCRYPTION_KEY ?? "",
+  "base64",
+);
+const hmacSecret = Buffer.from(
+  process.env.DISAMBIGUATION_HMAC_SECRET ?? "",
+  "utf8",
+);
 if (!encoded) throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 is required");
 if (encryptionKey.length !== 32)
-  throw new Error("STUDENT_PII_ENCRYPTION_KEY must be a base64-encoded 32-byte key");
-if (hmacSecret.length < 32) throw new Error("DISAMBIGUATION_HMAC_SECRET must be at least 32 bytes");
+  throw new Error(
+    "STUDENT_PII_ENCRYPTION_KEY must be a base64-encoded 32-byte key",
+  );
+if (hmacSecret.length < 32)
+  throw new Error("DISAMBIGUATION_HMAC_SECRET must be at least 32 bytes");
 const execute = process.argv.includes("--execute");
 const app =
   getApps()[0] ??
   initializeApp({
-    credential: cert(JSON.parse(Buffer.from(encoded, "base64").toString("utf8"))),
+    credential: cert(
+      JSON.parse(Buffer.from(encoded, "base64").toString("utf8")),
+    ),
   });
 const db = getFirestore(app);
 function normalize(value) {
-  const normalized = String(value).normalize("NFKC").trim().replace(/\s+/g, " ").toUpperCase();
+  const normalized = String(value)
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
   const dmy = normalized.match(/^(\d{2})[-/.](\d{2})[-/.](\d{4})$/);
   return dmy ? `${dmy[3]}-${dmy[2]}-${dmy[1]}` : normalized;
 }
 function digest(value) {
-  return createHmac("sha256", hmacSecret).update(normalize(value), "utf8").digest("hex");
+  return createHmac("sha256", hmacSecret)
+    .update(normalize(value), "utf8")
+    .digest("hex");
 }
 function encrypt(value) {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey, iv);
-  const encrypted = Buffer.concat([cipher.update(normalize(value), "utf8"), cipher.final()]);
+  const encrypted = Buffer.concat([
+    cipher.update(normalize(value), "utf8"),
+    cipher.final(),
+  ]);
   return `v1.${iv.toString("base64url")}.${cipher.getAuthTag().toString("base64url")}.${encrypted.toString("base64url")}`;
 }
 let scanned = 0,
@@ -46,7 +66,9 @@ for (;;) {
     const data = doc.data();
     const update = {};
     const legacyAdmission =
-      typeof data.admissionNo === "string" && data.admissionNo.trim() ? data.admissionNo : "";
+      typeof data.admissionNo === "string" && data.admissionNo.trim()
+        ? data.admissionNo
+        : "";
     const admissionValue =
       legacyAdmission ||
       (typeof data.admissionNumber === "string" &&
@@ -58,7 +80,8 @@ for (;;) {
       update.admissionNumber = encrypt(admissionValue);
       update.admissionNumberDisambiguationKey = digest(admissionValue);
     }
-    if (typeof data.admissionNo === "string") update.admissionNo = FieldValue.delete();
+    if (typeof data.admissionNo === "string")
+      update.admissionNo = FieldValue.delete();
     if (
       typeof data.dateOfBirth === "string" &&
       data.dateOfBirth.trim() &&
@@ -67,13 +90,11 @@ for (;;) {
       update.dateOfBirth = encrypt(data.dateOfBirth);
       update.dateOfBirthDisambiguationKey = digest(data.dateOfBirth);
     }
-    const hasUpdates = Object.keys(update).length > 0;
-    if (hasUpdates) {
-      update.piiMigratedAt = FieldValue.serverTimestamp();
-      changed += 1;
-      pageChanged += 1;
-    }
-    if (execute && hasUpdates) batch.update(doc.ref, update);
+    if (!Object.keys(update).length) continue;
+    update.piiMigratedAt = FieldValue.serverTimestamp();
+    changed += 1;
+    pageChanged += 1;
+    if (execute) batch.update(doc.ref, update);
   }
   if (execute && pageChanged) await batch.commit();
   cursor = page.docs.at(-1);
@@ -83,5 +104,7 @@ process.stdout.write(
   `${execute ? "Updated" : "DRY RUN — would update"} ${changed} of ${scanned} student records.\n`,
 );
 if (!execute)
-  process.stdout.write("Review the count, back up Firestore, then rerun with --execute.\n");
+  process.stdout.write(
+    "Review the count, back up Firestore, then rerun with --execute.\n",
+  );
 await app.delete();

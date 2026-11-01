@@ -39,13 +39,12 @@ describe("public certificate portal page contracts", () => {
   });
   it("data rights supports consent withdrawal and wrong-record reports have their own page", async () => {
     const route = await readFile("src/app/api/public/data-rights/route.ts", "utf8");
-    const page = await readFile("src/features/legal/PrivacyView.tsx", "utf8");
-    const report = await readFile("src/features/report/ReportWrongRecordModal.tsx", "utf8");
+    const page = await readFile("src/features/info/InformationView.tsx", "utf8");
     expect(route).toContain("withdraw_consent");
+    expect(page).toContain("/api/public/report");
     expect(page).toContain("/api/public/data-rights");
     expect(page).toContain("acknowledgmentId");
-    expect(report).toContain("/api/public/report");
-    expect(report).toContain("referenceId");
+    expect(page).toContain("referenceId");
   });
   it("verification labels replaced and revoked states and masks student details server-side", async () => {
     const page = await readFile("src/features/verify/VerifyView.tsx", "utf8");

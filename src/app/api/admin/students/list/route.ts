@@ -4,7 +4,7 @@ import { db } from "@/server/firebase-admin";
 import { apiError, requireRoles } from "@/server/security";
 import { decryptStudentIdentifier } from "@/server/student-pii";
 
-import type { NextRequest } from "next/server";
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
@@ -22,7 +22,10 @@ export async function GET(request: NextRequest) {
     const snapshot = await query.get();
     const students = await Promise.all(
       snapshot.docs.map(async (doc) => {
-        const certs = await db.collection("certificates").where("studentId", "==", doc.id).get();
+        const certs = await db
+          .collection("certificates")
+          .where("studentId", "==", doc.id)
+          .get();
         let admissionNo = String(doc.get("admissionNo") ?? "");
         let dateOfBirth = "";
         let scholarNumber = "";
@@ -54,10 +57,6 @@ export async function GET(request: NextRequest) {
           id: doc.id,
           admissionNo,
           dateOfBirth,
-          parentEmail: String(doc.get("parentEmail") ?? ""),
-          parentMobile: String(doc.get("parentMobile") ?? ""),
-          notificationConsent:
-            doc.get("notificationConsent") === true && doc.get("notificationOptOut") !== true,
           scholarNumber,
           className: String(doc.get("className") ?? ""),
           studentName: doc.get("studentName"),
@@ -72,7 +71,7 @@ export async function GET(request: NextRequest) {
       {
         students,
         hasMore: snapshot.size === 100,
-        nextCursor: snapshot.size === 100 ? (snapshot.docs.at(-1)?.id ?? null) : null,
+        nextCursor: snapshot.size === 100 ? snapshot.docs.at(-1)?.id ?? null : null,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

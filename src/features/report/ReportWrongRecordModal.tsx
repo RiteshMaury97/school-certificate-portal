@@ -4,24 +4,18 @@ import { useEffect, useRef, useState } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 
-import type { SubmitEvent } from "react";
+import type { FormEvent} from "react";
 
-type SessionsResponse = { sessions: string[] };
+
 
 export default function ReportWrongRecordModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [session, setSession] = useState("");
-  const [sessions, setSessions] = useState<string[]>([]);
-  const [sessionsLoading, setSessionsLoading] = useState(true);
-  const [sessionsError, setSessionsError] = useState(false);
-  const [sessionsRetry, setSessionsRetry] = useState(0);
   const [issue, setIssue] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [contact, setContact] = useState("");
   const [consent, setConsent] = useState(false);
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [reference, setReference] = useState("");
   const [captchaError, setCaptchaError] = useState(false);
@@ -37,7 +31,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       if (event.key === "Tab" && dialog) {
         const nodes = Array.from(
           dialog.querySelectorAll<HTMLElement>(
-            "button,input,select,textarea,[href],[tabindex]:not([tabindex='-1'])",
+            "button,input,textarea,[href],[tabindex]:not([tabindex='-1'])",
           ),
         ).filter((el) => !el.hasAttribute("disabled"));
         const firstNode = nodes[0],
@@ -52,33 +46,8 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       }
     };
     document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-    };
+    return () => { document.removeEventListener("keydown", onKey); };
   }, [onClose]);
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/public/sessions", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Sessions unavailable");
-        return response.json() as Promise<SessionsResponse>;
-      })
-      .then((data) => {
-        if (!cancelled) {
-          setSessions(data.sessions ?? []);
-          setSessionsError(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setSessionsError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setSessionsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionsRetry]);
   useEffect(() => {
     if (!siteKey || !captcha.current) {
       setCaptchaError(true);
@@ -94,9 +63,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             setToken(value);
             setCaptchaError(false);
           },
-          "expired-callback": () => {
-            setToken("");
-          },
+          "expired-callback": () => { setToken(""); },
           "error-callback": () => {
             setToken("");
             setCaptchaError(true);
@@ -117,9 +84,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       script.async = true;
       script.defer = true;
       script.onload = render;
-      script.onerror = () => {
-        setCaptchaError(true);
-      };
+      script.onerror = () => { setCaptchaError(true); };
       document.head.appendChild(script);
     }
     return () => {
@@ -128,38 +93,9 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       widget.current = null;
     };
   }, [siteKey]);
-  async function submit(event: SubmitEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     setError("");
-    const trimmedName = name.trim();
-    const trimmedIssue = issue.trim();
-    const trimmedEmail = contactEmail.trim();
-    const nextFieldErrors: Record<string, string> = {};
-    if (trimmedName.length < 2)
-      nextFieldErrors.name = "Enter the student's name (at least 2 characters).";
-    else if (trimmedName.length > 100)
-      nextFieldErrors.name = "Student name must be 100 characters or fewer.";
-    if (trimmedIssue.length < 10)
-      nextFieldErrors.issue = "Describe what is wrong in at least 10 characters.";
-    else if (trimmedIssue.length > 2000)
-      nextFieldErrors.issue = "Description must be 2,000 characters or fewer.";
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      nextFieldErrors.contactEmail =
-        "Enter a valid email address, such as name@example.com, or leave it blank.";
-    }
-    const phoneDigits = phoneNumber.replace(/\D/g, "");
-    if (
-      !/^\+?[0-9\s().-]{8,24}$/.test(phoneNumber.trim()) ||
-      phoneDigits.length < 8 ||
-      phoneDigits.length > 15
-    ) {
-      nextFieldErrors.phoneNumber = "Enter a valid phone number with 8–15 digits.";
-    }
-    setFieldErrors(nextFieldErrors);
-    if (Object.keys(nextFieldErrors).length > 0) {
-      setError("Please correct the highlighted fields.");
-      return;
-    }
     if (!consent || !token) {
       setError("Please provide consent and complete security verification.");
       return;
@@ -173,11 +109,10 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
           ...(await appCheckHeaders()),
         },
         body: JSON.stringify({
-          name: trimmedName,
+          name,
           session,
-          issue: trimmedIssue,
-          contactEmail: trimmedEmail,
-          phoneNumber,
+          issue,
+          contact,
           consent,
           turnstileToken: token,
         }),
@@ -187,17 +122,8 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
         referenceId?: string;
         error?: string;
       };
-      if (!response.ok || !data.referenceId) {
-        if (data.error?.toLowerCase().includes("security verification")) {
-          setToken("");
-          setError(
-            "Security verification expired or could not be confirmed. Complete the check again, then submit.",
-          );
-          if (widget.current && window.turnstile) window.turnstile.reset(widget.current);
-          return;
-        }
+      if (!response.ok || !data.referenceId)
         throw new Error(data.error ?? "Unable to submit your report.");
-      }
       setReference(data.referenceId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to submit your report.");
@@ -241,18 +167,10 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
           <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-5">
             <h3 className="font-bold text-[var(--text)]">{"Report submitted"}</h3>
             <p className="mt-2 text-sm text-[var(--text)]">{"Your reference ID is:"}</p>
-            <p className="mt-1 break-all text-xl font-bold tracking-wide text-[var(--text)]">
-              {reference}
-            </p>
+            <p className="mt-1 text-xl font-bold tracking-wide text-[var(--text)]">{reference}</p>
             <p className="mt-2 text-xs text-[var(--text)]">
               {"Keep this ID for future communication with the school."}
             </p>
-            <Link
-              href="/report-status"
-              className="mt-3 inline-block text-sm font-semibold text-[var(--primary)] underline"
-            >
-              Check report status
-            </Link>
             <button
               onClick={onClose}
               className="mt-4 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)]"
@@ -276,83 +194,32 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               </Link>
             </p>
             <label className="block text-sm font-semibold">
-              {"Student name"}{" "}
-              <span aria-hidden="true" className="text-[var(--danger)]">
-                *
-              </span>
+              {"Student name"}
               <input
                 translate="no"
                 required
                 minLength={2}
                 maxLength={100}
                 value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setFieldErrors((current) => ({ ...current, name: "" }));
-                }}
+                onChange={(e) => { setName(e.target.value); }}
                 className="mt-1 w-full rounded-lg border p-3"
                 placeholder={"Name as in school records"}
-                aria-invalid={Boolean(fieldErrors.name)}
-                aria-describedby={fieldErrors.name ? "report-name-error" : undefined}
               />
-              {fieldErrors.name && (
-                <span
-                  id="report-name-error"
-                  role="alert"
-                  className="mt-1 block text-xs font-normal text-[var(--danger)]"
-                >
-                  {fieldErrors.name}
-                </span>
-              )}
             </label>
             <label className="block text-sm font-semibold">
-              Passing session{" "}
-              <span aria-hidden="true" className="text-[var(--danger)]">
-                *
-              </span>
-              <select
+              {"Passing session"}
+              <input
                 translate="no"
                 required
+                pattern="\d{4}-\d{2}"
                 value={session}
-                onChange={(e) => {
-                  setSession(e.target.value);
-                }}
-                disabled={sessionsLoading || sessionsError || sessions.length === 0 || busy}
-                className="mt-1 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">
-                  {sessionsLoading ? "Loading active sessions…" : "Choose passing session"}
-                </option>
-                {sessions.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-              {sessionsError && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSessionsLoading(true);
-                    setSessionsError(false);
-                    setSessionsRetry((value) => value + 1);
-                  }}
-                  className="mt-1 text-xs font-semibold text-[var(--primary)]"
-                >
-                  Sessions could not load. Retry.
-                </button>
-              )}
-              {!sessionsLoading && !sessionsError && sessions.length === 0 && (
-                <span className="mt-1 block text-xs text-[var(--danger)]">
-                  No sessions are available. Contact the school office.
-                </span>
-              )}
+                onChange={(e) => { setSession(e.target.value); }}
+                className="mt-1 w-full rounded-lg border p-3"
+                placeholder={"2023-24"}
+              />
             </label>
             <label className="block text-sm font-semibold">
-              {"What is wrong?"}{" "}
-              <span aria-hidden="true" className="text-[var(--danger)]">
-                *
-              </span>
+              {"What is wrong?"}
               <textarea
                 translate="no"
                 required
@@ -360,86 +227,22 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 maxLength={2000}
                 rows={4}
                 value={issue}
-                onChange={(e) => {
-                  setIssue(e.target.value);
-                  setFieldErrors((current) => ({ ...current, issue: "" }));
-                }}
+                onChange={(e) => { setIssue(e.target.value); }}
                 className="mt-1 w-full rounded-lg border p-3"
                 placeholder={"Describe the incorrect detail or certificate issue"}
-                aria-invalid={Boolean(fieldErrors.issue)}
-                aria-describedby={fieldErrors.issue ? "report-issue-error" : undefined}
               />
-              {fieldErrors.issue && (
-                <span
-                  id="report-issue-error"
-                  role="alert"
-                  className="mt-1 block text-xs font-normal text-[var(--danger)]"
-                >
-                  {fieldErrors.issue}
-                </span>
-              )}
             </label>
             <label className="block text-sm font-semibold">
-              Contact email <span className="font-normal text-[var(--text-muted)]">(optional)</span>
+              {"Contact email or phone"}
               <input
                 translate="no"
-                type="email"
-                maxLength={254}
-                autoComplete="email"
-                value={contactEmail}
-                onChange={(e) => {
-                  setContactEmail(e.target.value);
-                  setFieldErrors((current) => ({ ...current, contactEmail: "" }));
-                }}
-                className="mt-1 w-full rounded-lg border p-3"
-                placeholder="name@example.com"
-                aria-invalid={Boolean(fieldErrors.contactEmail)}
-                aria-describedby={fieldErrors.contactEmail ? "report-email-error" : undefined}
-              />
-              {fieldErrors.contactEmail && (
-                <span
-                  id="report-email-error"
-                  role="alert"
-                  className="mt-1 block text-xs font-normal text-[var(--danger)]"
-                >
-                  {fieldErrors.contactEmail}
-                </span>
-              )}
-            </label>
-            <label className="block text-sm font-semibold">
-              Phone number{" "}
-              <span aria-hidden="true" className="text-[var(--danger)]">
-                *
-              </span>
-              <input
-                translate="no"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
                 required
-                minLength={8}
-                maxLength={24}
-                pattern="\+?[0-9\s().-]{8,24}"
-                value={phoneNumber}
-                onChange={(e) => {
-                  setPhoneNumber(e.target.value);
-                  setFieldErrors((current) => ({ ...current, phoneNumber: "" }));
-                }}
+                maxLength={254}
+                value={contact}
+                onChange={(e) => { setContact(e.target.value); }}
                 className="mt-1 w-full rounded-lg border p-3"
-                placeholder="+91 98765 43210"
-                aria-describedby="report-phone-help"
+                placeholder={"How can the school contact you?"}
               />
-              {fieldErrors.phoneNumber && (
-                <span role="alert" className="mt-1 block text-xs font-normal text-[var(--danger)]">
-                  {fieldErrors.phoneNumber}
-                </span>
-              )}
-              <span
-                id="report-phone-help"
-                className="mt-1 block text-xs font-normal text-[var(--text-muted)]"
-              >
-                Enter 8–15 digits; spaces, +, parentheses, dots and hyphens are allowed.
-              </span>
             </label>
             <label className="flex items-start gap-2 text-sm leading-5">
               <input
@@ -447,9 +250,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 type="checkbox"
                 required
                 checked={consent}
-                onChange={(e) => {
-                  setConsent(e.target.checked);
-                }}
+                onChange={(e) => { setConsent(e.target.checked); }}
                 className="mt-1"
               />
               <span>
@@ -481,16 +282,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               </p>
             )}
             <button
-              disabled={
-                busy ||
-                !token ||
-                !consent ||
-                !session ||
-                sessionsLoading ||
-                sessionsError ||
-                sessions.length === 0
-              }
-              aria-busy={busy}
+              disabled={busy || !token || !consent} aria-busy={busy}
               className="w-full rounded-lg bg-[var(--primary)] px-4 py-3 text-sm font-bold text-[var(--on-primary)] disabled:opacity-50"
             >
               {busy ? "Submitting…" : "Submit report"}

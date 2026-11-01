@@ -1,9 +1,9 @@
+
 import { randomUUID, createHash } from "node:crypto";
 
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
-import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import {
   createCertificateNumberIndex,
   replaceCertificateNumberIndex,
@@ -12,17 +12,28 @@ import {
 } from "@/server/certificate-index";
 import { encryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
-import { ensurePublicSessions, rebuildPublicSessions } from "@/server/public-sessions";
-import { uploadCertificate, softDeleteR2Object, certificateTypeSlug } from "@/server/r2";
-import { requireRoles, requireSensitiveReauth, writeAuditLog, apiError } from "@/server/security";
-import { rejectOversizedRequest, reserveUploadQuota } from "@/server/upload-guard";
-import { normalizeAcademicSession } from "@/shared/academic-session";
+import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
+import {
+  ensurePublicSessions,
+  rebuildPublicSessions,
+} from "@/server/public-sessions";
+import {
+  uploadCertificate,
+  softDeleteR2Object,
+  certificateTypeSlug,
+} from "@/server/r2";
+import {
+  requireRoles,
+  requireSensitiveReauth,
+  writeAuditLog,
+  apiError,
+} from "@/server/security";
 import { canReplacePublishedCertificate } from "@/shared/certificate-lifecycle";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
-import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 import { certificateMetadataSchema } from "@/shared/validation";
 
-import type { NextRequest } from "next/server";
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,18 +47,27 @@ export async function PATCH(
     const { certificateId } = await context.params;
     const parsed = certificateMetadataSchema.safeParse(await request.json());
     if (!parsed.success)
-      return NextResponse.json({ error: "Invalid certificate metadata." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid certificate metadata." },
+        { status: 400 },
+      );
     const { session, type } = parsed.data;
     const [sessionDoc, typeDoc] = await Promise.all([
       db.collection("sessions").doc(session).get(),
       db.collection("certificateTypes").doc(certificateTypeSlug(type)).get(),
     ]);
     if (!sessionDoc.exists || !typeDoc.exists)
-      return NextResponse.json({ error: "Unknown session or certificate type." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Unknown session or certificate type." },
+        { status: 400 },
+      );
     const ref = db.collection("certificates").doc(certificateId);
     const current = await ref.get();
     if (!current.exists)
-      return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Certificate not found." },
+        { status: 404 },
+      );
     if (current.get("status") !== "pending")
       return NextResponse.json(
         {
@@ -59,13 +79,18 @@ export async function PATCH(
     if (current.get("session") !== session || current.get("type") !== type) {
       return NextResponse.json(
         {
-          error: "Changing session or certificate type requires uploading the premade file again.",
+          error:
+            "Changing session or certificate type requires uploading the premade file again.",
         },
         { status: 400 },
       );
     }
     try {
-      await replaceCertificateNumberIndex(parsed.data.certificateNumber, certificateId, session);
+      await replaceCertificateNumberIndex(
+        parsed.data.certificateNumber,
+        certificateId,
+        session,
+      );
     } catch (error) {
       if (error instanceof DuplicateCertificateNumberError) {
         return NextResponse.json(
@@ -78,7 +103,9 @@ export async function PATCH(
     const { certificateNumber: _number, ...metadata } = parsed.data;
     await ref.update({
       ...metadata,
-      certificateNumberEncrypted: encryptCertificateNumber(parsed.data.certificateNumber),
+      certificateNumberEncrypted: encryptCertificateNumber(
+        parsed.data.certificateNumber,
+      ),
       updatedBy: admin.uid,
       updatedAt: new Date(),
     });
@@ -89,7 +116,10 @@ export async function PATCH(
       certificateId,
       String(current.get("studentId") ?? ""),
     );
-    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { ok: true },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     return apiError(error);
   }
@@ -101,12 +131,13 @@ export async function PUT(
 ) {
   try {
     const admin = await requireRoles(request, ["uploader", "admin"]);
-    const tooLarge = rejectOversizedRequest(request);
-    if (tooLarge) return tooLarge;
     const { certificateId } = await context.params;
     const oldRef = db.collection("certificates").doc(certificateId);
     const current = await oldRef.get();
-    if (!current.exists || !canReplacePublishedCertificate(current.get("status")))
+    if (
+      !current.exists ||
+      !canReplacePublishedCertificate(current.get("status"))
+    )
       return NextResponse.json(
         { error: "Only a published certificate can be replaced." },
         { status: 409 },
@@ -114,11 +145,9 @@ export async function PUT(
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File))
-      return NextResponse.json({ error: "Select a replacement file." }, { status: 400 });
-    if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
       return NextResponse.json(
-        { error: "Certificate must be between 1 byte and 4 MB." },
-        { status: 413 },
+        { error: "Select a replacement file." },
+        { status: 400 },
       );
     const parsed = certificateMetadataSchema.safeParse({
       session: String(form.get("session") ?? current.get("session")),
@@ -127,7 +156,10 @@ export async function PUT(
       issueDate: String(form.get("issueDate") ?? current.get("issueDate")),
     });
     if (!parsed.success)
-      return NextResponse.json({ error: "Invalid replacement metadata." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid replacement metadata." },
+        { status: 400 },
+      );
     const linkedStudent = await db
       .collection("students")
       .doc(String(current.get("studentId") ?? ""))
@@ -143,14 +175,23 @@ export async function PUT(
       );
     const [sessionDoc, typeDoc] = await Promise.all([
       db.collection("sessions").doc(parsed.data.session).get(),
-      db.collection("certificateTypes").doc(certificateTypeSlug(parsed.data.type)).get(),
+      db
+        .collection("certificateTypes")
+        .doc(certificateTypeSlug(parsed.data.type))
+        .get(),
     ]);
     if (!sessionDoc.exists || !typeDoc.exists)
-      return NextResponse.json({ error: "Unknown session or certificate type." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Unknown session or certificate type." },
+        { status: 400 },
+      );
     const hash = createHash("sha256")
       .update(Buffer.from(await file.arrayBuffer()))
       .digest("hex");
-    const sameHash = await db.collection("certificates").where("sha256", "==", hash).get();
+    const sameHash = await db
+      .collection("certificates")
+      .where("sha256", "==", hash)
+      .get();
     const studentId = String(current.get("studentId") ?? "");
     const duplicateDecision = duplicateFileDecision(
       sameHash.docs.map((doc) => ({
@@ -163,13 +204,20 @@ export async function PUT(
     if (duplicateDecision === "block-same-student-type")
       return NextResponse.json(
         {
-          error: "An identical file already exists for this student and certificate type.",
+          error:
+            "An identical file already exists for this student and certificate type.",
         },
         { status: 409 },
       );
-    const intentional = String(form.get("confirmDuplicateHash") ?? "") === "true";
-    const duplicateReason = String(form.get("duplicateHashReason") ?? "").trim();
-    if (duplicateDecision === "warn-cross-record" && (!intentional || duplicateReason.length < 10))
+    const intentional =
+      String(form.get("confirmDuplicateHash") ?? "") === "true";
+    const duplicateReason = String(
+      form.get("duplicateHashReason") ?? "",
+    ).trim();
+    if (
+      duplicateDecision === "warn-cross-record" &&
+      (!intentional || duplicateReason.length < 10)
+    )
       return NextResponse.json(
         {
           error:
@@ -178,8 +226,12 @@ export async function PUT(
         },
         { status: 409 },
       );
-    await reserveUploadQuota(admin.uid, file.size);
-    const stored = await uploadCertificate(file, parsed.data.session, parsed.data.type, studentId);
+    const stored = await uploadCertificate(
+      file,
+      parsed.data.session,
+      parsed.data.type,
+      studentId,
+    );
     const replacementRef = db.collection("certificates").doc(randomUUID());
     try {
       await createCertificateNumberIndex(
@@ -192,7 +244,9 @@ export async function PUT(
         studentId: current.get("studentId"),
         session: parsed.data.session,
         type: parsed.data.type,
-        certificateNumberEncrypted: encryptCertificateNumber(parsed.data.certificateNumber),
+        certificateNumberEncrypted: encryptCertificateNumber(
+          parsed.data.certificateNumber,
+        ),
         r2Key: stored.r2Key,
         fileName: stored.fileName,
         mimeType: stored.mimeType,
@@ -213,8 +267,10 @@ export async function PUT(
             }),
       });
     } catch (error) {
-      await removeCertificateNumberIndex(replacementRef.id).catch(() => {});
-      await softDeleteR2Object(stored.r2Key, studentId).catch(() => {});
+      await removeCertificateNumberIndex(replacementRef.id).catch(
+        () => null,
+      );
+      await softDeleteR2Object(stored.r2Key, studentId).catch(() => null);
       if (error instanceof DuplicateCertificateNumberError)
         return NextResponse.json(
           { error: "That certificate number is already assigned." },
@@ -224,7 +280,10 @@ export async function PUT(
     }
     const autoPublished = admin.role === "admin" || admin.role === "superadmin";
     if (autoPublished) {
-      const publication = await publishCertificateWithoutReview(replacementRef.id, admin.uid);
+      const publication = await publishCertificateWithoutReview(
+        replacementRef.id,
+        admin.uid,
+      );
       await writeAuditLog(
         request,
         admin.uid,
@@ -270,10 +329,15 @@ export async function DELETE(
     const { certificateId } = await context.params;
     const ref = db.collection("certificates").doc(certificateId);
     const doc = await ref.get();
-    if (!doc.exists) return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
+    if (!doc.exists)
+      return NextResponse.json(
+        { error: "Certificate not found." },
+        { status: 404 },
+      );
     if (doc.get("status") === "published") await ensurePublicSessions();
     const r2Key = String(doc.get("r2Key") ?? "");
-    if (r2Key) await softDeleteR2Object(r2Key, String(doc.get("studentId") ?? ""));
+    if (r2Key)
+      await softDeleteR2Object(r2Key, String(doc.get("studentId") ?? ""));
     await removeCertificateNumberIndex(certificateId);
     await ref.delete();
     if (doc.get("status") === "published") await rebuildPublicSessions();
@@ -284,7 +348,10 @@ export async function DELETE(
       certificateId,
       String(doc.get("studentId") ?? ""),
     );
-    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { ok: true },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     return apiError(error);
   }

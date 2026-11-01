@@ -3,15 +3,22 @@ import { createCipheriv, randomBytes } from "node:crypto";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-const encryptionKey = Buffer.from(process.env.CERTIFICATE_NUMBER_ENCRYPTION_KEY ?? "", "base64");
+const encryptionKey = Buffer.from(
+  process.env.CERTIFICATE_NUMBER_ENCRYPTION_KEY ?? "",
+  "base64",
+);
 if (!encoded) throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 is required");
 if (encryptionKey.length !== 32)
-  throw new Error("CERTIFICATE_NUMBER_ENCRYPTION_KEY must be a base64-encoded 32-byte key");
+  throw new Error(
+    "CERTIFICATE_NUMBER_ENCRYPTION_KEY must be a base64-encoded 32-byte key",
+  );
 const execute = process.argv.includes("--execute");
 const app =
   getApps()[0] ??
   initializeApp({
-    credential: cert(JSON.parse(Buffer.from(encoded, "base64").toString("utf8"))),
+    credential: cert(
+      JSON.parse(Buffer.from(encoded, "base64").toString("utf8")),
+    ),
   });
 const db = getFirestore(app);
 function encrypt(value) {
@@ -21,7 +28,9 @@ function encrypt(value) {
     cipher.update(String(value).normalize("NFKC").trim(), "utf8"),
     cipher.final(),
   ]);
-  return [iv, cipher.getAuthTag(), ciphertext].map((part) => part.toString("base64url")).join(".");
+  return [iv, cipher.getAuthTag(), ciphertext]
+    .map((part) => part.toString("base64url"))
+    .join(".");
 }
 let scanned = 0,
   changed = 0,
@@ -37,19 +46,18 @@ for (;;) {
     scanned += 1;
     const data = doc.data();
     if (
-      typeof data.certificateNumber !== "string" ||
-      !data.certificateNumber.trim() ||
-      data.certificateNumberEncrypted
-    )
-      continue;
+      typeof data.certificateNumber === "string" &&
+      data.certificateNumber.trim() &&
+      !data.certificateNumberEncrypted
+    ) continue;
     changed += 1;
     pageChanged += 1;
-    if (!execute) continue;
-    batch.update(doc.ref, {
-      certificateNumberEncrypted: encrypt(data.certificateNumber),
-      certificateNumber: FieldValue.delete(),
-      certificateNumberEncryptedAt: FieldValue.serverTimestamp(),
-    });
+    if (execute)
+      batch.update(doc.ref, {
+        certificateNumberEncrypted: encrypt(data.certificateNumber),
+        certificateNumber: FieldValue.delete(),
+        certificateNumberEncryptedAt: FieldValue.serverTimestamp(),
+      });
   }
   if (execute && pageChanged) await batch.commit();
   cursor = page.docs.at(-1);

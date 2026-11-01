@@ -11,9 +11,7 @@ export function useAdminFeedback() {
     try {
       await fn();
       setToast("Changes saved successfully.");
-      setTimeout(() => {
-        setToast("");
-      }, 3500);
+      setTimeout(() => { setToast(""); }, 3500);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Action failed.");
     } finally {

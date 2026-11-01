@@ -1,5 +1,9 @@
 export type CertificateLifecycleStatus =
-  "pending" | "published" | "superseded" | "revoked" | "rejected";
+  | "pending"
+  | "published"
+  | "superseded"
+  | "revoked"
+  | "rejected";
 export type PublicVerificationOutcome =
   | { valid: true; status: "published" }
   | {
@@ -11,7 +15,9 @@ export type PublicVerificationOutcome =
   | { valid: false; status: "revoked"; message: string }
   | { valid: false; status: "not-found" };
 
-export function isPubliclyDownloadableStatus(status: unknown): status is "published" {
+export function isPubliclyDownloadableStatus(
+  status: unknown,
+): status is "published" {
   return status === "published";
 }
 
@@ -32,7 +38,8 @@ export function publicVerificationOutcome(
     return {
       valid: false,
       status: "revoked",
-      message: "This certificate is no longer valid. Please contact the school.",
+      message:
+        "This certificate is no longer valid. Please contact the school.",
     };
   return { valid: false, status: "not-found" };
 }
@@ -42,13 +49,21 @@ export function canReplacePublishedCertificate(status: unknown): boolean {
 }
 
 export type DuplicateFileMatch = { studentId: unknown; type: unknown };
-export type DuplicateFileDecision = "none" | "block-same-student-type" | "warn-cross-record";
+export type DuplicateFileDecision =
+  | "none"
+  | "block-same-student-type"
+  | "warn-cross-record";
 export function duplicateFileDecision(
   matches: readonly DuplicateFileMatch[],
   studentId: string,
   certificateType: string,
 ): DuplicateFileDecision {
-  if (matches.some((match) => match.studentId === studentId && match.type === certificateType))
+  if (
+    matches.some(
+      (match) =>
+        match.studentId === studentId && match.type === certificateType,
+    )
+  )
     return "block-same-student-type";
   return matches.length ? "warn-cross-record" : "none";
 }

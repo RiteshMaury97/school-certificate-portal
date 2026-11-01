@@ -1,5 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
-
 import {
   S3Client,
   PutObjectCommand,
@@ -10,18 +8,16 @@ import { NextResponse } from "next/server";
 
 import { createEncryptedExport } from "@/server/encrypted-export";
 import { db } from "@/server/firebase-admin";
-import { apiError, requireRoles, requireSensitiveReauth, writeAuditLog } from "@/server/security";
+import {
+  apiError,
+  requireRoles,
+  requireSensitiveReauth,
+  writeAuditLog,
+} from "@/server/security";
 
-import type { NextRequest } from "next/server";
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-function hasValidCronAuthorization(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  const expected = Buffer.from(`Bearer ${secret}`, "utf8");
-  const provided = Buffer.from(request.headers.get("authorization") ?? "", "utf8");
-  return provided.length === expected.length && timingSafeEqual(provided, expected);
-}
 async function performBackup(trigger: string, actorUid?: string) {
   const bucket = process.env.BACKUP_R2_BUCKET;
   if (!bucket || bucket === process.env.R2_BUCKET)
@@ -29,7 +25,8 @@ async function performBackup(trigger: string, actorUid?: string) {
   const account = process.env.R2_ACCOUNT_ID,
     access = process.env.R2_ACCESS_KEY_ID,
     key = process.env.R2_SECRET_ACCESS_KEY;
-  if (!account || !access || !key) throw new Error("R2 backup credentials are not configured.");
+  if (!account || !access || !key)
+    throw new Error("R2 backup credentials are not configured.");
   const payload = await createEncryptedExport("json");
   const client = new S3Client({
     region: "auto",
@@ -48,7 +45,10 @@ async function performBackup(trigger: string, actorUid?: string) {
     }),
   );
   const settings = await db.collection("siteSettings").doc("main").get();
-  const rotationDays = Math.max(7, Math.min(365, Number(settings.get("backupRotationDays") ?? 30)));
+  const rotationDays = Math.max(
+    7,
+    Math.min(365, Number(settings.get("backupRotationDays") ?? 30)),
+  );
   const cutoff = Date.now() - rotationDays * 24 * 60 * 60_000;
   let continuationToken: string | undefined;
   let purged = 0;
@@ -68,23 +68,29 @@ async function performBackup(trigger: string, actorUid?: string) {
         object.LastModified &&
         object.LastModified.getTime() < cutoff
       ) {
-        await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: object.Key }));
+        await client.send(
+          new DeleteObjectCommand({ Bucket: bucket, Key: object.Key }),
+        );
         purged++;
       }
     }
-    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+    continuationToken = page.IsTruncated
+      ? page.NextContinuationToken
+      : undefined;
   } while (continuationToken);
-  const log = await db.collection("backupLogs").add({
-    bucket,
-    objectKey,
-    encrypted: true,
-    size: payload.length,
-    rotationDays,
-    purgedExpiredBackups: purged,
-    createdAt: new Date(),
-    trigger,
-    actorUid: actorUid ?? null,
-  });
+  const log = await db
+    .collection("backupLogs")
+    .add({
+      bucket,
+      objectKey,
+      encrypted: true,
+      size: payload.length,
+      rotationDays,
+      purgedExpiredBackups: purged,
+      createdAt: new Date(),
+      trigger,
+      actorUid: actorUid ?? null,
+    });
   return {
     objectKey,
     logId: log.id,
@@ -95,7 +101,8 @@ async function performBackup(trigger: string, actorUid?: string) {
 }
 export async function GET(request: NextRequest) {
   try {
-    if (!hasValidCronAuthorization(request))
+    const secret = process.env.CRON_SECRET;
+    if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`)
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     return NextResponse.json({
       ok: true,
@@ -114,7 +121,10 @@ export async function POST(request: NextRequest) {
     await requireSensitiveReauth(request, admin);
     const result = await performBackup("manual", admin.uid);
     await writeAuditLog(request, admin.uid, "backup.create", result.logId);
-    return NextResponse.json({ ok: true, ...result }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { ok: true, ...result },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     return apiError(error);
   }

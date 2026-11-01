@@ -1,3 +1,0 @@
-Contact: mailto:security@satyaminternationalschool.in
-Policy: https://satyaminternationalschool.in/security-policy.html
-Preferred-Languages: en

@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => {
   const set = vi.fn();
   const get = vi.fn(() => Promise.resolve({ get: () => 0 }));
   const runTransaction = vi.fn(
-    async (callback: (transaction: { get: typeof get; set: typeof set }) => Promise<number>) =>
+    (callback: (transaction: { get: typeof get; set: typeof set }) => Promise<number>) =>
       callback({ get, set }),
   );
   const doc = vi.fn(() => ({}));
@@ -50,10 +50,13 @@ describe("central Gmail mailer", () => {
       subject: "Hello\r\nBcc:attacker@example.com",
       text: "Message",
     });
-    const message = mocks.sendMail.mock.calls[0]?.[0];
+    const message: unknown = mocks.sendMail.mock.calls[0]?.[0];
     if (
       typeof message !== "object" ||
       message === null ||
+      !("to" in message) ||
+      !("subject" in message) ||
+      !("from" in message) ||
       !Array.isArray(message.to) ||
       typeof message.subject !== "string" ||
       typeof message.from !== "string"
@@ -96,13 +99,11 @@ describe("central Gmail mailer", () => {
 
   it("throws a clear error when Gmail credentials are missing", async () => {
     delete process.env.GMAIL_USER;
-    await expect(
-      sendMail({
-        to: "parent@example.com",
-        subject: "Test",
-        text: "Test",
-      }),
-    ).rejects.toThrow(/GMAIL_USER/);
+    await expect(sendMail({
+      to: "parent@example.com",
+      subject: "Test",
+      text: "Test",
+    })).rejects.toThrow(/GMAIL_USER/);
   });
 
   it("uses the development OTP fallback without logging SMTP secrets", async () => {
@@ -124,13 +125,11 @@ describe("central Gmail mailer", () => {
     delete process.env.GMAIL_USER;
     delete process.env.GMAIL_APP_PASSWORD;
     const warning = vi.spyOn(console, "warn").mockImplementation(() => null);
-    await expect(
-      sendAdminOtpEmail({
-        to: "admin@example.com",
-        code: "012345",
-        schoolName: "School",
-      }),
-    ).rejects.toThrow(/GMAIL_USER/);
+    await expect(sendAdminOtpEmail({
+      to: "admin@example.com",
+      code: "012345",
+      schoolName: "School",
+    })).rejects.toThrow(/GMAIL_USER/);
     expect(warning).not.toHaveBeenCalled();
   });
 });

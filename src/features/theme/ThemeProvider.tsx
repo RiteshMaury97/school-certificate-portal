@@ -1,11 +1,20 @@
 "use client";
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 
 export type ThemeMode = "system" | "light" | "dark";
 type ThemeContextValue = { theme: ThemeMode; toggleTheme: () => void };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 const STORAGE_KEY = "sis-theme";
+let themeSnapshot: ThemeMode = "system";
+const themeSubscribers = new Set<() => void>();
 
 function readStorage(): string | null {
   try {
@@ -19,6 +28,25 @@ function writeStorage(value: string): void {
     localStorage.setItem(STORAGE_KEY, value);
   } catch {
     /* Storage may be unavailable (private mode). The choice then lasts for this visit only. */
+  }
+  function subscribeToTheme(subscriber: () => void): () => void {
+    themeSubscribers.add(subscriber);
+    return () => {
+      themeSubscribers.delete(subscriber);
+    };
+  }
+  function getThemeSnapshot(): ThemeMode {
+    return themeSnapshot;
+  }
+  function getServerThemeSnapshot(): ThemeMode {
+    return "system";
+  }
+  function updateThemeSnapshot(theme: ThemeMode): void {
+    themeSnapshot = theme;
+    for (const subscriber of themeSubscribers) subscriber();
+  }
+  function isThemeMode(value: string | null): value is ThemeMode {
+    return value === "light" || value === "dark" || value === "system";
   }
 }
 function applyTheme(mode: ThemeMode): void {
@@ -34,9 +62,7 @@ function applyThemeAnimated(mode: ThemeMode): void {
   const root = document.documentElement;
   root.classList.add("theme-fade");
   applyTheme(mode);
-  window.setTimeout(() => {
-    root.classList.remove("theme-fade");
-  }, 360);
+  window.setTimeout(() => { root.classList.remove("theme-fade"); }, 360);
 }
 
 export function useTheme() {
@@ -46,24 +72,24 @@ export function useTheme() {
 }
 
 export default function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<ThemeMode>("system");
+  const theme = useSyncExternalStore(
+    subscribeToTheme,
+    getThemeSnapshot,
+    getServerThemeSnapshot,
+  );
 
   useEffect(() => {
     const saved = readStorage();
-    setTheme(saved === "light" || saved === "dark" || saved === "system" ? saved : "system");
+    updateThemeSnapshot(isThemeMode(saved) ? saved : "system");
   }, []);
 
   useEffect(() => {
     applyTheme(theme);
     if (theme !== "system") return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const update = () => {
-      applyTheme("system");
-    };
+    const update = () => { applyTheme("system"); };
     media.addEventListener("change", update);
-    return () => {
-      media.removeEventListener("change", update);
-    };
+    return () => { media.removeEventListener("change", update); };
   }, [theme]);
 
   const value = useMemo<ThemeContextValue>(
@@ -73,7 +99,7 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
         const next: ThemeMode =
           theme === "system" ? "light" : theme === "light" ? "dark" : "system";
         applyThemeAnimated(next);
-        setTheme(next);
+        updateThemeSnapshot(next);
         writeStorage(next);
       },
     }),

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/server/firebase-admin";
 import { apiError, requireRoles } from "@/server/security";
 
-import type { NextRequest } from "next/server";
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(
@@ -25,8 +25,13 @@ export async function GET(
         actorUid: doc.get("actorUid"),
         timestamp: doc.get("timestamp")?.toDate?.().toISOString?.() ?? null,
       }))
-      .sort((a, b) => String(a.timestamp ?? "").localeCompare(String(b.timestamp ?? "")));
-    return NextResponse.json({ events }, { headers: { "Cache-Control": "no-store" } });
+      .sort((a, b) =>
+        String(a.timestamp ?? "").localeCompare(String(b.timestamp ?? "")),
+      );
+    return NextResponse.json(
+      { events },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     return apiError(error);
   }

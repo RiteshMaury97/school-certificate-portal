@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/server/firebase-admin";
 import { verifyOptOutToken } from "@/server/notifications";
 
-import type { NextRequest } from "next/server";
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 function page(token: string) {
@@ -40,21 +40,26 @@ export async function POST(request: NextRequest) {
       return new NextResponse("Invalid or expired opt-out link.", {
         status: 400,
       });
-    await db.collection("students").doc(verified.studentId).update({
-      notificationConsent: false,
-      notificationOptOut: true,
-      notificationWithdrawnAt: FieldValue.serverTimestamp(),
-      notificationConsentPurpose: FieldValue.delete(),
-      parentEmail: FieldValue.delete(),
-      parentMobile: FieldValue.delete(),
-    });
-    await db.collection("notificationConsents").add({
-      studentId: verified.studentId,
-      consentGiven: false,
-      action: "withdrawn",
-      timestamp: FieldValue.serverTimestamp(),
-      purpose: "certificate_availability",
-    });
+    await db
+      .collection("students")
+      .doc(verified.studentId)
+      .update({
+        notificationConsent: false,
+        notificationOptOut: true,
+        notificationWithdrawnAt: FieldValue.serverTimestamp(),
+        notificationConsentPurpose: FieldValue.delete(),
+        parentEmail: FieldValue.delete(),
+        parentMobile: FieldValue.delete(),
+      });
+    await db
+      .collection("notificationConsents")
+      .add({
+        studentId: verified.studentId,
+        consentGiven: false,
+        action: "withdrawn",
+        timestamp: FieldValue.serverTimestamp(),
+        purpose: "certificate_availability",
+      });
     await db
       .collection("notificationOptOutTokens")
       .doc(verified.tokenHash)

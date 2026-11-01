@@ -17,12 +17,7 @@ export default function RouteError({
       <p className="error-code">500</p>
       <h1>This page could not be loaded</h1>
       <p>Something went wrong while preparing this page. Please try again.</p>
-      <button
-        type="button"
-        onClick={() => {
-          reset();
-        }}
-      >
+      <button type="button" onClick={() => { reset(); }}>
         Try again
       </button>
       <Link href="/">Return to home</Link>

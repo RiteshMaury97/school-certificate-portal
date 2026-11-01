@@ -13,7 +13,9 @@ export async function findAcademicSessionDocument(session: string) {
   return (
     snapshot.docs.find((doc) =>
       [doc.id, doc.get("label"), doc.get("name")].some(
-        (value) => typeof value === "string" && normalizeAcademicSession(value) === normalized,
+        (value) =>
+          typeof value === "string" &&
+          normalizeAcademicSession(value) === normalized,
       ),
     ) ?? direct
   );

@@ -16,13 +16,8 @@ async function walk(directory) {
     const file = join(directory, entry.name);
     const lines = (await readFile(file, "utf8")).split(/\r?\n/u);
     for (const [index, line] of lines.entries()) {
-      if (
-        /eslint[-]disable(?:-next-line|-line)?\b/u.test(line) &&
-        !/--\s*reason:\s*\S/u.test(line)
-      ) {
-        violations.push(
-          `${relative(process.cwd(), file)}:${index + 1}: add "-- reason: <explanation>" on this line`,
-        );
+      if (/eslint[-]disable(?:-next-line|-line)?\b/u.test(line) && !/--\s*reason:\s*\S/u.test(line)) {
+        violations.push(`${relative(process.cwd(), file)}:${index + 1}: add "-- reason: <explanation>" on this line`);
       }
     }
   }

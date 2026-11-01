@@ -19,7 +19,8 @@ export async function publishCertificateWithoutReview(
   const published = await db.runTransaction(async (transaction) => {
     const certificate = await transaction.get(certificateRef);
     if (!certificate.exists) throw new Error("CERTIFICATE_NOT_FOUND");
-    if (certificate.get("status") !== "pending") throw new Error("CERTIFICATE_NOT_PENDING");
+    if (certificate.get("status") !== "pending")
+      throw new Error("CERTIFICATE_NOT_PENDING");
 
     const studentId = String(certificate.get("studentId") ?? "");
     const session = String(certificate.get("session") ?? "");
@@ -57,7 +58,9 @@ export async function publishCertificateWithoutReview(
     return { studentId, session, replacesId, replacedSession };
   });
 
-  const changes: { session: string; delta: 1 | -1 }[] = [{ session: published.session, delta: 1 }];
+  const changes: { session: string; delta: 1 | -1 }[] = [
+    { session: published.session, delta: 1 },
+  ];
   if (published.replacesId && published.replacedSession)
     changes.push({ session: published.replacedSession, delta: -1 });
   await adjustPublicSessions(changes).catch(rebuildPublicSessions);

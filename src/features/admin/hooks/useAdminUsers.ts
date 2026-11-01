@@ -1,45 +1,19 @@
-import { useState, type SubmitEvent, type Dispatch, type SetStateAction } from "react";
+import { useState, type FormEvent, type Dispatch, type SetStateAction } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 
 import { csrf } from "../utils/admin-helpers";
 
 import type { AdminInviteProfile, AdminInviteRole } from "../types/admin-state.types";
-type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
-  url: string,
-  init?: RequestInit,
-) => Promise<T>;
-type Props = {
-  api: Api;
-  act: (fn: () => Promise<void>) => Promise<void>;
-  setToast: Dispatch<SetStateAction<string>>;
-  setError: Dispatch<SetStateAction<string>>;
-  load: () => Promise<void>;
-};
-export function useAdminUsers({ api, act, setToast, setError, load }: Props) {
-  const [adminEmail, setAdminEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<AdminInviteRole>("uploader");
-  const [inviteProfile, setInviteProfile] = useState<AdminInviteProfile>({
-    name: "",
-    preferredName: "",
-    staffId: "",
-    gender: "",
-    dateOfBirth: "",
-    position: "",
-    department: "",
-    designation: "",
-    campus: "",
-    joiningDate: "",
-    reportingManager: "",
-    officeLocation: "",
-    alternateEmail: "",
-    primaryPhone: "",
-    secondaryPhone: "",
-    address: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-  });
-  async function createBackup() {
+type Api=<T extends Record<string,unknown>=Record<string,unknown>>(url:string,init?:RequestInit)=>Promise<T>;
+type Props={api:Api;act:(fn:()=>Promise<void>)=>Promise<void>;setToast:Dispatch<SetStateAction<string>>;setError:Dispatch<SetStateAction<string>>;load:()=>Promise<void>};
+export function useAdminUsers({api,act,setToast,setError,load}:Props){
+ const [adminEmail,setAdminEmail]=useState("");
+ const [inviteRole,setInviteRole]=useState<AdminInviteRole>("uploader");
+ const [inviteProfile,setInviteProfile]=useState<AdminInviteProfile>({
+  name:"",preferredName:"",staffId:"",gender:"",dateOfBirth:"",position:"",department:"",designation:"",campus:"",joiningDate:"",reportingManager:"",officeLocation:"",alternateEmail:"",primaryPhone:"",secondaryPhone:"",address:"",emergencyContactName:"",emergencyContactPhone:"",
+ });
+ async function createBackup() {
     await act(async () => {
       const d = await api<{ objectKey: string; size: number }>("/api/admin/backup", {
         method: "POST",
@@ -97,7 +71,7 @@ export function useAdminUsers({ api, act, setToast, setError, load }: Props) {
       await load();
     });
   }
-  async function invite(e: SubmitEvent) {
+  async function invite(e: FormEvent) {
     e.preventDefault();
     await act(async () => {
       await api("/api/admin/users", {
@@ -106,43 +80,10 @@ export function useAdminUsers({ api, act, setToast, setError, load }: Props) {
         body: JSON.stringify({ email: adminEmail, role: inviteRole, profile: inviteProfile }),
       });
       setAdminEmail("");
-      setInviteProfile({
-        name: "",
-        preferredName: "",
-        staffId: "",
-        gender: "",
-        dateOfBirth: "",
-        position: "",
-        department: "",
-        designation: "",
-        campus: "",
-        joiningDate: "",
-        reportingManager: "",
-        officeLocation: "",
-        alternateEmail: "",
-        primaryPhone: "",
-        secondaryPhone: "",
-        address: "",
-        emergencyContactName: "",
-        emergencyContactPhone: "",
-      });
-      setToast(
-        `Invitation sent to ${adminEmail}. The email contains a temporary password and email verification link. They must change the password before receiving administrator access.`,
-      );
+      setInviteProfile({name:"",preferredName:"",staffId:"",gender:"",dateOfBirth:"",position:"",department:"",designation:"",campus:"",joiningDate:"",reportingManager:"",officeLocation:"",alternateEmail:"",primaryPhone:"",secondaryPhone:"",address:"",emergencyContactName:"",emergencyContactPhone:""});
+      setToast(`Invitation sent to ${adminEmail}. The email contains a temporary password and email verification link. They must change the password before receiving administrator access.`);
       await load();
     });
   }
-  return {
-    adminEmail,
-    setAdminEmail,
-    inviteRole,
-    setInviteRole,
-    inviteProfile,
-    setInviteProfile,
-    createBackup,
-    exportData,
-    changeRole,
-    deleteUser,
-    invite,
-  };
+ return {adminEmail,setAdminEmail,inviteRole,setInviteRole,inviteProfile,setInviteProfile,createBackup,exportData,changeRole,deleteUser,invite};
 }

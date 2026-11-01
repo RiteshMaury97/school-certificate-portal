@@ -32,8 +32,11 @@ const state = vi.hoisted(() => {
     requireAdmin: vi.fn(() => Promise.resolve({ uid: "admin-1", role: "superadmin" })),
   };
 });
+
 vi.mock("server-only", () => ({}));
-vi.mock("firebase-admin/firestore", () => ({ FieldValue: { serverTimestamp: () => new Date() } }));
+vi.mock("firebase-admin/firestore", () => ({
+  FieldValue: { serverTimestamp: () => new Date() },
+}));
 vi.mock("@/server/firebase-admin", () => ({
   describeFirebaseError: () => "Firebase test error",
   adminAuth: { verifyIdToken: state.verifyIdToken },
@@ -42,7 +45,7 @@ vi.mock("@/server/firebase-admin", () => ({
       doc: () => ({
         get: () =>
           Promise.resolve({
-          exists: true,
+            exists: true,
             get: (key: string) => {
               const fields: Record<string, unknown> = {
                 email: "admin@school.example",
@@ -57,12 +60,12 @@ vi.mock("@/server/firebase-admin", () => ({
     runTransaction: (
       callback: (transaction: {
         get: () => Promise<typeof state.snapshot>;
-        update: () => void;
+        update: () => boolean;
       }) => Promise<unknown>,
     ) =>
       callback({
         get: () => Promise.resolve(state.snapshot),
-        update: vi.fn(),
+        update: () => true,
       }),
   },
 }));
@@ -103,6 +106,7 @@ describe("OTP-gated session and re-auth routes", () => {
     vi.stubEnv("AUDIT_LOG_HMAC_SECRET", "test-secret-which-is-longer-than-32-bytes");
     vi.stubEnv("OTP_HMAC_SECRET", "otp-test-secret-which-is-longer-than-32-bytes");
   });
+
   afterEach(() => {
     vi.unstubAllEnvs();
   });

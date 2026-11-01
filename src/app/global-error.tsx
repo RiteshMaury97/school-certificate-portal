@@ -18,6 +18,7 @@ export default function GlobalError({
     email?: string;
     phone?: string;
   }>({});
+  const supportName = support.schoolName?.trim();
   useEffect(() => {
     document.title = "Service error";
     const meta = document.createElement("meta");
@@ -58,7 +59,7 @@ export default function GlobalError({
           </button>
           <Link href="/">Return to home</Link>
           <p className="error-support">
-            {support.schoolName?.trim() ?? "School"} support:{" "}
+            {supportName && supportName.length > 0 ? supportName : "School"} support:{" "}
             {support.email?.trim() ? (
               <a href={`mailto:${support.email.trim()}`}>{support.email.trim()}</a>
             ) : null}{" "}

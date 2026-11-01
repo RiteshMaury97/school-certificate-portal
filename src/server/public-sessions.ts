@@ -3,10 +3,6 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { db } from "@/server/firebase-admin";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 /** Keep the public session picker backed by one compact document. */
 export async function adjustPublicSessions(
   changes: { session: string; delta: 1 | -1 }[],
@@ -21,12 +17,18 @@ export async function adjustPublicSessions(
   }
   await db.runTransaction(async (tx) => {
     const snapshot = await tx.get(ref);
-    const rawCounts: unknown = snapshot.get("counts");
-    const counts: Record<string, unknown> =
-      snapshot.exists && isRecord(rawCounts) ? { ...rawCounts } : {};
+    const counts =
+      snapshot.exists &&
+      snapshot.get("counts") &&
+      typeof snapshot.get("counts") === "object"
+        ? { ...(snapshot.get("counts") as Record<string, number>) }
+        : {};
     for (const change of changes) {
       if (!/^\d{4}-\d{2}$/.test(change.session)) continue;
-      counts[change.session] = Math.max(0, Number(counts[change.session] ?? 0) + change.delta);
+      counts[change.session] = Math.max(
+        0,
+        Number(counts[change.session] ?? 0) + change.delta,
+      );
     }
     const clean = Object.fromEntries(
       Object.entries(counts)
@@ -43,7 +45,10 @@ export async function adjustPublicSessions(
 
 /** Rebuild the small index after bulk removal/erasure. */
 export async function rebuildPublicSessions(): Promise<void> {
-  const published = await db.collection("certificates").where("status", "==", "published").get();
+  const published = await db
+    .collection("certificates")
+    .where("status", "==", "published")
+    .get();
   const counts: Record<string, number> = {};
   for (const doc of published.docs) {
     const session = String(doc.get("session") ?? "");

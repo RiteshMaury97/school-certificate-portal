@@ -13,7 +13,6 @@ export default function robots(): MetadataRoute.Robots {
           "/maintenance",
           "/certificates/print",
           "/certificates/results",
-          "/report-status",
         ],
       },
     ],

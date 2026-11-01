@@ -3,9 +3,6 @@ export type Student = {
   id: string;
   admissionNo?: string;
   dateOfBirth?: string;
-  parentEmail?: string;
-  parentMobile?: string;
-  notificationConsent?: boolean;
   studentName: string;
   fatherName: string;
   motherName: string;
@@ -34,11 +31,10 @@ export type Cert = {
   supersededBy?: string | null;
 };
 export type Tab =
+  | "help"
   | "dashboard"
   | "approvals"
   | "students"
-  | "studentIntake"
-  | "studentImport"
   | "certificates"
   | "catalog"
   | "audit"
@@ -50,5 +46,6 @@ export type Tab =
   | "branding"
   | "announcement"
   | "faqs"
+  | "retention"
   | "contacts"
   | "profile";

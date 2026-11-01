@@ -37,8 +37,7 @@ export default function ApprovalsTab({
     <section className="rounded-xl border bg-[var(--surface)] p-5">
       <h2 className="text-lg font-bold">Pending certificate approvals</h2>
       <p className="mt-1 text-sm text-[var(--text-muted)]">
-        Review the original upload in a private preview. Uploader submissions need a different
-        approver; admin and superadmin uploads can be published directly.
+        Review the original upload in a private preview. Uploader submissions need a different approver; admin and superadmin uploads can be published directly.
       </p>
       <div className="mt-4 space-y-4">
         {pending.map((c) => (
@@ -46,115 +45,42 @@ export default function ApprovalsTab({
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
               <div>
                 <div className="flex flex-wrap justify-between gap-2">
-                  <b>
-                    {c.type} · {c.session}
-                  </b>
+                  <b>{c.type} · {c.session}</b>
                   <span className="text-xs font-semibold text-[var(--text)]">Pending</span>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <dt className="text-[var(--text-muted)]">Student</dt>
-                    <dd className="font-semibold">{c.studentName || c.studentId}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--text-muted)]">Father</dt>
-                    <dd>{c.fatherName || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--text-muted)]">Mother</dt>
-                    <dd>{c.motherName || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--text-muted)]">Certificate number</dt>
-                    <dd className="font-semibold">{c.certificateNumber || "Not recorded"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--text-muted)]">Session</dt>
-                    <dd>{c.session}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--text-muted)]">Type</dt>
-                    <dd>{c.type}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--text-muted)]">Issue date</dt>
-                    <dd>{c.issueDate}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--text-muted)]">Uploaded by</dt>
-                    <dd>{c.uploadedBy ?? "Unknown"}</dd>
-                  </div>
+                  <div><dt className="text-[var(--text-muted)]">Student</dt><dd className="font-semibold">{c.studentName || c.studentId}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Father</dt><dd>{c.fatherName || "—"}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Mother</dt><dd>{c.motherName || "—"}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Certificate number</dt><dd className="font-semibold">{c.certificateNumber || "Not recorded"}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Session</dt><dd>{c.session}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Type</dt><dd>{c.type}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Issue date</dt><dd>{c.issueDate}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Uploaded by</dt><dd>{c.uploadedBy ?? "Unknown"}</dd></div>
                 </dl>
                 {c.replacesId && (
                   <p className="mt-3 rounded bg-[var(--surface-2)] p-2 text-xs text-[var(--text)]">
-                    Replacement for certificate record {c.replacesId}. The old version will be
-                    superseded only after this approval.
+                    Replacement for certificate record {c.replacesId}. The old version will be superseded only after this approval.
                   </p>
                 )}
                 <label className="mt-4 block text-sm">
                   Rejection reason
-                  <textarea
-                    translate="no"
-                    value={rejectReason[c.id] ?? ""}
-                    onChange={(e) => {
-                      setRejectReason((v) => ({ ...v, [c.id]: e.target.value }));
-                    }}
-                    rows={2}
-                    className="mt-1 w-full rounded border p-2"
-                    placeholder="Required only when rejecting"
-                  />
+                  <textarea translate="no" value={rejectReason[c.id] ?? ""} onChange={(e) => { setRejectReason((v) => ({ ...v, [c.id]: e.target.value })); }} rows={2} className="mt-1 w-full rounded border p-2" placeholder="Required only when rejecting" />
                 </label>
                 <label className="mt-3 flex items-start gap-2 text-sm">
-                  <input
-                    translate="no"
-                    type="checkbox"
-                    checked={approvalChecks[c.id] === true}
-                    disabled={!previewUrls[c.id]}
-                    onChange={(e) => {
-                      setApprovalChecks((v) => ({ ...v, [c.id]: e.target.checked }));
-                    }}
-                    className="mt-0.5 h-4 w-4"
-                  />
+                  <input translate="no" type="checkbox" checked={approvalChecks[c.id] === true} disabled={!previewUrls[c.id]} onChange={(e) => { setApprovalChecks((v) => ({ ...v, [c.id]: e.target.checked })); }} className="mt-0.5 h-4 w-4" />
                   <span>Details match the document</span>
                 </label>
                 <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => {
-                      decideCertificate(c.id, "approve");
-                    }}
-                    disabled={
-                      busy ||
-                      (c.uploadedBy === uid && !canReviewOwnUpload) ||
-                      !previewUrls[c.id] ||
-                      !approvalChecks[c.id]
-                    }
-                    className="rounded bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-40"
-                  >
-                    Approve & publish
-                  </button>
-                  <button
-                    onClick={() => {
-                      decideCertificate(c.id, "reject");
-                    }}
-                    disabled={busy || (c.uploadedBy === uid && !canReviewOwnUpload)}
-                    className="rounded bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-40"
-                  >
-                    Reject
-                  </button>
+                  <button onClick={() => { decideCertificate(c.id, "approve"); }} disabled={busy || (c.uploadedBy === uid && !canReviewOwnUpload) || !previewUrls[c.id] || !approvalChecks[c.id]} className="rounded bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-40">Approve & publish</button>
+                  <button onClick={() => { decideCertificate(c.id, "reject"); }} disabled={busy || (c.uploadedBy === uid && !canReviewOwnUpload)} className="rounded bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-40">Reject</button>
                 </div>
               </div>
               <div className="min-h-64 rounded-lg border bg-[var(--surface-2)] p-2">
                 <div className="mb-2 flex items-center justify-between">
                   <b className="text-sm">Document preview</b>
                   {!previewUrls[c.id] ? (
-                    <button
-                      onClick={() => {
-                        loadPreview(c.id);
-                      }}
-                      className="rounded border bg-[var(--surface)] px-3 py-1.5 text-xs"
-                    >
-                      Load 60-second preview
-                    </button>
+                    <button onClick={() => { loadPreview(c.id); }} className="rounded border bg-[var(--surface)] px-3 py-1.5 text-xs">Load 60-second preview</button>
                   ) : (
                     <a
                       href={previewUrls[c.id]?.url}
@@ -166,40 +92,22 @@ export default function ApprovalsTab({
                     </a>
                   )}
                 </div>
-                {previewUrls[c.id] ? (
-                  (() => {
-                    const preview = previewUrls[c.id];
-                    if (!preview) return null;
-                    return preview.mimeType === "application/pdf" ? (
-                      <iframe
-                        title={`Preview ${c.fileName}`}
-                        src={preview.url}
-                        referrerPolicy="no-referrer"
-                        className="h-[520px] w-full rounded"
-                      />
-                    ) : (
-                      <img
-                        src={preview.url}
-                        alt={`Certificate preview for ${c.studentName ?? "student"}`}
-                        className="max-h-[520px] max-w-full object-contain"
-                      />
-                    );
-                  })()
-                ) : (
-                  <p className="grid min-h-56 place-items-center text-sm text-[var(--text-muted)]">
-                    Preview is private and is not cached.
-                  </p>
+                {previewUrls[c.id] ? (() => {
+                  const preview = previewUrls[c.id];
+                  if (!preview) return null;
+                  return preview.mimeType === "application/pdf" ? (
+                    <iframe title={`Preview ${c.fileName}`} src={preview.url} referrerPolicy="no-referrer" className="h-[520px] w-full rounded" />
+                  ) : (
+                    <img src={preview.url} alt={`Certificate preview for ${c.studentName ?? "student"}`} className="max-h-[520px] max-w-full object-contain" />
+                  );
+                })() : (
+                  <p className="grid min-h-56 place-items-center text-sm text-[var(--text-muted)]">Preview is private and is not cached.</p>
                 )}
               </div>
             </div>
           </article>
         ))}
-        {pending.length === 0 && (
-          <EmptyState
-            title="No pending approvals"
-            description="There are no certificates awaiting review."
-          />
-        )}
+        {pending.length === 0 && <EmptyState title="No pending approvals" description="There are no certificates awaiting review." />}
       </div>
     </section>
   );

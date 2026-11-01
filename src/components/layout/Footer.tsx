@@ -24,47 +24,109 @@ type Props = {
 const linkClass =
   "transition-colors hover:text-[var(--primary)] hover:underline hover:underline-offset-4";
 
+function SchoolIdentity({
+  schoolName,
+  tagline,
+  logoUrl,
+  address,
+  affiliation,
+  boardName,
+  schoolCode,
+  statusPageUrl,
+}: Pick<
+  Props,
+  | "schoolName"
+  | "tagline"
+  | "logoUrl"
+  | "address"
+  | "affiliation"
+  | "boardName"
+  | "schoolCode"
+  | "statusPageUrl"
+>) {
+  return (
+    <section className="min-w-0">
+      <div className="flex items-center gap-2.5">
+        {logoUrl ? (
+          <Image
+            src={logoUrl}
+            alt=""
+            width={36}
+            height={36}
+            unoptimized
+            className="h-9 w-9 rounded-full object-contain"
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--primary)] text-sm font-bold text-[var(--on-primary)]"
+          >
+            {schoolName?.trim().charAt(0)}
+          </span>
+        )}
+        <div className="min-w-0">
+          <h2 translate="no" className="truncate text-sm font-bold uppercase tracking-wide">
+            {schoolName}
+          </h2>
+          <p className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--text-muted)]">
+            {[affiliation, boardName].filter(Boolean).join(" · ").replace(/^$/, "School management")}
+          </p>
+        </div>
+      </div>
+      <p className="mt-4 text-xs font-semibold text-[var(--text)]">{tagline}</p>
+      <p className="mt-2 max-w-xs text-xs leading-5 text-[var(--text-muted)]">
+        A place to learn, grow and shape a brighter future.
+      </p>
+      {address?.trim() && (
+        <p className="mt-4 whitespace-pre-line text-xs leading-5 text-[var(--text-muted)]">
+          {address}
+        </p>
+      )}
+      {(schoolCode?.trim() || statusPageUrl?.trim()) && (
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
+          {schoolCode?.trim() && <span>School code: {schoolCode}</span>}
+          {statusPageUrl?.trim() && (
+            <a
+              href={statusPageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={linkClass}
+            >
+              System status ↗
+            </a>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function QuickLinks() {
+  const links = [
+    { href: "/", label: "Home" },
+    { href: "/certificates", label: "Find my certificates" },
+    { href: "/verify", label: "Verify a certificate" },
+    { href: "/faq", label: "Frequently asked questions" },
+    { href: "/contact", label: "Contact the school" },
+  ];
+
   return (
     <nav aria-label="Quick links">
       <h2 className="text-sm font-bold">Quick links</h2>
       <ul className="mt-3 space-y-2 text-xs text-[var(--text-muted)]">
-        <li>
-          <Link className={linkClass} href="/">
-            Home
-          </Link>
-        </li>
-        <li>
-          <Link className={linkClass} href="/certificates">
-            Find my certificates
-          </Link>
-        </li>
-        <li>
-          <Link className={linkClass} href="/verify">
-            Verify a certificate
-          </Link>
-        </li>
-        <li>
-          <Link className={linkClass} href="/faq">
-            Frequently asked questions
-          </Link>
-        </li>
-        <li>
-          <Link className={linkClass} href="/contact">
-            Contact the school
-          </Link>
-        </li>
+        {links.map(({ href, label }) => (
+          <li key={href}>
+            <Link className={linkClass} href={href}>
+              {label}
+            </Link>
+          </li>
+        ))}
       </ul>
     </nav>
   );
 }
 
-function SupportLinks({
-  onReport,
-  phone,
-  officeHours,
-  email,
-}: Pick<Props, "onReport" | "phone" | "officeHours" | "email">) {
+function SupportLinks({ onReport, phone, officeHours, email }: Pick<Props, "onReport" | "phone" | "officeHours" | "email">) {
   return (
     <section>
       <h2 className="text-sm font-bold">Support</h2>
@@ -100,25 +162,23 @@ function SupportLinks({
 }
 
 function LegalLinks() {
+  const links = [
+    { href: "/terms", label: "Terms and Conditions" },
+    { href: "/privacy", label: "Privacy Policy" },
+    { href: "/data-rights", label: "Data rights" },
+  ];
+
   return (
     <nav aria-label="Legal links">
       <h2 className="text-sm font-bold">Legal</h2>
       <ul className="mt-3 space-y-2 text-xs text-[var(--text-muted)]">
-        <li>
-          <Link className={linkClass} href="/terms">
-            Terms and Conditions
-          </Link>
-        </li>
-        <li>
-          <Link className={linkClass} href="/privacy">
-            Privacy Policy
-          </Link>
-        </li>
-        <li>
-          <Link className={linkClass} href="/data-rights">
-            Data rights
-          </Link>
-        </li>
+        {links.map(({ href, label }) => (
+          <li key={href}>
+            <Link className={linkClass} href={href}>
+              {label}
+            </Link>
+          </li>
+        ))}
       </ul>
     </nav>
   );
@@ -173,7 +233,6 @@ function FooterAttribution({
   );
 }
 
-// eslint-disable-next-line complexity -- reason: Keep cohesive footer sections in one shared responsive layout.
 export default function Footer({
   schoolName = "Satyam International School",
   tagline = "Educate. Elevate. Empower.",
@@ -187,76 +246,28 @@ export default function Footer({
   officeHours,
   lastUpdated,
   statusPageUrl,
-  socialLinks = [],
+  socialLinks,
   translationCookieUsed = false,
   onReport,
 }: Props) {
   return (
     <footer className="mt-10 border-t border-[var(--border)] bg-[var(--surface)] text-[var(--text)]">
       <div className="mx-auto grid max-w-6xl gap-9 px-4 py-9 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.35fr_1fr_1.2fr_1fr] lg:gap-12 lg:px-8 lg:py-10">
-        <section className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            {logoUrl ? (
-              <Image
-                src={logoUrl}
-                alt=""
-                width={36}
-                height={36}
-                unoptimized
-                className="h-9 w-9 rounded-full object-contain"
-              />
-            ) : (
-              <span
-                aria-hidden="true"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--primary)] text-sm font-bold text-[var(--on-primary)]"
-              >
-                {schoolName.trim().charAt(0)}
-              </span>
-            )}
-            <div className="min-w-0">
-              <h2 translate="no" className="truncate text-sm font-bold uppercase tracking-wide">
-                {schoolName}
-              </h2>
-              <p className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--text-muted)]">
-                {[affiliation, boardName]
-                  .filter(Boolean)
-                  .join(" · ")
-                  .replace(/^$/, "School management")}
-              </p>
-            </div>
-          </div>
-          <p className="mt-4 text-xs font-semibold text-[var(--text)]">{tagline}</p>
-          <p className="mt-2 max-w-xs text-xs leading-5 text-[var(--text-muted)]">
-            A place to learn, grow and shape a brighter future.
-          </p>
-          {address?.trim() && (
-            <p className="mt-4 whitespace-pre-line text-xs leading-5 text-[var(--text-muted)]">
-              {address}
-            </p>
-          )}
-          {[schoolCode, statusPageUrl].some((value) => value?.trim()) && (
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
-              {schoolCode?.trim() && <span>School code: {schoolCode}</span>}
-              {statusPageUrl?.trim() && (
-                <a
-                  href={statusPageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  System status ↗
-                </a>
-              )}
-            </div>
-          )}
-        </section>
-
+        <SchoolIdentity
+          schoolName={schoolName}
+          tagline={tagline}
+          logoUrl={logoUrl}
+          address={address}
+          affiliation={affiliation}
+          boardName={boardName}
+          schoolCode={schoolCode}
+          statusPageUrl={statusPageUrl}
+        />
         <QuickLinks />
         <SupportLinks onReport={onReport} phone={phone} officeHours={officeHours} email={email} />
         <LegalLinks />
         <SocialLinks links={socialLinks} />
       </div>
-
       <FooterAttribution
         schoolName={schoolName}
         lastUpdated={lastUpdated}

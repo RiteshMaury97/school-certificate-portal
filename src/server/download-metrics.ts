@@ -3,11 +3,11 @@ import { FieldValue, type DocumentReference } from "firebase-admin/firestore";
 
 import { db } from "@/server/firebase-admin";
 
-export function recordCertificateDownloads(
+export async function recordCertificateDownloads(
   items: { ref: DocumentReference; session: string }[],
 ): Promise<void> {
-  if (!items.length) return Promise.resolve();
-  return db.runTransaction((tx) => {
+  if (!items.length) return;
+  await db.runTransaction(async (tx) => {
     const bySession = new Map<string, number>();
     for (const item of items) {
       tx.update(item.ref, {
@@ -27,6 +27,5 @@ export function recordCertificateDownloads(
         { merge: true },
       );
     }
-    return Promise.resolve();
   });
 }

@@ -15,6 +15,11 @@ function parseBlock(css: string, selector: string): Tokens {
   }
   return tokens;
 }
+function requiredToken(tokens: Tokens, name: string): string {
+  const token = tokens[name];
+  if (!token) throw new Error(`Missing color token: ${name}`);
+  return token;
+}
 function luminance(hex: string): number {
   const channel = (index: number) => {
     const c = Number.parseInt(hex.slice(index, index + 2), 16) / 255;
@@ -26,48 +31,23 @@ function luminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 function ratio(a: string, b: string): number {
-  const luminances = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  const hi = luminances[0];
-  const lo = luminances[1];
-  if (hi === undefined || lo === undefined) {
-    throw new Error("Expected two color luminance values");
-  }
+  const luminances = [luminance(a), luminance(b)];
+  const hi = Math.max(...luminances);
+  const lo = Math.min(...luminances);
   return (hi + 0.05) / (lo + 0.05);
 }
 
-function requiredToken(tokens: Tokens, name: string): string {
-  const token = tokens[name];
-  if (!token) {
-    throw new Error(`Missing color token: ${name}`);
-  }
-  return token;
-}
-
 const TEXT_PAIRS: [string, string][] = [
-  ["text", "bg"],
-  ["text", "surface"],
-  ["text", "surface-2"],
-  ["text-muted", "bg"],
-  ["text-muted", "surface"],
-  ["text-muted", "surface-2"],
-  ["on-primary", "primary"],
-  ["on-primary", "primary-hover"],
-  ["accent", "bg"],
-  ["accent", "surface"],
-  ["danger", "surface"],
-  ["success", "surface"],
-  ["warning", "surface"],
-  ["danger", "bg"],
-  ["success", "bg"],
-  ["warning", "bg"],
+  ["text", "bg"], ["text", "surface"], ["text", "surface-2"],
+  ["text-muted", "bg"], ["text-muted", "surface"], ["text-muted", "surface-2"],
+  ["on-primary", "primary"], ["on-primary", "primary-hover"],
+  ["accent", "bg"], ["accent", "surface"],
+  ["danger", "surface"], ["success", "surface"], ["warning", "surface"],
+  ["danger", "bg"], ["success", "bg"], ["warning", "bg"],
 ];
 const UI_PAIRS: [string, string][] = [
-  ["border", "bg"],
-  ["border", "surface"],
-  ["focus", "bg"],
-  ["focus", "surface"],
-  ["primary", "bg"],
-  ["primary", "surface"],
+  ["border", "bg"], ["border", "surface"], ["focus", "bg"], ["focus", "surface"],
+  ["primary", "bg"], ["primary", "surface"],
 ];
 
 describe("design tokens", () => {
@@ -79,15 +59,9 @@ describe("design tokens", () => {
     const base = parseBlock(css, ":root");
     const tokens = selector === ":root" ? base : { ...base, ...parseBlock(css, selector) };
     for (const [fg, bg] of TEXT_PAIRS)
-      expect(
-        ratio(requiredToken(tokens, fg), requiredToken(tokens, bg)),
-        `${fg} on ${bg}`,
-      ).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(requiredToken(tokens, fg), requiredToken(tokens, bg)), `${fg} on ${bg}`).toBeGreaterThanOrEqual(4.5);
     for (const [fg, bg] of UI_PAIRS)
-      expect(
-        ratio(requiredToken(tokens, fg), requiredToken(tokens, bg)),
-        `${fg} on ${bg}`,
-      ).toBeGreaterThanOrEqual(3);
+      expect(ratio(requiredToken(tokens, fg), requiredToken(tokens, bg)), `${fg} on ${bg}`).toBeGreaterThanOrEqual(3);
   });
 
   it("has no high-contrast mode and no legacy palette left", async () => {

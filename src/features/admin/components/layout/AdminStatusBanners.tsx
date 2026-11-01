@@ -3,27 +3,18 @@ import ErrorState from "@/components/feedback/ErrorState";
 type AdminStatusBannersProps = {
   toast: string;
   error: string;
+  busy: boolean;
   onRetry: () => void;
-  emergencyLockdown?: boolean;
 };
 
 export default function AdminStatusBanners({
   toast,
   error,
+  busy,
   onRetry,
-  emergencyLockdown = false,
 }: AdminStatusBannersProps) {
   return (
     <>
-      {emergencyLockdown && (
-        <p
-          role="alert"
-          className="mb-4 rounded-lg border border-[var(--danger)]/40 bg-[var(--danger)]/10 p-3 text-sm font-semibold text-[var(--text)]"
-        >
-          Emergency lockdown is active. Public certificate lookup, verification, and downloads are
-          disabled.
-        </p>
-      )}
       {toast && (
         <p
           role="status"
@@ -40,6 +31,23 @@ export default function AdminStatusBanners({
             onRetry={onRetry}
           />
         </div>
+      )}
+      {busy && (
+        <section
+          aria-label="Loading admin data"
+          aria-live="polite"
+          className="mb-5 grid gap-3 sm:grid-cols-3"
+        >
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-20 animate-pulse rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-4"
+            >
+              <div className="h-3 w-2/3 rounded bg-[var(--surface-2)]" />
+              <div className="mt-4 h-3 w-1/2 rounded bg-[var(--surface-2)]" />
+            </div>
+          ))}
+        </section>
       )}
     </>
   );

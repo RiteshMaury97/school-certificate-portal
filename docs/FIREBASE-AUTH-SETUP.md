@@ -68,22 +68,24 @@ The code is valid for 10 minutes, permits at most five incorrect attempts, and a
 
 ## 6. Troubleshooting
 
-| Symptom                                              | Check                                                                                                                              |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `auth/operation-not-allowed` during password sign-in | Enable Email/Password in Firebase Authentication → Sign-in method.                                                                 |
-| Google sign-in is unavailable                        | Enable Google and configure its support email and authorized domains.                                                              |
-| Code email is not delivered                          | Check Gmail App Password, mailbox security settings, SMTP credentials and server logs.                                             |
-| Code is invalid or expired                           | Request a new code; each code expires after 10 minutes and allows five incorrect attempts.                                         |
-| Too many code requests                               | Wait at least 60 seconds before requesting another code.                                                                           |
-| Session rejected after code entry                    | Confirm the Firebase ID token belongs to the same project and the matching `admins/{uid}` record is active with the expected role. |
+| Symptom | Check |
+|---|---|
+| `auth/operation-not-allowed` during password sign-in | Enable Email/Password in Firebase Authentication → Sign-in method. |
+| Google sign-in is unavailable | Enable Google and configure its support email and authorized domains. |
+| Code email is not delivered | Check Gmail App Password, mailbox security settings, SMTP credentials and server logs. |
+| Code is invalid or expired | Request a new code; each code expires after 10 minutes and allows five incorrect attempts. |
+| Too many code requests | Wait at least 60 seconds before requesting another code. |
+| Session rejected after code entry | Confirm the Firebase ID token belongs to the same project and the matching `admins/{uid}` record is active with the expected role. |
 
 ## 7. Local development
 
 Use `http://localhost:<port>` or `http://127.0.0.1:<port>` and configure the Firebase authorized domain `localhost`. App Check can be skipped locally according to the existing `APP_CHECK_ENFORCE` development policy. Do not expose the Gmail app password to browser code.
 
+
 ## Administrator email verification codes
 
 Administrator sign-in uses Firebase Authentication for the first factor and a custom six-digit code sent through the configured Gmail SMTP account for the second factor. Configure `OTP_HMAC_SECRET` with at least 32 random bytes; it must be separate from `AUDIT_LOG_HMAC_SECRET`. The code is stored only as an HMAC in the server-only `adminOtpChallenges` collection, expires after 10 minutes, and allows at most five attempts. The verified challenge is consumed when the server creates a session and is valid for that step for five minutes. No client Firestore access is permitted to this collection.
+
 
 ## Outgoing email (Gmail SMTP only)
 

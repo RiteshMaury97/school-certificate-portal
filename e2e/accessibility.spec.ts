@@ -1,20 +1,21 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-test("public home has no serious or critical axe violations", async ({ page }) => {
+test("public home has no serious or critical axe violations", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     Object.defineProperty(window, "turnstile", {
       configurable: true,
       value: {
-        render: (_element: HTMLElement, options: { callback: (token: string) => void }) => {
+        render: (
+          _element: HTMLElement,
+          options: { callback: (token: string) => void },
+        ) => {
           options.callback("e2e-token");
           return "e2e-widget";
         },
-        reset: () => {
-          return;
-        },
-        remove: () => {
-          return;
-        },
+        reset: () => { return; },
+        remove: () => { return; },
       },
     });
   });
@@ -33,6 +34,8 @@ test("public home has no serious or critical axe violations", async ({ page }) =
   );
   expect(
     blocking,
-    JSON.stringify(blocking.map((item) => ({ id: item.id, nodes: item.nodes.length }))),
+    JSON.stringify(
+      blocking.map((item) => ({ id: item.id, nodes: item.nodes.length })),
+    ),
   ).toEqual([]);
 });

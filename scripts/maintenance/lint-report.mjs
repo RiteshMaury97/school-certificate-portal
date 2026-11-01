@@ -23,7 +23,5 @@ const fixable = results.reduce(
   0,
 );
 
-process.stdout.write(
-  `ESLint report saved. Errors: ${errors}; warnings: ${warnings}; fixable: ${fixable}.\n`,
-);
+process.stdout.write(`ESLint report saved. Errors: ${errors}; warnings: ${warnings}; fixable: ${fixable}.\n`);
 if (errors > 0 || warnings > 0) process.exitCode = 1;

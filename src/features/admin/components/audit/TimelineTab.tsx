@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Activity,
-  AlertTriangle,
-  ArrowDownToLine,
-  CheckCircle2,
-  KeyRound,
-  Search,
-} from "lucide-react";
+import { Activity, AlertTriangle, ArrowDownToLine, CheckCircle2, KeyRound, Search } from "lucide-react";
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 
 type TimelineEvent = Record<string, unknown>;
@@ -26,32 +19,22 @@ function valueOf(event: TimelineEvent, key: string, fallback = "—") {
 
 function categoryOf(action: string): Exclude<Filter, "all"> | "other" {
   const value = action.toLowerCase();
-  if (value.includes("upload") || value.includes("import") || value.includes("student.create"))
-    return "uploads";
-  if (value.includes("approv") || value.includes("reject") || value.includes("decision"))
-    return "approvals";
+  if (value.includes("upload") || value.includes("import") || value.includes("student.create")) return "uploads";
+  if (value.includes("approv") || value.includes("reject") || value.includes("decision")) return "approvals";
   if (value.startsWith("otp.")) return "otp";
-  if (value.startsWith("admin.") || value.startsWith("site_") || value.startsWith("site."))
-    return "admin";
+  if (value.startsWith("admin.") || value.startsWith("site_") || value.startsWith("site.")) return "admin";
   return "other";
 }
 
 function statusLabel(action: string) {
   const lower = action.toLowerCase();
-  if (
-    lower.includes("fail") ||
-    lower.includes("reject") ||
-    lower.includes("lock") ||
-    lower.includes("revoke")
-  )
-    return "Attention";
+  if (lower.includes("fail") || lower.includes("reject") || lower.includes("lock") || lower.includes("revoke")) return "Attention";
   if (lower.includes("approv")) return "Approved";
   if (lower.includes("otp.verified")) return "Verified";
   if (lower.includes("otp.sent")) return "Sent";
   if (lower.includes("login")) return "Sign in";
   if (lower.includes("logout")) return "Sign out";
-  if (lower.includes("update") || lower.includes("edit") || lower.includes("upsert"))
-    return "Updated";
+  if (lower.includes("update") || lower.includes("edit") || lower.includes("upsert")) return "Updated";
   return "Recorded";
 }
 
@@ -86,9 +69,7 @@ export default function TimelineTab({
     return {
       approvals: categories.filter((category) => category === "approvals").length,
       otp: categories.filter((category) => category === "otp").length,
-      flagged: timeline.filter((event) =>
-        /fail|reject|lock|revoke|breach/i.test(valueOf(event, "action", "")),
-      ).length,
+      flagged: timeline.filter((event) => /fail|reject|lock|revoke|breach/i.test(valueOf(event, "action", ""))).length,
     };
   }, [timeline]);
   const filteredEvents = useMemo(() => {
@@ -97,12 +78,10 @@ export default function TimelineTab({
       const action = valueOf(event, "action", "Activity");
       const category = categoryOf(action);
       const matchesFilter = filter === "all" || category === filter;
-      const matchesSearch =
-        !query ||
-        [action, valueOf(event, "actor", "System"), valueOf(event, "targetId", "")]
-          .join(" ")
-          .toLowerCase()
-          .includes(query);
+      const matchesSearch = !query || [action, valueOf(event, "actor", "System"), valueOf(event, "targetId", "")]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
       return matchesFilter && matchesSearch;
     });
   }, [filter, search, timeline]);
@@ -112,24 +91,19 @@ export default function TimelineTab({
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">
-              Audit / Activity
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">Audit / Activity</p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-[var(--text)] sm:text-3xl">
               {timelineStudentId ? "Student activity timeline" : "Global activity timeline"}
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-[var(--text-muted)]">
-              Review recent uploads, approvals, account activity, and changes across your school
-              workspace.
+              Review recent uploads, approvals, account activity, and changes across your school workspace.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {timelineStudentId && (
               <button
                 type="button"
-                onClick={() => {
-                  setTimelineStudentId("");
-                }}
+                onClick={() => setTimelineStudentId("")}
                 className="min-h-10 rounded-lg border border-[var(--border)] px-3 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)]"
               >
                 Show global activity
@@ -146,81 +120,41 @@ export default function TimelineTab({
       </section>
 
       <section aria-label="Activity summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard
-          label="Recent events"
-          value={timeline.length}
-          detail="Latest records loaded"
-          icon={<Activity size={17} />}
-          tone="green"
-        />
-        <SummaryCard
-          label="Approvals"
-          value={counts.approvals}
-          detail="In the current activity set"
-          icon={<CheckCircle2 size={17} />}
-          tone="blue"
-        />
-        <SummaryCard
-          label="OTP activity"
-          value={counts.otp}
-          detail="Sent and verified codes"
-          icon={<KeyRound size={17} />}
-          tone="violet"
-        />
-        <SummaryCard
-          label="Flagged events"
-          value={counts.flagged}
-          detail="Failures, rejects, locks or revocations"
-          icon={<AlertTriangle size={17} />}
-          tone="amber"
-        />
+        <SummaryCard label="Recent events" value={timeline.length} detail="Latest records loaded" icon={<Activity size={17} />} tone="green" />
+        <SummaryCard label="Approvals" value={counts.approvals} detail="In the current activity set" icon={<CheckCircle2 size={17} />} tone="blue" />
+        <SummaryCard label="OTP activity" value={counts.otp} detail="Sent and verified codes" icon={<KeyRound size={17} />} tone="violet" />
+        <SummaryCard label="Flagged events" value={counts.flagged} detail="Failures, rejects, locks or revocations" icon={<AlertTriangle size={17} />} tone="amber" />
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--divider)] p-5">
           <div>
             <h3 className="text-lg font-bold text-[var(--text)]">Recent activity</h3>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
-              Monitor important changes across your workspace
-            </p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Monitor important changes across your workspace</p>
           </div>
           <label className="relative block w-full sm:w-72">
-            <Search
-              size={16}
-              aria-hidden="true"
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-            />
+            <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
             <span className="sr-only">Search events or users</span>
             <input
               value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-              }}
+              onChange={(event) => setSearch(event.target.value)}
               placeholder="Search events or users"
               className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)]"
             />
           </label>
         </div>
 
-        <div
-          className="flex gap-1 overflow-x-auto border-b border-[var(--divider)] px-4 pt-2"
-          aria-label="Filter activity by type"
-        >
+        <div className="flex gap-1 overflow-x-auto border-b border-[var(--divider)] px-4 pt-2" aria-label="Filter activity by type">
           {filters.map((item) => {
-            const count =
-              item.id === "all"
-                ? timeline.length
-                : timeline.filter(
-                    (event) => categoryOf(valueOf(event, "action", "Activity")) === item.id,
-                  ).length;
+            const count = item.id === "all"
+              ? timeline.length
+              : timeline.filter((event) => categoryOf(valueOf(event, "action", "Activity")) === item.id).length;
             return (
               <button
                 key={item.id}
                 type="button"
                 aria-pressed={filter === item.id}
-                onClick={() => {
-                  setFilter(item.id);
-                }}
+                onClick={() => setFilter(item.id)}
                 className={`min-h-10 shrink-0 rounded-t-lg border-b-2 px-3 text-sm font-medium transition-colors ${filter === item.id ? "border-[var(--primary)] text-[var(--text)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"}`}
               >
                 {item.label} <span className="ml-1 text-xs opacity-70">{count}</span>
@@ -232,13 +166,9 @@ export default function TimelineTab({
         {filteredEvents.length === 0 ? (
           <div className="grid min-h-56 place-items-center px-5 py-12 text-center">
             <div>
-              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--surface-2)] text-[var(--text-muted)]">
-                <Activity size={20} />
-              </div>
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--surface-2)] text-[var(--text-muted)]"><Activity size={20} /></div>
               <h4 className="mt-3 font-semibold text-[var(--text)]">No activity found</h4>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">
-                Try another filter or search term.
-              </p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">Try another filter or search term.</p>
             </div>
           </div>
         ) : (
@@ -246,21 +176,11 @@ export default function TimelineTab({
             <table className="w-full min-w-[760px] border-collapse text-left">
               <thead className="bg-[var(--surface-2)] text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                 <tr>
-                  <th scope="col" className="px-5 py-3">
-                    Event
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Actor
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Date &amp; time
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Source / target
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    Status
-                  </th>
+                  <th scope="col" className="px-5 py-3">Event</th>
+                  <th scope="col" className="px-4 py-3">Actor</th>
+                  <th scope="col" className="px-4 py-3">Date &amp; time</th>
+                  <th scope="col" className="px-4 py-3">Source / target</th>
+                  <th scope="col" className="px-4 py-3">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--divider)]">
@@ -270,39 +190,19 @@ export default function TimelineTab({
                   const actor = valueOf(event, "actor", "System");
                   const flagged = status === "Attention";
                   return (
-                    <tr
-                      key={valueOf(event, "id", String(index))}
-                      className="text-sm hover:bg-[var(--surface-2)]/60"
-                    >
+                    <tr key={valueOf(event, "id", String(index))} className="text-sm hover:bg-[var(--surface-2)]/60">
                       <td className="px-5 py-3.5">
                         <p className="font-semibold text-[var(--text)]">{action}</p>
-                        <p className="mt-0.5 text-xs capitalize text-[var(--text-muted)]">
-                          {categoryOf(action)}
-                        </p>
+                        <p className="mt-0.5 text-xs capitalize text-[var(--text-muted)]">{categoryOf(action)}</p>
                       </td>
                       <td className="px-4 py-3.5">
                         <p className="font-medium text-[var(--text)]">{actor}</p>
-                        <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-                          {actor === "Public user"
-                            ? "Public visitor"
-                            : actor === "System"
-                              ? "System"
-                              : "Administrator"}
-                        </p>
+                        <p className="mt-0.5 text-xs text-[var(--text-muted)]">{actor === "Public user" ? "Public visitor" : actor === "System" ? "System" : "Administrator"}</p>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3.5 text-[var(--text)]">
-                        {formatTimestamp(event.timestamp)}
-                      </td>
-                      <td
-                        className="max-w-40 truncate px-4 py-3.5 font-mono text-xs text-[var(--text-muted)]"
-                        title={valueOf(event, "targetId")}
-                      >
-                        {valueOf(event, "targetId", "Workspace")}
-                      </td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-[var(--text)]">{formatTimestamp(event.timestamp)}</td>
+                      <td className="max-w-40 truncate px-4 py-3.5 font-mono text-xs text-[var(--text-muted)]" title={valueOf(event, "targetId")}>{valueOf(event, "targetId", "Workspace")}</td>
                       <td className="px-4 py-3.5">
-                        <span
-                          className={`inline-flex min-w-20 justify-center rounded-full px-2.5 py-1 text-xs font-semibold ${flagged ? "bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] text-[var(--danger)]" : "bg-[var(--surface-2)] text-[var(--text)]"}`}
-                        >
+                        <span className={`inline-flex min-w-20 justify-center rounded-full px-2.5 py-1 text-xs font-semibold ${flagged ? "bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] text-[var(--danger)]" : "bg-[var(--surface-2)] text-[var(--text)]"}`}>
                           {status}
                         </span>
                       </td>
@@ -314,9 +214,7 @@ export default function TimelineTab({
           </div>
         )}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--divider)] px-5 py-3 text-xs text-[var(--text-muted)]">
-          <span>
-            Showing {filteredEvents.length} of {timeline.length} recent events
-          </span>
+          <span>Showing {filteredEvents.length} of {timeline.length} recent events</span>
           <span>Activity records are retained for audit purposes.</span>
         </div>
       </section>
@@ -346,15 +244,11 @@ function SummaryCard({
   return (
     <article className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-        <span className={`grid h-7 w-7 place-items-center rounded-full ${tones[tone]}`}>
-          {icon}
-        </span>
+        <span className={`grid h-7 w-7 place-items-center rounded-full ${tones[tone]}`}>{icon}</span>
         {label}
       </div>
       <div className="mt-3 flex items-baseline gap-3">
-        <span className="text-2xl font-bold tabular-nums text-[var(--text)]">
-          {value.toLocaleString()}
-        </span>
+        <span className="text-2xl font-bold tabular-nums text-[var(--text)]">{value.toLocaleString()}</span>
         <span className="text-xs text-[var(--text-muted)]">{detail}</span>
       </div>
     </article>

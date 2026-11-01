@@ -5,10 +5,15 @@ if (!encoded) throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 is required");
 const app =
   getApps()[0] ??
   initializeApp({
-    credential: cert(JSON.parse(Buffer.from(encoded, "base64").toString("utf8"))),
+    credential: cert(
+      JSON.parse(Buffer.from(encoded, "base64").toString("utf8")),
+    ),
   });
 const db = getFirestore(app);
-const snapshot = await db.collection("certificates").where("status", "==", "published").get();
+const snapshot = await db
+  .collection("certificates")
+  .where("status", "==", "published")
+  .get();
 const counts = {};
 for (const doc of snapshot.docs) {
   const session = String(doc.get("session") ?? "");

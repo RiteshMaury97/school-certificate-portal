@@ -5,8 +5,8 @@
       "schedule": "30 2 * * *"
     },
     {
-      "path": "/api/cron/security-summary",
-      "schedule": "55 23 * * *"
+      "path": "/api/cron/retention",
+      "schedule": "15 3 * * 1"
     }
   ]
 }

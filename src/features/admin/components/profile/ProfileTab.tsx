@@ -1,7 +1,7 @@
 "use client";
 
+import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { Camera, Check, KeyRound, ShieldCheck, UserRound } from "lucide-react";
-import { useEffect, useState, type ChangeEvent, type SubmitEvent, type ReactNode } from "react";
 
 import type { Role } from "../../types/admin.types";
 
@@ -115,14 +115,11 @@ function Section({
 function fileAsDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = () =>
       typeof reader.result === "string"
         ? resolve(reader.result)
         : reject(new Error("Could not read the profile photo."));
-    };
-    reader.onerror = () => {
-      reject(new Error("Could not read the profile photo."));
-    };
+    reader.onerror = () => reject(new Error("Could not read the profile photo."));
     reader.readAsDataURL(file);
   });
 }
@@ -139,9 +136,9 @@ async function makeProfilePhoto(file: File) {
   if (!context) throw new Error("Photo editing is unavailable in this browser.");
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
   image.close();
-  const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, "image/jpeg", 0.78);
-  });
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", 0.78),
+  );
   if (!blob) throw new Error("Could not prepare the profile photo.");
   const dataUrl = await fileAsDataUrl(blob);
   if (dataUrl.length > 300_000)
@@ -210,7 +207,7 @@ export default function ProfileTab({
     };
   }, [api]);
 
-  async function saveProfile(event: SubmitEvent<HTMLFormElement>) {
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     try {
@@ -389,9 +386,7 @@ export default function ProfileTab({
                       {profile.photoDataUrl && (
                         <button
                           type="button"
-                          onClick={() => {
-                            update("photoDataUrl", "");
-                          }}
+                          onClick={() => update("photoDataUrl", "")}
                           className="ml-3 text-sm text-[var(--danger)] hover:underline"
                         >
                           Remove
@@ -414,9 +409,7 @@ export default function ProfileTab({
                         minLength={2}
                         maxLength={100}
                         value={profile.name}
-                        onChange={(event) => {
-                          update("name", event.target.value);
-                        }}
+                        onChange={(event) => update("name", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
@@ -424,9 +417,7 @@ export default function ProfileTab({
                       <input
                         maxLength={80}
                         value={profile.preferredName}
-                        onChange={(event) => {
-                          update("preferredName", event.target.value);
-                        }}
+                        onChange={(event) => update("preferredName", event.target.value)}
                         className={inputClass}
                         placeholder="Name colleagues use"
                       />
@@ -435,18 +426,14 @@ export default function ProfileTab({
                       <input
                         maxLength={50}
                         value={profile.staffId}
-                        onChange={(event) => {
-                          update("staffId", event.target.value);
-                        }}
+                        onChange={(event) => update("staffId", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
                     <Field label="Gender">
                       <select
                         value={profile.gender}
-                        onChange={(event) => {
-                          update("gender", event.target.value);
-                        }}
+                        onChange={(event) => update("gender", event.target.value)}
                         className={inputClass}
                       >
                         <option value="">Prefer not to specify</option>
@@ -461,9 +448,7 @@ export default function ProfileTab({
                       <input
                         type="date"
                         value={profile.dateOfBirth}
-                        onChange={(event) => {
-                          update("dateOfBirth", event.target.value);
-                        }}
+                        onChange={(event) => update("dateOfBirth", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
@@ -479,9 +464,7 @@ export default function ProfileTab({
                       <input
                         maxLength={120}
                         value={profile.position}
-                        onChange={(event) => {
-                          update("position", event.target.value);
-                        }}
+                        onChange={(event) => update("position", event.target.value)}
                         className={inputClass}
                         placeholder="For example, Office Administrator"
                       />
@@ -490,9 +473,7 @@ export default function ProfileTab({
                       <input
                         maxLength={120}
                         value={profile.department}
-                        onChange={(event) => {
-                          update("department", event.target.value);
-                        }}
+                        onChange={(event) => update("department", event.target.value)}
                         className={inputClass}
                         placeholder="For example, Student Records"
                       />
@@ -501,9 +482,7 @@ export default function ProfileTab({
                       <input
                         maxLength={120}
                         value={profile.designation}
-                        onChange={(event) => {
-                          update("designation", event.target.value);
-                        }}
+                        onChange={(event) => update("designation", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
@@ -511,9 +490,7 @@ export default function ProfileTab({
                       <input
                         maxLength={120}
                         value={profile.campus}
-                        onChange={(event) => {
-                          update("campus", event.target.value);
-                        }}
+                        onChange={(event) => update("campus", event.target.value)}
                         className={inputClass}
                         placeholder="Lodipur, Zamania"
                       />
@@ -522,9 +499,7 @@ export default function ProfileTab({
                       <input
                         type="date"
                         value={profile.joiningDate}
-                        onChange={(event) => {
-                          update("joiningDate", event.target.value);
-                        }}
+                        onChange={(event) => update("joiningDate", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
@@ -532,9 +507,7 @@ export default function ProfileTab({
                       <input
                         maxLength={100}
                         value={profile.reportingManager}
-                        onChange={(event) => {
-                          update("reportingManager", event.target.value);
-                        }}
+                        onChange={(event) => update("reportingManager", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
@@ -542,9 +515,7 @@ export default function ProfileTab({
                       <input
                         maxLength={160}
                         value={profile.officeLocation}
-                        onChange={(event) => {
-                          update("officeLocation", event.target.value);
-                        }}
+                        onChange={(event) => update("officeLocation", event.target.value)}
                         className={inputClass}
                         placeholder="Building, floor, or room"
                       />
@@ -572,9 +543,7 @@ export default function ProfileTab({
                         type="email"
                         maxLength={254}
                         value={profile.alternateEmail}
-                        onChange={(event) => {
-                          update("alternateEmail", event.target.value);
-                        }}
+                        onChange={(event) => update("alternateEmail", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
@@ -583,9 +552,7 @@ export default function ProfileTab({
                         type="tel"
                         maxLength={30}
                         value={profile.primaryPhone}
-                        onChange={(event) => {
-                          update("primaryPhone", event.target.value);
-                        }}
+                        onChange={(event) => update("primaryPhone", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
@@ -594,9 +561,7 @@ export default function ProfileTab({
                         type="tel"
                         maxLength={30}
                         value={profile.secondaryPhone}
-                        onChange={(event) => {
-                          update("secondaryPhone", event.target.value);
-                        }}
+                        onChange={(event) => update("secondaryPhone", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
@@ -605,9 +570,7 @@ export default function ProfileTab({
                         rows={3}
                         maxLength={500}
                         value={profile.address}
-                        onChange={(event) => {
-                          update("address", event.target.value);
-                        }}
+                        onChange={(event) => update("address", event.target.value)}
                         className={`${inputClass} resize-y`}
                       />
                     </Field>
@@ -706,9 +669,7 @@ export default function ProfileTab({
                       <input
                         maxLength={100}
                         value={profile.emergencyContactName}
-                        onChange={(event) => {
-                          update("emergencyContactName", event.target.value);
-                        }}
+                        onChange={(event) => update("emergencyContactName", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
@@ -717,9 +678,7 @@ export default function ProfileTab({
                         type="tel"
                         maxLength={30}
                         value={profile.emergencyContactPhone}
-                        onChange={(event) => {
-                          update("emergencyContactPhone", event.target.value);
-                        }}
+                        onChange={(event) => update("emergencyContactPhone", event.target.value)}
                         className={inputClass}
                       />
                     </Field>
@@ -735,9 +694,7 @@ export default function ProfileTab({
                 <Field label="Preferred language">
                   <select
                     value={profile.preferredLanguage}
-                    onChange={(event) => {
-                      update("preferredLanguage", event.target.value);
-                    }}
+                    onChange={(event) => update("preferredLanguage", event.target.value)}
                     className={inputClass}
                   >
                     <option value="en">English</option>
@@ -754,9 +711,7 @@ export default function ProfileTab({
                 <Field label="Time zone">
                   <select
                     value={profile.timeZone}
-                    onChange={(event) => {
-                      update("timeZone", event.target.value);
-                    }}
+                    onChange={(event) => update("timeZone", event.target.value)}
                     className={inputClass}
                   >
                     <option value="Asia/Kolkata">India Standard Time (Asia/Kolkata)</option>
@@ -769,9 +724,7 @@ export default function ProfileTab({
                 <Field label="Date format">
                   <select
                     value={profile.dateFormat}
-                    onChange={(event) => {
-                      update("dateFormat", event.target.value);
-                    }}
+                    onChange={(event) => update("dateFormat", event.target.value)}
                     className={inputClass}
                   >
                     <option value="DD/MM/YYYY">DD/MM/YYYY</option>
@@ -785,17 +738,13 @@ export default function ProfileTab({
                   label="Email notifications"
                   description="Receive account and school updates by email."
                   checked={profile.emailNotifications}
-                  onChange={(checked) => {
-                    update("emailNotifications", checked);
-                  }}
+                  onChange={(checked) => update("emailNotifications", checked)}
                 />
                 <Toggle
                   label="System notifications"
                   description="Show notices in the admin panel."
                   checked={profile.systemNotifications}
-                  onChange={(checked) => {
-                    update("systemNotifications", checked);
-                  }}
+                  onChange={(checked) => update("systemNotifications", checked)}
                 />
               </div>
             </Section>
@@ -810,9 +759,7 @@ export default function ProfileTab({
               <button
                 type="button"
                 disabled={!hasChanges || saving}
-                onClick={() => {
-                  setProfile(savedProfile);
-                }}
+                onClick={() => setProfile(savedProfile)}
                 className="min-h-11 rounded-lg px-4 text-sm font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Discard changes
@@ -853,9 +800,7 @@ function Toggle({
       <input
         type="checkbox"
         checked={checked}
-        onChange={(event) => {
-          onChange(event.target.checked);
-        }}
+        onChange={(event) => onChange(event.target.checked)}
         className="mt-1 h-4 w-4 accent-[var(--primary)]"
       />
       <span>

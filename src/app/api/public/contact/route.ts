@@ -3,13 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
-import { requesterIp } from "@/server/request-origin";
-import {
-  consumeSearchBudget,
-  hashRequesterIp,
-  verifyRequestAppCheck,
-  writeAuditLog,
-} from "@/server/security";
+import { consumeSearchBudget, hashRequesterIp, verifyRequestAppCheck, writeAuditLog } from "@/server/security";
 
 import type { NextRequest } from "next/server";
 
@@ -18,12 +12,7 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({
   fullName: z.string().trim().min(2).max(100),
-  mobile: z
-    .string()
-    .trim()
-    .min(7)
-    .max(30)
-    .regex(/^[+\d() .-]+$/),
+  mobile: z.string().trim().min(7).max(30).regex(/^[+\d() .-]+$/),
   email: z.email().trim().max(254),
   enquiryType: z.enum(["certificate", "student-record", "admission", "general", "other"]),
   studentName: z.string().trim().max(100).optional().default(""),
@@ -48,12 +37,7 @@ async function verifyTurnstile(token: string, ip: string | null): Promise<boolea
     });
     if (!response.ok) return false;
     const result: unknown = await response.json();
-    return (
-      typeof result === "object" &&
-      result !== null &&
-      "success" in result &&
-      result.success === true
-    );
+    return typeof result === "object" && result !== null && "success" in result && result.success === true;
   } catch {
     return false;
   }
@@ -63,21 +47,12 @@ export async function POST(request: NextRequest) {
   try {
     await verifyRequestAppCheck(request);
     if (!(await consumeSearchBudget(request)))
-      return NextResponse.json(
-        { error: "Please wait a little before sending another enquiry." },
-        { status: 429 },
-      );
+      return NextResponse.json({ error: "Please wait a little before sending another enquiry." }, { status: 429 });
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success)
-      return NextResponse.json(
-        { error: "Check the required contact form fields and try again." },
-        { status: 400 },
-      );
-    if (!(await verifyTurnstile(parsed.data.turnstileToken, requesterIp(request))))
-      return NextResponse.json(
-        { error: "Security verification failed. Please complete the check again." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Check the required contact form fields and try again." }, { status: 400 });
+    if (!(await verifyTurnstile(parsed.data.turnstileToken, request.headers.get("cf-connecting-ip"))))
+      return NextResponse.json({ error: "Security verification failed. Please complete the check again." }, { status: 400 });
 
     const enquiry = parsed.data;
     const record = await db.collection("contactEnquiries").add({
@@ -96,14 +71,8 @@ export async function POST(request: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     });
     await writeAuditLog(request, "public", "contact_enquiry.created", record.id).catch(() => false);
-    return NextResponse.json(
-      { ok: true, referenceId: record.id },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return NextResponse.json({ ok: true, referenceId: record.id }, { headers: { "Cache-Control": "no-store" } });
   } catch {
-    return NextResponse.json(
-      { error: "Unable to submit your enquiry right now. Please contact the school office." },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Unable to submit your enquiry right now. Please contact the school office." }, { status: 503 });
   }
 }

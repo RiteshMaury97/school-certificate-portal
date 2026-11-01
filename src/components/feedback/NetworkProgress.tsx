@@ -6,9 +6,7 @@ const QUIET_PATHS = new Set(["/api/admin/session"]);
 
 function describe(input: RequestInfo | URL, init?: RequestInit) {
   const raw = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-  const method = (
-    init?.method ?? (typeof input === "object" && "method" in input ? input.method : "GET")
-  ).toUpperCase();
+  const method = (init?.method ?? (typeof input === "object" && "method" in input ? input.method : "GET")).toUpperCase();
   let path = "";
   try {
     path = new URL(raw, window.location.origin).pathname;
@@ -33,10 +31,7 @@ export default function NetworkProgress() {
     const start = () => {
       pending += 1;
       // Short requests finish before the bar appears, so it never flickers.
-      if (pending === 1)
-        timer = window.setTimeout(() => {
-          setActive(true);
-        }, 140);
+      if (pending === 1) timer = window.setTimeout(() => { setActive(true); }, 140);
     };
     const finish = () => {
       pending = Math.max(0, pending - 1);

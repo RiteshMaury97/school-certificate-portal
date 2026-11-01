@@ -19,7 +19,7 @@ describe("empty and error state contracts", () => {
       "disabled={sessionsLoading || sessionsLoadError || sessions.length === 0}",
     );
     expect(source).toContain('"No data found"');
-    expect(source).toContain("No active academic sessions are available");
+    expect(source).toContain("No published sessions are currently available");
     expect(source).toContain("No record found. Check the details and try again.");
   });
 
@@ -38,7 +38,7 @@ describe("empty and error state contracts", () => {
     expect(source).toContain("loadError");
     expect(source).toContain("ErrorState");
     expect(source).toContain("EmptyState");
-    expect(source).toContain('title="No matching questions"');
+    expect(source).toContain("No data found");
   });
 
   it("does not render an empty principal message or blank social links", async () => {
@@ -51,18 +51,9 @@ describe("empty and error state contracts", () => {
 
   it("uses an actionable empty state for the admin student list", async () => {
     const list = await readFile("src/features/admin/components/students/StudentsList.tsx", "utf8");
-    const form = await readFile(
-      "src/features/admin/components/students/StudentCreatePanel.tsx",
-      "utf8",
-    );
-    expect(list).toContain('title={search ? "No matching students" : "No students yet"}');
+    const form = await readFile("src/features/admin/components/students/StudentCreatePanel.tsx", "utf8");
+    expect(list).toContain('title="No data found"');
     expect(list).toContain("Add student");
     expect(form).toContain("student-create-form");
-  });
-
-  it("does not expose the retired retention queue as an admin empty state", async () => {
-    const source = await readFile("src/features/admin/AdminConsole.tsx", "utf8");
-    expect(source).not.toContain("RetentionTab");
-    expect(source).not.toContain("retentionRecords");
   });
 });

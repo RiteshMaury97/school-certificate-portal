@@ -18,64 +18,32 @@ export default function SessionsModal({
   onRevokeAll,
 }: SessionsModalProps) {
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sessions-title"
-      className="fixed inset-0 z-[90] grid place-items-center bg-[var(--scrim)] p-4"
-    >
+    <div role="dialog" aria-modal="true" aria-labelledby="sessions-title" className="fixed inset-0 z-[90] grid place-items-center bg-[var(--scrim)] p-4">
       <section className="max-h-[80vh] w-full max-w-2xl overflow-auto rounded-2xl bg-[var(--surface)] p-6 text-[var(--text)]">
         <div className="flex justify-between">
-          <h2 id="sessions-title" className="text-xl font-bold">
-            Active sessions / recent logins
-          </h2>
-          <button onClick={onClose} aria-label="Close">
-            ✕
-          </button>
+          <h2 id="sessions-title" className="text-xl font-bold">Active sessions / recent logins</h2>
+          <button onClick={onClose} aria-label="Close">✕</button>
         </div>
         {error && (
-          <div
-            role="alert"
-            className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--danger)]/30 bg-[var(--surface-2)] p-3 text-sm"
-          >
+          <div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--danger)]/30 bg-[var(--surface-2)] p-3 text-sm">
             <span className="text-[var(--danger)]">{error}</span>
-            <button
-              type="button"
-              onClick={onRetry}
-              className="min-h-9 rounded-lg border border-[var(--border)] px-3 font-semibold text-[var(--text)]"
-            >
-              Retry
-            </button>
+            <button type="button" onClick={onRetry} className="min-h-9 rounded-lg border border-[var(--border)] px-3 font-semibold text-[var(--text)]">Retry</button>
           </div>
         )}
         <div className="mt-4 space-y-3">
           {sessions.map((session, i) => (
-            <div
-              key={String(session.sessionId ?? i)}
-              className="flex items-center justify-between gap-3 rounded-lg border p-3"
-            >
+            <div key={String(session.sessionId ?? i)} className="flex items-center justify-between gap-3 rounded-lg border p-3">
               <div>
                 <p className="font-semibold">
                   {String(session.browser ?? "Device")} · {String(session.city ?? "Unknown city")}
-                  {session.country ? `, ${String(session.country)}` : ""}{" "}
-                  {session.current ? "· This device" : ""}
+                  {session.country ? `, ${String(session.country)}` : ""} {session.current ? "· This device" : ""}
                 </p>
                 <p className="text-xs text-[var(--text-muted)]">
-                  Signed in: {String(session.createdAt ?? "Unknown")} · Last activity:{" "}
-                  {String(session.lastActivityAt ?? "Unknown")}
+                  Signed in: {String(session.createdAt ?? "Unknown")} · Last activity: {String(session.lastActivityAt ?? "Unknown")}
                 </p>
               </div>
-              {session.revoked ? (
-                <span>Revoked</span>
-              ) : (
-                <button
-                  onClick={() => {
-                    onRevokeSession(String(session.sessionId));
-                  }}
-                  className="rounded-lg border px-3 py-2"
-                >
-                  Revoke
-                </button>
+              {session.revoked ? <span>Revoked</span> : (
+                <button onClick={() => { onRevokeSession(String(session.sessionId)); }} className="rounded-lg border px-3 py-2">Revoke</button>
               )}
             </div>
           ))}
@@ -84,22 +52,12 @@ export default function SessionsModal({
         <div className="mt-2 space-y-2">
           {recentLogins.map((login, i) => (
             <div key={i} className="rounded-lg border p-3 text-sm">
-              <b>
-                {String(login.browser ?? "Device")} · {String(login.city ?? "Unknown city")}
-                {login.country ? `, ${String(login.country)}` : ""}
-              </b>
-              <p className="text-xs text-[var(--text-muted)]">
-                Last seen: {String(login.lastSeenAt ?? "Unknown")}
-              </p>
+              <b>{String(login.browser ?? "Device")} · {String(login.city ?? "Unknown city")}{login.country ? `, ${String(login.country)}` : ""}</b>
+              <p className="text-xs text-[var(--text-muted)]">Last seen: {String(login.lastSeenAt ?? "Unknown")}</p>
             </div>
           ))}
         </div>
-        <button
-          onClick={onRevokeAll}
-          className="mt-5 rounded-lg bg-[var(--primary)] px-4 py-3 text-[var(--on-primary)]"
-        >
-          Sign out of all devices
-        </button>
+        <button onClick={onRevokeAll} className="mt-5 rounded-lg bg-[var(--primary)] px-4 py-3 text-[var(--on-primary)]">Sign out of all devices</button>
       </section>
     </div>
   );

@@ -2,13 +2,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-}));
-vi.mock("@/features/auth/admin-session", () => ({
-  AdminSessionProvider: ({ children }: { children: ReactNode }) => children,
-  useAdminSession: () => ({ state: { status: "unauthenticated" }, retry: vi.fn() }),
-}));
+import AdminAuthView from "@/features/auth/AdminAuthView";
+
+import type { ReactNode } from "react";
 
 const settingsState = vi.hoisted(() => ({ schoolName: "" }));
 
@@ -39,10 +35,6 @@ vi.mock("@/features/auth/useAdminSignIn", () => ({
   }),
 }));
 
-import AdminAuthView from "@/features/auth/AdminAuthView";
-
-import type { ReactNode } from "react";
-
 afterEach(() => {
   cleanup();
 });
@@ -51,7 +43,10 @@ describe("AdminAuthView school heading fallback", () => {
   it.each(["", undefined])("shows the default school name when schoolName is %s", (schoolName) => {
     Reflect.set(settingsState, "schoolName", schoolName);
     render(<AdminAuthView />);
-    expect(screen.getByRole("heading", { name: "Satyam International School" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Administrator sign in" })).toBeTruthy();
+    expect(
+      screen.getByRole("heading", {
+        name: "Satyam International School – Administrator login",
+      }),
+    ).toBeTruthy();
   });
 });

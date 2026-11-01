@@ -3,8 +3,6 @@ import { z } from "zod";
 
 import { decryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
-import { publicEmergencyMaintenanceResponse } from "@/server/public-maintenance";
-import { requesterIp } from "@/server/request-origin";
 import {
   createCertificateNumberHash,
   consumeVerificationBudget,
@@ -12,13 +10,12 @@ import {
   writeAuditLog,
   verifyRequestAppCheck,
 } from "@/server/security";
-import { decryptStudentIdentifier } from "@/server/student-pii";
 import {
   publicVerificationOutcome,
   isPubliclyDownloadableStatus,
 } from "@/shared/certificate-lifecycle";
 
-import type { NextRequest } from "next/server";
+import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,25 +25,12 @@ const inputSchema = z.object({
   session: z
     .string()
     .trim()
-    .regex(/^\d{4}-\d{2}$/, "Choose a valid session."),
+    .regex(/^\d{4}-\d{2}$/)
+    .optional()
+    .or(z.literal("")),
   turnstileToken: z.string().min(1).max(4096),
 });
 const failed = { valid: false, message: "No matching certificate found" };
-function maskStudentName(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .map(
-      (part) =>
-        `${Array.from(part)[0] ?? ""}${"•".repeat(Math.min(5, Math.max(2, part.length - 1)))}`,
-    )
-    .join(" ");
-}
-
-function maskScholarNumber(value: string): string {
-  if (value.length <= 2) return "••••";
-  return `${"•".repeat(Math.min(8, value.length - 2))}${value.slice(-2)}`;
-}
 type VerificationResponse =
   | typeof failed
   | {
@@ -57,10 +41,6 @@ type VerificationResponse =
       issueDate: string;
       schoolName: string;
       studentName: string;
-      fatherName: string;
-      motherName: string;
-      className: string;
-      scholarNumber: string;
       verifiedOn: string;
     }
   | {
@@ -70,7 +50,9 @@ type VerificationResponse =
       newCertificateNumber: string;
     }
   | { valid: false; status: "revoked"; message: string };
-function response(body: VerificationResponse | ReturnType<typeof publicVerificationOutcome>) {
+function response(
+  body: VerificationResponse | ReturnType<typeof publicVerificationOutcome>,
+) {
   return NextResponse.json(body, {
     status: 200,
     headers: {
@@ -80,34 +62,53 @@ function response(body: VerificationResponse | ReturnType<typeof publicVerificat
     },
   });
 }
-async function verifyTurnstile(token: string, remoteIp: string | null): Promise<boolean> {
+async function verifyTurnstile(
+  token: string,
+  remoteIp: string | null,
+): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) return false;
   try {
     const payload = new URLSearchParams({ secret, response: token });
     if (remoteIp) payload.set("remoteip", remoteIp);
-    const result = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      body: payload,
-      cache: "no-store",
-      signal: AbortSignal.timeout(5000),
-    });
+    const result = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        body: payload,
+        cache: "no-store",
+        signal: AbortSignal.timeout(5000),
+      },
+    );
     if (!result.ok) return false;
     const data: unknown = await result.json();
-    return typeof data === "object" && data !== null && "success" in data && data.success === true;
+    return (
+      typeof data === "object" &&
+      data !== null &&
+      "success" in data &&
+      data.success === true
+    );
   } catch {
     return false;
   }
 }
+function maskStudentName(value: string): string {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  return parts
+    .map((part) =>
+      part.length <= 1
+        ? `${part[0] ?? ""}*`
+        : `${part[0]}${"*".repeat(Math.max(3, part.length - 1))}`,
+    )
+    .join(" ");
+}
 async function audit(request: NextRequest, outcome: string): Promise<void> {
-  await writeAuditLog(request, "public", "certificate.verify", outcome).catch(() => {
-    console.error("Certificate verification audit write failed");
-  });
+  await writeAuditLog(request, "public", "certificate.verify", outcome).catch(
+    () => { console.error("Certificate verification audit write failed"); },
+  );
 }
 export async function POST(request: NextRequest) {
   try {
-    const maintenance = await publicEmergencyMaintenanceResponse();
-    if (maintenance) return maintenance;
     await verifyRequestAppCheck(request);
     const body: unknown = await request.json().catch(() => null);
     const parsed = inputSchema.safeParse(body);
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
       await delayFailedLookup();
       return response(failed);
     }
-    const remoteIp = requesterIp(request);
+    const remoteIp = request.headers.get("cf-connecting-ip") ?? null;
     if (!(await verifyTurnstile(input.turnstileToken, remoteIp))) {
       await audit(request, "turnstile_failed");
       await delayFailedLookup();
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest) {
       return response(failed);
     }
     const indexedSession = String(index.get("session") ?? "");
-    if (input.session !== indexedSession) {
+    if (input.session && input.session !== indexedSession) {
       await audit(request, "no_match");
       await delayFailedLookup();
       return response(failed);
@@ -156,7 +157,9 @@ export async function POST(request: NextRequest) {
       return response(failed);
     }
     const studentId = String(certificate.get("studentId") ?? "");
-    const student = studentId ? await db.collection("students").doc(studentId).get() : null;
+    const student = studentId
+      ? await db.collection("students").doc(studentId).get()
+      : null;
     if (!student?.exists || student.get("erasurePending") === true) {
       await audit(request, "no_match");
       await delayFailedLookup();
@@ -165,10 +168,14 @@ export async function POST(request: NextRequest) {
     const lifecycleStatus = String(certificate.get("status") ?? "");
     if (lifecycleStatus === "superseded") {
       const newerId = String(certificate.get("supersededBy") ?? "");
-      const newer = newerId ? await db.collection("certificates").doc(newerId).get() : null;
+      const newer = newerId
+        ? await db.collection("certificates").doc(newerId).get()
+        : null;
       const outcome = publicVerificationOutcome(
         "superseded",
-        newer?.exists ? decryptCertificateNumber(newer.get("certificateNumberEncrypted")) : "",
+        newer?.exists
+          ? decryptCertificateNumber(newer.get("certificateNumberEncrypted"))
+          : "",
       );
       if (outcome.status === "not-found") {
         await audit(request, "no_match");
@@ -182,7 +189,10 @@ export async function POST(request: NextRequest) {
       await audit(request, "revoked");
       return response(publicVerificationOutcome("revoked"));
     }
-    if (!isPubliclyDownloadableStatus(lifecycleStatus) || certificate.get("published") === false) {
+    if (
+      !isPubliclyDownloadableStatus(lifecycleStatus) ||
+      certificate.get("published") === false
+    ) {
       await audit(request, "no_match");
       await delayFailedLookup();
       return response(failed);
@@ -191,15 +201,6 @@ export async function POST(request: NextRequest) {
     const certificateType = String(certificate.get("type") ?? "");
     const session = String(certificate.get("session") ?? "");
     const issueDate = String(certificate.get("issueDate") ?? "");
-    const encryptedScholarNumber = student.get("scholarNumber");
-    let scholarNumber = "";
-    if (typeof encryptedScholarNumber === "string") {
-      try {
-        scholarNumber = decryptStudentIdentifier(encryptedScholarNumber);
-      } catch {
-        scholarNumber = "";
-      }
-    }
     if (!studentName || !certificateType || !session || !issueDate) {
       await audit(request, "no_match");
       await delayFailedLookup();
@@ -217,10 +218,6 @@ export async function POST(request: NextRequest) {
           (await db.collection("siteSettings").doc("main").get()).get("schoolName") ?? "",
         ).trim() || "Satyam International School",
       studentName: maskStudentName(studentName),
-      fatherName: maskStudentName(String(student.get("fatherName") ?? "")),
-      motherName: maskStudentName(String(student.get("motherName") ?? "")),
-      className: String(student.get("className") ?? ""),
-      scholarNumber: maskScholarNumber(scholarNumber),
       verifiedOn: new Date().toISOString(),
     });
   } catch {

@@ -21,7 +21,9 @@ const execute = process.argv.includes("--execute");
 const app =
   getApps()[0] ??
   initializeApp({
-    credential: cert(JSON.parse(Buffer.from(service, "base64").toString("utf8"))),
+    credential: cert(
+      JSON.parse(Buffer.from(service, "base64").toString("utf8")),
+    ),
   });
 const db = getFirestore(app);
 const s3 = new S3Client({
@@ -51,7 +53,9 @@ let scanned = 0,
   unattributed = 0;
 async function tag(key, studentId) {
   scanned++;
-  const head = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+  const head = await s3.send(
+    new HeadObjectCommand({ Bucket: bucket, Key: key }),
+  );
   if (head.Metadata?.studentid) {
     if (head.Metadata.studentid !== studentId) ambiguous++;
     return;
@@ -80,34 +84,19 @@ async function tag(key, studentId) {
   );
   tagged++;
 }
-for (const [key, studentId] of activeKeys) {
-  await tag(key, studentId);
-}
-let token;
-do {
-  const page = await s3.send(
-    new ListObjectsV2Command({
-      Bucket: bucket,
-      Prefix: "_soft-delete/",
-      ContinuationToken: token,
-      MaxKeys: 500,
-    }),
+async function tagSoftDeletedObject(object) {
+  if (!object.Key) return;
+  const head = await s3.send(
+    new HeadObjectCommand({ Bucket: bucket, Key: object.Key }),
   );
-  for (const object of page.Contents ?? []) {
-    if (!object.Key) continue;
-    const head = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: object.Key }));
-    if (head.Metadata?.studentid) continue;
-    scanned++;
-    const sha = head.Metadata?.sha256 ?? "";
-    const owners = hashOwners.get(sha);
-    if (!owners || owners.size === 0) unattributed++;
-    if (owners && owners.size > 1) ambiguous++;
-    if (!owners || owners.size !== 1) {
-      continue;
-    }
+  if (head.Metadata?.studentid) return;
+  scanned++;
+  const sha = head.Metadata?.sha256 ?? "";
+  const owners = hashOwners.get(sha);
+  if (owners?.size === 1) {
     const studentId = [...owners][0];
     taggable++;
-    if (!execute) continue;
+    if (!execute) return;
     const source = `${bucket}/${object.Key.split("/").map(encodeURIComponent).join("/")}`;
     await s3.send(
       new CopyObjectCommand({
@@ -125,6 +114,26 @@ do {
       }),
     );
     tagged++;
+    return;
+  }
+  if (owners && owners.size > 1) ambiguous++;
+  else unattributed++;
+}
+for (const [key, studentId] of activeKeys) {
+  await tag(key, studentId);
+}
+let token;
+do {
+  const page = await s3.send(
+    new ListObjectsV2Command({
+      Bucket: bucket,
+      Prefix: "_soft-delete/",
+      ContinuationToken: token,
+      MaxKeys: 500,
+    }),
+  );
+  for (const object of page.Contents ?? []) {
+    await tagSoftDeletedObject(object);
   }
   token = page.IsTruncated ? page.NextContinuationToken : undefined;
 } while (token);

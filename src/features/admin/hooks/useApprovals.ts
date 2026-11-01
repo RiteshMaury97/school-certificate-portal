@@ -2,16 +2,8 @@ import { useState, type Dispatch, type SetStateAction } from "react";
 
 import type { CertificatePreviewMap } from "../types/admin-state.types";
 
-type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
-  url: string,
-  init?: RequestInit,
-) => Promise<T>;
-type Props = {
-  api: Api;
-  act: (fn: () => Promise<void>) => Promise<void>;
-  setError: Dispatch<SetStateAction<string>>;
-  load: () => Promise<void>;
-};
+type Api = <T extends Record<string, unknown> = Record<string, unknown>>(url: string, init?: RequestInit) => Promise<T>;
+type Props = { api: Api; act: (fn: () => Promise<void>) => Promise<void>; setError: Dispatch<SetStateAction<string>>; load: () => Promise<void> };
 export function useApprovals({ api, act, setError, load }: Props) {
   const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
   const [approvalChecks, setApprovalChecks] = useState<Record<string, boolean>>({});
@@ -51,14 +43,5 @@ export function useApprovals({ api, act, setError, load }: Props) {
       }));
     });
   }
-  return {
-    rejectReason,
-    setRejectReason,
-    approvalChecks,
-    setApprovalChecks,
-    previewUrls,
-    setPreviewUrls,
-    decideCertificate,
-    loadPreview,
-  };
+  return { rejectReason, setRejectReason, approvalChecks, setApprovalChecks, previewUrls, setPreviewUrls, decideCertificate, loadPreview };
 }

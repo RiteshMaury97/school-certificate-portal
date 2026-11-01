@@ -1,7 +1,11 @@
 import { createDecipheriv } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 
-import { S3Client, ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  ListObjectsV2Command,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
@@ -17,7 +21,8 @@ const required = [
   "EXPORT_ENCRYPTION_KEY",
 ];
 for (const name of required)
-  if (!process.env[name]) throw new Error(`Missing required environment variable: ${name}`);
+  if (!process.env[name])
+    throw new Error(`Missing required environment variable: ${name}`);
 
 const targetProject = process.env.RESTORE_STAGING_PROJECT_ID;
 if (!/(^|[-_])staging($|[-_])/i.test(targetProject)) {
@@ -31,7 +36,9 @@ if (process.env.FIREBASE_PROJECT_ID !== targetProject) {
   );
 }
 const serviceAccount = JSON.parse(
-  Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, "base64").toString("utf8"),
+  Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, "base64").toString(
+    "utf8",
+  ),
 );
 if (serviceAccount.project_id !== targetProject) {
   throw new Error(
@@ -39,7 +46,9 @@ if (serviceAccount.project_id !== targetProject) {
   );
 }
 if (process.env.BACKUP_R2_BUCKET === process.env.R2_BUCKET) {
-  throw new Error("Safety stop: BACKUP_R2_BUCKET must be separate from the certificate R2_BUCKET.");
+  throw new Error(
+    "Safety stop: BACKUP_R2_BUCKET must be separate from the certificate R2_BUCKET.",
+  );
 }
 
 const encryptionKey = Buffer.from(process.env.EXPORT_ENCRYPTION_KEY, "base64");
@@ -77,7 +86,9 @@ do {
 backups.sort((a, b) => b.LastModified.getTime() - a.LastModified.getTime());
 const latest = backups[0];
 if (!latest?.Key)
-  throw new Error("No scheduled encrypted portal backup was found in the separate backup bucket.");
+  throw new Error(
+    "No scheduled encrypted portal backup was found in the separate backup bucket.",
+  );
 
 const object = await client.send(
   new GetObjectCommand({
@@ -86,7 +97,9 @@ const object = await client.send(
   }),
 );
 if (!object.Body) throw new Error("The selected backup object has no body.");
-const encryptedEnvelope = Buffer.from(await object.Body.transformToByteArray()).toString("utf8");
+const encryptedEnvelope = Buffer.from(
+  await object.Body.transformToByteArray(),
+).toString("utf8");
 const envelope = JSON.parse(encryptedEnvelope);
 if (
   envelope.version !== 1 ||
@@ -99,7 +112,11 @@ if (
   );
 }
 
-const decipher = createDecipheriv("aes-256-gcm", encryptionKey, Buffer.from(envelope.iv, "base64"));
+const decipher = createDecipheriv(
+  "aes-256-gcm",
+  encryptionKey,
+  Buffer.from(envelope.iv, "base64"),
+);
 decipher.setAuthTag(Buffer.from(envelope.tag, "base64"));
 const plaintext = Buffer.concat([
   decipher.update(Buffer.from(envelope.ciphertext, "base64")),
@@ -111,11 +128,14 @@ if (
   typeof exportData.collections !== "object" ||
   Array.isArray(exportData.collections)
 ) {
-  throw new Error("The decrypted backup does not contain a valid collections object.");
+  throw new Error(
+    "The decrypted backup does not contain a valid collections object.",
+  );
 }
 
 const app =
-  getApps()[0] ?? initializeApp({ credential: cert(serviceAccount), projectId: targetProject });
+  getApps()[0] ??
+  initializeApp({ credential: cert(serviceAccount), projectId: targetProject });
 const db = getFirestore(app);
 // Refuse to merge into an existing dataset: the test target must be a clean staging project.
 for (const collectionName of Object.keys(exportData.collections)) {
@@ -134,11 +154,17 @@ let pending = 0;
 let total = 0;
 
 for (const [collectionName, rows] of Object.entries(exportData.collections)) {
-  if (!Array.isArray(rows)) throw new Error(`Invalid collection payload for ${collectionName}.`);
+  if (!Array.isArray(rows))
+    throw new Error(`Invalid collection payload for ${collectionName}.`);
   expectedCounts[collectionName] = rows.length;
   restoredCounts[collectionName] = 0;
   for (const row of rows) {
-    if (!row || typeof row !== "object" || typeof row.id !== "string" || !row.id) {
+    if (
+      !row ||
+      typeof row !== "object" ||
+      typeof row.id !== "string" ||
+      !row.id
+    ) {
       throw new Error(
         `Invalid document in collection ${collectionName}; every exported row must have a string id.`,
       );

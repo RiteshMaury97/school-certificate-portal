@@ -63,9 +63,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title: name,
       description,
       url: siteUrl,
-      images: [
-        { url: "/og-image.png", width: 1200, height: 630, alt: `${name} official school records` },
-      ],
+      images: [{ url: "/og-image.png", width: 1200, height: 630, alt: `${name} official school records` }],
     },
     twitter: {
       card: "summary_large_image",
@@ -83,7 +81,11 @@ const themeInit = `(function(){var r=document.documentElement;try{var t=localSto
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <head>
         <Script id="theme-init" nonce={nonce} strategy="beforeInteractive">
           {themeInit}
@@ -96,8 +98,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <AppProviders>
           <Suspense>{children}</Suspense>
         </AppProviders>
-        {process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN &&
-        process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL ? (
+        {process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN && process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL ? (
           <Script
             defer
             data-domain={process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN}

@@ -1,13 +1,4 @@
-import { expect, test } from "@playwright/test";
-
-import type { Page } from "@playwright/test";
-
-type SearchResponse = { found: boolean; message: string };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
+import { expect, test, type Page } from "@playwright/test";
 const studentResult = {
   found: true,
   studentName: "Rahul Kumar",
@@ -26,30 +17,53 @@ const studentResult = {
     },
   ],
 };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isSearchResult(
+  value: unknown,
+): value is { found?: boolean; message?: string } {
+  return (
+    isRecord(value) &&
+    (value.found === undefined || typeof value.found === "boolean") &&
+    (value.message === undefined || typeof value.message === "string")
+  );
+}
+
+function isChallengeAnswer(
+  value: unknown,
+): value is { challengeToken?: string; disambiguationValue?: string } {
+  return (
+    isRecord(value) &&
+    (value.challengeToken === undefined ||
+      typeof value.challengeToken === "string") &&
+    (value.disambiguationValue === undefined ||
+      typeof value.disambiguationValue === "string")
+  );
+}
+
 async function mockTurnstile(page: Page) {
   await page.addInitScript(() => {
     Object.defineProperty(window, "grecaptcha", {
       configurable: true,
       value: {
-        ready: (callback: () => void) => {
-          callback();
-        },
+        ready: (callback: () => void) => { callback(); },
         execute: () => Promise.resolve("e2e-recaptcha-token"),
       },
     });
     Object.defineProperty(window, "turnstile", {
       configurable: true,
       value: {
-        render: (_element: HTMLElement, options: { callback: (token: string) => void }) => {
+        render: (
+          _element: HTMLElement,
+          options: { callback: (token: string) => void },
+        ) => {
           options.callback("e2e-turnstile-token");
           return "e2e-widget";
         },
-        reset: () => {
-          return;
-        },
-        remove: () => {
-          return;
-        },
+        reset: () => { return; },
+        remove: () => { return; },
       },
     });
   });
@@ -91,8 +105,13 @@ test("student search returns a generic no-result message", async ({ page }) => {
   await page.goto("/");
   await fillSearch(page);
   await page.getByRole("button", { name: "Find My Certificates" }).click();
-  await expect(page.getByText("No record found. Check the details and try again.")).toBeVisible();
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(
+    page.getByText("No record found. Check the details and try again."),
+  ).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex/,
+  );
 });
 test("student search can retrieve results and download the server-generated ZIP", async ({
   page,
@@ -117,17 +136,24 @@ test("student search can retrieve results and download the server-generated ZIP"
   await page.goto("/");
   await fillSearch(page);
   await expect(
-    page.getByLabel("Date of Birth or Admission Number (needed to confirm your identity)"),
+    page.getByLabel(
+      "Date of Birth or Admission Number (needed to confirm your identity)",
+    ),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Find My Certificates" }).click();
   await expect(page.getByText("Your certificates")).toBeVisible();
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex/,
+  );
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download all (ZIP)" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("school-certificates.zip");
 });
-test("verification form returns a result without indexing it", async ({ page }) => {
+test("verification form returns a result without indexing it", async ({
+  page,
+}) => {
   await mockTurnstile(page);
   await page.route("**/api/certificates/verify", (route) =>
     route.fulfill({
@@ -148,7 +174,10 @@ test("verification form returns a result without indexing it", async ({ page }) 
   await page.getByLabel("Certificate Number").fill("TEST-2024-001");
   await page.getByRole("button", { name: "Verify Certificate" }).click();
   await expect(page.getByText("Valid certificate")).toBeVisible();
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    /noindex/,
+  );
 });
 
 test("duplicate name combination asks for a second identifier only after the server challenge", async ({
@@ -166,9 +195,7 @@ test("duplicate name combination asks for a second identifier only after the ser
         },
       });
     const body: unknown = route.request().postDataJSON();
-    if (!isRecord(body)) {
-      throw new Error("Expected the search request body to be an object");
-    }
+    if (!isChallengeAnswer(body)) throw new Error("Invalid search request body");
     expect(body.challengeToken).toBe("signed-two-minute-challenge-token");
     expect(body.disambiguationValue).toBe("15-04-2010");
     return route.fulfill({
@@ -179,7 +206,9 @@ test("duplicate name combination asks for a second identifier only after the ser
   await page.goto("/");
   await fillSearch(page);
   await expect(
-    page.getByLabel("Date of Birth or Admission Number (needed to confirm your identity)"),
+    page.getByLabel(
+      "Date of Birth or Admission Number (needed to confirm your identity)",
+    ),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Find My Certificates" }).click();
   const identity = page.getByLabel(
@@ -216,23 +245,27 @@ test("wrong disambiguation answer produces only the generic not-found message", 
   await fillSearch(page);
   await page.getByRole("button", { name: "Find My Certificates" }).click();
   await page
-    .getByLabel("Date of Birth or Admission Number (needed to confirm your identity)")
+    .getByLabel(
+      "Date of Birth or Admission Number (needed to confirm your identity)",
+    )
     .fill("wrong-answer");
   await page.getByRole("button", { name: "Find My Certificates" }).click();
-  await expect(page.getByText("No record found. Check the details and try again.")).toBeVisible();
+  await expect(
+    page.getByText("No record found. Check the details and try again."),
+  ).toBeVisible();
   await expect(page.getByText("Your certificates")).toHaveCount(0);
 });
 
-test("duplicate challenge brute-force attempts are capped at three", async ({ page }) => {
+test("duplicate challenge brute-force attempts are capped at three", async ({
+  page,
+}) => {
   await mockTurnstile(page);
   let attemptsAccepted = 0;
   await page.route("**/api/certificates/search", async (route) => {
     const body: unknown = route.request().postDataJSON();
-    if (!isRecord(body)) {
-    throw new Error("Expected the search request body to be an object");
-    }
-    if (typeof body.challengeToken !== "string" || body.challengeToken.length === 0)
-    return route.fulfill({
+    if (!isChallengeAnswer(body)) throw new Error("Invalid search request body");
+    if (!body.challengeToken)
+      return route.fulfill({
         json: {
           needsMoreInfo: true,
           challengeToken: "signed-two-minute-challenge-token",
@@ -250,7 +283,7 @@ test("duplicate challenge brute-force attempts are capped at three", async ({ pa
   await fillSearch(page);
   await page.getByRole("button", { name: "Find My Certificates" }).click();
   const responses = await page.evaluate(async () => {
-    const results: SearchResponse[] = [];
+    const results: { found?: boolean; message?: string }[] = [];
     for (let index = 0; index < 4; index += 1) {
       const response = await fetch("/api/certificates/search", {
         method: "POST",
@@ -261,17 +294,8 @@ test("duplicate challenge brute-force attempts are capped at three", async ({ pa
         }),
       });
       const result: unknown = await response.json();
-      if (
-        typeof result !== "object" ||
-        result === null ||
-        !("found" in result) ||
-        typeof result.found !== "boolean" ||
-        !("message" in result) ||
-        typeof result.message !== "string"
-      ) {
-        throw new Error("Expected a valid certificate search response");
-      }
-      results.push({ found: result.found, message: result.message });
+      if (!isSearchResult(result)) throw new Error("Invalid search response");
+      results.push(result);
     }
     return results;
   });
@@ -280,13 +304,15 @@ test("duplicate challenge brute-force attempts are capped at three", async ({ pa
   expect(
     responses.every(
       (result) =>
-        !result.found &&
+        result.found === false &&
         result.message === "No record found. Check the details and try again.",
     ),
   ).toBe(true);
 });
 
-test("superseded certificate verification shows only the replacement number", async ({ page }) => {
+test("superseded certificate verification shows only the replacement number", async ({
+  page,
+}) => {
   await mockTurnstile(page);
   await page.route("**/api/certificates/verify", (route) =>
     route.fulfill({
@@ -311,14 +337,17 @@ test("superseded certificate verification shows only the replacement number", as
   await expect(page.getByText("Rahul Kumar")).toHaveCount(0);
 });
 
-test("revoked certificate verification does not reveal the internal reason", async ({ page }) => {
+test("revoked certificate verification does not reveal the internal reason", async ({
+  page,
+}) => {
   await mockTurnstile(page);
   await page.route("**/api/certificates/verify", (route) =>
     route.fulfill({
       json: {
         valid: false,
         status: "revoked",
-        message: "This certificate is no longer valid. Please contact the school.",
+        message:
+          "This certificate is no longer valid. Please contact the school.",
       },
     }),
   );
@@ -326,7 +355,11 @@ test("revoked certificate verification does not reveal the internal reason", asy
   await page.getByLabel("Certificate Number").fill("REVOKED-2024-001");
   await page.getByRole("button", { name: "Verify Certificate" }).click();
   await expect(
-    page.getByText("This certificate is no longer valid. Please contact the school."),
+    page.getByText(
+      "This certificate is no longer valid. Please contact the school.",
+    ),
   ).toBeVisible();
-  await expect(page.getByText(/revocation reason|disciplinary|fraud/i)).toHaveCount(0);
+  await expect(
+    page.getByText(/revocation reason|disciplinary|fraud/i),
+  ).toHaveCount(0);
 });
