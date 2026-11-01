@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["uploader", "approver", "admin"]);
+    await requireRoles(request, ["uploader", "approver", "admin", "superadmin"]);
     const collection = db.collection("students");
     const cursorId = request.nextUrl.searchParams.get("cursor");
     let query = collection.orderBy("createdAt", "desc").limit(100);

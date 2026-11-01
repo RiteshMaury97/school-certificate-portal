@@ -1,6 +1,11 @@
 import type { Cert } from "./admin.types";
 
-export type CatalogOption = { id: string; label?: string; name?: string };
+export type CatalogOption = {
+  id: string;
+  label?: string;
+  name?: string;
+  isActive?: boolean;
+};
 export type FaqItem = { questionEn: string; answerEn: string };
 export type StudentFormState = {
   admissionNumber: string;
@@ -21,6 +26,33 @@ export type BulkPreviewItem = {
   valid: boolean;
   errors: string[];
   mapping: Record<string, string> | null;
+};
+export type StudentImportCellError = {
+  column: string;
+  message: string;
+};
+export type StudentImportRow = {
+  row: number;
+  data: Pick<
+    StudentFormState,
+    | "admissionNumber"
+    | "dateOfBirth"
+    | "studentName"
+    | "fatherName"
+    | "motherName"
+    | "className"
+    | "scholarNumber"
+    | "session"
+  > | null;
+  values: Record<string, string>;
+  error: string | null;
+  fieldErrors: StudentImportCellError[];
+};
+export type StudentImportPreview = {
+  total: number;
+  valid: number;
+  errors: StudentImportRow[];
+  preview: StudentImportRow[];
 };
 export type NotifyState = { email: string; mobile: string; consent: boolean };
 export type AnnouncementState = {

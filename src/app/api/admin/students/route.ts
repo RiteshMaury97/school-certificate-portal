@@ -46,7 +46,7 @@ function slugify(value: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["uploader", "admin"]);
+    const admin = await requireRoles(request, ["uploader", "admin", "superadmin"]);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
     const contentLength = Number(request.headers.get("content-length") ?? 0);

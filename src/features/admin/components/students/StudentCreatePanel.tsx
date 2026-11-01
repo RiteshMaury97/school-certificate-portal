@@ -1,23 +1,33 @@
-import { Download, FileText, ShieldCheck, UploadCloud } from "lucide-react";
-import { useRef } from "react";
+import { ShieldCheck } from "lucide-react";
 
 import { normalizeAcademicSession } from "@/shared/academic-session";
 
 import DuplicateHashWarning from "../shared/DuplicateHashWarning";
 
-import type { BulkPreviewItem, CatalogOption, NotifyState, StudentFormState } from "../../types/admin-state.types";
+import type {
+  CatalogOption,
+  NotifyState,
+  StudentFormState,
+} from "../../types/admin-state.types";
 import type { Dispatch, SetStateAction, SubmitEventHandler } from "react";
 
 type Props = {
-  form: StudentFormState; setForm: Dispatch<SetStateAction<StudentFormState>>; sessionOptions: CatalogOption[]; typeOptions: CatalogOption[]; classOptions: CatalogOption[];
-  files: File[]; setFiles: Dispatch<SetStateAction<File[]>>; notify: NotifyState; setNotify: Dispatch<SetStateAction<NotifyState>>;
-  duplicateHashWarning: string; duplicateHashAcknowledged: boolean; duplicateHashReason: string;
-  setDuplicateHashAcknowledged: Dispatch<SetStateAction<boolean>>; setDuplicateHashReason: Dispatch<SetStateAction<string>>;
-  busy: boolean; addStudent: SubmitEventHandler<HTMLFormElement>; downloadTemplate: (format: "csv" | "xlsx") => Promise<void>;
-  csv: File | null; setCsv: Dispatch<SetStateAction<File | null>>; importCsv: (action: "preview" | "commit") => Promise<void>;
-  preview: Record<string, unknown> | null; bulkFiles: File[]; setBulkFiles: Dispatch<SetStateAction<File[]>>;
-  bulkCsv: File | null; setBulkCsv: Dispatch<SetStateAction<File | null>>; bulkPreview: BulkPreviewItem[];
-  bulkProgress: Record<string, number>; previewBulk: () => Promise<void>; commitBulk: () => Promise<void>;
+  form: StudentFormState;
+  setForm: Dispatch<SetStateAction<StudentFormState>>;
+  sessionOptions: CatalogOption[];
+  typeOptions: CatalogOption[];
+  classOptions: CatalogOption[];
+  files: File[];
+  setFiles: Dispatch<SetStateAction<File[]>>;
+  notify: NotifyState;
+  setNotify: Dispatch<SetStateAction<NotifyState>>;
+  duplicateHashWarning: string;
+  duplicateHashAcknowledged: boolean;
+  duplicateHashReason: string;
+  setDuplicateHashAcknowledged: Dispatch<SetStateAction<boolean>>;
+  setDuplicateHashReason: Dispatch<SetStateAction<string>>;
+  busy: boolean;
+  addStudent: SubmitEventHandler<HTMLFormElement>;
 };
 
 const studentFields = [
@@ -29,226 +39,323 @@ const studentFields = [
   ["scholarNumber", "Scholar number"],
 ] as const;
 
-const certificateFields = [
-  ["certificateNumber", "Certificate number"],
-  ["issuedAt", "Issue date"],
-] as const;
-
-const fieldClass = "mt-1.5 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)]";
-
-type RowError = { row: unknown; error: unknown };
-function getRowErrors(value: unknown): RowError[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item: unknown): item is RowError =>
-    typeof item === "object" && item !== null && "row" in item && "error" in item,
-  );
-}
+const fieldClass =
+  "mt-1.5 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)]";
 
 export default function StudentCreatePanel(props: Props) {
-  const { form, setForm, sessionOptions, typeOptions, classOptions, files, setFiles, notify, setNotify, duplicateHashWarning, duplicateHashAcknowledged, duplicateHashReason, setDuplicateHashAcknowledged, setDuplicateHashReason, busy, addStudent } = props;
+  const {
+    form,
+    setForm,
+    sessionOptions,
+    typeOptions,
+    classOptions,
+    files,
+    setFiles,
+    notify,
+    setNotify,
+    duplicateHashWarning,
+    duplicateHashAcknowledged,
+    duplicateHashReason,
+    setDuplicateHashAcknowledged,
+    setDuplicateHashReason,
+    busy,
+    addStudent,
+  } = props;
 
   return (
-    <div className="space-y-4">
-      <section className="rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">Student records</p>
-            <h2 className="mt-1 text-lg font-semibold text-[var(--text)]">Add student and certificate</h2>
-            <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">Enter student details once, then attach the certificate and notify parents when consent is provided.</p>
-          </div>
-          <span title="Student information is encrypted at rest" className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-[var(--divider)] px-2.5 py-2 text-[10px] font-medium text-[var(--text-muted)] sm:inline-flex"><ShieldCheck size={13} /> Encrypted at rest</span>
+    <section className="rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
+            Manual entry
+          </p>
+          <h2 className="mt-1 text-lg font-semibold text-[var(--text)]">
+            Add one student and certificate
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+            Use this form for a single record. For class lists, use the Excel
+            import above.
+          </p>
         </div>
+        <span
+          title="Student information is encrypted at rest"
+          className="hidden shrink-0 items-center gap-1.5 rounded-lg border border-[var(--divider)] px-2.5 py-2 text-[10px] font-medium text-[var(--text-muted)] sm:inline-flex"
+        >
+          <ShieldCheck size={13} aria-hidden="true" /> Encrypted at rest
+        </span>
+      </div>
 
-        <form id="student-create-form" onSubmit={addStudent} className="mt-5">
-          <div className="border-b border-[var(--divider)] pb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--primary)]">Student information</div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {studentFields.map(([key, label]) => (
-              <label
-                key={key}
-                htmlFor={`student-${key}`}
-                className="text-xs font-medium text-[var(--text)]"
-              >
-                {label}
-                <input
-                  id={`student-${key}`}
-                  aria-label={label}
-                  translate="no"
-                  type={key === "dateOfBirth" ? "date" : "text"}
-                  required={["studentName", "fatherName", "motherName", "className", "scholarNumber"].includes(key)}
-                  minLength={["studentName", "fatherName", "motherName"].includes(key) ? 2 : undefined}
-                  maxLength={["studentName", "fatherName", "motherName"].includes(key) ? 100 : 40}
-                  value={form[key]}
-                  onChange={(event) => { setForm((value) => ({ ...value, [key]: event.target.value })); }}
-                  className={fieldClass}
-                />
-              </label>
-            ))}
-            <label htmlFor="student-class" className="text-xs font-medium text-[var(--text)]">
-              Class / section
-              <select id="student-class" aria-label="Class or section" translate="no" required value={form.className} onChange={(event) => { setForm((value) => ({ ...value, className: event.target.value })); }} className={fieldClass}>
-                <option value="">Choose class</option>
-                {classOptions.map((option) => <option key={option.id} value={option.label ?? option.name ?? option.id}>{option.label ?? option.name ?? option.id}</option>)}
-              </select>
-              {classOptions.length === 0 && <span className="mt-1 block text-[10px] text-[var(--danger)]">Add a class in the Classes catalog before entering students.</span>}
+      <form id="student-create-form" onSubmit={addStudent} className="mt-5">
+        <div className="border-b border-[var(--divider)] pb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--primary)]">
+          Student information
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {studentFields.map(([key, label]) => (
+            <label
+              key={key}
+              htmlFor={`student-${key}`}
+              className="text-xs font-medium text-[var(--text)]"
+            >
+              {label}
+              <input
+                id={`student-${key}`}
+                translate="no"
+                type={key === "dateOfBirth" ? "date" : "text"}
+                required={[
+                  "studentName",
+                  "fatherName",
+                  "motherName",
+                  "scholarNumber",
+                ].includes(key)}
+                minLength={
+                  ["studentName", "fatherName", "motherName"].includes(key)
+                    ? 2
+                    : undefined
+                }
+                maxLength={
+                  ["studentName", "fatherName", "motherName"].includes(key)
+                    ? 100
+                    : 80
+                }
+                value={form[key]}
+                onChange={(event) => {
+                  setForm((value) => ({ ...value, [key]: event.target.value }));
+                }}
+                className={fieldClass}
+              />
             </label>
-            <label htmlFor="student-session" className="text-xs font-medium text-[var(--text)]">
-              Academic session
-              <select id="student-session" aria-label="Academic session" translate="no" required value={form.session} onChange={(event) => { setForm((value) => ({ ...value, session: event.target.value })); }} className={fieldClass}>
-                <option value="">Select session</option>
-                {sessionOptions.map((option) => {
-                  const value = normalizeAcademicSession(option.label ?? "")
-                    ?? normalizeAcademicSession(option.name ?? "")
-                    ?? normalizeAcademicSession(option.id);
+          ))}
+          <label
+            htmlFor="student-class"
+            className="text-xs font-medium text-[var(--text)]"
+          >
+            Class / section
+            <select
+              id="student-class"
+              translate="no"
+              required
+              value={form.className}
+              onChange={(event) => {
+                setForm((value) => ({ ...value, className: event.target.value }));
+              }}
+              className={fieldClass}
+            >
+              <option value="">Choose class</option>
+              {classOptions
+                .filter((option) => option.isActive !== false)
+                .map((option) => {
+                  const label = option.label ?? option.name ?? option.id;
+                  return (
+                    <option key={option.id} value={label}>
+                      {label}
+                    </option>
+                  );
+                })}
+            </select>
+            {classOptions.length === 0 && (
+              <span className="mt-1 block text-[10px] text-[var(--danger)]">
+                Add a class in the Classes catalog before entering students.
+              </span>
+            )}
+          </label>
+          <label
+            htmlFor="student-session"
+            className="text-xs font-medium text-[var(--text)]"
+          >
+            Academic session
+            <select
+              id="student-session"
+              translate="no"
+              required
+              value={form.session}
+              onChange={(event) => {
+                setForm((value) => ({ ...value, session: event.target.value }));
+              }}
+              className={fieldClass}
+            >
+              <option value="">Select session</option>
+              {sessionOptions
+                .filter((option) => option.isActive !== false)
+                .map((option) => {
+                  const value =
+                    normalizeAcademicSession(option.label ?? "") ??
+                    normalizeAcademicSession(option.name ?? "") ??
+                    normalizeAcademicSession(option.id);
                   return value ? (
                     <option key={option.id} value={value}>
                       {option.label ?? option.name ?? option.id}
                     </option>
                   ) : null;
                 })}
-              </select>
-            </label>
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-5 border-b border-[var(--divider)] pb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--primary)]">
+          Certificate details
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label
+            htmlFor="certificate-type"
+            className="text-xs font-medium text-[var(--text)]"
+          >
+            Certificate type
+            <select
+              id="certificate-type"
+              translate="no"
+              required
+              value={form.certificateType}
+              onChange={(event) => {
+                setForm((value) => ({
+                  ...value,
+                  certificateType: event.target.value,
+                }));
+              }}
+              className={fieldClass}
+            >
+              <option value="">Select certificate type</option>
+              {typeOptions
+                .filter((option) => option.isActive !== false)
+                .map((option) => (
+                  <option key={option.id} value={option.name ?? option.label ?? option.id}>
+                    {option.name ?? option.label ?? option.id}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label
+            htmlFor="certificate-number"
+            className="text-xs font-medium text-[var(--text)]"
+          >
+            Certificate number
+            <input
+              id="certificate-number"
+              translate="no"
+              required
+              maxLength={80}
+              value={form.certificateNumber}
+              onChange={(event) => {
+                setForm((value) => ({
+                  ...value,
+                  certificateNumber: event.target.value,
+                }));
+              }}
+              className={fieldClass}
+            />
+          </label>
+          <label
+            htmlFor="certificate-issued-at"
+            className="text-xs font-medium text-[var(--text)]"
+          >
+            Issue date
+            <input
+              id="certificate-issued-at"
+              translate="no"
+              type="date"
+              required
+              value={form.issuedAt}
+              onChange={(event) => {
+                setForm((value) => ({ ...value, issuedAt: event.target.value }));
+              }}
+              className={fieldClass}
+            />
+          </label>
+          <label
+            htmlFor="certificate-file"
+            className="text-xs font-medium text-[var(--text)]"
+          >
+            Certificate file
+            <input
+              id="certificate-file"
+              translate="no"
+              required
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              onChange={(event) => {
+                setFiles(event.target.files ? Array.from(event.target.files) : []);
+              }}
+              className={fieldClass}
+            />
+            {files[0] && (
+              <span className="mt-1 block text-[10px] text-[var(--text-muted)]">
+                Selected: {files[0].name}
+              </span>
+            )}
+          </label>
+        </div>
+
+        <div className="mt-4 rounded-lg border border-[var(--divider)] bg-[var(--surface-2)] p-3">
+          <h3 className="text-xs font-semibold text-[var(--text)]">
+            Parent notification{" "}
+            <span className="font-normal text-[var(--text-muted)]">
+              · Optional, consent required
+            </span>
+          </h3>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <input
+              aria-label="Parent email address"
+              translate="no"
+              type="email"
+              value={notify.email}
+              onChange={(event) => {
+                setNotify((value) => ({ ...value, email: event.target.value }));
+              }}
+              placeholder="Parent email address"
+              className={fieldClass}
+            />
+            <input
+              aria-label="Parent mobile number with country code"
+              translate="no"
+              value={notify.mobile}
+              onChange={(event) => {
+                setNotify((value) => ({ ...value, mobile: event.target.value }));
+              }}
+              placeholder="Mobile with country code"
+              className={fieldClass}
+            />
           </div>
+          <label
+            htmlFor="parent-notification-consent"
+            className="mt-2 flex items-start gap-2 text-[10px] leading-4 text-[var(--text-muted)]"
+          >
+            <input
+              id="parent-notification-consent"
+              type="checkbox"
+              checked={notify.consent}
+              onChange={(event) => {
+                setNotify((value) => ({ ...value, consent: event.target.checked }));
+              }}
+              className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
+            />
+            Parent/guardian has consented to receive a generic certificate
+            availability notification. Consent is recorded with timestamp and
+            purpose; they can opt out at any time.
+          </label>
+        </div>
 
-          <div className="mt-5 border-b border-[var(--divider)] pb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--primary)]">Certificate details</div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label htmlFor="certificate-type" className="text-xs font-medium text-[var(--text)]">
-              Certificate type
-              <select id="certificate-type" aria-label="Certificate type" translate="no" required value={form.certificateType} onChange={(event) => { setForm((value) => ({ ...value, certificateType: event.target.value })); }} className={fieldClass}>
-                <option value="">Select certificate type</option>
-                {typeOptions.map((option) => <option key={option.id} value={option.name ?? option.label ?? option.id}>{option.name ?? option.label ?? option.id}</option>)}
-              </select>
-            </label>
-            {certificateFields.map(([key, label]) => (
-              <label
-                key={key}
-                htmlFor={`certificate-${key}`}
-                className="text-xs font-medium text-[var(--text)]"
-              >
-                {label}
-                <input
-                  id={`certificate-${key}`}
-                  aria-label={label}
-                  translate="no"
-                  type={key === "issuedAt" ? "date" : "text"}
-                  required
-                  maxLength={key === "certificateNumber" ? 80 : undefined}
-                  value={form[key]}
-                  onChange={(event) => { setForm((value) => ({ ...value, [key]: event.target.value })); }}
-                  className={fieldClass}
-                />
-              </label>
-            ))}
-            <label htmlFor="certificate-file" className="text-xs font-medium text-[var(--text)] sm:col-span-2">
-              Certificate file
-              <input id="certificate-file" aria-label="Certificate file" translate="no" required type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => { setFiles(event.target.files ? Array.from(event.target.files) : []); }} className="mt-1.5 block min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-2 text-xs text-[var(--text-muted)] file:mr-3 file:rounded-md file:border-0 file:bg-[var(--surface)] file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-[var(--text)]" />
-              {files[0] && <span className="mt-1 block text-[10px] text-[var(--text-muted)]">Selected: {files[0].name}</span>}
-            </label>
-          </div>
-
-          <div className="mt-4 rounded-lg border border-[var(--divider)] bg-[var(--surface-2)] p-3">
-            <h3 className="text-xs font-semibold text-[var(--text)]">Parent notification <span className="font-normal text-[var(--text-muted)]">· Optional, consent required</span></h3>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <input aria-label="Parent email address" translate="no" type="email" value={notify.email} onChange={(event) => { setNotify((value) => ({ ...value, email: event.target.value })); }} placeholder="Parent email address" className={fieldClass} />
-              <input aria-label="Parent mobile number with country code" translate="no" value={notify.mobile} onChange={(event) => { setNotify((value) => ({ ...value, mobile: event.target.value })); }} placeholder="Mobile with country code" className={fieldClass} />
-            </div>
-            <label htmlFor="parent-notification-consent" className="mt-2 flex items-start gap-2 text-[10px] leading-4 text-[var(--text-muted)]">
-              <input id="parent-notification-consent" aria-label="Parent or guardian consent" translate="no" type="checkbox" checked={notify.consent} onChange={(event) => { setNotify((value) => ({ ...value, consent: event.target.checked })); }} className="mt-0.5 h-4 w-4 accent-[var(--primary)]" />
-              Parent/guardian has consented to receive a generic certificate-availability notification. Consent is recorded with timestamp and purpose; they can opt out at any time.
-            </label>
-          </div>
-
-          <DuplicateHashWarning warning={duplicateHashWarning} acknowledged={duplicateHashAcknowledged} reason={duplicateHashReason} setAcknowledged={setDuplicateHashAcknowledged} setReason={setDuplicateHashReason} className="mt-4 rounded-lg border-2 border-[var(--text)] bg-[var(--surface-2)] p-4" />
-          <button disabled={busy || (Boolean(duplicateHashWarning) && (!duplicateHashAcknowledged || duplicateHashReason.trim().length < 10))} aria-busy={busy} className="mt-4 min-h-11 w-full rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-60">
-            {busy ? "Saving student and certificate…" : "Save student and certificate"}
-          </button>
-          <p className="mt-2 text-center text-[10px] text-[var(--text-muted)]">Duplicate admission and certificate numbers are checked before saving.</p>
-        </form>
-      </section>
-
-      <StudentImportPanel {...props} />
-    </div>
+        <DuplicateHashWarning
+          warning={duplicateHashWarning}
+          acknowledged={duplicateHashAcknowledged}
+          reason={duplicateHashReason}
+          setAcknowledged={setDuplicateHashAcknowledged}
+          setReason={setDuplicateHashReason}
+          className="mt-4 rounded-lg border-2 border-[var(--text)] bg-[var(--surface-2)] p-4"
+        />
+        <button
+          disabled={
+            busy ||
+            (Boolean(duplicateHashWarning) &&
+              (!duplicateHashAcknowledged || duplicateHashReason.trim().length < 10))
+          }
+          aria-busy={busy}
+          className="mt-4 min-h-11 w-full rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-60"
+        >
+          {busy ? "Saving student and certificate…" : "Save student and certificate"}
+        </button>
+        <p className="mt-2 text-center text-[10px] text-[var(--text-muted)]">
+          Duplicate admission and certificate numbers are checked before saving.
+        </p>
+      </form>
+    </section>
   );
-}
-
-function StudentImportPanel({
-  downloadTemplate,
-  csv,
-  setCsv,
-  importCsv,
-  busy,
-  preview,
-  bulkFiles,
-  setBulkFiles,
-  bulkCsv,
-  setBulkCsv,
-  bulkPreview,
-  bulkProgress,
-  previewBulk,
-  commitBulk,
-  duplicateHashWarning,
-  duplicateHashAcknowledged,
-  duplicateHashReason,
-  setDuplicateHashAcknowledged,
-  setDuplicateHashReason,
-}: Props) {
-  const bulkFileInput = useRef<HTMLInputElement>(null);
-  const canCommit = canCommitBulk({
-    bulkPreview,
-    busy,
-    duplicateHashWarning,
-    duplicateHashAcknowledged,
-    duplicateHashReason,
-  });
-  return (
-    <>
-      <section className="rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm sm:p-5">
-        <div className="flex items-center gap-2"><FileText size={16} className="text-[var(--primary)]" /><h3 className="text-sm font-semibold text-[var(--text)]">Bulk import students</h3></div>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">Upload a CSV or Excel template to add multiple student records.</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={() => void downloadTemplate("csv")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--divider)] px-3 text-xs font-medium"><Download size={13} /> CSV template</button>
-          <button type="button" onClick={() => void downloadTemplate("xlsx")} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--divider)] px-3 text-xs font-medium"><Download size={13} /> Excel template</button>
-          <input aria-label="CSV file for student import" translate="no" type="file" accept=".csv,text/csv" onChange={(event) => { setCsv(event.target.files?.[0] ?? null); }} className="min-h-9 min-w-0 flex-1 rounded-lg border border-[var(--divider)] p-1.5 text-xs" />
-          <button type="button" onClick={() => void importCsv("preview")} disabled={!csv || busy} className="min-h-9 rounded-lg border border-[var(--divider)] px-3 text-xs font-medium disabled:opacity-50">Preview & validate</button>
-          <button type="button" onClick={() => void importCsv("commit")} disabled={!csv || busy || !preview || Number(preview.valid) !== Number(preview.total)} className="min-h-9 rounded-lg bg-[var(--primary)] px-3 text-xs font-semibold text-[var(--on-primary)] disabled:opacity-50">Commit import</button>
-        </div>
-        <p className="mt-2 text-[10px] text-[var(--text-muted)]">Required columns: studentName, fatherName, motherName, className, scholarNumber and session.</p>
-        {preview && <div className="mt-3 rounded-lg bg-[var(--surface-2)] p-3 text-xs"><p>Rows: {String(preview.total)} · Valid: {String(preview.valid)} · Errors: {getRowErrors(preview.errors).length}</p>{getRowErrors(preview.errors).map((item, index) => <p key={index} className="mt-1 text-[var(--danger)]">Row {String(item.row)}: {String(item.error)}</p>)}</div>}
-      </section>
-      <section className="rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm sm:p-5">
-        <div className="flex items-center gap-2"><UploadCloud size={16} className="text-[var(--primary)]" /><h3 className="text-sm font-semibold text-[var(--text)]">Bulk certificate upload</h3></div>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">Upload up to 20 PDF, JPG or PNG files and map each to a student using a CSV.</p>
-        <div role="button" tabIndex={0} aria-label="Drop or choose certificate files" onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); bulkFileInput.current?.click(); } }} onClick={(event) => { if (event.target === event.currentTarget) bulkFileInput.current?.click(); }} className="mt-3 block rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-2)] p-4 text-center text-xs text-[var(--text-muted)]" onDragOver={(event) => { event.preventDefault(); }} onDrop={(event) => { event.preventDefault(); setBulkFiles(Array.from(event.dataTransfer.files)); }}>
-          Drop certificate files here or choose files
-          <input ref={bulkFileInput} aria-label="Certificate files for bulk upload" translate="no" type="file" multiple accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => { setBulkFiles(event.target.files ? Array.from(event.target.files) : []); }} className="mt-2 block w-full text-left text-xs" />
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <input aria-label="CSV mapping file for bulk certificate upload" translate="no" type="file" accept=".csv,text/csv" onChange={(event) => { setBulkCsv(event.target.files?.[0] ?? null); }} className="min-h-9 min-w-0 flex-1 rounded-lg border border-[var(--divider)] p-1.5 text-xs" />
-          <button type="button" onClick={() => void previewBulk()} disabled={busy || !bulkCsv || !bulkFiles.length} className="min-h-9 rounded-lg border border-[var(--divider)] px-3 text-xs font-medium disabled:opacity-50">Validate & preview</button>
-        </div>
-        {bulkPreview.length > 0 && <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--divider)]"><table className="w-full text-left text-xs"><thead className="bg-[var(--surface-2)]"><tr><th className="p-2">File</th><th className="p-2">Size</th><th className="p-2">Validation</th><th className="p-2">Progress</th></tr></thead><tbody>{bulkPreview.map((row) => <tr key={row.fileName} className="border-t border-[var(--divider)]"><td className="p-2">{row.fileName}</td><td className="p-2">{Math.ceil(row.size / 1024)} KB</td><td className="p-2">{row.valid ? "Ready" : row.errors.join("; ")}</td><td className="p-2">{bulkProgress[row.fileName] === 100 ? "Complete" : `${String(bulkProgress[row.fileName] ?? 0)}%`}</td></tr>)}</tbody></table></div>}
-        {bulkPreview.length > 0 && <><DuplicateHashWarning warning={duplicateHashWarning} acknowledged={duplicateHashAcknowledged} reason={duplicateHashReason} setAcknowledged={setDuplicateHashAcknowledged} setReason={setDuplicateHashReason} className="mt-3 rounded-lg border-2 border-[var(--text)] bg-[var(--surface-2)] p-4" /><button type="button" onClick={() => void commitBulk()} disabled={!canCommit} className="mt-3 min-h-10 rounded-lg bg-[var(--primary)] px-4 text-xs font-semibold text-[var(--on-primary)] disabled:opacity-50">Commit / retry remaining uploads</button></>}
-      </section>
-    </>
-  );
-}
-
-function canCommitBulk({
-  bulkPreview,
-  busy,
-  duplicateHashWarning,
-  duplicateHashAcknowledged,
-  duplicateHashReason,
-}: Pick<
-  Props,
-  | "bulkPreview"
-  | "busy"
-  | "duplicateHashWarning"
-  | "duplicateHashAcknowledged"
-  | "duplicateHashReason"
->): boolean {
-  const hasValidItems = bulkPreview.some((item) => item.valid);
-  const duplicateIsAcknowledged =
-    !duplicateHashWarning ||
-    (duplicateHashAcknowledged && duplicateHashReason.trim().length >= 10);
-  return !busy && hasValidItems && duplicateIsAcknowledged;
 }

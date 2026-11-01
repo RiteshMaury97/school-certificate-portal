@@ -1,3 +1,4 @@
+import ExcelJS from "exceljs";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
@@ -14,11 +15,66 @@ import {
   studentIdentifierHmac,
   studentIdentityMatches,
 } from "@/server/student-pii";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 import { retentionExpiryFromSession } from "@/shared/retention-policy";
 import { studentCreateSchema } from "@/shared/validation";
 
-import type { NextRequest} from "next/server";
+import type { Cell } from "exceljs";
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
+const maxImportRows = 500;
+const maxImportSize = 5 * 1024 * 1024;
+const importFields = {
+  scholarNumber: ["scholarnumber"],
+  className: ["classname"],
+  admissionNumber: ["admissionnumber", "admissionno"],
+  dateOfBirth: ["dateofbirth"],
+  studentName: ["studentname"],
+  fatherName: ["fathername"],
+  motherName: ["mothername"],
+  session: ["session"],
+} as const;
+const requiredFields = [
+  "studentName",
+  "fatherName",
+  "motherName",
+  "className",
+  "scholarNumber",
+  "session",
+] as const;
+const fieldLabels: Record<string, string> = {
+  admissionNumber: "admissionNumber",
+  dateOfBirth: "dateOfBirth",
+  studentName: "studentName",
+  fatherName: "fatherName",
+  motherName: "motherName",
+  className: "className",
+  scholarNumber: "scholarNumber",
+  session: "session",
+};
+
+type SourceRow = { row: number; cells: string[] };
+type ImportData = {
+  admissionNumber: string;
+  dateOfBirth: string;
+  studentName: string;
+  fatherName: string;
+  motherName: string;
+  className: string;
+  scholarNumber: string;
+  session: string;
+  admissionNo?: string;
+};
+type ImportCellError = { column: string; message: string };
+type PreviewRow = {
+  row: number;
+  data: ImportData | null;
+  values: Record<string, string>;
+  error: string | null;
+  fieldErrors: ImportCellError[];
+};
+
 function csvRows(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -45,37 +101,188 @@ function csvRows(text: string): string[][] {
   if (row.some(Boolean)) rows.push(row);
   return rows.filter((item) => !item[0]?.startsWith("#"));
 }
+
+function cellText(cell: Cell): string {
+  if (cell.value instanceof Date) return cell.value.toISOString().slice(0, 10);
+  if (
+    typeof cell.value === "object" &&
+    cell.value !== null &&
+    "formula" in cell.value
+  )
+    return "";
+  return cell.text.trim();
+}
+
+async function importRows(file: File): Promise<SourceRow[]> {
+  if (file.name.toLowerCase().endsWith(".csv")) {
+    return csvRows(await file.text()).map((cells, index) => ({
+      row: index + 1,
+      cells,
+    }));
+  }
+  if (!file.name.toLowerCase().endsWith(".xlsx"))
+    throw new Error("Choose an Excel .xlsx file or a CSV file.");
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(Buffer.from(await file.arrayBuffer()));
+  const worksheet =
+    workbook.getWorksheet("Student Data") ?? workbook.worksheets[0];
+  if (!worksheet) throw new Error("The Excel workbook does not contain a worksheet.");
+
+  const rows: SourceRow[] = [];
+  worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    const cells = Array.from({ length: row.cellCount }, (_, index) =>
+      cellText(row.getCell(index + 1)),
+    );
+    if (cells.some(Boolean)) rows.push({ row: rowNumber, cells });
+  });
+  return rows;
+}
+
+function headerKey(value: string): string {
+  return value.toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function catalogLabel(
+  document: QueryDocumentSnapshot,
+): string {
+  const label = document.get("label");
+  const name = document.get("name");
+  return String(label ?? name ?? document.id).trim();
+}
+
+function addFieldError(
+  row: PreviewRow,
+  column: string,
+  message: string,
+): void {
+  if (
+    row.fieldErrors.some(
+      (error) => error.column === column && error.message === message,
+    )
+  )
+    return;
+  row.fieldErrors.push({ column, message });
+  row.error = row.fieldErrors
+    .map((error) => `${error.column}: ${error.message}`)
+    .join("; ");
+}
+
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireRoles(request, ["uploader", "admin"]);
     const form = await request.formData();
     const file = form.get("file");
     const action = String(form.get("action") ?? "preview");
-    if (!(file instanceof File) || file.size > 2 * 1024 * 1024)
+    if (action !== "preview" && action !== "commit")
+      return NextResponse.json({ error: "Choose preview or commit." }, { status: 400 });
+    if (!(file instanceof File) || file.size > maxImportSize)
       return NextResponse.json(
-        { error: "Upload a CSV smaller than 2 MB." },
+        { error: "Upload an Excel .xlsx or CSV file smaller than 5 MB." },
         { status: 400 },
       );
-    const rows = csvRows(await file.text());
+    const rows = await importRows(file);
     if (rows.length < 2)
       return NextResponse.json(
-        { error: "CSV needs a header and at least one row." },
+        { error: "The file needs a header row and at least one student row." },
         { status: 400 },
       );
-    const headers = rows[0]!.map((v) => v.toLowerCase().replace(/\s+/g, ""));
-    const required = ["studentname", "fathername", "mothername", "classname", "scholarnumber", "session"];
-    if (required.some((k) => !headers.includes(k)))
+    if (rows.length - 1 > maxImportRows)
+      return NextResponse.json(
+        { error: `Import no more than ${maxImportRows} student rows at a time.` },
+        { status: 400 },
+      );
+
+    const headerRow = rows[0]!;
+    const headers = headerRow.cells.map(headerKey);
+    const headerErrors: string[] = [];
+    const fieldIndexes = new Map<string, number>();
+    for (const [field, acceptedHeaders] of Object.entries(importFields)) {
+      const accepted = new Set<string>(acceptedHeaders);
+      const positions = headers
+        .map((header, index) => (accepted.has(header) ? index : -1))
+        .filter((index) => index >= 0);
+      if (positions.length > 1)
+        headerErrors.push(`Use only one column for ${fieldLabels[field]}.`);
+      if (positions[0] !== undefined) fieldIndexes.set(field, positions[0]);
+    }
+    for (const field of requiredFields)
+      if (!fieldIndexes.has(field))
+        headerErrors.push(`Missing required column: ${fieldLabels[field]}.`);
+    const knownHeaders = new Set(
+      Object.values(importFields).flatMap((values) => [...values]),
+    );
+    for (const [index, header] of headers.entries())
+      if (header && !knownHeaders.has(header))
+        headerErrors.push(`Unexpected column "${headerRow.cells[index]}".`);
+    if (headerErrors.length)
       return NextResponse.json(
         {
-          error: "Required columns: studentName,fatherName,motherName,className,scholarNumber,session",
+          error: `Fix the Excel header row ${headerRow.row}: ${headerErrors.join(" ")}`,
         },
         { status: 400 },
       );
-    const preview = await Promise.all(
-      rows.slice(1).map(async (cells, index) => {
-        const item = Object.fromEntries(
-          headers.map((h, i) => [h, cells[i] ?? ""]),
-        );
+
+    const [classesSnapshot, sessionsSnapshot] = await Promise.all([
+      db.collection("classes").get(),
+      db.collection("sessions").get(),
+    ]);
+    const activeClasses = new Set(
+      classesSnapshot.docs
+        .filter((document) => document.get("isActive") !== false)
+        .map(catalogLabel)
+        .filter(Boolean),
+    );
+    const activeSessions = new Set(
+      sessionsSnapshot.docs
+        .filter((document) => document.get("isActive") !== false)
+        .map((document) => normalizeAcademicSession(catalogLabel(document)) ?? "")
+        .filter(Boolean),
+    );
+    const preview: PreviewRow[] = await Promise.all(
+      rows.slice(1).map(async ({ cells, row: sourceRow }) => {
+        const values: Record<string, string> = {};
+        for (const field of Object.keys(importFields)) {
+          const column = fieldIndexes.get(field);
+          values[field] = column === undefined ? "" : cells[column] ?? "";
+        }
+        const row: PreviewRow = {
+          row: sourceRow,
+          data: null,
+          values,
+          error: null,
+          fieldErrors: [],
+        };
+        for (let index = headerRow.cells.length; index < cells.length; index++)
+          if (cells[index])
+            addFieldError(row, `Column ${index + 1}`, "Unexpected cell value.");
+
+        const classValue = values.className ?? "";
+        if (
+          !activeClasses.has(classValue) ||
+          !classValue ||
+          classValue !== classValue.trim()
+        )
+          addFieldError(
+            row,
+            fieldLabels.className,
+            activeClasses.size
+              ? "Use an exact class name from the active Classes list."
+              : "No active classes are configured. Add classes in the catalog first.",
+          );
+        const sessionValue = values.session ?? "";
+        if (
+          !/^\d{4}-\d{2}$/.test(sessionValue) ||
+          !activeSessions.has(sessionValue)
+        )
+          addFieldError(
+            row,
+            fieldLabels.session,
+            activeSessions.size
+              ? "Use an active session in the exact YYYY-YY format shown in the template."
+              : "No active sessions are configured. Add sessions in the catalog first.",
+          );
+
         const parsed = studentCreateSchema
           .omit({
             certificateType: true,
@@ -83,21 +290,29 @@ export async function POST(request: NextRequest) {
             issuedAt: true,
           })
           .safeParse({
-            admissionNumber: item.admissionnumber ?? item.admissionno ?? "",
-            dateOfBirth: item.dateofbirth ?? "",
-            studentName: item.studentname,
-            fatherName: item.fathername,
-            motherName: item.mothername,
-            className: item.classname,
-            scholarNumber: item.scholarnumber,
-            session: item.session,
+            admissionNumber: values.admissionNumber,
+            dateOfBirth: values.dateOfBirth,
+            studentName: values.studentName,
+            fatherName: values.fatherName,
+            motherName: values.motherName,
+            className: classValue,
+            scholarNumber: values.scholarNumber,
+            session: sessionValue,
           });
-        if (!parsed.success)
-          return {
-            row: index + 2,
-            data: null,
-            error: parsed.error.issues.map((i) => i.message).join("; "),
-          };
+        if (!parsed.success) {
+          for (const issue of parsed.error.issues) {
+            const field = String(issue.path[0] ?? "file");
+            addFieldError(
+              row,
+              fieldLabels[field] ?? field,
+              issue.message,
+            );
+          }
+          return row;
+        }
+        row.data = parsed.data;
+        if (row.error) return row;
+
         const key = createSearchKey(parsed.data);
         const scholarKey = scholarLookupHmac(
           parsed.data.scholarNumber,
@@ -122,19 +337,22 @@ export async function POST(request: NextRequest) {
             !doc.get("dateOfBirthDisambiguationKey") &&
             !doc.get("admissionNumberDisambiguationKey"),
         );
-        return {
-          row: index + 2,
-          data: parsed.data,
-          error:
-            scholarMatches.docs.some((doc) => doc.get("searchKey") !== key)
-              ? "Scholar number is already assigned to a different student in this class and session."
-              : !existing.empty && (!hasDisambiguator || existingNeedsIdentity)
-              ? "Duplicate name combination detected: add a date of birth or admission number so students can be told apart."
-              : null,
-        };
+        if (scholarMatches.docs.some((doc) => doc.get("searchKey") !== key))
+          addFieldError(
+            row,
+            fieldLabels.scholarNumber,
+            "Already assigned to a different student in this class and session.",
+          );
+        if (!existing.empty && (!hasDisambiguator || existingNeedsIdentity))
+          addFieldError(
+            row,
+            "studentName",
+            "Duplicate name combination: add a date of birth or admission number.",
+          );
+        return row;
       }),
     );
-    const duplicateGroups = new Map<string, typeof preview>();
+    const duplicateGroups = new Map<string, PreviewRow[]>();
     for (const row of preview) {
       if (!row.data) continue;
       const key = createSearchKey(row.data);
@@ -151,10 +369,13 @@ export async function POST(request: NextRequest) {
             !row.data.admissionNumber &&
             !row.data.admissionNo
           )
-            row.error =
-              "Duplicate name combination detected: add a date of birth or admission number so students can be told apart.";
+            addFieldError(
+              row,
+              "studentName",
+              "Duplicate name combination: add a date of birth or admission number.",
+            );
         }
-    const scholarGroups = new Map<string, typeof preview>();
+    const scholarGroups = new Map<string, PreviewRow[]>();
     for (const row of preview) {
       if (!row.data) continue;
       const key = scholarLookupHmac(
@@ -169,7 +390,11 @@ export async function POST(request: NextRequest) {
     for (const group of scholarGroups.values())
       if (group.length > 1)
         for (const row of group)
-          row.error = "Scholar number is repeated in this class and session.";
+          addFieldError(
+            row,
+            fieldLabels.scholarNumber,
+            "Repeated in this file for the same class and session.",
+          );
     const errors = preview.filter((r) => r.error);
     if (action !== "commit")
       return NextResponse.json(
@@ -221,7 +446,7 @@ export async function POST(request: NextRequest) {
         .get();
       if (scholarMatches.docs.some((doc) => doc.get("searchKey") !== key))
         throw new Error(
-          `Scholar number on CSV row ${item.row} is already assigned in this class and session.`,
+          `Scholar number on import row ${item.row} is already assigned in this class and session.`,
         );
       const dob = data.dateOfBirth || "";
       const admission = data.admissionNumber || data.admissionNo || "";
@@ -237,21 +462,21 @@ export async function POST(request: NextRequest) {
           ))
       )
         throw new Error(
-          `Duplicate name combination detected on CSV row ${item.row}: add a date of birth or admission number so students can be told apart.`,
+          `Duplicate name combination detected on import row ${item.row}: add a date of birth or admission number so students can be told apart.`,
         );
       const identified = matches.docs.filter((doc) =>
         studentIdentityMatches(doc.data(), dobKey, admissionKey),
       );
       if (identified.length > 1)
         throw new Error(
-          `CSV row ${item.row} matches multiple existing students.`,
+          `Import row ${item.row} matches multiple existing students.`,
         );
       const retentionExpiresAt = retentionExpiryFromSession(
         data.session,
         retentionYears,
       );
       if (!retentionExpiresAt)
-        throw new Error(`Invalid academic session on CSV row ${item.row}.`);
+        throw new Error(`Invalid academic session on import row ${item.row}.`);
       const common = {
         studentName: data.studentName,
         fatherName: data.fatherName,

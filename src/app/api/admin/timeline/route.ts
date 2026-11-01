@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["approver", "admin"]);
+    await requireRoles(request, ["uploader", "approver", "admin"]);
     const studentId = request.nextUrl.searchParams.get("studentId");
     let rows: QueryDocumentSnapshot[];
     if (studentId) {

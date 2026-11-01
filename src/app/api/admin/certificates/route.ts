@@ -178,7 +178,7 @@ async function storeCertificateRecord(
 
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["uploader", "approver", "admin"]);
+    await requireRoles(request, ["uploader", "approver", "admin", "superadmin"]);
     const studentId = request.nextUrl.searchParams.get("studentId");
     const status = request.nextUrl.searchParams.get("status");
     const collection = db.collection("certificates");
@@ -257,7 +257,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["uploader", "admin"]);
+    const admin = await requireRoles(request, ["uploader", "admin", "superadmin"]);
     const form = await request.formData();
     const parsed = certificateUploadMetadataSchema.safeParse({
       studentId: formString(form, "studentId"),

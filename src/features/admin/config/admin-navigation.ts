@@ -11,7 +11,6 @@ import {
   Settings,
   ShieldCheck,
   Database,
-  HelpCircle,
   FileText,
   History,
   LockKeyhole,
@@ -22,7 +21,6 @@ import {
 import type { Tab } from "../types/admin.types";
 
 export const tabIcons = {
-  help: HelpCircle,
   dashboard: LayoutDashboard,
   approvals: ClipboardCheck,
   students: Users,
@@ -40,9 +38,8 @@ export const tabIcons = {
   retention: Database,
   contacts: Mail,
   profile: ContactRound,
-} satisfies Record<Tab, typeof HelpCircle>;
+} satisfies Record<Tab, typeof LayoutDashboard>;
 export const tabs: Tab[] = [
-  "help",
   "dashboard",
   "approvals",
   "students",
@@ -63,7 +60,6 @@ export const tabs: Tab[] = [
 ];
 
 export const tabRoutes: Record<Tab, string> = {
-  help: "/admin/help",
   dashboard: "/admin",
   approvals: "/admin/approvals",
   students: "/admin/students",
@@ -84,7 +80,6 @@ export const tabRoutes: Record<Tab, string> = {
 };
 
 export const tabLabels: Record<Tab, string> = {
-  help: "Help & Policies",
   dashboard: "Overview",
   approvals: "Pending Approvals",
   students: "Students",

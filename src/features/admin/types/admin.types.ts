@@ -31,7 +31,6 @@ export type Cert = {
   supersededBy?: string | null;
 };
 export type Tab =
-  | "help"
   | "dashboard"
   | "approvals"
   | "students"

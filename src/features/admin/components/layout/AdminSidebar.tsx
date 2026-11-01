@@ -1,4 +1,4 @@
-import { Database, HelpCircle, Settings } from "lucide-react";
+import { Database, Settings } from "lucide-react";
 import Link from "next/link";
 
 
@@ -72,17 +72,6 @@ export default function AdminSidebar({
         <button type="button" onClick={onSettings} className="sis-admin-nav-item">
           <Settings size={17} />
           <span>Settings</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setTab("help");
-            setPage(0);
-          }}
-          className="sis-admin-nav-item"
-        >
-          <HelpCircle size={17} />
-          <span>Help & Policies</span>
         </button>
         <button type="button" onClick={onSystemHealth} className="sis-admin-nav-item">
           <Database size={17} />

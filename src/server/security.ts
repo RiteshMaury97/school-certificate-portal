@@ -48,15 +48,16 @@ export async function writeAuditLog(
   request: NextRequest,
   actorUid: string,
   action: string,
-  ...details: [string, string?]
+  ...details: [string, string?, { changedFields?: string[] }?]
 ): Promise<void> {
-  const [targetId, studentId] = details;
+  const [targetId, studentId, metadata] = details;
   const timestamp = FieldValue.serverTimestamp();
   await db.collection("auditLogs").add({
     actorUid,
     action,
     targetId,
     ...(studentId ? { studentId } : {}),
+    ...(metadata?.changedFields?.length ? { changedFields: metadata.changedFields } : {}),
     ipHash: hashRequesterIp(request),
     timestamp,
   });

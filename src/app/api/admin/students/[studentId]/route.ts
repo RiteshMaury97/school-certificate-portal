@@ -17,6 +17,7 @@ import {
 } from "@/server/security";
 import {
   encryptStudentIdentifier,
+  decryptStudentIdentifier,
   scholarLookupHmac,
   studentIdentifierHmac,
   studentIdentityMatches,
@@ -32,7 +33,7 @@ export async function PATCH(
   context: { params: Promise<{ studentId: string }> },
 ) {
   try {
-    const admin = await requireRoles(request, ["uploader", "admin"]);
+    const admin = await requireRoles(request, ["uploader", "admin", "superadmin"]);
     const { studentId } = await context.params;
     const parsed = studentUpdateSchema.safeParse(await request.json());
     if (!parsed.success)
@@ -48,6 +49,15 @@ export async function PATCH(
         { error: "Student not found." },
         { status: 404 },
       );
+    const changedFields = (Object.keys(data) as (keyof typeof data)[]).filter((key) => {
+      const rawBefore = key === "admissionNumber"
+        ? String(snapshot.get("admissionNumber") ?? snapshot.get("admissionNo") ?? "")
+        : String(snapshot.get(key) ?? "");
+      const before = key === "scholarNumber" || key === "dateOfBirth" || key === "admissionNumber"
+        ? (rawBefore ? decryptStudentIdentifier(rawBefore) : "")
+        : rawBefore;
+      return before !== String(data[key] ?? "");
+    }).map((key) => key === "admissionNumber" ? "admission number" : key === "dateOfBirth" ? "date of birth" : key);
     const currentSession = normalizeAcademicSession(
       String(snapshot.get("session") ?? ""),
     );
@@ -176,6 +186,7 @@ export async function PATCH(
       "student.update",
       studentId,
       studentId,
+      { changedFields },
     );
     return NextResponse.json({ ok: true });
   } catch (error) {
