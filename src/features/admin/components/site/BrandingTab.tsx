@@ -149,7 +149,8 @@ export default function BrandingTab(props: Props) {
               }}
               className="h-5 w-5"
             />{" "}
-            Enable public maintenance mode (staff admin pages remain available)
+            Emergency lockdown: block public lookup, verification and downloads (admin sign-in
+            remains available)
           </label>
           {(
             [

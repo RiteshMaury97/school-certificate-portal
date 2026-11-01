@@ -2,15 +2,18 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
 import { certificateTypeSlug } from "@/server/r2";
-import {
-  requireRoles,
-  apiError,
-  createCertificateNumberHash,
-} from "@/server/security";
+import { requireRoles, apiError, createCertificateNumberHash } from "@/server/security";
 import { studentIdentifierHmac } from "@/server/student-pii";
+import { rejectOversizedRequest } from "@/server/upload-policy";
 import { normalizeAcademicSession } from "@/shared/academic-session";
+import {
+  MAX_BULK_FILES,
+  MAX_CSV_BYTES,
+  MAX_CSV_ROWS,
+  UPLOAD_MAX_BYTES,
+} from "@/shared/upload-limits";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 function safeTypeSlug(value: string): string {
@@ -49,9 +52,11 @@ function parseCsv(text: string): string[][] {
 export async function POST(request: NextRequest) {
   try {
     await requireRoles(request, ["uploader", "admin"]);
+    const tooLarge = rejectOversizedRequest(request, MAX_CSV_BYTES);
+    if (tooLarge) return tooLarge;
     const form = await request.formData();
     const csv = form.get("mappingCsv");
-    if (!(csv instanceof File) || csv.size > 2 * 1024 * 1024)
+    if (!(csv instanceof File) || csv.size > MAX_CSV_BYTES)
       return NextResponse.json(
         { error: "Provide a mapping CSV smaller than 2 MB." },
         { status: 400 },
@@ -63,27 +68,19 @@ export async function POST(request: NextRequest) {
         size: number;
       }[];
     } catch {
-      return NextResponse.json(
-        { error: "File manifest is invalid." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "File manifest is invalid." }, { status: 400 });
     }
     if (
       !Array.isArray(files) ||
       files.length < 1 ||
-      files.length > 20 ||
-      files.some(
-        (f) => typeof f?.name !== "string" || typeof f?.size !== "number",
-      )
+      files.length > MAX_BULK_FILES ||
+      files.some((f) => typeof f?.name !== "string" || typeof f?.size !== "number")
     )
-      return NextResponse.json(
-        { error: "Provide between 1 and 20 files." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Provide between 1 and 20 files." }, { status: 400 });
     const rows = parseCsv(await csv.text());
-    if (rows.length < 2)
+    if (rows.length < 2 || rows.length - 1 > MAX_CSV_ROWS)
       return NextResponse.json(
-        { error: "Mapping CSV needs headers and at least one row." },
+        { error: `Mapping CSV needs headers and 1 to ${MAX_CSV_ROWS} rows.` },
         { status: 400 },
       );
     const headers = rows[0]!.map((x) => x.toLowerCase().replace(/\s+/g, ""));
@@ -105,8 +102,8 @@ export async function POST(request: NextRequest) {
       );
       const errors: string[] = [];
       if (!row) errors.push("No mapping row for this filename.");
-      if (file.size <= 0 || file.size > 5 * 1024 * 1024)
-        errors.push("File must be 1 byte to 5 MB.");
+      if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
+        errors.push("File must be 1 byte to 4 MB.");
       if (!/\.(pdf|jpe?g|png)$/i.test(file.name))
         errors.push("File extension must be PDF, JPG or PNG.");
       if (row) {
@@ -117,35 +114,22 @@ export async function POST(request: NextRequest) {
         const type = String(row.certificatetype ?? row.type ?? inferredType);
         const number = String(row.certificatenumber ?? "");
         const date = String(row.issuedate ?? "");
-        const admissionNo = String(
-          row.admissionnumber ?? row.admissionno ?? inferredAdmission,
-        );
+        const admissionNo = String(row.admissionnumber ?? row.admissionno ?? inferredAdmission);
         if (!/^\d{4}-\d{2}$/.test(session)) errors.push("Invalid session.");
         if (type.length < 2)
-          errors.push(
-            "Certificate type is required (or use admissionNo_type.pdf naming). ",
-          );
+          errors.push("Certificate type is required (or use admissionNo_type.pdf naming). ");
         if (!number) errors.push("Certificate number is required.");
         else {
           const hash = createCertificateNumberHash(number);
-          if (seenNumbers.has(hash))
-            errors.push("Duplicate certificate number in this batch.");
+          if (seenNumbers.has(hash)) errors.push("Duplicate certificate number in this batch.");
           seenNumbers.add(hash);
-          const existing = await db
-            .collection("certificateNumberIndex")
-            .doc(hash)
-            .get();
-          if (existing.exists)
-            errors.push("Certificate number is already assigned.");
+          const existing = await db.collection("certificateNumberIndex").doc(hash).get();
+          if (existing.exists) errors.push("Certificate number is already assigned.");
         }
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date))
-          errors.push("Issue date must be YYYY-MM-DD.");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push("Issue date must be YYYY-MM-DD.");
         let student = null;
         if (row.studentid)
-          student = await db
-            .collection("students")
-            .doc(String(row.studentid))
-            .get();
+          student = await db.collection("students").doc(String(row.studentid)).get();
         else if (admissionNo) {
           const admissionKey = studentIdentifierHmac(admissionNo);
           let s = await db
@@ -162,9 +146,7 @@ export async function POST(request: NextRequest) {
           if (s.size === 1) student = s.docs[0]!;
         }
         if (!student?.exists)
-          errors.push(
-            "Student/admission number did not match exactly one student.",
-          );
+          errors.push("Student/admission number did not match exactly one student.");
         else if (
           normalizeAcademicSession(String(student.get("session") ?? "")) !==
           normalizeAcademicSession(session)
@@ -179,12 +161,8 @@ export async function POST(request: NextRequest) {
           const typeSlug = safeTypeSlug(type);
           if (!typeSlug) errors.push("Certificate type is invalid.");
           else {
-            const typeDoc = await db
-              .collection("certificateTypes")
-              .doc(typeSlug)
-              .get();
-            if (!typeDoc.exists)
-              errors.push("Certificate type is not configured.");
+            const typeDoc = await db.collection("certificateTypes").doc(typeSlug).get();
+            if (!typeDoc.exists) errors.push("Certificate type is not configured.");
           }
         }
       }
@@ -199,7 +177,7 @@ export async function POST(request: NextRequest) {
               admissionNo: String(
                 row.admissionnumber ??
                   row.admissionno ??
-                  (/^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name))?.[1] ??
+                  /^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name)?.[1] ??
                   "",
               ),
               studentId: String(row.studentid ?? ""),
@@ -207,10 +185,10 @@ export async function POST(request: NextRequest) {
               certificateType: String(
                 row.certificatetype ??
                   row.type ??
-                  (
-                    (/^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name))?.[2] ??
-                    ""
-                  ).replace(/[-_]+/g, " "),
+                  (/^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name)?.[2] ?? "").replace(
+                    /[-_]+/g,
+                    " ",
+                  ),
               ),
               certificateNumber: String(row.certificatenumber ?? ""),
               issueDate: String(row.issuedate ?? ""),

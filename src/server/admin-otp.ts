@@ -6,6 +6,7 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { db } from "./firebase-admin";
 import { hashRequesterIp } from "./security";
+import { recordDailySecurityMetric } from "./security-summary";
 
 import type { NextRequest } from "next/server";
 
@@ -34,11 +35,7 @@ export function createAdminOtpCode(): string {
   return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
-export function hashAdminOtp(
-  challengeId: string,
-  uid: string,
-  code: string,
-): string {
+export function hashAdminOtp(challengeId: string, uid: string, code: string): string {
   return createHmac("sha256", otpSecret())
     .update(`${challengeId}:${uid}:${code}`, "utf8")
     .digest("hex");
@@ -53,9 +50,7 @@ export function safeHashEqual(expected: string, actual: string): boolean {
 export function createDeviceHash(request: NextRequest): string {
   const device = request.cookies.get("sis_admin_device")?.value ?? "";
   const userAgent = request.headers.get("user-agent") ?? "";
-  return createHmac("sha256", otpSecret())
-    .update(`${userAgent}|${device}`, "utf8")
-    .digest("hex");
+  return createHmac("sha256", otpSecret()).update(`${userAgent}|${device}`, "utf8").digest("hex");
 }
 
 export function adminEmailLockoutId(email: string): string {
@@ -67,8 +62,7 @@ export function adminEmailLockoutId(email: string): string {
 }
 
 export async function isAdminOtpLocked(email: string): Promise<boolean> {
-  const snapshot = await db.collection("adminLoginFailures")
-    .doc(adminEmailLockoutId(email)).get();
+  const snapshot = await db.collection("adminLoginFailures").doc(adminEmailLockoutId(email)).get();
   return Number(snapshot.get("lockedUntil") ?? 0) > Date.now();
 }
 
@@ -83,23 +77,27 @@ export async function recordAdminOtpFailure(
     const previous = Number(snapshot.get("count") ?? 0);
     const count = previous + 1;
     const locked = isAdminOtpLockThresholdReached(count);
-    transaction.set(ref, {
-      count,
-      windowStartedAt: Number(snapshot.get("windowStartedAt") ?? now),
-      lockedUntil: locked ? now + 15 * MINUTE : Number(snapshot.get("lockedUntil") ?? 0),
-      lastIpHash: hashRequesterIp(request),
-      updatedAt: FieldValue.serverTimestamp(),
-      expiresAt: new Date(now + 24 * HOUR),
-    }, { merge: true });
+    transaction.set(
+      ref,
+      {
+        count,
+        windowStartedAt: Number(snapshot.get("windowStartedAt") ?? now),
+        lockedUntil: locked ? now + 15 * MINUTE : Number(snapshot.get("lockedUntil") ?? 0),
+        lastIpHash: hashRequesterIp(request),
+        updatedAt: FieldValue.serverTimestamp(),
+        expiresAt: new Date(now + 24 * HOUR),
+      },
+      { merge: true },
+    );
     return { locked, count, newlyLocked: locked && previous < 5 };
   });
   if (result.newlyLocked) {
-    const admins = await db.collection("admins")
-      .where("role", "==", "superadmin").limit(10).get();
+    await recordDailySecurityMetric("lockouts").catch((error: unknown) => {
+      console.warn("[admin-otp] Failed to record daily lockout metric.", error);
+    });
+    const admins = await db.collection("admins").where("role", "==", "superadmin").limit(10).get();
     const { sendMail } = await import("./mailer");
-    const recipients = admins.docs
-      .map((doc) => String(doc.get("email") ?? ""))
-      .filter(Boolean);
+    const recipients = admins.docs.map((doc) => String(doc.get("email") ?? "")).filter(Boolean);
     if (recipients.length) {
       await sendMail({
         to: recipients,
@@ -114,15 +112,17 @@ export async function recordAdminOtpFailure(
 }
 
 export async function deleteExpiredAdminOtpChallenges(): Promise<number> {
-  const snapshot = await db.collection(CHALLENGES)
-    .where("expiresAt", "<=", new Date()).limit(400).get();
+  const snapshot = await db
+    .collection(CHALLENGES)
+    .where("expiresAt", "<=", new Date())
+    .limit(400)
+    .get();
   if (snapshot.empty) return 0;
   const batch = db.batch();
   for (const doc of snapshot.docs) batch.delete(doc.ref);
   await batch.commit();
   return snapshot.size;
 }
-
 
 export type OtpVerificationResult = {
   valid: boolean;
@@ -165,9 +165,17 @@ export async function verifyAdminOtpChallenge<TReference>(
   const now = input.now ?? Date.now();
   const attempts = Number(snapshot.get("attempts") ?? 0);
   const maxAttempts = Number(snapshot.get("maxAttempts") ?? 5);
-  if (!snapshot.exists || snapshot.get("uid") !== input.uid ||
-    snapshot.get("consumedAt") !== null || timestampMillis(snapshot.get("expiresAt")) <= now) {
-    return { valid: false, attemptsRemaining: Math.max(0, maxAttempts - attempts), exhausted: false };
+  if (
+    !snapshot.exists ||
+    snapshot.get("uid") !== input.uid ||
+    snapshot.get("consumedAt") !== null ||
+    timestampMillis(snapshot.get("expiresAt")) <= now
+  ) {
+    return {
+      valid: false,
+      attemptsRemaining: Math.max(0, maxAttempts - attempts),
+      exhausted: false,
+    };
   }
   if (attempts >= maxAttempts) {
     transaction.update(ref, { consumedAt: FieldValue.serverTimestamp() });
@@ -185,7 +193,11 @@ export async function verifyAdminOtpChallenge<TReference>(
     attempts: nextAttempts,
     ...(nextAttempts >= maxAttempts ? { consumedAt: FieldValue.serverTimestamp() } : {}),
   });
-  return { valid: false, attemptsRemaining: Math.max(0, maxAttempts - nextAttempts), exhausted: nextAttempts >= maxAttempts };
+  return {
+    valid: false,
+    attemptsRemaining: Math.max(0, maxAttempts - nextAttempts),
+    exhausted: nextAttempts >= maxAttempts,
+  };
 }
 
 export async function consumeVerifiedAdminOtpChallenge<TReference>(
@@ -197,20 +209,39 @@ export async function consumeVerifiedAdminOtpChallenge<TReference>(
   const snapshot = await transaction.get(ref);
   const verifiedAt = timestampMillis(snapshot.get("verifiedAt"));
   const expiresAt = timestampMillis(snapshot.get("expiresAt"));
-  if (!snapshot.exists || snapshot.get("uid") !== uid || snapshot.get("consumedAt") !== null ||
-    !verifiedAt || now - verifiedAt > 5 * MINUTE || expiresAt <= now) return false;
+  if (
+    !snapshot.exists ||
+    snapshot.get("uid") !== uid ||
+    snapshot.get("consumedAt") !== null ||
+    !verifiedAt ||
+    now - verifiedAt > 5 * MINUTE ||
+    expiresAt <= now
+  )
+    return false;
   transaction.update(ref, { consumedAt: FieldValue.serverTimestamp() });
   return true;
 }
 
 export function canSendAdminOtp(input: {
-  lastSentAt: number; accountHourlyCount: number; ipHourlyCount: number; now: number;
+  lastSentAt: number;
+  accountHourlyCount: number;
+  ipHourlyCount: number;
+  now: number;
 }): boolean {
-  return input.now - input.lastSentAt >= MINUTE && input.accountHourlyCount < 5 && input.ipHourlyCount < 30;
+  return (
+    input.now - input.lastSentAt >= MINUTE &&
+    input.accountHourlyCount < 5 &&
+    input.ipHourlyCount < 30
+  );
 }
 
 export function createAdminOtpChallengeRecord(input: {
-  uid: string; challengeId: string; code: string; now: number; ipHash: string; deviceHash: string;
+  uid: string;
+  challengeId: string;
+  code: string;
+  now: number;
+  ipHash: string;
+  deviceHash: string;
 }) {
   return {
     uid: input.uid,

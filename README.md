@@ -11,20 +11,24 @@ npm run dev
 ```
 
 ### Firebase credentials (server)
+
 The server needs a service account to read Firestore and verify admin sessions.
-1. Firebase console → Project settings → Service accounts → *Generate new private key*.
+
+1. Firebase console → Project settings → Service accounts → _Generate new private key_.
 2. Encode it: `base64 -w0 service-account.json` → put the result in `FIREBASE_SERVICE_ACCOUNT_BASE64`.
 3. **Delete the JSON file.** Never commit it. `.gitignore` blocks `service-account*.json`.
 
-If the session picker shows *"Sessions could not be loaded"* or admin login fails, check the
+If the session picker shows _"Sessions could not be loaded"_ or admin login fails, check the
 server log: `[api/public/sessions]` / `[admin/session …]` lines now print a specific hint
 (missing credentials, missing database, missing IAM role).
 
 ### Deploy Firestore rules and indexes
+
 ```bash
 cp .firebaserc.example .firebaserc      # set your project id
 npm run firebase:deploy:rules
 ```
+
 Enable Firestore TTL on `expiresAt` for: `abuseCounters`, `adminLoginFailures`, `adminDevices`,
 `adminSessionActions`, `adminReauthGrants`
 (`gcloud firestore fields ttls update expiresAt --collection-group=<name> --enable-ttl`).
@@ -37,14 +41,20 @@ Google sign-in, Gmail SMTP email-code delivery, authorized domains, and localhos
 Administrator sign-in uses Firebase Authentication for the first step and a server-verified six-digit email code for the second step. Configure `GMAIL_USER` and `GMAIL_APP_PASSWORD` (a Google App Password; the sender mailbox must have 2-Step Verification enabled) before testing administrator sign-in.
 
 ### First administrator
+
 ```bash
 npm run admin:create-superadmin -- someone@school.example
 ```
+
 The user must already exist in Firebase Authentication with a verified email. On each sign-in, they receive a six-digit code through Gmail SMTP.
 
 ### Student record retention
 
 The student-record policy states a configured retention period after the end of the academic session. The period does not trigger an automatic review or deletion job. Records may be deleted on request or after an authorized manual review, subject to legal holds and applicable recordkeeping requirements. Encrypted backups continue to follow the configured backup rotation.
+
+### Security reporting
+
+Public vulnerability reports are described in [`/.well-known/security.txt`](public/.well-known/security.txt). Replace its example contact address and domain before launch. Review [`docs/SECURITY-CHECKLIST.md`](docs/SECURITY-CHECKLIST.md) for IP/location controls, upload limits, and the pre-launch penetration-test checklist.
 
 ## Project layout
 
@@ -71,6 +81,7 @@ Rules: `server/*` is never imported from a component. `shared/*` has no Node or 
 Colours come only from the tokens in `styles/globals.css`.
 
 ## Design system
+
 Light **Ivory & Midnight** (ivory page, white cards, midnight-navy actions) and dark
 **Obsidian & Champagne** (near-black page, champagne-gold actions). Tokens, status colours and
 all motion live in `src/styles/globals.css`. `tests/design-tokens.test.ts` enforces WCAG AA for every
@@ -81,6 +92,7 @@ Loading feedback: a global top progress bar tracks every `fetch` (`NetworkProgre
 branded loader while the session is verified.
 
 ## Authentication flow
+
 1. `POST /api/admin/login-check` – lockout check (5 failures → 15 min).
 2. Firebase sign-in (email/password or Google) → Gmail-delivered six-digit code
    (email must be verified).
@@ -92,7 +104,6 @@ branded loader while the session is verified.
 
 The email code is generated and verified by the application server; no paid Firebase authentication feature is required.
 
-
 ### Promote an existing Firebase user to superadministrator
 
 Use this only for an account you control and have verified in Firebase Authentication. Set `FIREBASE_SERVICE_ACCOUNT_BASE64` and `FIREBASE_PROJECT_ID` in `.env.local`, then run:
@@ -103,19 +114,15 @@ npm run admin:promote-superadmin -- jyH9PefLwNM2apeRf3sF0clVfeu1
 
 The script verifies that the Firebase Auth user exists and has a verified email, then synchronizes `admins/{uid}` (`role: superadmin`, `status: active`) with the Firebase custom claim (`role: superadmin`). It preserves unrelated custom claims. After it succeeds, sign out of the portal and sign in again so Firebase issues a fresh ID token. Never commit service-account credentials.
 
-
 ## Administrator email verification codes
 
 Administrator sign-in uses Firebase Authentication for the first factor and a custom six-digit code sent through the configured Gmail SMTP account for the second factor. Configure `OTP_HMAC_SECRET` with at least 32 random bytes; it must be separate from `AUDIT_LOG_HMAC_SECRET`. The code is stored only as an HMAC in the server-only `adminOtpChallenges` collection, expires after 10 minutes, and allows at most five incorrect attempts. The verified challenge is consumed when the server creates a session and is valid for that step for five minutes. No client Firestore access is permitted to this collection.
 
-
 All outgoing mail uses `src/server/mailer.ts` with Gmail SMTP only. Configure `GMAIL_USER`, `GMAIL_APP_PASSWORD` (Google App Password; 2-Step Verification required), and optionally `GMAIL_FROM_NAME`. A daily `abuseCounters` quota caps recipients at 500.
-
 
 ### Gmail sender security and quota
 
 Follow [`docs/FIREBASE-AUTH-SETUP.md`](docs/FIREBASE-AUTH-SETUP.md#2-gmail-smtp-and-app-password) to enable Google 2-Step Verification and create a Google App Password. Administrator mailboxes should enforce 2-Step Verification. Configure `GMAIL_USER`, `GMAIL_APP_PASSWORD`, optional `GMAIL_FROM_NAME`, and the independent `OTP_HMAC_SECRET` in `.env.local`; never expose these values to browser code. The mailer limits the application to 500 recipients per UTC day and warns at 400. Gmail may enforce a lower account-specific limit.
-
 
 ### Troubleshooting administrator email-code delivery
 

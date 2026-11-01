@@ -13,17 +13,15 @@ import {
 } from "@/server/certificate-index";
 import { encryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
-import {
-  uploadCertificate,
-  softDeleteR2Object,
-  certificateTypeSlug,
-} from "@/server/r2";
+import { uploadCertificate, softDeleteR2Object, certificateTypeSlug } from "@/server/r2";
 import { apiError, requireRoles, writeAuditLog } from "@/server/security";
 import { studentIdentifierHmac } from "@/server/student-pii";
+import { consumeAdminUploadQuota, rejectOversizedRequest } from "@/server/upload-policy";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
+import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const mappingSchema = z
@@ -41,28 +39,26 @@ const mappingSchema = z
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireRoles(request, ["uploader", "admin"]);
+    const tooLarge = rejectOversizedRequest(request);
+    if (tooLarge) return tooLarge;
     const form = await request.formData();
     const file = form.get("file");
     let rawMapping: unknown = {};
     try {
       rawMapping = JSON.parse(String(form.get("mapping") ?? "{}"));
     } catch {
-      return NextResponse.json(
-        { error: "Mapping JSON is invalid." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Mapping JSON is invalid." }, { status: 400 });
     }
     const parsed = mappingSchema.safeParse(rawMapping);
     if (!(file instanceof File) || !parsed.success)
+      return NextResponse.json({ error: "File and valid mapping are required." }, { status: 400 });
+    if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
       return NextResponse.json(
-        { error: "File and valid mapping are required." },
-        { status: 400 },
-      );
-    if (file.size <= 0 || file.size > 5 * 1024 * 1024)
-      return NextResponse.json(
-        { error: "Each file must be no larger than 5 MB." },
+        { error: "Each file must be no larger than 4 MB." },
         { status: 413 },
       );
+    const quotaError = await consumeAdminUploadQuota(admin.uid, file.size);
+    if (quotaError) return NextResponse.json({ error: quotaError }, { status: 429 });
     const map = parsed.data;
     if (map.fileName !== file.name)
       return NextResponse.json(
@@ -74,9 +70,7 @@ export async function POST(request: NextRequest) {
       : null;
     const admissionValue = map.admissionNumber || map.admissionNo || "";
     const admissionKey =
-      !studentQuery && admissionValue
-        ? studentIdentifierHmac(admissionValue)
-        : "";
+      !studentQuery && admissionValue ? studentIdentifierHmac(admissionValue) : "";
     const admissionQuery =
       !studentQuery && admissionKey
         ? await db
@@ -87,11 +81,7 @@ export async function POST(request: NextRequest) {
         : null;
     const legacyAdmissionQuery =
       !studentQuery && !admissionQuery?.size && admissionValue
-        ? await db
-            .collection("students")
-            .where("admissionNo", "==", admissionValue)
-            .limit(2)
-            .get()
+        ? await db.collection("students").where("admissionNo", "==", admissionValue).limit(2).get()
         : null;
     const match = admissionQuery?.size ? admissionQuery : legacyAdmissionQuery;
     const student = studentQuery ?? (match?.size === 1 ? match.docs[0] : null);
@@ -112,20 +102,13 @@ export async function POST(request: NextRequest) {
     try {
       typeSlug = certificateTypeSlug(map.certificateType);
     } catch {
-      return NextResponse.json(
-        { error: "Invalid certificate type." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid certificate type." }, { status: 400 });
     }
     const [sessionDoc, typeDoc] = await Promise.all([
       db.collection("sessions").doc(map.session).get(),
       db.collection("certificateTypes").doc(typeSlug).get(),
     ]);
-    if (
-      !sessionDoc.exists ||
-      sessionDoc.get("isActive") === false ||
-      !typeDoc.exists
-    )
+    if (!sessionDoc.exists || sessionDoc.get("isActive") === false || !typeDoc.exists)
       return NextResponse.json(
         { error: "Unknown or inactive session/certificate type." },
         { status: 400 },
@@ -133,10 +116,7 @@ export async function POST(request: NextRequest) {
     const sha256 = createHash("sha256")
       .update(Buffer.from(await file.arrayBuffer()))
       .digest("hex");
-    const sameHash = await db
-      .collection("certificates")
-      .where("sha256", "==", sha256)
-      .get();
+    const sameHash = await db.collection("certificates").where("sha256", "==", sha256).get();
     const duplicateDecision = duplicateFileDecision(
       sameHash.docs.map((doc) => ({
         studentId: doc.get("studentId"),
@@ -148,20 +128,13 @@ export async function POST(request: NextRequest) {
     if (duplicateDecision === "block-same-student-type")
       return NextResponse.json(
         {
-          error:
-            "An identical file already exists for this student and certificate type.",
+          error: "An identical file already exists for this student and certificate type.",
         },
         { status: 409 },
       );
-    const intentional =
-      formString(form, "confirmDuplicateHash") === "true";
-    const duplicateReason = String(
-      form.get("duplicateHashReason") ?? "",
-    ).trim();
-    if (
-      duplicateDecision === "warn-cross-record" &&
-      (!intentional || duplicateReason.length < 10)
-    )
+    const intentional = formString(form, "confirmDuplicateHash") === "true";
+    const duplicateReason = String(form.get("duplicateHashReason") ?? "").trim();
+    if (duplicateDecision === "warn-cross-record" && (!intentional || duplicateReason.length < 10))
       return NextResponse.json(
         {
           error:
@@ -170,27 +143,16 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 },
       );
-    const stored = await uploadCertificate(
-      file,
-      map.session,
-      map.certificateType,
-      student.id,
-    );
+    const stored = await uploadCertificate(file, map.session, map.certificateType, student.id);
     const ref = db.collection("certificates").doc(randomUUID());
     try {
-      await createCertificateNumberIndex(
-        map.certificateNumber,
-        ref.id,
-        map.session,
-      );
+      await createCertificateNumberIndex(map.certificateNumber, ref.id, map.session);
       await ref.set({
         publicId: randomUUID().replace(/-/g, ""),
         studentId: student.id,
         session: map.session,
         type: map.certificateType,
-        certificateNumberEncrypted: encryptCertificateNumber(
-          map.certificateNumber,
-        ),
+        certificateNumberEncrypted: encryptCertificateNumber(map.certificateNumber),
         r2Key: stored.r2Key,
         fileName: stored.fileName,
         mimeType: stored.mimeType,
@@ -213,29 +175,14 @@ export async function POST(request: NextRequest) {
       await removeCertificateNumberIndex(ref.id).catch(() => null);
       await softDeleteR2Object(stored.r2Key, student.id).catch(() => null);
       if (error instanceof DuplicateCertificateNumberError)
-        return NextResponse.json(
-          { error: "Duplicate certificate number." },
-          { status: 409 },
-        );
+        return NextResponse.json({ error: "Duplicate certificate number." }, { status: 409 });
       throw error;
     }
     if (admin.role === "admin" || admin.role === "superadmin") {
       await publishCertificateWithoutReview(ref.id, admin.uid);
-      await writeAuditLog(
-        request,
-        admin.uid,
-        "certificate.auto_published",
-        ref.id,
-        student.id,
-      );
+      await writeAuditLog(request, admin.uid, "certificate.auto_published", ref.id, student.id);
     }
-    await writeAuditLog(
-      request,
-      admin.uid,
-      "certificate.upload",
-      ref.id,
-      student.id,
-    );
+    await writeAuditLog(request, admin.uid, "certificate.upload", ref.id, student.id);
     if (!sameHash.empty)
       await writeAuditLog(
         request,
@@ -248,10 +195,7 @@ export async function POST(request: NextRequest) {
       {
         ok: true,
         certificateId: ref.id,
-        status:
-          admin.role === "admin" || admin.role === "superadmin"
-            ? "published"
-            : "pending",
+        status: admin.role === "admin" || admin.role === "superadmin" ? "published" : "pending",
       },
       { status: 201 },
     );

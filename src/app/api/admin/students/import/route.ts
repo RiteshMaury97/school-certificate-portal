@@ -3,27 +3,22 @@ import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
-import {
-  createSearchKey,
-  requireRoles,
-  writeAuditLog,
-  apiError,
-} from "@/server/security";
+import { createSearchKey, requireRoles, writeAuditLog, apiError } from "@/server/security";
 import {
   encryptStudentIdentifier,
   scholarLookupHmac,
   studentIdentifierHmac,
   studentIdentityMatches,
 } from "@/server/student-pii";
+import { consumeAdminUploadQuota, rejectOversizedRequest } from "@/server/upload-policy";
 import { normalizeAcademicSession } from "@/shared/academic-session";
+import { MAX_CSV_BYTES, MAX_CSV_ROWS } from "@/shared/upload-limits";
 import { studentCreateSchema } from "@/shared/validation";
 
 import type { Cell } from "exceljs";
 import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
-const maxImportRows = 500;
-const maxImportSize = 5 * 1024 * 1024;
 const importFields = {
   scholarNumber: ["scholarnumber"],
   className: ["classname"],
@@ -103,12 +98,7 @@ function csvRows(text: string): string[][] {
 
 function cellText(cell: Cell): string {
   if (cell.value instanceof Date) return cell.value.toISOString().slice(0, 10);
-  if (
-    typeof cell.value === "object" &&
-    cell.value !== null &&
-    "formula" in cell.value
-  )
-    return "";
+  if (typeof cell.value === "object" && cell.value !== null && "formula" in cell.value) return "";
   return cell.text;
 }
 
@@ -124,8 +114,7 @@ async function importRows(file: File): Promise<SourceRow[]> {
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await file.arrayBuffer());
-  const worksheet =
-    workbook.getWorksheet("Student Data") ?? workbook.worksheets[0];
+  const worksheet = workbook.getWorksheet("Student Data") ?? workbook.worksheets[0];
   if (!worksheet) throw new Error("The Excel workbook does not contain a worksheet.");
 
   const rows: SourceRow[] = [];
@@ -139,56 +128,50 @@ async function importRows(file: File): Promise<SourceRow[]> {
 }
 
 function headerKey(value: string): string {
-  return value.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
 }
 
-function catalogLabel(
-  document: QueryDocumentSnapshot,
-): string {
+function catalogLabel(document: QueryDocumentSnapshot): string {
   const label = document.get("label");
   const name = document.get("name");
   return String(label ?? name ?? document.id).trim();
 }
 
-function addFieldError(
-  row: PreviewRow,
-  column: string,
-  message: string,
-): void {
-  if (
-    row.fieldErrors.some(
-      (error) => error.column === column && error.message === message,
-    )
-  )
-    return;
+function addFieldError(row: PreviewRow, column: string, message: string): void {
+  if (row.fieldErrors.some((error) => error.column === column && error.message === message)) return;
   row.fieldErrors.push({ column, message });
-  row.error = row.fieldErrors
-    .map((error) => `${error.column}: ${error.message}`)
-    .join("; ");
+  row.error = row.fieldErrors.map((error) => `${error.column}: ${error.message}`).join("; ");
 }
 
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireRoles(request, ["uploader", "admin", "superadmin"]);
+    const tooLarge = rejectOversizedRequest(request, MAX_CSV_BYTES);
+    if (tooLarge) return tooLarge;
     const form = await request.formData();
     const file = form.get("file");
     const action = String(form.get("action") ?? "preview");
     if (action !== "preview" && action !== "commit")
       return NextResponse.json({ error: "Choose preview or commit." }, { status: 400 });
-    if (!(file instanceof File) || file.size > maxImportSize)
+    if (!(file instanceof File) || file.size > MAX_CSV_BYTES)
       return NextResponse.json(
-        { error: "Upload an Excel .xlsx or CSV file smaller than 5 MB." },
+        { error: "Upload an Excel .xlsx or CSV file no larger than 2 MB." },
         { status: 400 },
       );
+    const quotaError = await consumeAdminUploadQuota(admin.uid, file.size);
+    if (quotaError) return NextResponse.json({ error: quotaError }, { status: 429 });
     const rows = await importRows(file);
     if (rows.length < 2)
       return NextResponse.json(
         { error: "The file needs a header row and at least one student row." },
         { status: 400 },
       );
-    if (rows.length - 1 > maxImportRows)
+    if (rows.length - 1 > MAX_CSV_ROWS)
       return NextResponse.json(
-        { error: `Import no more than ${maxImportRows} student rows at a time.` },
+        { error: `Import no more than ${MAX_CSV_ROWS} student rows at a time.` },
         { status: 400 },
       );
 
@@ -201,8 +184,7 @@ export async function POST(request: NextRequest) {
       const positions = headers
         .map((header, index) => (accepted.has(header) ? index : -1))
         .filter((index) => index >= 0);
-      if (positions.length > 1)
-        headerErrors.push(`Use only one column for ${fieldLabels[field]}.`);
+      if (positions.length > 1) headerErrors.push(`Use only one column for ${fieldLabels[field]}.`);
       if (positions[0] !== undefined) fieldIndexes.set(field, positions[0]);
     }
     for (const field of requiredFields)
@@ -243,7 +225,7 @@ export async function POST(request: NextRequest) {
         const values: Record<string, string> = {};
         for (const field of Object.keys(importFields)) {
           const column = fieldIndexes.get(field);
-          values[field] = column === undefined ? "" : cells[column] ?? "";
+          values[field] = column === undefined ? "" : (cells[column] ?? "");
         }
         const row: PreviewRow = {
           row: sourceRow,
@@ -253,15 +235,10 @@ export async function POST(request: NextRequest) {
           fieldErrors: [],
         };
         for (let index = headerRow.cells.length; index < cells.length; index++)
-          if (cells[index])
-            addFieldError(row, `Column ${index + 1}`, "Unexpected cell value.");
+          if (cells[index]) addFieldError(row, `Column ${index + 1}`, "Unexpected cell value.");
 
         const classValue = values.className ?? "";
-        if (
-          !activeClasses.has(classValue) ||
-          !classValue ||
-          classValue !== classValue.trim()
-        )
+        if (!activeClasses.has(classValue) || !classValue || classValue !== classValue.trim())
           addFieldError(
             row,
             "className",
@@ -270,10 +247,7 @@ export async function POST(request: NextRequest) {
               : "No active classes are configured. Add classes in the catalog first.",
           );
         const sessionValue = values.session ?? "";
-        if (
-          !/^\d{4}-\d{2}$/.test(sessionValue) ||
-          !activeSessions.has(sessionValue)
-        )
+        if (!/^\d{4}-\d{2}$/.test(sessionValue) || !activeSessions.has(sessionValue))
           addFieldError(
             row,
             "session",
@@ -301,11 +275,7 @@ export async function POST(request: NextRequest) {
         if (!parsed.success) {
           for (const issue of parsed.error.issues) {
             const field = String(issue.path[0] ?? "file");
-            addFieldError(
-              row,
-              fieldLabels[field] ?? field,
-              issue.message,
-            );
+            addFieldError(row, fieldLabels[field] ?? field, issue.message);
           }
           return row;
         }
@@ -329,18 +299,13 @@ export async function POST(request: NextRequest) {
           importedData.className,
           importedData.session,
         );
-        const existing = await db
-          .collection("students")
-          .where("searchKey", "==", key)
-          .get();
+        const existing = await db.collection("students").where("searchKey", "==", key).get();
         const scholarMatches = await db
           .collection("students")
           .where("scholarLookupKey", "==", scholarKey)
           .get();
         const hasDisambiguator = Boolean(
-          importedData.dateOfBirth ||
-          importedData.admissionNumber ||
-          importedData.admissionNo,
+          importedData.dateOfBirth || importedData.admissionNumber || importedData.admissionNo,
         );
         const existingNeedsIdentity = existing.docs.some(
           (doc) =>
@@ -388,11 +353,7 @@ export async function POST(request: NextRequest) {
     const scholarGroups = new Map<string, PreviewRow[]>();
     for (const row of preview) {
       if (!row.data) continue;
-      const key = scholarLookupHmac(
-        row.data.scholarNumber,
-        row.data.className,
-        row.data.session,
-      );
+      const key = scholarLookupHmac(row.data.scholarNumber, row.data.className, row.data.session);
       const group = scholarGroups.get(key) ?? [];
       group.push(row);
       scholarGroups.set(key, group);
@@ -436,15 +397,8 @@ export async function POST(request: NextRequest) {
       if (!item.data) continue;
       const data = item.data;
       const key = createSearchKey(data);
-      const scholarKey = scholarLookupHmac(
-        data.scholarNumber,
-        data.className,
-        data.session,
-      );
-      const matches = await db
-        .collection("students")
-        .where("searchKey", "==", key)
-        .get();
+      const scholarKey = scholarLookupHmac(data.scholarNumber, data.className, data.session);
+      const matches = await db.collection("students").where("searchKey", "==", key).get();
       const scholarMatches = await db
         .collection("students")
         .where("scholarLookupKey", "==", scholarKey)
@@ -473,9 +427,7 @@ export async function POST(request: NextRequest) {
         studentIdentityMatches(doc.data(), dobKey, admissionKey),
       );
       if (identified.length > 1)
-        throw new Error(
-          `Import row ${item.row} matches multiple existing students.`,
-        );
+        throw new Error(`Import row ${item.row} matches multiple existing students.`);
       const common = {
         studentName: data.studentName,
         fatherName: data.fatherName,
@@ -508,39 +460,20 @@ export async function POST(request: NextRequest) {
           updatedBy: admin.uid,
         });
         updated++;
-        await writeAuditLog(
-          request,
-          admin.uid,
-          "student.update",
-          existing.id,
-          existing.id,
-        );
+        await writeAuditLog(request, admin.uid, "student.update", existing.id, existing.id);
       } else {
-        const createdRef = await db
-          .collection("students")
-          .add({
-            ...common,
-            importedFromExcel: true,
-            createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(),
-            createdBy: admin.uid,
-          });
+        const createdRef = await db.collection("students").add({
+          ...common,
+          importedFromExcel: true,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+          createdBy: admin.uid,
+        });
         created++;
-        await writeAuditLog(
-          request,
-          admin.uid,
-          "student.create",
-          createdRef.id,
-          createdRef.id,
-        );
+        await writeAuditLog(request, admin.uid, "student.create", createdRef.id, createdRef.id);
       }
     }
-    await writeAuditLog(
-      request,
-      admin.uid,
-      "student.bulk_import",
-      String(preview.length),
-    );
+    await writeAuditLog(request, admin.uid, "student.bulk_import", String(preview.length));
     return NextResponse.json(
       { ok: true, total: preview.length, created, updated },
       {

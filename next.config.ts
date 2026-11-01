@@ -49,6 +49,5 @@ const config: NextConfig = {
     "/api/certificates/print": ["./public/fonts/*.ttf"],
     "/api/public/report": ["./public/fonts/*.ttf"],
   },
-  experimental: { serverActions: { bodySizeLimit: "10mb" } },
 };
 export default config;

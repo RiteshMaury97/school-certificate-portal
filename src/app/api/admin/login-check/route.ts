@@ -6,13 +6,10 @@ import { NextResponse } from "next/server";
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
 import { requesterIp } from "@/server/request-origin";
-import {
-  hashRequesterIp,
-  verifyRequestAppCheck,
-  sameOrigin,
-} from "@/server/security";
+import { hashRequesterIp, verifyRequestAppCheck, sameOrigin } from "@/server/security";
+import { recordDailySecurityMetric } from "@/server/security-summary";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 const key = () => {
   const value = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
@@ -22,11 +19,20 @@ const key = () => {
 async function notifySuperadmins(email: string, count: number) {
   const admins = await db.collection("admins").where("role", "==", "superadmin").limit(10).get();
   const recipients = admins.docs.map((doc) => String(doc.get("email") ?? "")).filter(Boolean);
-  if (recipients.length) await sendMail({ to: recipients, subject: "School Portal: repeated administrator sign-in failures", text: `Repeated sign-in failures detected. Attempts: ${count}. Account: ${email}.` }).catch(() => null);
+  if (recipients.length)
+    await sendMail({
+      to: recipients,
+      subject: "School Portal: repeated administrator sign-in failures",
+      text: `Repeated sign-in failures detected. Attempts: ${count}. Account: ${email}.`,
+    }).catch(() => null);
 }
 export async function POST(request: NextRequest) {
   try {
-    if (!requesterIp(request)) return NextResponse.json({ error: "Client network information is unavailable." }, { status: 503 });
+    if (!requesterIp(request))
+      return NextResponse.json(
+        { error: "Client network information is unavailable." },
+        { status: 503 },
+      );
     await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
@@ -41,11 +47,7 @@ export async function POST(request: NextRequest) {
     )
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     const email = body.email.trim().toLowerCase();
-    const knownAdmin = await db
-      .collection("admins")
-      .where("email", "==", email)
-      .limit(1)
-      .get();
+    const knownAdmin = await db.collection("admins").where("email", "==", email).limit(1).get();
     if (knownAdmin.empty) return NextResponse.json({ locked: false });
     const emailHash = createHmac("sha256", key()).update(email).digest("hex");
     const ipHash = hashRequesterIp(request);
@@ -113,8 +115,9 @@ export async function POST(request: NextRequest) {
       },
       { merge: true },
     );
-    if (lock && Number(snap.get("count") ?? 0) < 5)
-      await notifySuperadmins(email, nextCount);
+    await recordDailySecurityMetric("failedSignIns");
+    if (lock && Number(snap.get("count") ?? 0) < 5) await recordDailySecurityMetric("lockouts");
+    if (lock && Number(snap.get("count") ?? 0) < 5) await notifySuperadmins(email, nextCount);
     return NextResponse.json({ recorded: true, locked: lock });
   } catch (error) {
     const message =

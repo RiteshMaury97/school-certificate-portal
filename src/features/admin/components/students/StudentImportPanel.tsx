@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
 
 import { normalizeAcademicSession } from "@/shared/academic-session";
+import { MAX_CSV_ROWS } from "@/shared/upload-limits";
 
 import type {
   CatalogOption,
@@ -113,9 +114,8 @@ export default function StudentImportPanel({
               Import students from Excel
             </h2>
             <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--text-muted)]">
-              Download the workbook, fill one student per row, validate it, and
-              import only when every row is correct. Certificates are added
-              afterward from the student table.
+              Download the workbook, fill one student per row, validate it, and import only when
+              every row is correct. Certificates are added afterward from the student table.
             </p>
           </div>
         </div>
@@ -141,14 +141,14 @@ export default function StudentImportPanel({
               {file ? file.name : "Choose an Excel workbook"}
             </span>
             <span className="mt-1 text-[10px] text-[var(--text-muted)]">
-              .xlsx or .csv · up to 5 MB · maximum 500 student rows
+              .xlsx or .csv · up to 2 MB · maximum {MAX_CSV_ROWS} student rows
             </span>
             <input
               id="student-excel-file"
               type="file"
               accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
               disabled={busy}
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => { setFile(event.target.files?.[0] ?? null); }}
               className="sr-only"
             />
           </label>
@@ -190,12 +190,9 @@ export default function StudentImportPanel({
         <div className="border-t border-[var(--divider)]">
           <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 sm:px-6">
             <div>
-              <h3 className="text-sm font-semibold text-[var(--text)]">
-                Validation preview
-              </h3>
+              <h3 className="text-sm font-semibold text-[var(--text)]">Validation preview</h3>
               <p className="mt-1 text-xs text-[var(--text-muted)]">
-                {preview.total} rows · {preview.valid} ready ·{" "}
-                {preview.errors.length} with errors
+                {preview.total} rows · {preview.valid} ready · {preview.errors.length} with errors
               </p>
             </div>
             {preview.valid === preview.total ? (
@@ -254,8 +251,7 @@ export default function StudentImportPanel({
                         <ul className="space-y-1 text-[var(--danger)]">
                           {row.fieldErrors.map((error, index) => (
                             <li key={`${error.column}-${index}`}>
-                              <span className="font-semibold">{error.column}:</span>{" "}
-                              {error.message}
+                              <span className="font-semibold">{error.column}:</span> {error.message}
                             </li>
                           ))}
                         </ul>

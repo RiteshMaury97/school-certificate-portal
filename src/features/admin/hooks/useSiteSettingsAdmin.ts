@@ -70,6 +70,7 @@ export function useSiteSettingsAdmin(
           adminLocationEnforcementMode,
         }),
       });
+      window.dispatchEvent(new Event("site-settings-updated"));
     });
   }
 

@@ -4,14 +4,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 
-import type { SubmitEvent} from "react";
+import type { SubmitEvent } from "react";
 
 function validPhone(value: string): boolean {
   const normalized = value.trim();
   const digits = normalized.replace(/\D/g, "");
   return /^[+\d().\s-]+$/.test(normalized) && digits.length >= 8 && digits.length <= 15;
 }
-
 
 export default function ReportWrongRecordModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
@@ -39,17 +38,30 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       .then(async (response) => {
         if (!response.ok) throw new Error("sessions");
         const data: unknown = await response.json();
-        if (typeof data !== "object" || data === null || !("sessions" in data) || !Array.isArray(data.sessions))
+        if (
+          typeof data !== "object" ||
+          data === null ||
+          !("sessions" in data) ||
+          !Array.isArray(data.sessions)
+        )
           throw new Error("sessions");
-        const values = data.sessions.filter((value): value is string => typeof value === "string" && /^\d{4}-\d{2}$/.test(value));
+        const values = data.sessions.filter(
+          (value): value is string => typeof value === "string" && /^\d{4}-\d{2}$/.test(value),
+        );
         if (active) {
           setSessions(values);
           setSession(values[0] ?? "");
         }
       })
-      .catch(() => { if (active) setSessionsError(true); })
-      .finally(() => { if (active) setSessionsLoading(false); });
-    return () => { active = false; };
+      .catch(() => {
+        if (active) setSessionsError(true);
+      })
+      .finally(() => {
+        if (active) setSessionsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
   useEffect(() => {
     const dialog = document.querySelector<HTMLElement>("[role=dialog]");
@@ -75,7 +87,9 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       }
     };
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("keydown", onKey); };
+    return () => {
+      document.removeEventListener("keydown", onKey);
+    };
   }, [onClose]);
   useEffect(() => {
     if (!siteKey || !captcha.current) {
@@ -92,7 +106,9 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             setToken(value);
             setCaptchaError(false);
           },
-          "expired-callback": () => { setToken(""); },
+          "expired-callback": () => {
+            setToken("");
+          },
           "error-callback": () => {
             setToken("");
             setCaptchaError(true);
@@ -113,7 +129,9 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       script.async = true;
       script.defer = true;
       script.onload = render;
-      script.onerror = () => { setCaptchaError(true); };
+      script.onerror = () => {
+        setCaptchaError(true);
+      };
       document.head.appendChild(script);
     }
     return () => {
@@ -215,6 +233,12 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             <p className="mt-2 text-xs text-[var(--text)]">
               {"Keep this ID for future communication with the school."}
             </p>
+            <Link
+              href={`/report-status?reference=${encodeURIComponent(reference)}`}
+              className="mt-3 inline-block text-sm font-semibold underline"
+            >
+              Check report status
+            </Link>
             <button
               onClick={onClose}
               className="mt-4 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)]"
@@ -245,7 +269,9 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 minLength={2}
                 maxLength={100}
                 value={name}
-                onChange={(e) => { setName(e.target.value); }}
+                onChange={(e) => {
+                  setName(e.target.value);
+                }}
                 className="mt-1 w-full rounded-lg border p-3"
                 placeholder={"Name as in school records"}
               />
@@ -257,16 +283,30 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 required
                 value={session}
                 disabled={sessionsLoading || sessionsError || sessions.length === 0}
-                onChange={(e) => { setSession(e.target.value); }}
+                onChange={(e) => {
+                  setSession(e.target.value);
+                }}
                 className="mt-1 w-full rounded-lg border p-3"
               >
                 <option value="" disabled>
                   {sessionsLoading ? "Loading sessions…" : "Select a passing session"}
                 </option>
-                {sessions.map((value) => <option key={value} value={value}>{value}</option>)}
+                {sessions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
               </select>
-              {sessionsError && <span role="alert" className="mt-1 block text-xs font-normal text-[var(--danger)]">Sessions could not be loaded. Close and reopen the report form to retry.</span>}
-              {!sessionsLoading && !sessionsError && sessions.length === 0 && <span role="alert" className="mt-1 block text-xs font-normal text-[var(--danger)]">No passing sessions are currently available.</span>}
+              {sessionsError && (
+                <span role="alert" className="mt-1 block text-xs font-normal text-[var(--danger)]">
+                  Sessions could not be loaded. Close and reopen the report form to retry.
+                </span>
+              )}
+              {!sessionsLoading && !sessionsError && sessions.length === 0 && (
+                <span role="alert" className="mt-1 block text-xs font-normal text-[var(--danger)]">
+                  No passing sessions are currently available.
+                </span>
+              )}
             </label>
             <label className="block text-sm font-semibold">
               {"What is wrong?"}
@@ -277,7 +317,9 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 maxLength={2000}
                 rows={4}
                 value={issue}
-                onChange={(e) => { setIssue(e.target.value); }}
+                onChange={(e) => {
+                  setIssue(e.target.value);
+                }}
                 className="mt-1 w-full rounded-lg border p-3"
                 placeholder={"Describe the incorrect detail or certificate issue"}
               />
@@ -286,16 +328,38 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               <legend className="px-1 text-sm font-semibold">Preferred contact method</legend>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] p-3 text-sm">
-                  <input type="radio" name="contact-method" checked={contactMethod === "email"} onChange={() => { setContactMethod("email"); setContact(""); setPhoneOptIn(false); setPhoneNumber(""); }} />
+                  <input
+                    type="radio"
+                    name="contact-method"
+                    checked={contactMethod === "email"}
+                    onChange={() => {
+                      setContactMethod("email");
+                      setContact("");
+                      setPhoneOptIn(false);
+                      setPhoneNumber("");
+                    }}
+                  />
                   Email required
                 </label>
                 <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] p-3 text-sm">
-                  <input type="radio" name="contact-method" checked={contactMethod === "phone"} onChange={() => { setContactMethod("phone"); setContact(""); setPhoneOptIn(false); setPhoneNumber(""); }} />
+                  <input
+                    type="radio"
+                    name="contact-method"
+                    checked={contactMethod === "phone"}
+                    onChange={() => {
+                      setContactMethod("phone");
+                      setContact("");
+                      setPhoneOptIn(false);
+                      setPhoneNumber("");
+                    }}
+                  />
                   Phone required
                 </label>
               </div>
               <label className="block text-sm font-semibold">
-                {contactMethod === "email" ? "Contact email (required)" : "Contact phone (required)"}
+                {contactMethod === "email"
+                  ? "Contact email (required)"
+                  : "Contact phone (required)"}
                 <input
                   translate="no"
                   required
@@ -303,7 +367,9 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                   inputMode={contactMethod === "email" ? "email" : "tel"}
                   maxLength={contactMethod === "email" ? 254 : 24}
                   value={contact}
-                  onChange={(e) => { setContact(e.target.value); }}
+                  onChange={(e) => {
+                    setContact(e.target.value);
+                  }}
                   className="mt-1 w-full rounded-lg border p-3"
                   placeholder={contactMethod === "email" ? "name@example.com" : "+91 98765 43210"}
                 />
@@ -311,18 +377,31 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               {contactMethod === "email" && (
                 <div>
                   <label className="flex items-start gap-2 text-sm leading-5">
-                    <input type="checkbox" checked={phoneOptIn} onChange={(e) => { setPhoneOptIn(e.target.checked); if (!e.target.checked) setPhoneNumber(""); }} className="mt-1" />
+                    <input
+                      type="checkbox"
+                      checked={phoneOptIn}
+                      onChange={(e) => {
+                        setPhoneOptIn(e.target.checked);
+                        if (!e.target.checked) setPhoneNumber("");
+                      }}
+                      className="mt-1"
+                    />
                     <span>Opt in to optional phone follow-up</span>
                   </label>
                   {phoneOptIn && (
                     <label className="mt-2 block text-sm font-semibold">
-                      Phone number <span className="font-normal text-[var(--text-muted)]">(optional follow-up, required when opted in)</span>
+                      Phone number{" "}
+                      <span className="font-normal text-[var(--text-muted)]">
+                        (optional follow-up, required when opted in)
+                      </span>
                       <input
                         type="tel"
                         inputMode="tel"
                         maxLength={24}
                         value={phoneNumber}
-                        onChange={(e) => { setPhoneNumber(e.target.value); }}
+                        onChange={(e) => {
+                          setPhoneNumber(e.target.value);
+                        }}
                         className="mt-1 w-full rounded-lg border p-3"
                         placeholder="+91 98765 43210"
                         required={phoneOptIn}
@@ -331,7 +410,10 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                   )}
                 </div>
               )}
-              <p className="text-xs font-normal text-[var(--text-muted)]">Phone numbers must contain 8 to 15 digits. Choose phone contact to make the phone number mandatory.</p>
+              <p className="text-xs font-normal text-[var(--text-muted)]">
+                Phone numbers must contain 8 to 15 digits. Choose phone contact to make the phone
+                number mandatory.
+              </p>
             </fieldset>
             <label className="flex items-start gap-2 text-sm leading-5">
               <input
@@ -339,7 +421,9 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 type="checkbox"
                 required
                 checked={consent}
-                onChange={(e) => { setConsent(e.target.checked); }}
+                onChange={(e) => {
+                  setConsent(e.target.checked);
+                }}
                 className="mt-1"
               />
               <span>
@@ -371,7 +455,8 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               </p>
             )}
             <button
-              disabled={busy || !token || !consent} aria-busy={busy}
+              disabled={busy || !token || !consent}
+              aria-busy={busy}
               className="w-full rounded-lg bg-[var(--primary)] px-4 py-3 text-sm font-bold text-[var(--on-primary)] disabled:opacity-50"
             >
               {busy ? "Submitting…" : "Submit report"}

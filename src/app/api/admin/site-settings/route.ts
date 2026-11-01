@@ -137,31 +137,40 @@ export async function PATCH(request: NextRequest) {
         month: "long",
         year: "numeric",
       }).format(new Date());
-    await db
-      .collection("siteSettings")
-      .doc("main")
-      .set(
-        {
-          ...parsed.data,
-          adminLocationEnforcementMode:
-            parsed.data.adminLocationEnforcementMode ??
-            (process.env.NODE_ENV === "production" ? "block" : "off"),
-          includedLanguages: Array.from(
-            new Set([
-              "en",
-              ...parsed.data.includedLanguages
-                .split(",")
-                .map((code) => code.trim().toLowerCase())
-                .filter(Boolean),
-            ]),
-          ).join(","),
-          lastUpdated,
-          updatedAt: FieldValue.serverTimestamp(),
-          updatedBy: admin.uid,
-        },
-        { merge: true },
-      );
+    const settingsRef = db.collection("siteSettings").doc("main");
+    const previous = await settingsRef.get();
+    const wasLockedDown = previous.get("maintenanceMode") === true;
+    await settingsRef.set(
+      {
+        ...parsed.data,
+        adminLocationEnforcementMode:
+          parsed.data.adminLocationEnforcementMode ??
+          (process.env.NODE_ENV === "production" ? "block" : "off"),
+        includedLanguages: Array.from(
+          new Set([
+            "en",
+            ...parsed.data.includedLanguages
+              .split(",")
+              .map((code) => code.trim().toLowerCase())
+              .filter(Boolean),
+          ]),
+        ).join(","),
+        lastUpdated,
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: admin.uid,
+      },
+      { merge: true },
+    );
     await writeAuditLog(request, admin.uid, "site_settings.update", "main");
+    if (parsed.data.maintenanceMode !== wasLockedDown)
+      await writeAuditLog(
+        request,
+        admin.uid,
+        parsed.data.maintenanceMode
+          ? "admin.emergency_lockdown.enabled"
+          : "admin.emergency_lockdown.disabled",
+        "public-endpoints",
+      );
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return apiError(error);

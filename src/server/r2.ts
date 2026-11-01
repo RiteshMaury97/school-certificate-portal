@@ -12,8 +12,11 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { PDFDocument, PDFArray, PDFDict, PDFName, PDFRef } from "pdf-lib";
+import sharp from "sharp";
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+import { MAX_IMAGE_PIXELS, MAX_PDF_PAGES, UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
+
+const MAX_FILE_BYTES = UPLOAD_MAX_BYTES;
 type SupportedMimeType = "application/pdf" | "image/jpeg" | "image/png";
 
 function required(name: string): string {
@@ -70,8 +73,6 @@ function validateCertificateKey(key: string): void {
   }
 }
 
-const MAX_PDF_PAGES = 100;
-
 function isUnsafeName(value: PDFName, unsafeNames: Set<string>): boolean {
   return unsafeNames.has(value.toString());
 }
@@ -120,6 +121,8 @@ function hasUnsafePdfFeature(
 }
 
 async function validatePdf(buffer: Buffer): Promise<void> {
+  if (/\/Encrypt\b/.test(buffer.toString("latin1")))
+    throw new Error("Encrypted PDFs are not accepted.");
   let document: PDFDocument;
   try {
     document = await PDFDocument.load(buffer, {
@@ -154,6 +157,33 @@ async function validatePdf(buffer: Buffer): Promise<void> {
     throw new Error(
       "PDFs containing scripts, automatic actions or embedded attachments are not accepted.",
     );
+}
+async function validateImage(buffer: Buffer): Promise<void> {
+  const metadata = await sharp(buffer, {
+    limitInputPixels: MAX_IMAGE_PIXELS,
+    failOn: "error",
+  }).metadata();
+  if (!metadata.width || !metadata.height || metadata.width * metadata.height > MAX_IMAGE_PIXELS)
+    throw new Error("Image dimensions exceed the 40 million pixel limit.");
+}
+export async function inspectCertificateContent(
+  buffer: Buffer,
+  fileName: string,
+  declaredType: string,
+) {
+  if (buffer.length <= 0 || buffer.length > UPLOAD_MAX_BYTES)
+    throw new Error("Certificate must be between 1 byte and 4 MB");
+  const detected = detectFile(buffer);
+  const name = fileName.toLowerCase();
+  const extensionMatches =
+    detected.extension === ".jpg"
+      ? name.endsWith(".jpg") || name.endsWith(".jpeg")
+      : name.endsWith(detected.extension);
+  if (declaredType !== detected.mimeType || !extensionMatches)
+    throw new Error("File content does not match its extension and declared type");
+  if (detected.mimeType === "application/pdf") await validatePdf(buffer);
+  else await validateImage(buffer);
+  return detected;
 }
 async function scanForMalware(buffer: Buffer, mimeType: string): Promise<void> {
   const endpoint = process.env.ANTIVIRUS_SCAN_URL;
@@ -202,14 +232,11 @@ export async function uploadCertificate(
   studentId?: string,
 ): Promise<R2Upload> {
   if (file.size <= 0 || file.size > MAX_FILE_BYTES)
-    throw new Error("Certificate must be between 1 byte and 5 MB");
+    throw new Error("Certificate must be between 1 byte and 4 MB");
   validateSession(session);
   const buffer = Buffer.from(await file.arrayBuffer());
   if (buffer.byteLength !== file.size) throw new Error("File size validation failed");
-  const detected = detectFile(buffer);
-  if (file.type && file.type !== detected.mimeType)
-    throw new Error("File content does not match its declared type");
-  if (detected.mimeType === "application/pdf") await validatePdf(buffer);
+  const detected = await inspectCertificateContent(buffer, file.name, file.type);
   await scanForMalware(buffer, detected.mimeType);
   const slug = certificateTypeSlug(certificateType);
   const r2Key = `certificates/${session}/${slug}/${randomUUID()}${detected.extension}`;
@@ -316,6 +343,20 @@ export async function purgeStudentR2Objects(
     await purgeStudentPrefix(context, prefix, counts);
   }
   return counts;
+}
+
+export async function getR2StorageBytes(): Promise<number> {
+  const s3 = client();
+  let total = 0;
+  let token: string | undefined;
+  do {
+    const page = await s3.send(
+      new ListObjectsV2Command({ Bucket: bucket(), ContinuationToken: token, MaxKeys: 1000 }),
+    );
+    total += (page.Contents ?? []).reduce((sum, item) => sum + (item.Size ?? 0), 0);
+    token = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (token);
+  return total;
 }
 
 type PurgeCounts = {

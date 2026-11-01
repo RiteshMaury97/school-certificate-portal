@@ -1,0 +1,5 @@
+Contact: mailto:security@sischool.in
+Expires: 2027-11-02T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://sischool.in/.well-known/security.txt
+Policy: https://sischool.in/privacy

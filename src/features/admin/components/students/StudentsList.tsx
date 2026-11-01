@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
 import { FilePlus2, Search, ShieldCheck, UsersRound, X } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
 
 import EmptyState from "@/components/feedback/EmptyState";
 import { appCheckHeaders } from "@/lib/firebase-client";
+import { UPLOAD_LIMITS_HELP } from "@/shared/upload-limits";
 
-import DuplicateHashWarning from "../shared/DuplicateHashWarning";
 import { csrf } from "../../utils/admin-helpers";
+import DuplicateHashWarning from "../shared/DuplicateHashWarning";
 
 import type { CatalogOption } from "../../types/admin-state.types";
 import type { Role, Student, Tab } from "../../types/admin.types";
@@ -20,12 +21,7 @@ type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
 
 type StudentForm = Pick<
   Student,
-  | "studentName"
-  | "fatherName"
-  | "motherName"
-  | "className"
-  | "scholarNumber"
-  | "session"
+  "studentName" | "fatherName" | "motherName" | "className" | "scholarNumber" | "session"
 > & {
   admissionNumber: string;
   dateOfBirth: string;
@@ -114,9 +110,7 @@ export default function StudentsList({
   const [editForm, setEditForm] = useState<StudentForm | null>(null);
   const [history, setHistory] = useState<Record<string, unknown>[]>([]);
   const [editMessage, setEditMessage] = useState("");
-  const [certificateStudent, setCertificateStudent] = useState<Student | null>(
-    null,
-  );
+  const [certificateStudent, setCertificateStudent] = useState<Student | null>(null);
   const [certificate, setCertificate] = useState(certificateDefaults);
   const [certificateFile, setCertificateFile] = useState<File | null>(null);
   const [certificateError, setCertificateError] = useState("");
@@ -128,11 +122,19 @@ export default function StudentsList({
   const [uploadingCertificate, setUploadingCertificate] = useState(false);
 
   const classNames = useMemo(
-    () => choices(classOptions, students.map((student) => student.className)),
+    () =>
+      choices(
+        classOptions,
+        students.map((student) => student.className),
+      ),
     [classOptions, students],
   );
   const sessionNames = useMemo(
-    () => choices(sessionOptions, students.map((student) => student.session)),
+    () =>
+      choices(
+        sessionOptions,
+        students.map((student) => student.session),
+      ),
     [sessionOptions, students],
   );
   const filtered = useMemo(() => {
@@ -192,9 +194,7 @@ export default function StudentsList({
       );
       setHistory(result.events ?? []);
     } catch (error) {
-      setEditMessage(
-        error instanceof Error ? error.message : "Unable to load change history.",
-      );
+      setEditMessage(error instanceof Error ? error.message : "Unable to load change history.");
     }
   }
 
@@ -221,9 +221,7 @@ export default function StudentsList({
           : current,
       );
     } catch (error) {
-      setEditMessage(
-        error instanceof Error ? error.message : "Unable to save student details.",
-      );
+      setEditMessage(error instanceof Error ? error.message : "Unable to save student details.");
     } finally {
       setSavingEdit(false);
     }
@@ -260,9 +258,7 @@ export default function StudentsList({
         throw new Error("The certificate service returned an invalid response.");
       if (!response.ok) {
         const message =
-          typeof result.error === "string"
-            ? result.error
-            : "Certificate upload failed.";
+          typeof result.error === "string" ? result.error : "Certificate upload failed.";
         if (result.duplicateFileWarning === true) setCertificateWarning(message);
         throw new Error(message);
       }
@@ -270,9 +266,7 @@ export default function StudentsList({
       closeCertificateDialog();
       setNotice(`Certificate added to ${certificateStudent.studentName}.`);
     } catch (error) {
-      setCertificateError(
-        error instanceof Error ? error.message : "Certificate upload failed.",
-      );
+      setCertificateError(error instanceof Error ? error.message : "Certificate upload failed.");
     } finally {
       setUploadingCertificate(false);
     }
@@ -289,9 +283,7 @@ export default function StudentsList({
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
               Student records
             </p>
-            <h2 className="mt-1 text-lg font-semibold text-[var(--text)]">
-              Student register
-            </h2>
+            <h2 className="mt-1 text-lg font-semibold text-[var(--text)]">Student register</h2>
             <p className="mt-1 text-xs text-[var(--text-muted)]">
               {filtered.length} of {students.length} students
             </p>
@@ -407,9 +399,7 @@ export default function StudentsList({
                   key={student.id}
                   className="border-t border-[var(--divider)] transition hover:bg-[var(--surface-2)]"
                 >
-                  <td className={`${cellClass} font-semibold`}>
-                    {student.studentName}
-                  </td>
+                  <td className={`${cellClass} font-semibold`}>{student.studentName}</td>
                   <td className={cellClass}>{student.fatherName}</td>
                   <td className={cellClass}>{student.motherName}</td>
                   <td className={cellClass}>{student.scholarNumber || "—"}</td>
@@ -478,14 +468,14 @@ export default function StudentsList({
       {visible.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--divider)] px-5 py-3 text-xs">
           <span className="text-[var(--text-muted)]">
-            Showing {page * 15 + 1}–{Math.min((page + 1) * 15, filtered.length)}{" "}
-            of {filtered.length} students
+            Showing {page * 15 + 1}–{Math.min((page + 1) * 15, filtered.length)} of{" "}
+            {filtered.length} students
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={page === 0}
-              onClick={() => setPage((value) => value - 1)}
+              onClick={() => { setPage((value) => value - 1); }}
               className="min-h-8 rounded-md border border-[var(--divider)] px-2.5 disabled:opacity-40"
             >
               Previous
@@ -496,7 +486,7 @@ export default function StudentsList({
             <button
               type="button"
               disabled={page + 1 >= pageCount}
-              onClick={() => setPage((value) => value + 1)}
+              onClick={() => { setPage((value) => value + 1); }}
               className="min-h-8 rounded-md border border-[var(--divider)] px-2.5 disabled:opacity-40"
             >
               Next
@@ -512,12 +502,10 @@ export default function StudentsList({
           className="mt-0.5 shrink-0 text-[var(--primary)]"
         />
         <div>
-          <p className="text-xs font-semibold text-[var(--text)]">
-            Protected student records
-          </p>
+          <p className="text-xs font-semibold text-[var(--text)]">Protected student records</p>
           <p className="mt-1 text-[10px] leading-4 text-[var(--text-muted)]">
-            Only authorized administrators can view or manage student
-            information. Changes are logged.
+            Only authorized administrators can view or manage student information. Changes are
+            logged.
           </p>
         </div>
       </div>
@@ -548,7 +536,7 @@ export default function StudentsList({
               <button
                 type="button"
                 aria-label="Close edit student dialog"
-                onClick={() => setEditing(null)}
+                onClick={() => { setEditing(null); }}
                 className="rounded-lg p-2 hover:bg-[var(--surface-2)]"
               >
                 <X size={18} aria-hidden="true" />
@@ -572,9 +560,7 @@ export default function StudentsList({
                     value={editForm[key]}
                     onChange={(event) => {
                       setEditForm((current) =>
-                        current
-                          ? { ...current, [key]: event.target.value }
-                          : current,
+                        current ? { ...current, [key]: event.target.value } : current,
                       );
                     }}
                     className={controlClass}
@@ -584,7 +570,7 @@ export default function StudentsList({
               <div className="flex justify-end gap-2 sm:col-span-2">
                 <button
                   type="button"
-                  onClick={() => setEditing(null)}
+                  onClick={() => { setEditing(null); }}
                   className="min-h-10 rounded-lg border border-[var(--divider)] px-4 text-sm"
                 >
                   Close
@@ -614,11 +600,8 @@ export default function StudentsList({
                         ? ` · ${new Date(String(item.timestamp)).toLocaleString()}`
                         : ""}
                       {item.actor ? ` · ${String(item.actor)}` : ""}
-                      {Array.isArray(item.changedFields) &&
-                      item.changedFields.length > 0 ? (
-                        <p className="mt-1">
-                          Changed: {item.changedFields.map(String).join(", ")}
-                        </p>
+                      {Array.isArray(item.changedFields) && item.changedFields.length > 0 ? (
+                        <p className="mt-1">Changed: {item.changedFields.map(String).join(", ")}</p>
                       ) : null}
                     </li>
                   ))}
@@ -657,15 +640,11 @@ export default function StudentsList({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
                   Student record
                 </p>
-                <h2
-                  id="add-certificate-title"
-                  className="mt-1 text-xl font-semibold"
-                >
+                <h2 id="add-certificate-title" className="mt-1 text-xl font-semibold">
                   Add certificate
                 </h2>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">
-                  {certificateStudent.studentName} · Class{" "}
-                  {certificateStudent.className} · Session{" "}
+                  {certificateStudent.studentName} · Class {certificateStudent.className} · Session{" "}
                   {certificateStudent.session}
                 </p>
               </div>
@@ -678,10 +657,7 @@ export default function StudentsList({
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
-            <form
-              onSubmit={(event) => void addCertificate(event)}
-              className="mt-5 space-y-4"
-            >
+            <form onSubmit={(event) => void addCertificate(event)} className="mt-5 space-y-4">
               <label
                 htmlFor="student-certificate-type"
                 className="grid gap-1.5 text-sm font-medium"
@@ -757,13 +733,11 @@ export default function StudentsList({
                   type="file"
                   required
                   accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(event) =>
-                    setCertificateFile(event.target.files?.[0] ?? null)
-                  }
+                  onChange={(event) => { setCertificateFile(event.target.files?.[0] ?? null); }}
                   className={controlClass}
                 />
                 <span className="text-[10px] font-normal text-[var(--text-muted)]">
-                  PDF, JPG or PNG · up to 5 MB
+                  {UPLOAD_LIMITS_HELP}
                 </span>
               </label>
               <DuplicateHashWarning
@@ -775,7 +749,10 @@ export default function StudentsList({
                 className="rounded-lg border-2 border-[var(--text)] bg-[var(--surface-2)] p-4"
               />
               {certificateError && (
-                <p role="alert" className="rounded-lg bg-[var(--surface-2)] p-3 text-sm text-[var(--danger)]">
+                <p
+                  role="alert"
+                  className="rounded-lg bg-[var(--surface-2)] p-3 text-sm text-[var(--danger)]"
+                >
                   {certificateError}
                 </p>
               )}

@@ -15,6 +15,7 @@ service-account*.json
 
 # tooling output
 *.log
+firebase-debug.log
 *.tsbuildinfo
 coverage
 playwright-report

@@ -11,19 +11,18 @@ import {
   DuplicateCertificateNumberError,
   removeCertificateNumberIndex,
 } from "@/server/certificate-index";
-import {
-  encryptCertificateNumber,
-  decryptCertificateNumber,
-} from "@/server/certificate-number";
+import { encryptCertificateNumber, decryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
 import { uploadCertificate, certificateTypeSlug } from "@/server/r2";
 import { softDeleteR2Object } from "@/server/r2";
 import { requireRoles, writeAuditLog, apiError } from "@/server/security";
+import { consumeAdminUploadQuota, rejectOversizedRequest } from "@/server/upload-policy";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
+import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
 import { certificateUploadMetadataSchema } from "@/shared/validation";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,10 +54,7 @@ async function findDuplicateCertificate(
 ) {
   const fileBytes = Buffer.from(await file.arrayBuffer());
   const sha256 = createHash("sha256").update(fileBytes).digest("hex");
-  const sameHash = await db
-    .collection("certificates")
-    .where("sha256", "==", sha256)
-    .get();
+  const sameHash = await db.collection("certificates").where("sha256", "==", sha256).get();
   const decision = duplicateFileDecision(
     sameHash.docs.map((document) => ({
       studentId: safeDocumentValue(document, "studentId"),
@@ -74,8 +70,7 @@ async function findDuplicateCertificate(
       reason,
       response: NextResponse.json(
         {
-          error:
-            "An identical file already exists for this student and certificate type.",
+          error: "An identical file already exists for this student and certificate type.",
         },
         { status: 409 },
       ),
@@ -184,14 +179,7 @@ export async function GET(request: NextRequest) {
     const collection = db.collection("certificates");
     const query = studentId
       ? collection.where("studentId", "==", studentId)
-      : status &&
-          [
-            "pending",
-            "published",
-            "superseded",
-            "revoked",
-            "rejected",
-          ].includes(status)
+      : status && ["pending", "published", "superseded", "revoked", "rejected"].includes(status)
         ? collection.where("status", "==", status)
         : collection.orderBy("createdAt", "desc");
     const snap = await query.limit(200).get();
@@ -199,11 +187,7 @@ export async function GET(request: NextRequest) {
       (doc) => !status || safeDocumentValue(doc, "status") === status,
     );
     const studentIds = [
-      ...new Set(
-        selected
-          .map((doc) => documentString(doc, "studentId"))
-          .filter(Boolean),
-      ),
+      ...new Set(selected.map((doc) => documentString(doc, "studentId")).filter(Boolean)),
     ];
     const studentDocs = await Promise.all(
       studentIds.map((id) => db.collection("students").doc(id).get()),
@@ -241,8 +225,7 @@ export async function GET(request: NextRequest) {
           size: safeDocumentValue(doc, "size"),
           status: safeDocumentValue(doc, "status") ?? "pending",
           downloadCount: Number(safeDocumentValue(doc, "downloadCount") ?? 0),
-          lastDownloadedAt:
-            documentTimestampIso(doc, "lastDownloadedAt"),
+          lastDownloadedAt: documentTimestampIso(doc, "lastDownloadedAt"),
           uploadedBy: safeDocumentValue(doc, "uploadedBy"),
           replacesId: safeDocumentValue(doc, "replacesId") ?? null,
           supersededBy: safeDocumentValue(doc, "supersededBy") ?? null,
@@ -258,29 +241,21 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireRoles(request, ["uploader", "admin", "superadmin"]);
+    const tooLarge = rejectOversizedRequest(request);
+    if (tooLarge) return tooLarge;
     const form = await request.formData();
     const parsed = certificateUploadMetadataSchema.safeParse({
       studentId: formString(form, "studentId"),
-      session:
-        normalizeAcademicSession(formString(form, "session")) ??
-        formString(form, "session"),
+      session: normalizeAcademicSession(formString(form, "session")) ?? formString(form, "session"),
       type: formString(form, "certificateType"),
       certificateNumber: formString(form, "certificateNumber"),
       issueDate: formString(form, "issuedAt"),
     });
     if (!parsed.success)
-      return NextResponse.json(
-        { error: "Invalid certificate metadata." },
-        { status: 400 },
-      );
-    const { studentId, session, type, certificateNumber, issueDate } =
-      parsed.data;
+      return NextResponse.json({ error: "Invalid certificate metadata." }, { status: 400 });
+    const { studentId, session, type, certificateNumber, issueDate } = parsed.data;
     const student = await db.collection("students").doc(studentId).get();
-    if (!student.exists)
-      return NextResponse.json(
-        { error: "Student not found." },
-        { status: 404 },
-      );
+    if (!student.exists) return NextResponse.json({ error: "Student not found." }, { status: 404 });
     if (
       normalizeAcademicSession(documentString(student, "session")) !==
       normalizeAcademicSession(session)
@@ -293,11 +268,7 @@ export async function POST(request: NextRequest) {
       findAcademicSessionDocument(session),
       db.collection("certificateTypes").doc(certificateTypeSlug(type)).get(),
     ]);
-    if (
-      !sessionDoc.exists ||
-      sessionDoc.get("isActive") === false ||
-      !typeDoc.exists
-    ) {
+    if (!sessionDoc.exists || sessionDoc.get("isActive") === false || !typeDoc.exists) {
       return NextResponse.json(
         { error: "Select an active session and configured certificate type." },
         { status: 400 },
@@ -305,15 +276,14 @@ export async function POST(request: NextRequest) {
     }
     const file = form.get("file");
     if (!(file instanceof File))
+      return NextResponse.json({ error: "Select one finished certificate file." }, { status: 400 });
+    if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
       return NextResponse.json(
-        { error: "Select one finished certificate file." },
-        { status: 400 },
-      );
-    if (file.size <= 0 || file.size > 5 * 1024 * 1024)
-      return NextResponse.json(
-        { error: "Certificate must be no larger than 5 MB." },
+        { error: "Certificate must be no larger than 4 MB." },
         { status: 413 },
       );
+    const quotaError = await consumeAdminUploadQuota(admin.uid, file.size);
+    if (quotaError) return NextResponse.json({ error: quotaError }, { status: 429 });
     const duplicate = await findDuplicateCertificate(file, studentId, type, form);
     if (duplicate.response) return duplicate.response;
     return await storeCertificateRecord(

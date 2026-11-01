@@ -1,4 +1,3 @@
-
 import { randomUUID, createHash } from "node:crypto";
 
 import { FieldValue } from "firebase-admin/firestore";
@@ -28,11 +27,13 @@ import {
   studentIdentifierHmac,
   studentIdentityMatches,
 } from "@/server/student-pii";
+import { consumeAdminUploadQuota, rejectOversizedRequest } from "@/server/upload-policy";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
+import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
 import { normalize, studentCreateSchema } from "@/shared/validation";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,18 +49,12 @@ export async function POST(request: NextRequest) {
     const admin = await requireRoles(request, ["uploader", "admin", "superadmin"]);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
-    const contentLength = Number(request.headers.get("content-length") ?? 0);
-    if (contentLength > 6 * 1024 * 1024)
-      return NextResponse.json(
-        { error: "Upload exceeds the 5 MB file limit." },
-        { status: 413 },
-      );
+    const tooLarge = rejectOversizedRequest(request);
+    if (tooLarge) return tooLarge;
     const form = await request.formData();
     const payload = {
       admissionNo: formString(form, "admissionNo").trim(),
-      admissionNumber: String(
-        form.get("admissionNumber") ?? form.get("admissionNo") ?? "",
-      ).trim(),
+      admissionNumber: String(form.get("admissionNumber") ?? form.get("admissionNo") ?? "").trim(),
       dateOfBirth: formString(form, "dateOfBirth").trim(),
       studentName: formString(form, "studentName"),
       fatherName: formString(form, "fatherName"),
@@ -92,7 +87,8 @@ export async function POST(request: NextRequest) {
             const field = String(issue.path[0] ?? "Form");
             return `${labels[field] ?? field}: ${issue.message}`;
           });
-      if (!(file instanceof File)) problems.push("Certificate file: select a valid PDF, JPG or PNG.");
+      if (!(file instanceof File))
+        problems.push("Certificate file: select a valid PDF, JPG or PNG.");
       return NextResponse.json(
         {
           error: problems.length
@@ -102,13 +98,17 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+    if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
+      return NextResponse.json(
+        { error: "Certificate must be no larger than 4 MB." },
+        { status: 413 },
+      );
+    const quotaError = await consumeAdminUploadQuota(admin.uid, file.size);
+    if (quotaError) return NextResponse.json({ error: quotaError }, { status: 429 });
     const data = parsed.data;
-    const parentEmail = formString(form, "parentEmail")
-      .trim()
-      .toLowerCase();
+    const parentEmail = formString(form, "parentEmail").trim().toLowerCase();
     const parentMobile = formString(form, "parentMobile").trim();
-    const notificationConsent =
-      formString(form, "notificationConsent") === "true";
+    const notificationConsent = formString(form, "notificationConsent") === "true";
     if (
       (notificationConsent && !parentEmail && !parentMobile) ||
       ((parentEmail || parentMobile) &&
@@ -118,45 +118,32 @@ export async function POST(request: NextRequest) {
     )
       return NextResponse.json(
         {
-          error:
-            "A valid parent contact and explicit notification consent are required.",
+          error: "A valid parent contact and explicit notification consent are required.",
         },
         { status: 400 },
       );
     const searchKey = createSearchKey(data);
-    const scholarLookupKey = scholarLookupHmac(
-      data.scholarNumber,
-      data.className,
-      data.session,
-    );
+    const scholarLookupKey = scholarLookupHmac(data.scholarNumber, data.className, data.session);
     const scholarMatches = await db
       .collection("students")
       .where("scholarLookupKey", "==", scholarLookupKey)
       .get();
-    if (
-      scholarMatches.docs.some((document) => document.get("searchKey") !== searchKey)
-    )
+    if (scholarMatches.docs.some((document) => document.get("searchKey") !== searchKey))
       return NextResponse.json(
         { error: "That scholar number is already assigned in this class and session." },
         { status: 409 },
       );
-    const matching = await db
-      .collection("students")
-      .where("searchKey", "==", searchKey)
-      .get();
+    const matching = await db.collection("students").where("searchKey", "==", searchKey).get();
     const dateOfBirth = data.dateOfBirth || "";
     const admissionNumber = data.admissionNumber || "";
-    const dateOfBirthDisambiguationKey = dateOfBirth
-      ? studentIdentifierHmac(dateOfBirth)
-      : "";
+    const dateOfBirthDisambiguationKey = dateOfBirth ? studentIdentifierHmac(dateOfBirth) : "";
     const admissionNumberDisambiguationKey = admissionNumber
       ? studentIdentifierHmac(admissionNumber)
       : "";
     const duplicateCombination = !matching.empty;
     const existingDuplicateNeedsIdentity = matching.docs.some(
       (doc) =>
-        !doc.get("dateOfBirthDisambiguationKey") &&
-        !doc.get("admissionNumberDisambiguationKey"),
+        !doc.get("dateOfBirthDisambiguationKey") && !doc.get("admissionNumberDisambiguationKey"),
     );
     if (
       duplicateCombination &&
@@ -192,17 +179,10 @@ export async function POST(request: NextRequest) {
       : db.collection("students").doc(randomUUID());
     const typeSlug = slugify(data.certificateType);
     if (!typeSlug)
-      return NextResponse.json(
-        { error: "Invalid certificate type." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid certificate type." }, { status: 400 });
     const sessionDoc = await findAcademicSessionDocument(data.session);
     const typeDoc = await db.collection("certificateTypes").doc(typeSlug).get();
-    if (
-      !sessionDoc.exists ||
-      sessionDoc.get("isActive") === false ||
-      !typeDoc.exists
-    ) {
+    if (!sessionDoc.exists || sessionDoc.get("isActive") === false || !typeDoc.exists) {
       return NextResponse.json(
         { error: "Select an active session and configured certificate type." },
         { status: 400 },
@@ -211,10 +191,7 @@ export async function POST(request: NextRequest) {
     const fileHash = createHash("sha256")
       .update(Buffer.from(await file.arrayBuffer()))
       .digest("hex");
-    const sameHash = await db
-      .collection("certificates")
-      .where("sha256", "==", fileHash)
-      .get();
+    const sameHash = await db.collection("certificates").where("sha256", "==", fileHash).get();
     const duplicateDecision = duplicateFileDecision(
       sameHash.docs.map((doc) => ({
         studentId: doc.get("studentId"),
@@ -226,16 +203,12 @@ export async function POST(request: NextRequest) {
     if (duplicateDecision === "block-same-student-type")
       return NextResponse.json(
         {
-          error:
-            "An identical file already exists for this student and certificate type.",
+          error: "An identical file already exists for this student and certificate type.",
         },
         { status: 409 },
       );
-    const duplicateHashConfirmed =
-      formString(form, "confirmDuplicateHash") === "true";
-    const duplicateHashReason = String(
-      form.get("duplicateHashReason") ?? "",
-    ).trim();
+    const duplicateHashConfirmed = formString(form, "confirmDuplicateHash") === "true";
+    const duplicateHashReason = String(form.get("duplicateHashReason") ?? "").trim();
     if (
       duplicateDecision === "warn-cross-record" &&
       (!duplicateHashConfirmed || duplicateHashReason.length < 10)
@@ -248,15 +221,8 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 },
       );
-    const certificateNumberEncrypted = encryptCertificateNumber(
-      data.certificateNumber,
-    );
-    const stored = await uploadCertificate(
-      file,
-      data.session,
-      data.certificateType,
-      studentRef.id,
-    );
+    const certificateNumberEncrypted = encryptCertificateNumber(data.certificateNumber);
+    const stored = await uploadCertificate(file, data.session, data.certificateType, studentRef.id);
     const now = FieldValue.serverTimestamp();
     try {
       if (!reuseExisting) {
@@ -330,11 +296,7 @@ export async function POST(request: NextRequest) {
       }
       const certificateRef = db.collection("certificates").doc(randomUUID());
       try {
-        await createCertificateNumberIndex(
-          data.certificateNumber,
-          certificateRef.id,
-          data.session,
-        );
+        await createCertificateNumberIndex(data.certificateNumber, certificateRef.id, data.session);
         await certificateRef.set({
           publicId: randomUUID().replace(/-/g, ""),
           studentId: studentRef.id,
@@ -360,16 +322,17 @@ export async function POST(request: NextRequest) {
               }),
         });
       } catch (error) {
-        await removeCertificateNumberIndex(certificateRef.id).catch(() => { console.error("Certificate index cleanup failed"); },
-        );
-        await softDeleteR2Object(stored.r2Key, studentRef.id).catch(() => { console.error("Orphan R2 cleanup failed"); },
-        );
+        await removeCertificateNumberIndex(certificateRef.id).catch(() => {
+          console.error("Certificate index cleanup failed");
+        });
+        await softDeleteR2Object(stored.r2Key, studentRef.id).catch(() => {
+          console.error("Orphan R2 cleanup failed");
+        });
         if (error instanceof DuplicateCertificateNumberError) {
           if (!reuseExisting)
-            await studentRef
-              .delete()
-              .catch(() => { console.error("Empty student record cleanup failed"); },
-              );
+            await studentRef.delete().catch(() => {
+              console.error("Empty student record cleanup failed");
+            });
           return NextResponse.json(
             { error: "That certificate number is already assigned." },
             { status: 409 },
@@ -403,27 +366,16 @@ export async function POST(request: NextRequest) {
           studentRef.id,
         );
       if (!reuseExisting)
-        await writeAuditLog(
-          request,
-          admin.uid,
-          "student.create",
-          studentRef.id,
-          studentRef.id,
-        );
+        await writeAuditLog(request, admin.uid, "student.create", studentRef.id, studentRef.id);
       if (notificationConsent)
-        await db
-          .collection("notificationConsents")
-          .add({
-            studentId: studentRef.id,
-            consentGiven: true,
-            purpose: "certificate_availability",
-            contactChannels: [
-              parentEmail ? "email" : "",
-              parentMobile ? "sms" : "",
-            ].filter(Boolean),
-            timestamp: now,
-            collectedBy: admin.uid,
-          });
+        await db.collection("notificationConsents").add({
+          studentId: studentRef.id,
+          consentGiven: true,
+          purpose: "certificate_availability",
+          contactChannels: [parentEmail ? "email" : "", parentMobile ? "sms" : ""].filter(Boolean),
+          timestamp: now,
+          collectedBy: admin.uid,
+        });
     } catch (error) {
       console.error(
         "Certificate metadata persistence failed; orphaned R2 object cleanup may be required",
