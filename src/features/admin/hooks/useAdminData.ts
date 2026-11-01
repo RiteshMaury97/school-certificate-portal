@@ -29,9 +29,8 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
       const d = await api<{ certificates: Cert[] }>("/api/admin/certificates?status=pending");
       setPending((d.certificates ?? []).filter((x) => x.status === "pending"));
     }
-    if (tab === "students") {
-      const [_, sessions, types, classes] = await Promise.all([
-        loadStudents(),
+    if (tab === "students" || tab === "studentImport" || tab === "studentAdd") {
+      const [sessions, types, classes] = await Promise.all([
         api<{ items: { id: string; label?: string; name?: string }[] }>(
           "/api/admin/catalog/sessions",
         ),
@@ -42,6 +41,7 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
           "/api/admin/catalog/classes",
         ),
       ]);
+      if (tab !== "studentAdd") await loadStudents();
       setSessionOptions(sessions.items ?? []);
       setTypeOptions(types.items ?? []);
       setClassOptions(classes.items ?? []);

@@ -10,7 +10,6 @@ type AdminMobileNavProps = {
   role: Role;
   tab: Tab;
   setTab: (tab: Tab) => void;
-  setPage: (page: number) => void;
   mobileAdminNav: boolean;
   setMobileAdminNav: Dispatch<SetStateAction<boolean>>;
 };
@@ -19,7 +18,6 @@ export default function AdminMobileNav({
   role,
   tab,
   setTab,
-  setPage,
   mobileAdminNav,
   setMobileAdminNav,
 }: AdminMobileNavProps) {
@@ -31,7 +29,6 @@ export default function AdminMobileNav({
             key={t}
             onClick={() => {
               setTab(t);
-              setPage(0);
             }}
             className={`flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold capitalize focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] ${tab === t ? "bg-[var(--primary)] text-[var(--on-primary)]" : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"}`}
             aria-label={tabLabels[t]}
@@ -76,7 +73,6 @@ export default function AdminMobileNav({
                   type="button"
                   onClick={() => {
                     setTab(item);
-                    setPage(0);
                     setMobileAdminNav(false);
                   }}
                   className={`flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold capitalize ${tab === item ? "bg-[var(--primary)] text-[var(--on-primary)]" : "text-[var(--text)] hover:bg-[var(--surface-2)]"}`}

@@ -7,6 +7,7 @@ import { useEffect } from "react";
 
 import SiteShell from "@/components/layout/SiteShell";
 import { useCertificateFlow } from "@/features/certificates/CertificateFlowProvider";
+import FeedbackWidget from "@/features/feedback/FeedbackWidget";
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -66,6 +67,7 @@ export default function ResultsPage() {
             <div className="mt-6 flex items-start gap-3 rounded-xl bg-[var(--surface-2)] p-4"><ShieldCheck size={18} className="mt-0.5 shrink-0 text-[var(--primary)]" /><p className="text-xs leading-5 text-[var(--text-muted)]">This private page is tied to your verified search and expires shortly. Downloaded files include a light watermark for record security.</p></div>
           </div>
         </section>
+        <FeedbackWidget />
       </main>
     </SiteShell>
   );

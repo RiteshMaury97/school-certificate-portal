@@ -10,12 +10,11 @@ import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
 import SiteShell from "@/components/layout/SiteShell";
 import { useCertificateFlow } from "@/features/certificates/CertificateFlowProvider";
-import FeedbackWidget from "@/features/feedback/FeedbackWidget";
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { studentLookupSchema } from "@/shared/validation";
 
-import type { StudentResult } from "@/types";
 import type { SubmitEvent} from "react";
+import type { StudentResult } from "@/types";
 
 const formSchema = z.object({
   studentName: z
@@ -52,18 +51,6 @@ type FormValues = {
 };
 type SessionResponse = { sessions: string[] };
 
-function formatDate(value: string | null): string {
-  if (!value) return "Not specified";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "Not specified"
-    : new Intl.DateTimeFormat("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }).format(date);
-}
-
 export default function FinderPage() {
   const router = useRouter();
   const { setResult: shareResult } = useCertificateFlow();
@@ -97,7 +84,6 @@ export default function FinderPage() {
   const [networkError, setNetworkError] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
-  const [zipLoading, setZipLoading] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<keyof FormValues, boolean>>>({});
   const fieldErrors: Partial<Record<keyof FormValues, string | undefined>> = {
     studentName:
@@ -216,41 +202,6 @@ export default function FinderPage() {
     }
     setForm((current) => ({ ...current, [field]: value }));
   }
-  async function downloadAllAsZip() {
-    if (!result || zipLoading) return;
-    if (result.certificates.length > 20) {
-      setError(
-        "ZIP downloads support up to 20 certificates at a time. Download the remaining certificates individually.",
-      );
-      return;
-    }
-    setZipLoading(true);
-    try {
-      const ids = result.certificates.map((c) => c.certId).join(",");
-      const response = await fetch(
-        `/api/certificates/bundle?token=${encodeURIComponent(result.accessToken)}&ids=${encodeURIComponent(ids)}`,
-        { cache: "no-store" },
-      );
-      if (!response.ok)
-        throw new Error("The ZIP could not be prepared. Please search again and retry.");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = "school-certificates.zip";
-      anchor.click();
-      window.setTimeout(() => { URL.revokeObjectURL(url); }, 1000);
-    } catch (downloadError) {
-      setError(
-        downloadError instanceof Error
-          ? downloadError.message
-          : "Unable to create the ZIP archive.",
-      );
-    } finally {
-      setZipLoading(false);
-    }
-  }
-
   useEffect(() => {
     const shouldNoIndex = Boolean(result || notFound);
     let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
@@ -292,6 +243,7 @@ export default function FinderPage() {
       return;
     }
     setLoading(true);
+    let navigatingToResults = false;
     try {
       const payload = challengeToken
         ? { challengeToken, disambiguationValue: disambiguationValue.trim() }
@@ -327,6 +279,7 @@ export default function FinderPage() {
       } else if ("found" in data && data.found === true) {
         setResult(data as unknown as StudentResult);
         shareResult(data as unknown as StudentResult);
+        navigatingToResults = true;
         router.push("/certificates/results");
         setChallengeToken("");
         setDisambiguationValue("");
@@ -341,13 +294,9 @@ export default function FinderPage() {
       if (widgetId.current && window.turnstile) window.turnstile.reset(widgetId.current);
       setCaptchaToken("");
     } finally {
-      setLoading(false);
+      if (!navigatingToResults) setLoading(false);
     }
   }
-
-  const printUrl = result
-    ? `/api/certificates/print?token=${encodeURIComponent(result.accessToken)}&ids=${encodeURIComponent(result.certificates.map((c) => c.certId).join(","))}`
-    : "";
 
   return (
     <SiteShell>
@@ -742,7 +691,15 @@ export default function FinderPage() {
               } aria-busy={loading}
               className="mt-6 min-h-12 w-full rounded-lg bg-[var(--primary)] px-5 py-3 text-sm font-bold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Searching records…" : "Find My Certificates"}
+              {loading ? (
+                <span className="inline-flex items-center justify-center gap-2">
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4Z" />
+                  </svg>
+                  Searching records…
+                </span>
+              ) : "Find My Certificates"}
             </button>
             <p className="mt-3 text-center text-xs leading-5 text-[var(--text-muted)]">
               Your information is used only to verify and retrieve the relevant school records.
@@ -777,7 +734,13 @@ export default function FinderPage() {
             aria-live="polite"
             className="mt-7 space-y-3"
           >
-            <div className="h-6 w-48 animate-pulse rounded bg-[var(--surface-2)]" />
+            <div className="flex items-center gap-3" role="status">
+              <svg className="h-5 w-5 animate-spin text-[var(--primary)]" viewBox="0 0 24 24" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4Z" />
+              </svg>
+              <span className="text-sm font-semibold text-[var(--text-muted)]">Searching the school records…</span>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {[0, 1].map((item) => (
                 <div
@@ -821,126 +784,6 @@ export default function FinderPage() {
             {error}
           </div>
         )}
-        {result && !loading && (
-          <section
-            aria-live="polite"
-            translate="no"
-            className="notranslate mt-8"
-            id="certificate-results"
-          >
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--text-muted)]">
-                  {"Search results"}
-                </p>
-                <h2 className="mt-1 text-2xl font-bold text-[var(--text)]">
-                  {"Your certificates"}
-                </h2>
-                <p className="mt-1 text-sm text-[var(--text-muted)]">
-                  {result.studentName} · Passing session {result.session}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-semibold text-[var(--text-muted)]">
-                  {result.certificates.length} {"found"}
-                </span>
-                <button
-                  type="button"
-                  onClick={downloadAllAsZip}
-                  disabled={zipLoading || result.certificates.length === 0} aria-busy={zipLoading}
-                  className="rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-semibold text-[var(--on-primary)] disabled:opacity-50"
-                >
-                  {zipLoading ? "Preparing ZIP…" : "Download all (ZIP)"}
-                </button>
-                <a
-                  href={printUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold text-[var(--text-muted)]"
-                >
-                  {"Print all"}
-                </a>
-              </div>
-            </div>
-            {result.certificates.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-10 text-center">
-                <p className="font-semibold text-[var(--text-muted)]">
-                  No record found. Check the details and try again.
-                </p>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {result.certificates.map((certificate) => (
-                  <article
-                    key={certificate.certId}
-                    className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] print:break-inside-avoid print:border-[var(--border)] print:shadow-none"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        aria-hidden="true"
-                        className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--surface-2)] text-[var(--text)]"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-5 w-5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.7"
-                        >
-                          <path d="M7 3.75h7l4 4v12.5H7a2 2 0 0 1-2-2v-12.5a2 2 0 0 1 2-2Z" />
-                          <path d="M14 3.75v4h4M8.5 13h7M8.5 16.5h7" />
-                        </svg>
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-bold leading-5 text-[var(--text)]">
-                          {certificate.title}
-                        </h3>
-                        <p className="mt-1 text-xs text-[var(--text-muted)]">{certificate.type}</p>
-                      </div>
-                    </div>
-                    <dl className="mt-5 grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
-                      <div>
-                        <dt className="text-xs text-[var(--text-muted)]">{"Session"}</dt>
-                        <dd className="mt-0.5 font-semibold text-[var(--text-muted)]">
-                          {certificate.session}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-[var(--text-muted)]">{"Issue date"}</dt>
-                        <dd className="mt-0.5 font-semibold text-[var(--text-muted)]">
-                          {formatDate(certificate.issueDate)}
-                        </dd>
-                      </div>
-                      <div className="col-span-2">
-                        <dt className="text-xs text-[var(--text-muted)]">{"Certificate number"}</dt>
-                        <dd className="mt-0.5 break-all font-semibold text-[var(--text-muted)]">
-                          {certificate.certificateNumber}
-                        </dd>
-                      </div>
-                    </dl>
-                    <div className="mt-auto flex flex-wrap gap-2 pt-5">
-                      <a
-                        href={`/api/certificates/${encodeURIComponent(certificate.certId)}/file?token=${encodeURIComponent(result.accessToken)}&mode=view`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold text-[var(--text-muted)] transition hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-                      >
-                        {"View"}
-                      </a>
-                      <a
-                        href={`/api/certificates/${encodeURIComponent(certificate.certId)}/file?token=${encodeURIComponent(result.accessToken)}`}
-                        className="inline-flex min-h-10 flex-1 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
-                      >
-                        {"Download"}
-                      </a>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-        {result && !loading && <FeedbackWidget />}
       </section>
     </SiteShell>
   );

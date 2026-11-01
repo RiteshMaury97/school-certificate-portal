@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
           fatherName: doc.get("fatherName"),
           motherName: doc.get("motherName"),
           session: doc.get("session"),
+          importedFromExcel: doc.get("importedFromExcel") === true,
           certificateCount: certs.size,
         };
       }),

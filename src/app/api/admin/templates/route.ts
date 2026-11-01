@@ -1,4 +1,4 @@
-import ExcelJS from "exceljs";
+import ExcelJS, { type DataValidation } from "exceljs";
 import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
@@ -20,7 +20,7 @@ const headers = [
 ];
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["uploader", "admin"]);
+    await requireRoles(request, ["uploader", "admin", "superadmin"]);
     const format = request.nextUrl.searchParams.get("format") ?? "csv";
     const [classesSnapshot, sessionsSnapshot] = await Promise.all([
       db.collection("classes").get(),
@@ -84,6 +84,9 @@ export async function GET(request: NextRequest) {
       );
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Student Data");
+    const sheetWithValidations = sheet as typeof sheet & {
+      dataValidations: { add: (range: string, validation: DataValidation) => void };
+    };
     sheet.views = [{ state: "frozen", ySplit: 1 }];
     sheet.addRow(headers);
     sheet.getRow(1).font = { bold: true };
@@ -119,7 +122,7 @@ export async function GET(request: NextRequest) {
         `'Allowed Values'!$A$2:$A$${classes.length + 1}`,
         "ClassNames",
       );
-      sheet.dataValidations.add("E2:E501", {
+      sheetWithValidations.dataValidations.add("E2:E501", {
         type: "list",
         allowBlank: false,
         formulae: ["ClassNames"],
@@ -133,7 +136,7 @@ export async function GET(request: NextRequest) {
         `'Allowed Values'!$C$2:$C$${sessions.length + 1}`,
         "AcademicSessions",
       );
-      sheet.dataValidations.add("F2:F501", {
+      sheetWithValidations.dataValidations.add("F2:F501", {
         type: "list",
         allowBlank: false,
         formulae: ["AcademicSessions"],

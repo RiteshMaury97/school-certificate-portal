@@ -39,7 +39,8 @@ export default function ReportsTab({ reports, loaded, reportNotes, setReportNote
               </div>
               <p className="mt-2 text-sm"><b>{displayValue(report.name)}</b> · {displayValue(report.session)}</p>
               <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--text)]">{displayValue(report.issue)}</p>
-              <p className="mt-2 text-xs text-[var(--text-muted)]">Contact: {displayValue(report.contact)} · Created: {displayValue(report.createdAt)}</p>
+              <p className="mt-2 text-xs text-[var(--text-muted)]">Preferred contact ({displayValue(report.contactMethod, "email")}): {displayValue(report.contact)} · Created: {displayValue(report.createdAt)}</p>
+              {report.phoneOptIn === true && typeof report.phoneNumber === "string" && <p className="mt-1 text-xs text-[var(--text-muted)]">Opted-in phone follow-up: {report.phoneNumber}</p>}
               <textarea
                 translate="no"
                 value={reportNotes[id] ?? displayValue(report.adminNote)}

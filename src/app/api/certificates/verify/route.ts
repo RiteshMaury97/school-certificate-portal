@@ -22,12 +22,7 @@ export const dynamic = "force-dynamic";
 
 const inputSchema = z.object({
   certificateNumber: z.string().trim().min(1).max(80),
-  session: z
-    .string()
-    .trim()
-    .regex(/^\d{4}-\d{2}$/)
-    .optional()
-    .or(z.literal("")),
+  session: z.string().trim().regex(/^\d{4}-\d{2}$/),
   turnstileToken: z.string().min(1).max(4096),
 });
 const failed = { valid: false, message: "No matching certificate found" };
@@ -37,6 +32,7 @@ type VerificationResponse =
       valid: true;
       message: "Valid certificate";
       certificateType: string;
+      certificateNumber: string;
       session: string;
       issueDate: string;
       schoolName: string;
@@ -138,7 +134,7 @@ export async function POST(request: NextRequest) {
       return response(failed);
     }
     const indexedSession = String(index.get("session") ?? "");
-    if (input.session && input.session !== indexedSession) {
+    if (input.session !== indexedSession) {
       await audit(request, "no_match");
       await delayFailedLookup();
       return response(failed);
@@ -211,6 +207,7 @@ export async function POST(request: NextRequest) {
       valid: true,
       message: "Valid certificate",
       certificateType,
+      certificateNumber: input.certificateNumber,
       session,
       issueDate,
       schoolName:

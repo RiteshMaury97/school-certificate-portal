@@ -99,6 +99,11 @@ export function useAdminSignIn() {
     if (!pendingUser) throw new Error("Your sign-in session expired. Sign in again.");
     const idToken = await pendingUser.getIdToken();
     const { response, data } = await requestJson("/api/admin/otp/send", { idToken });
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("Retry-After"));
+      if (Number.isFinite(retryAfter) && retryAfter > 0)
+        setResendAfterSeconds(Math.ceil(retryAfter));
+    }
     if (!response.ok) throw new Error(message(data) ?? "Could not resend the sign-in code.");
     if (typeof data !== "object" || data === null || !("challengeId" in data) || typeof data.challengeId !== "string") throw new Error("Could not start email verification.");
     setChallengeId(data.challengeId);

@@ -261,6 +261,14 @@ export async function POST(request: NextRequest) {
   }
 }
 export async function GET(request: NextRequest) {
+  // A missing cookie is the normal signed-out state (especially on /admin/login).
+  // Return it before App Check so the login screen does not wait on a client
+  // attestation round trip just to learn that there is no session to verify.
+  if (!request.cookies.get(COOKIE)?.value)
+    return NextResponse.json(
+      { authenticated: false },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   try {
     await verifyRequestAppCheck(request);
   } catch {

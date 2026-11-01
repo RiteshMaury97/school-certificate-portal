@@ -3,6 +3,8 @@ import {
   UserRound,
   LayoutDashboard,
   Users,
+  UserPlus,
+  FileSpreadsheet,
   FileCheck2,
   ClipboardCheck,
   CalendarDays,
@@ -10,7 +12,6 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
-  Database,
   FileText,
   History,
   LockKeyhole,
@@ -24,6 +25,8 @@ export const tabIcons = {
   dashboard: LayoutDashboard,
   approvals: ClipboardCheck,
   students: Users,
+  studentImport: FileSpreadsheet,
+  studentAdd: UserPlus,
   certificates: FileCheck2,
   catalog: CalendarDays,
   audit: ScrollText,
@@ -35,7 +38,6 @@ export const tabIcons = {
   branding: Settings,
   announcement: Bell,
   faqs: FileText,
-  retention: Database,
   contacts: Mail,
   profile: ContactRound,
 } satisfies Record<Tab, typeof LayoutDashboard>;
@@ -43,6 +45,8 @@ export const tabs: Tab[] = [
   "dashboard",
   "approvals",
   "students",
+  "studentImport",
+  "studentAdd",
   "certificates",
   "catalog",
   "audit",
@@ -55,7 +59,6 @@ export const tabs: Tab[] = [
   "branding",
   "announcement",
   "faqs",
-  "retention",
   "profile",
 ];
 
@@ -63,6 +66,8 @@ export const tabRoutes: Record<Tab, string> = {
   dashboard: "/admin",
   approvals: "/admin/approvals",
   students: "/admin/students",
+  studentImport: "/admin/students/import",
+  studentAdd: "/admin/students/add",
   certificates: "/admin/certificates",
   catalog: "/admin/sessions",
   audit: "/admin/audit",
@@ -75,7 +80,6 @@ export const tabRoutes: Record<Tab, string> = {
   branding: "/admin/settings",
   announcement: "/admin/announcements",
   faqs: "/admin/faqs",
-  retention: "/admin/backup",
   profile: "/admin/profile",
 };
 
@@ -83,6 +87,8 @@ export const tabLabels: Record<Tab, string> = {
   dashboard: "Overview",
   approvals: "Pending Approvals",
   students: "Students",
+  studentImport: "Import Students",
+  studentAdd: "Add Student",
   certificates: "Certificates",
   catalog: "School Catalog",
   audit: "Audit",
@@ -95,6 +101,5 @@ export const tabLabels: Record<Tab, string> = {
   branding: "Site Branding",
   announcement: "Announcements",
   faqs: "FAQ Editor",
-  retention: "Retention Review",
   profile: "My Profile",
 };

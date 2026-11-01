@@ -29,7 +29,16 @@ type SessionBody = {
   error?: string;
 };
 
-async function fetchSession(): Promise<AdminSessionState> {
+let sessionRequest: Promise<AdminSessionState> | null = null;
+
+function fetchSession(): Promise<AdminSessionState> {
+  sessionRequest ??= readSession().finally(() => {
+    sessionRequest = null;
+  });
+  return sessionRequest;
+}
+
+async function readSession(): Promise<AdminSessionState> {
   try {
     const response = await fetch("/api/admin/session", {
       cache: "no-store",
@@ -37,7 +46,8 @@ async function fetchSession(): Promise<AdminSessionState> {
       headers: await appCheckHeaders(),
     });
     const body = (await response.json().catch(() => ({}))) as SessionBody;
-    if (response.status === 401) return { status: "unauthenticated" };
+    if (response.status === 401 || (response.ok && body.authenticated === false))
+      return { status: "unauthenticated" };
     if (!response.ok || !body.authenticated || !body.uid || !body.email || !body.role)
       return {
         status: "error",

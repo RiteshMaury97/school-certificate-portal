@@ -64,7 +64,7 @@ type ImportData = {
   className: string;
   scholarNumber: string;
   session: string;
-  admissionNo?: string;
+  admissionNo: string;
 };
 type ImportCellError = { column: string; message: string };
 type PreviewRow = {
@@ -110,7 +110,7 @@ function cellText(cell: Cell): string {
     "formula" in cell.value
   )
     return "";
-  return cell.text.trim();
+  return cell.text;
 }
 
 async function importRows(file: File): Promise<SourceRow[]> {
@@ -124,7 +124,7 @@ async function importRows(file: File): Promise<SourceRow[]> {
     throw new Error("Choose an Excel .xlsx file or a CSV file.");
 
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(Buffer.from(await file.arrayBuffer()));
+  await workbook.xlsx.load(await file.arrayBuffer());
   const worksheet =
     workbook.getWorksheet("Student Data") ?? workbook.worksheets[0];
   if (!worksheet) throw new Error("The Excel workbook does not contain a worksheet.");
@@ -140,7 +140,7 @@ async function importRows(file: File): Promise<SourceRow[]> {
 }
 
 function headerKey(value: string): string {
-  return value.toLowerCase().replace(/[\s_-]+/g, "");
+  return value.trim().toLowerCase().replace(/[\s_-]+/g, "");
 }
 
 function catalogLabel(
@@ -170,7 +170,7 @@ function addFieldError(
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["uploader", "admin"]);
+    const admin = await requireRoles(request, ["uploader", "admin", "superadmin"]);
     const form = await request.formData();
     const file = form.get("file");
     const action = String(form.get("action") ?? "preview");
@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
     for (const field of requiredFields)
       if (!fieldIndexes.has(field))
         headerErrors.push(`Missing required column: ${fieldLabels[field]}.`);
-    const knownHeaders = new Set(
+    const knownHeaders = new Set<string>(
       Object.values(importFields).flatMap((values) => [...values]),
     );
     for (const [index, header] of headers.entries())
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
         )
           addFieldError(
             row,
-            fieldLabels.className,
+            "className",
             activeClasses.size
               ? "Use an exact class name from the active Classes list."
               : "No active classes are configured. Add classes in the catalog first.",
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
         )
           addFieldError(
             row,
-            fieldLabels.session,
+            "session",
             activeSessions.size
               ? "Use an active session in the exact YYYY-YY format shown in the template."
               : "No active sessions are configured. Add sessions in the catalog first.",
@@ -310,14 +310,25 @@ export async function POST(request: NextRequest) {
           }
           return row;
         }
-        row.data = parsed.data;
+        const importedData: ImportData = {
+          studentName: parsed.data.studentName,
+          fatherName: parsed.data.fatherName,
+          motherName: parsed.data.motherName,
+          className: parsed.data.className,
+          scholarNumber: parsed.data.scholarNumber,
+          session: parsed.data.session,
+          admissionNumber: parsed.data.admissionNumber ?? "",
+          dateOfBirth: parsed.data.dateOfBirth ?? "",
+          admissionNo: parsed.data.admissionNo ?? "",
+        };
+        row.data = importedData;
         if (row.error) return row;
 
-        const key = createSearchKey(parsed.data);
+        const key = createSearchKey(importedData);
         const scholarKey = scholarLookupHmac(
-          parsed.data.scholarNumber,
-          parsed.data.className,
-          parsed.data.session,
+          importedData.scholarNumber,
+          importedData.className,
+          importedData.session,
         );
         const existing = await db
           .collection("students")
@@ -328,9 +339,9 @@ export async function POST(request: NextRequest) {
           .where("scholarLookupKey", "==", scholarKey)
           .get();
         const hasDisambiguator = Boolean(
-          parsed.data.dateOfBirth ||
-          parsed.data.admissionNumber ||
-          parsed.data.admissionNo,
+          importedData.dateOfBirth ||
+          importedData.admissionNumber ||
+          importedData.admissionNo,
         );
         const existingNeedsIdentity = existing.docs.some(
           (doc) =>
@@ -340,7 +351,7 @@ export async function POST(request: NextRequest) {
         if (scholarMatches.docs.some((doc) => doc.get("searchKey") !== key))
           addFieldError(
             row,
-            fieldLabels.scholarNumber,
+            "scholarNumber",
             "Already assigned to a different student in this class and session.",
           );
         if (!existing.empty && (!hasDisambiguator || existingNeedsIdentity))
@@ -392,7 +403,7 @@ export async function POST(request: NextRequest) {
         for (const row of group)
           addFieldError(
             row,
-            fieldLabels.scholarNumber,
+            "scholarNumber",
             "Repeated in this file for the same class and session.",
           );
     const errors = preview.filter((r) => r.error);
@@ -504,6 +515,7 @@ export async function POST(request: NextRequest) {
         const existing = identified[0]!;
         await existing.ref.update({
           ...common,
+          importedFromExcel: true,
           ...(admission ? { admissionNo: FieldValue.delete() } : {}),
           updatedAt: FieldValue.serverTimestamp(),
           updatedBy: admin.uid,
@@ -521,6 +533,7 @@ export async function POST(request: NextRequest) {
           .collection("students")
           .add({
             ...common,
+            importedFromExcel: true,
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
             createdBy: admin.uid,

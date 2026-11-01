@@ -17,7 +17,6 @@ import CertificatesTab from "./components/certificates/CertificatesTab";
 import BreachesTab from "./components/compliance/BreachesTab";
 import ContactEnquiriesTab from "./components/compliance/ContactEnquiriesTab";
 import ReportsTab from "./components/compliance/ReportsTab";
-import RetentionTab from "./components/compliance/RetentionTab";
 import RightsTab from "./components/compliance/RightsTab";
 import DashboardOverview from "./components/dashboard/DashboardOverview";
 import AdminHeader from "./components/layout/AdminHeader";
@@ -90,8 +89,6 @@ export default function AdminPage() {
   const [catalog, setCatalog] = useState<CatalogOption[]>([]);
   const [logs, setLogs] = useState<Record<string, unknown>[]>([]);
   const [rights, setRights] = useState<Record<string, unknown>[]>([]);
-  const [retentionRecords, setRetentionRecords] = useState<Record<string, unknown>[]>([]);
-  const [retentionRetryJobs, setRetentionRetryJobs] = useState<Record<string, unknown>[]>([]);
   const [breaches, setBreaches] = useState<Record<string, unknown>[]>([]);
   const [reports, setReports] = useState<Record<string, unknown>[]>([]);
   const [reportsLoaded, setReportsLoaded] = useState(false);
@@ -107,8 +104,6 @@ export default function AdminPage() {
   const {
     retentionYears,
     setRetentionYears,
-    retentionConfirmed,
-    setRetentionConfirmed,
     backupRotationDays,
     setBackupRotationDays,
     faqs,
@@ -170,8 +165,6 @@ export default function AdminPage() {
     notify,
     setNotify,
     loadStudents,
-    filtered,
-    visible,
     addStudent,
     removeStudent,
     uploadMany,
@@ -228,8 +221,6 @@ export default function AdminPage() {
     setCatalog,
     setLogs,
     setRights,
-    setRetentionRecords,
-    setRetentionRetryJobs,
     setBreaches,
     setReports,
     setReportsLoaded,
@@ -241,7 +232,6 @@ export default function AdminPage() {
     setAdmins,
     setMaintenanceMode,
     setRetentionYears,
-    setRetentionConfirmed,
     setBackupRotationDays,
     setBranding,
     setAnnouncement,
@@ -356,7 +346,6 @@ export default function AdminPage() {
           email={email}
           tab={tab}
           setTab={setTab}
-          setPage={setPage}
           onSettings={() => {
             router.push("/admin/settings");
           }}
@@ -388,7 +377,6 @@ export default function AdminPage() {
               role={role}
               tab={tab}
               setTab={setTab}
-              setPage={setPage}
               mobileAdminNav={mobileAdminNav}
               setMobileAdminNav={setMobileAdminNav}
             />
@@ -415,10 +403,10 @@ export default function AdminPage() {
                 stats={stats}
                 canManageStudents={role !== "approver"}
                 onAddStudent={() => {
-                  setTab("students");
+                  setTab("studentAdd");
                 }}
                 onImportRecords={() => {
-                  setTab("students");
+                  setTab("studentImport");
                 }}
               />
             )}
@@ -450,48 +438,63 @@ export default function AdminPage() {
             )}
             {tab === "students" && (
               <div className="space-y-6">
-                {role !== "approver" && (
-                  <>
-                    <StudentImportPanel
-                      busy={busy}
-                      file={studentImportFile}
-                      setFile={setStudentImportFile}
-                      preview={preview}
-                      importStudents={importStudents}
-                      downloadTemplate={downloadTemplate}
-                      classOptions={classOptions}
-                      sessionOptions={sessionOptions}
-                    />
-                    <details className="group">
-                      <summary className="cursor-pointer rounded-lg border border-[var(--divider)] bg-[var(--surface)] px-4 py-3 text-sm font-semibold text-[var(--text)]">
-                        Add a single student manually
-                      </summary>
-                      <div className="mt-4">
-                        <StudentCreatePanel
-                          form={form}
-                          setForm={setForm}
-                          sessionOptions={sessionOptions}
-                          typeOptions={typeOptions}
-                          classOptions={classOptions}
-                          files={files}
-                          setFiles={setFiles}
-                          notify={notify}
-                          setNotify={setNotify}
-                          duplicateHashWarning={duplicateHashWarning}
-                          duplicateHashAcknowledged={duplicateHashAcknowledged}
-                          duplicateHashReason={duplicateHashReason}
-                          setDuplicateHashAcknowledged={setDuplicateHashAcknowledged}
-                          setDuplicateHashReason={setDuplicateHashReason}
-                          busy={busy}
-                          addStudent={(event) => void addStudent(event)}
-                        />
-                      </div>
-                    </details>
-                  </>
-                )}
                 <StudentsList
                   role={role}
                   students={students}
+                  typeOptions={typeOptions}
+                  classOptions={classOptions}
+                  sessionOptions={sessionOptions}
+                  setTimelineStudentId={setTimelineStudentId}
+                  setTab={setTab}
+                  api={api}
+                  loadStudents={loadStudents}
+                  removeStudent={removeStudent}
+                />
+              </div>
+            )}
+            {tab === "studentAdd" && role !== "approver" && (
+              <section className="mx-auto max-w-5xl space-y-5">
+                <div className="rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-5 sm:p-6">
+                  <Link href="/admin/students" className="text-xs font-semibold text-[var(--primary)] hover:underline">← Back to students</Link>
+                  <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">Student register</p>
+                  <h2 className="mt-1 text-2xl font-bold text-[var(--text)]">Add a student manually</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">Create one student record and attach the first certificate. To add a whole class, use the separate Excel import page.</p>
+                </div>
+                <StudentCreatePanel
+                  form={form}
+                  setForm={setForm}
+                  sessionOptions={sessionOptions}
+                  typeOptions={typeOptions}
+                  classOptions={classOptions}
+                  files={files}
+                  setFiles={setFiles}
+                  notify={notify}
+                  setNotify={setNotify}
+                  duplicateHashWarning={duplicateHashWarning}
+                  duplicateHashAcknowledged={duplicateHashAcknowledged}
+                  duplicateHashReason={duplicateHashReason}
+                  setDuplicateHashAcknowledged={setDuplicateHashAcknowledged}
+                  setDuplicateHashReason={setDuplicateHashReason}
+                  busy={busy}
+                  addStudent={(event) => void addStudent(event)}
+                />
+              </section>
+            )}
+            {tab === "studentImport" && role !== "approver" && (
+              <div className="space-y-6">
+                <StudentImportPanel
+                  busy={busy}
+                  file={studentImportFile}
+                  setFile={setStudentImportFile}
+                  preview={preview}
+                  importStudents={importStudents}
+                  downloadTemplate={downloadTemplate}
+                  classOptions={classOptions}
+                  sessionOptions={sessionOptions}
+                />
+                <StudentsList
+                  role={role}
+                  students={students.filter((student) => student.importedFromExcel === true)}
                   typeOptions={typeOptions}
                   classOptions={classOptions}
                   sessionOptions={sessionOptions}
@@ -598,8 +601,6 @@ export default function AdminPage() {
                 setBranding={setBranding}
                 retentionYears={retentionYears}
                 setRetentionYears={setRetentionYears}
-                retentionConfirmed={retentionConfirmed}
-                setRetentionConfirmed={setRetentionConfirmed}
                 backupRotationDays={backupRotationDays}
                 setBackupRotationDays={setBackupRotationDays}
                 maintenanceMode={maintenanceMode}
@@ -621,15 +622,6 @@ export default function AdminPage() {
                   }}
                 />
               )}
-            {tab === "retention" && role === "superadmin" && (
-              <RetentionTab
-                retentionRecords={retentionRecords}
-                retentionRetryJobs={retentionRetryJobs}
-                act={act}
-                api={api}
-                load={load}
-              />
-            )}
             {tab === "reports" && (
               <ReportsTab
                 reports={reports}

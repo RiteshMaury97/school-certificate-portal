@@ -6,13 +6,24 @@ import { appCheckHeaders } from "@/lib/firebase-client";
 
 import type { SubmitEvent} from "react";
 
+function validPhone(value: string): boolean {
+  const normalized = value.trim();
+  const digits = normalized.replace(/\D/g, "");
+  return /^[+\d().\s-]+$/.test(normalized) && digits.length >= 8 && digits.length <= 15;
+}
 
 
 export default function ReportWrongRecordModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [session, setSession] = useState("");
+  const [sessions, setSessions] = useState<string[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState(false);
   const [issue, setIssue] = useState("");
   const [contact, setContact] = useState("");
+  const [contactMethod, setContactMethod] = useState<"email" | "phone">("email");
+  const [phoneOptIn, setPhoneOptIn] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [consent, setConsent] = useState(false);
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
@@ -23,6 +34,24 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
   const widget = useRef<string | null>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   useEffect(() => {
+    let active = true;
+    fetch("/api/public/sessions", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("sessions");
+        const data: unknown = await response.json();
+        if (typeof data !== "object" || data === null || !("sessions" in data) || !Array.isArray(data.sessions))
+          throw new Error("sessions");
+        const values = data.sessions.filter((value): value is string => typeof value === "string" && /^\d{4}-\d{2}$/.test(value));
+        if (active) {
+          setSessions(values);
+          setSession(values[0] ?? "");
+        }
+      })
+      .catch(() => { if (active) setSessionsError(true); })
+      .finally(() => { if (active) setSessionsLoading(false); });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
     const dialog = document.querySelector<HTMLElement>("[role=dialog]");
     const first = dialog?.querySelector<HTMLElement>("button,input,textarea");
     first?.focus();
@@ -31,7 +60,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       if (event.key === "Tab" && dialog) {
         const nodes = Array.from(
           dialog.querySelectorAll<HTMLElement>(
-            "button,input,textarea,[href],[tabindex]:not([tabindex='-1'])",
+            "button,input,select,textarea,[href],[tabindex]:not([tabindex='-1'])",
           ),
         ).filter((el) => !el.hasAttribute("disabled"));
         const firstNode = nodes[0],
@@ -96,6 +125,18 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    if (!sessions.includes(session)) {
+      setError("Select a valid passing session.");
+      return;
+    }
+    if (contactMethod === "phone" && !validPhone(contact)) {
+      setError("Enter a valid phone number with 8 to 15 digits.");
+      return;
+    }
+    if (phoneOptIn && !validPhone(phoneNumber)) {
+      setError("Enter a valid phone number or turn off phone follow-up.");
+      return;
+    }
     if (!consent || !token) {
       setError("Please provide consent and complete security verification.");
       return;
@@ -113,6 +154,9 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
           session,
           issue,
           contact,
+          contactMethod,
+          phoneOptIn,
+          ...(phoneOptIn ? { phoneNumber } : {}),
           consent,
           turnstileToken: token,
         }),
@@ -208,15 +252,21 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             </label>
             <label className="block text-sm font-semibold">
               {"Passing session"}
-              <input
+              <select
                 translate="no"
                 required
-                pattern="\d{4}-\d{2}"
                 value={session}
+                disabled={sessionsLoading || sessionsError || sessions.length === 0}
                 onChange={(e) => { setSession(e.target.value); }}
                 className="mt-1 w-full rounded-lg border p-3"
-                placeholder={"2023-24"}
-              />
+              >
+                <option value="" disabled>
+                  {sessionsLoading ? "Loading sessions…" : "Select a passing session"}
+                </option>
+                {sessions.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+              {sessionsError && <span role="alert" className="mt-1 block text-xs font-normal text-[var(--danger)]">Sessions could not be loaded. Close and reopen the report form to retry.</span>}
+              {!sessionsLoading && !sessionsError && sessions.length === 0 && <span role="alert" className="mt-1 block text-xs font-normal text-[var(--danger)]">No passing sessions are currently available.</span>}
             </label>
             <label className="block text-sm font-semibold">
               {"What is wrong?"}
@@ -232,18 +282,57 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 placeholder={"Describe the incorrect detail or certificate issue"}
               />
             </label>
-            <label className="block text-sm font-semibold">
-              {"Contact email or phone"}
-              <input
-                translate="no"
-                required
-                maxLength={254}
-                value={contact}
-                onChange={(e) => { setContact(e.target.value); }}
-                className="mt-1 w-full rounded-lg border p-3"
-                placeholder={"How can the school contact you?"}
-              />
-            </label>
+            <fieldset className="space-y-3 rounded-xl border border-[var(--border)] p-3">
+              <legend className="px-1 text-sm font-semibold">Preferred contact method</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] p-3 text-sm">
+                  <input type="radio" name="contact-method" checked={contactMethod === "email"} onChange={() => { setContactMethod("email"); setContact(""); setPhoneOptIn(false); setPhoneNumber(""); }} />
+                  Email required
+                </label>
+                <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] p-3 text-sm">
+                  <input type="radio" name="contact-method" checked={contactMethod === "phone"} onChange={() => { setContactMethod("phone"); setContact(""); setPhoneOptIn(false); setPhoneNumber(""); }} />
+                  Phone required
+                </label>
+              </div>
+              <label className="block text-sm font-semibold">
+                {contactMethod === "email" ? "Contact email (required)" : "Contact phone (required)"}
+                <input
+                  translate="no"
+                  required
+                  type={contactMethod === "email" ? "email" : "tel"}
+                  inputMode={contactMethod === "email" ? "email" : "tel"}
+                  maxLength={contactMethod === "email" ? 254 : 24}
+                  value={contact}
+                  onChange={(e) => { setContact(e.target.value); }}
+                  className="mt-1 w-full rounded-lg border p-3"
+                  placeholder={contactMethod === "email" ? "name@example.com" : "+91 98765 43210"}
+                />
+              </label>
+              {contactMethod === "email" && (
+                <div>
+                  <label className="flex items-start gap-2 text-sm leading-5">
+                    <input type="checkbox" checked={phoneOptIn} onChange={(e) => { setPhoneOptIn(e.target.checked); if (!e.target.checked) setPhoneNumber(""); }} className="mt-1" />
+                    <span>Opt in to optional phone follow-up</span>
+                  </label>
+                  {phoneOptIn && (
+                    <label className="mt-2 block text-sm font-semibold">
+                      Phone number <span className="font-normal text-[var(--text-muted)]">(optional follow-up, required when opted in)</span>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        maxLength={24}
+                        value={phoneNumber}
+                        onChange={(e) => { setPhoneNumber(e.target.value); }}
+                        className="mt-1 w-full rounded-lg border p-3"
+                        placeholder="+91 98765 43210"
+                        required={phoneOptIn}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+              <p className="text-xs font-normal text-[var(--text-muted)]">Phone numbers must contain 8 to 15 digits. Choose phone contact to make the phone number mandatory.</p>
+            </fieldset>
             <label className="flex items-start gap-2 text-sm leading-5">
               <input
                 translate="no"

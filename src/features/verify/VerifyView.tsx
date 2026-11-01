@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
+import { BadgeCheck, FileCheck2, Fingerprint, LoaderCircle, ShieldCheck } from "lucide-react";
 
 import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
@@ -14,6 +15,7 @@ type Verification =
       valid: true;
       message: "Valid certificate";
       certificateType: string;
+      certificateNumber: string;
       session: string;
       issueDate: string;
       schoolName: string;
@@ -129,7 +131,12 @@ export default function VerifyPage() {
     setFailed(false);
     setNetworkError(false);
     setResult(null);
-    if (!certificateNumber.trim() || certificateNumber.trim().length > 80 || !captchaToken) {
+    if (
+      !certificateNumber.trim() ||
+      certificateNumber.trim().length > 80 ||
+      !/^\d{4}-\d{2}$/.test(session.trim()) ||
+      !captchaToken
+    ) {
       setFailed(true);
       return;
     }
@@ -143,7 +150,7 @@ export default function VerifyPage() {
         },
         body: JSON.stringify({
           certificateNumber,
-          ...(session.trim() ? { session: session.trim() } : {}),
+          session: session.trim(),
           turnstileToken: captchaToken,
         }),
         cache: "no-store",
@@ -166,27 +173,31 @@ export default function VerifyPage() {
 
   return (
     <SiteShell>
-      <section className="mx-auto max-w-4xl">
-        <div className="mb-8 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-6 py-8 text-center shadow-[var(--shadow-card)] sm:px-10 sm:py-10">
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--text-muted)]">
-            {"Public certificate service"}
-          </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight text-[var(--text)] sm:text-4xl">
-            {"Verify a Certificate"}
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-[var(--text-muted)] sm:text-base">
-            Check whether a certificate number matches a certificate issued by the school.
-            Verification does not reveal or provide access to the original document.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] sm:p-8">
+      <section className="mx-auto max-w-5xl">
+        <header className="relative mb-6 overflow-hidden rounded-3xl bg-[var(--primary)] px-6 py-8 text-[var(--on-primary)] shadow-[var(--shadow-card)] sm:px-10 sm:py-10">
+          <div className="pointer-events-none absolute -right-10 -top-24 h-64 w-64 rounded-full border-[32px] border-white/5" />
+          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-2xl">
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-white/70"><ShieldCheck size={15} /> Public certificate service</p>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Verify a certificate</h1>
+              <p className="mt-3 text-sm leading-6 text-white/80 sm:text-base">Confirm that a certificate was issued by the school using its number and academic session.</p>
+            </div>
+            <div className="grid h-16 w-16 shrink-0 place-items-center self-start rounded-2xl border border-white/15 bg-white/10 sm:self-center"><FileCheck2 size={30} aria-hidden="true" /></div>
+          </div>
+          <p className="relative mt-6 border-t border-white/15 pt-4 text-xs leading-5 text-white/70">Verification confirms the certificate record. The original document and private student details are not displayed.</p>
+        </header>
+        <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] sm:p-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-[var(--text)]">Certificate details</h2>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Enter both details exactly as they appear on the certificate.</p>
+          </div>
           <form ref={formRef} onSubmit={submit} noValidate>
             <div className="grid gap-5 sm:grid-cols-2">
               <label
                 htmlFor={`${formId}-number`}
-                className="text-sm font-semibold text-[var(--text-muted)] sm:col-span-2"
+                className="text-sm font-semibold text-[var(--text)]"
               >
-                {"Certificate Number"}
+                Certificate number <span className="text-[var(--danger)]" aria-hidden="true">*</span>
                 <input
                   translate="no"
                   id={`${formId}-number`}
@@ -196,28 +207,33 @@ export default function VerifyPage() {
                   value={certificateNumber}
                   onChange={(event) => { setCertificateNumber(event.target.value); }}
                   placeholder="Enter the certificate number"
-                  className="mt-2 min-h-12 w-full rounded-lg border border-[var(--border)] px-3.5 py-3 text-base font-normal outline-none focus-visible:border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--border)]/20"
+                  aria-label="Certificate number (required)"
+                  className="mt-2 min-h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3 text-base font-normal outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
                 />
               </label>
               <label
                 htmlFor={`${formId}-session`}
-                className="text-sm font-semibold text-[var(--text-muted)] sm:col-span-2"
+                className="text-sm font-semibold text-[var(--text)]"
               >
-                Session <span className="font-normal text-[var(--text-muted)]">({"optional"})</span>
+                Academic session <span className="text-[var(--danger)]" aria-hidden="true">*</span>
                 <input
                   translate="no"
                   id={`${formId}-session`}
+                  required
                   maxLength={7}
                   pattern="\d{4}-\d{2}"
                   value={session}
                   onChange={(event) => { setSession(event.target.value); }}
                   placeholder="e.g. 2023-24"
-                  className="mt-2 min-h-12 w-full rounded-lg border border-[var(--border)] px-3.5 py-3 text-base font-normal outline-none focus-visible:border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--border)]/20"
+                  aria-label="Academic session (required, format YYYY-YY)"
+                  className="mt-2 min-h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3 text-base font-normal outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
                 />
+                <span className="mt-1 block text-xs font-normal text-[var(--text-muted)]">Required format: YYYY-YY, for example 2023-24.</span>
               </label>
             </div>
-            <div className="mt-6">
-              <p className="mb-2 text-sm font-semibold text-[var(--text-muted)]">
+            <div className="mt-6 rounded-2xl bg-[var(--surface-2)] p-4 sm:p-5">
+              <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
+                <Fingerprint size={16} aria-hidden="true" />
                 {"Security verification"}
               </p>
               <div
@@ -253,10 +269,10 @@ export default function VerifyPage() {
             </div>
             <button
               type="submit"
-              disabled={loading || !captchaReady || !captchaToken || !certificateNumber.trim()} aria-busy={loading}
-              className="mt-6 min-h-12 w-full rounded-lg bg-[var(--primary)] px-5 py-3 text-sm font-bold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={loading || !captchaReady || !captchaToken || !certificateNumber.trim() || !/^\d{4}-\d{2}$/.test(session.trim())} aria-busy={loading}
+              className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-bold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Verifying…" : "Verify Certificate"}
+              {loading ? <><LoaderCircle size={17} className="animate-spin" aria-hidden="true" /> Verifying certificate…</> : <><BadgeCheck size={17} aria-hidden="true" /> Verify certificate</>}
             </button>
           </form>
         </div>
@@ -269,15 +285,23 @@ export default function VerifyPage() {
           <section
             aria-live="polite"
             translate="no"
-            className={`notranslate mt-6 rounded-2xl border bg-[var(--surface)] p-6 shadow-sm ${result.valid ? "border-[var(--border)]" : "border-[var(--border)]"}`}
+            className={`notranslate mt-6 overflow-hidden rounded-3xl border bg-[var(--surface)] shadow-[var(--shadow-card)] ${result.valid ? "border-emerald-700/20" : "border-[var(--border)]"}`}
           >
-            <h2 className="mt-2 text-2xl font-bold text-[var(--text)]">
-              {result.valid
-                ? "Valid certificate"
-                : result.status === "superseded"
-                  ? "Certificate replaced"
-                  : "Certificate revoked"}
-            </h2>
+            <div className={`flex items-center gap-4 px-6 py-5 ${result.valid ? "bg-emerald-700/10" : "bg-[var(--surface-2)]"}`}>
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[var(--surface)] text-[var(--primary)] shadow-sm">
+                {result.valid ? <BadgeCheck size={26} /> : <ShieldCheck size={24} />}
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[.15em] text-[var(--text-muted)]">Verification result</p>
+                <h2 className="mt-1 text-xl font-bold text-[var(--text)] sm:text-2xl">
+                  {result.valid
+                    ? "Valid certificate"
+                    : result.status === "superseded"
+                      ? "Certificate replaced"
+                      : "Certificate revoked"}
+                </h2>
+              </div>
+            </div>
             {!result.valid && result.status === "superseded" && (
               <p className="mt-4 text-sm text-[var(--text)]">
                 This certificate has been replaced. New certificate number:{" "}
@@ -287,37 +311,41 @@ export default function VerifyPage() {
               </p>
             )}
             {result.valid && (
-              <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+              <dl className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
+                <div className="rounded-xl bg-[var(--surface-2)] p-4">
+                  <dt className="text-xs font-medium text-[var(--text-muted)]">Certificate number</dt>
+                  <dd className="mt-1 break-all font-semibold text-[var(--text)] notranslate" translate="no">{result.certificateNumber}</dd>
+                </div>
                 <div>
-                  <dt className="text-xs text-[var(--text-muted)]">Certificate type</dt>
+                  <dt className="text-xs font-medium text-[var(--text-muted)]">Certificate type</dt>
                   <dd className="mt-1 font-semibold text-[var(--text)]">
                     {result.certificateType}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-[var(--text-muted)]">Session</dt>
+                  <dt className="text-xs font-medium text-[var(--text-muted)]">Academic session</dt>
                   <dd className="mt-1 font-semibold text-[var(--text)]">{result.session}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-[var(--text-muted)]">Issue date</dt>
+                  <dt className="text-xs font-medium text-[var(--text-muted)]">Issue date</dt>
                   <dd className="mt-1 font-semibold text-[var(--text)]">
                     {displayDate(result.issueDate)}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-[var(--text-muted)]">School</dt>
+                  <dt className="text-xs font-medium text-[var(--text-muted)]">School</dt>
                   <dd className="mt-1 font-semibold text-[var(--text)]">{result.schoolName}</dd>
                 </div>
                 <div className="sm:col-span-2">
-                  <dt className="text-xs text-[var(--text-muted)]">Student</dt>
+                  <dt className="text-xs font-medium text-[var(--text-muted)]">Student identity</dt>
                   <dd className="mt-1 font-semibold text-[var(--text)] notranslate" translate="no">
-                    {result.studentName}
+                    {result.studentName} <span className="ml-1 text-xs font-normal text-[var(--text-muted)]">(partially hidden for privacy)</span>
                   </dd>
                 </div>
               </dl>
             )}
             {result.valid && (
-              <p className="mt-5 border-t border-[var(--border)] pt-4 text-xs text-[var(--text-muted)]">
+              <p className="mx-5 mb-5 border-t border-[var(--border)] pt-4 text-xs text-[var(--text-muted)] sm:mx-6">
                 Verified on{" "}
                 {new Intl.DateTimeFormat("en-IN", {
                   dateStyle: "medium",

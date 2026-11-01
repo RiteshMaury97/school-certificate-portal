@@ -223,6 +223,7 @@ export default function StudentImportPanel({
                     "Class",
                     "Session",
                     "Admission no.",
+                    "Date of birth",
                     "Validation",
                   ].map((heading) => (
                     <th key={heading} scope="col" className={tableCell}>
@@ -247,6 +248,7 @@ export default function StudentImportPanel({
                     <td className={tableCell}>{rowValue(row, "className") || "—"}</td>
                     <td className={tableCell}>{rowValue(row, "session") || "—"}</td>
                     <td className={tableCell}>{rowValue(row, "admissionNumber") || "—"}</td>
+                    <td className={tableCell}>{rowValue(row, "dateOfBirth") || "—"}</td>
                     <td className={`${tableCell} max-w-80`}>
                       {row.fieldErrors.length ? (
                         <ul className="space-y-1 text-[var(--danger)]">

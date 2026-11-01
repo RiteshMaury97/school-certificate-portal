@@ -12,7 +12,6 @@ type AdminSidebarProps = {
   email: string;
   tab: Tab;
   setTab: (tab: Tab) => void;
-  setPage: (page: number) => void;
   onSettings: () => void;
   onSystemHealth: () => void;
   onLoadSessions: () => void;
@@ -23,7 +22,6 @@ export default function AdminSidebar({
   email,
   tab,
   setTab,
-  setPage,
   onSettings,
   onSystemHealth,
   onLoadSessions,
@@ -55,7 +53,6 @@ export default function AdminSidebar({
               type="button"
               onClick={() => {
                 setTab(t);
-                setPage(0);
               }}
               aria-current={tab === t ? "page" : undefined}
               className={`sis-admin-nav-item ${tab === t ? "is-active" : ""}`}

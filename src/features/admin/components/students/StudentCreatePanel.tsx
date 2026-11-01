@@ -73,8 +73,8 @@ export default function StudentCreatePanel(props: Props) {
             Add one student and certificate
           </h2>
           <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-            Use this form for a single record. For class lists, use the Excel
-            import above.
+            Use this form for a single record. For class lists, go to Import
+            Students and upload an Excel workbook.
           </p>
         </div>
         <span

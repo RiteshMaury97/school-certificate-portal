@@ -10,6 +10,7 @@ export type Student = {
   scholarNumber: string;
   session: string;
   certificateCount: number;
+  importedFromExcel?: boolean;
 };
 export type Cert = {
   id: string;
@@ -34,6 +35,8 @@ export type Tab =
   | "dashboard"
   | "approvals"
   | "students"
+  | "studentImport"
+  | "studentAdd"
   | "certificates"
   | "catalog"
   | "audit"
@@ -45,6 +48,5 @@ export type Tab =
   | "branding"
   | "announcement"
   | "faqs"
-  | "retention"
   | "contacts"
   | "profile";
