@@ -19,7 +19,9 @@ const CertificateFlowContext = createContext<CertificateFlow | null>(null);
 export default function CertificateFlowProvider({ children }: { children: ReactNode }) {
   const [result, setResult] = useState<StudentResult | null>(null);
   const value = useMemo(() => ({ result, setResult }), [result]);
-  return <CertificateFlowContext.Provider value={value}>{children}</CertificateFlowContext.Provider>;
+  return (
+    <CertificateFlowContext.Provider value={value}>{children}</CertificateFlowContext.Provider>
+  );
 }
 
 export function useCertificateFlow(): CertificateFlow {

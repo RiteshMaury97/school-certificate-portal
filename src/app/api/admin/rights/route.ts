@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
-import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 
 import { eraseStudentData } from "@/server/erasure";
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
-import {
-  requireRoles,
-  requireSensitiveReauth,
-  writeAuditLog,
-  apiError,
-} from "@/server/security";
+import { requireRoles, requireSensitiveReauth, writeAuditLog, apiError } from "@/server/security";
 
-import type { NextRequest} from "next/server";
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 
 async function getRequestsByStatus(status: string) {
@@ -60,10 +55,7 @@ export async function GET(request: NextRequest) {
     await requireRoles(request, ["approver", "admin"]);
     const status = request.nextUrl.searchParams.get("status") ?? "open";
     if (!["open", "resolved", "rejected"].includes(status))
-      return NextResponse.json(
-        { error: "Invalid request status." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid request status." }, { status: 400 });
     const snap = await getRequestsByStatus(status);
     return NextResponse.json(
       { requests: snap.docs.map((d) => ({ id: d.id, ...d.data() })) },
@@ -95,8 +87,7 @@ export async function PATCH(request: NextRequest) {
       )
         return NextResponse.json(
           {
-            error:
-              "Select the verified student, type ERASE and provide a documented reason.",
+            error: "Select the verified student, type ERASE and provide a documented reason.",
           },
           { status: 400 },
         );
@@ -119,8 +110,13 @@ export async function PATCH(request: NextRequest) {
       ).catch(() => {});
       if (requesterEmail) {
         const siteSettings = await db.collection("siteSettings").doc("main").get();
-        const schoolName = String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
-        await sendMail({ to: requesterEmail, subject: `${schoolName}: data erasure request completed`, text: `${schoolName}: your data erasure request ${body.id} has been completed. Reference receipt: ${result.erasureId}. Please contact the school if you need assistance.` }).catch(() => {});
+        const schoolName =
+          String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
+        await sendMail({
+          to: requesterEmail,
+          subject: `${schoolName}: data erasure request completed`,
+          text: `${schoolName}: your data erasure request ${body.id} has been completed. Reference receipt: ${result.erasureId}. Please contact the school if you need assistance.`,
+        }).catch(() => {});
       }
       return NextResponse.json(
         {
@@ -143,15 +139,12 @@ export async function PATCH(request: NextRequest) {
         { error: "Request ID and resolution are required." },
         { status: 400 },
       );
-    await db
-      .collection("dataRightsRequests")
-      .doc(body.id)
-      .update({
-        status: "resolved",
-        resolution: body.resolution.trim(),
-        resolvedBy: admin.uid,
-        resolvedAt: new Date(),
-      });
+    await db.collection("dataRightsRequests").doc(body.id).update({
+      status: "resolved",
+      resolution: body.resolution.trim(),
+      resolvedBy: admin.uid,
+      resolvedAt: new Date(),
+    });
     await writeAuditLog(request, admin.uid, "data_rights.resolve", body.id);
     return NextResponse.json({ ok: true });
   } catch (e) {

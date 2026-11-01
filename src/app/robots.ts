@@ -13,9 +13,12 @@ export default function robots(): MetadataRoute.Robots {
           "/maintenance",
           "/certificates/print",
           "/certificates/results",
+          "/report-status",
         ],
       },
     ],
-    sitemap: `${(process.env.SITE_URL || process.env.APP_ORIGIN || "https://example.org").replace(/\/$/, "")}/sitemap.xml`,
+    sitemap: `${(
+      [process.env.SITE_URL, process.env.APP_ORIGIN].find(Boolean) ?? "https://example.org"
+    ).replace(/\/$/, "")}/sitemap.xml`,
   };
 }

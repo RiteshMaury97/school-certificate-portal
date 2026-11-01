@@ -33,7 +33,9 @@ export default function FeedbackWidget({ page = "/" }: { page?: string }) {
             setReady(true);
             setError("");
           },
-          "expired-callback": () => { setToken(""); },
+          "expired-callback": () => {
+            setToken("");
+          },
           "error-callback": () => {
             setToken("");
             setError("Security verification is unavailable. Please retry.");
@@ -54,7 +56,9 @@ export default function FeedbackWidget({ page = "/" }: { page?: string }) {
       script.async = true;
       script.defer = true;
       script.onload = render;
-      script.onerror = () => { setError("Security verification could not load."); };
+      script.onerror = () => {
+        setError("Security verification could not load.");
+      };
       document.head.appendChild(script);
     }
     return () => {
@@ -143,7 +147,9 @@ export default function FeedbackWidget({ page = "/" }: { page?: string }) {
               <textarea
                 translate="no"
                 value={comment}
-                onChange={(e) => { setComment(e.target.value.slice(0, 200)); }}
+                onChange={(e) => {
+                  setComment(e.target.value.slice(0, 200));
+                }}
                 maxLength={200}
                 rows={3}
                 className="mt-1 w-full rounded-lg border border-[var(--border)] p-3"

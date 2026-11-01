@@ -21,33 +21,22 @@ describe("certificate lifecycle", () => {
         "This certificate has been replaced by a newer version. Please contact the school for the current one.",
       newCertificateNumber: "CERT-NEW",
     });
-    expect(publicVerificationOutcome("superseded", "").status).toBe(
-      "not-found",
-    );
+    expect(publicVerificationOutcome("superseded", "").status).toBe("not-found");
   });
   it("does not disclose internal revocation reasons", () => {
     expect(publicVerificationOutcome("revoked")).toEqual({
       valid: false,
       status: "revoked",
-      message:
-        "This certificate is no longer valid. Please contact the school.",
+      message: "This certificate is no longer valid. Please contact the school.",
     });
   });
   it("blocks same-student/type duplicate bytes and warns on cross-record matches", () => {
-    expect(
-      duplicateFileDecision(
-        [{ studentId: "s1", type: "Marksheet" }],
-        "s1",
-        "Marksheet",
-      ),
-    ).toBe("block-same-student-type");
-    expect(
-      duplicateFileDecision(
-        [{ studentId: "s2", type: "Marksheet" }],
-        "s1",
-        "Marksheet",
-      ),
-    ).toBe("warn-cross-record");
+    expect(duplicateFileDecision([{ studentId: "s1", type: "Marksheet" }], "s1", "Marksheet")).toBe(
+      "block-same-student-type",
+    );
+    expect(duplicateFileDecision([{ studentId: "s2", type: "Marksheet" }], "s1", "Marksheet")).toBe(
+      "warn-cross-record",
+    );
     expect(duplicateFileDecision([], "s1", "Marksheet")).toBe("none");
   });
   it("allows replacement only from published state", () => {

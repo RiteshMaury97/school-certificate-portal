@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { decryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
+import { publicEmergencyMaintenanceResponse } from "@/server/public-maintenance";
+import { hasTrustedRequesterIp, requesterIp } from "@/server/request-origin";
 import {
   completeDisambiguationChallenge,
   consumeDisambiguationAttempt,
@@ -22,14 +24,11 @@ import {
   classifySearchMatchCount,
   selectUniqueDisambiguationMatch,
 } from "@/server/security-primitives";
-import { studentIdentifierHmac } from "@/server/student-pii";
-import {
-  studentDisambiguationSchema,
-  studentLookupSchema,
-} from "@/shared/validation";
+import { decryptStudentIdentifier, studentIdentifierHmac } from "@/server/student-pii";
+import { studentDisambiguationSchema, studentLookupSchema } from "@/shared/validation";
 
 import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,24 +55,18 @@ function noStoreJson(body: Record<string, unknown>) {
     },
   });
 }
-async function verifyTurnstile(
-  token: string,
-  remoteIp: string | null,
-): Promise<boolean> {
+async function verifyTurnstile(token: string, remoteIp: string | null): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) return false;
   try {
     const payload = new URLSearchParams({ secret, response: token });
     if (remoteIp) payload.set("remoteip", remoteIp);
-    const response = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      {
-        method: "POST",
-        body: payload,
-        cache: "no-store",
-        signal: AbortSignal.timeout(5000),
-      },
-    );
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: payload,
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
     if (!response.ok) return false;
     const result: unknown = await response.json();
     return (
@@ -100,9 +93,9 @@ async function audit(
     | "invalid_request"
     | "rate_limited",
 ): Promise<void> {
-  await writeAuditLog(request, "public", "certificate.search", outcome).catch(
-    () => { console.error("Search audit write failed"); },
-  );
+  await writeAuditLog(request, "public", "certificate.search", outcome).catch(() => {
+    console.error("Search audit write failed");
+  });
 }
 async function retrieveStudent(
   request: NextRequest,
@@ -115,11 +108,9 @@ async function retrieveStudent(
     await delayFailedLookup();
     return genericResponse();
   }
-  await writeConsentLog(
-    request,
-    process.env.PRIVACY_POLICY_VERSION ?? "2026-10",
-    student.id,
-  ).catch(() => {});
+  await writeConsentLog(request, process.env.PRIVACY_POLICY_VERSION ?? "2026-10", student.id).catch(
+    () => {},
+  );
   // Keep this to a single-field query. A multi-field filter plus orderBy
   // requires a deployed composite index; if that index is missing Firestore
   // throws and the public privacy-safe response looks like a false no-match.
@@ -137,26 +128,23 @@ async function retrieveStudent(
     .sort((left, right) => {
       const leftCreated = left.get("createdAt");
       const rightCreated = right.get("createdAt");
-      const leftTime =
-        typeof leftCreated?.toMillis === "function" ? leftCreated.toMillis() : 0;
-      const rightTime =
-        typeof rightCreated?.toMillis === "function" ? rightCreated.toMillis() : 0;
+      const leftTime = typeof leftCreated?.toMillis === "function" ? leftCreated.toMillis() : 0;
+      const rightTime = typeof rightCreated?.toMillis === "function" ? rightCreated.toMillis() : 0;
       return rightTime - leftTime;
     });
   if (active.length === 0) {
-    await recordLookupMiss(request).catch(() => { console.error("Search miss counter failed"); },
-    );
+    await recordLookupMiss(request).catch(() => {
+      console.error("Search miss counter failed");
+    });
     await audit(request, "no_certificates");
     await delayFailedLookup();
     return genericResponse();
   }
-  await recordLookupSuccess(request).catch(() => { console.error("Search state reset failed"); },
-  );
+  await recordLookupSuccess(request).catch(() => {
+    console.error("Search state reset failed");
+  });
   await audit(request, "success");
-  const accessToken = issueStudentAccessToken(
-    student.id,
-    hashRequesterIp(request),
-  );
+  const accessToken = issueStudentAccessToken(student.id, hashRequesterIp(request));
   const certificates = active
     .map((document) => {
       const data = document.data();
@@ -167,8 +155,7 @@ async function retrieveStudent(
         session: String(data.session ?? session),
         issueDate: typeof data.issueDate === "string" ? data.issueDate : null,
         certificateNumber:
-          decryptCertificateNumber(data.certificateNumberEncrypted) ||
-          "Not specified",
+          decryptCertificateNumber(data.certificateNumberEncrypted) || "Not specified",
         mimeType: String(data.mimeType ?? "application/pdf"),
       };
     })
@@ -181,7 +168,17 @@ async function retrieveStudent(
   return noStoreJson({
     found: true,
     studentName: String(student.get("studentName")),
+    fatherName: String(student.get("fatherName") ?? ""),
+    motherName: String(student.get("motherName") ?? ""),
     className: String(student.get("className") ?? ""),
+    scholarNumber: (() => {
+      try {
+        const value = student.get("scholarNumber");
+        return typeof value === "string" ? decryptStudentIdentifier(value) : "";
+      } catch {
+        return "";
+      }
+    })(),
     session,
     accessToken,
     tokenExpiresIn: 300,
@@ -191,6 +188,14 @@ async function retrieveStudent(
 
 export async function POST(request: NextRequest) {
   try {
+    const maintenance = await publicEmergencyMaintenanceResponse();
+    if (maintenance) return maintenance;
+    if (!hasTrustedRequesterIp(request)) {
+      return NextResponse.json(
+        { error: "Certificate search is temporarily unavailable." },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     await verifyRequestAppCheck(request);
     const raw: unknown = await request.json().catch(() => null);
     if (typeof raw !== "object" || raw === null) {
@@ -203,10 +208,7 @@ export async function POST(request: NextRequest) {
 
     // Second stage: the signed challenge is bound to both the original search key and requester IP.
     if (typeof body.challengeToken === "string") {
-      const challenge = verifyDisambiguationChallengeToken(
-        body.challengeToken,
-        request,
-      );
+      const challenge = verifyDisambiguationChallengeToken(body.challengeToken, request);
       if (!challenge) {
         await consumeSearchBudget(request);
         await audit(request, "failed");
@@ -297,7 +299,7 @@ export async function POST(request: NextRequest) {
       await delayFailedLookup();
       return genericResponse();
     }
-    const remoteIp = request.headers.get("cf-connecting-ip") ?? null;
+    const remoteIp = requesterIp(request);
     if (!(await verifyTurnstile(input.turnstileToken, remoteIp))) {
       await audit(request, "turnstile_failed");
       await delayFailedLookup();
@@ -320,10 +322,7 @@ export async function POST(request: NextRequest) {
     }
     if (matchKind === "ambiguous") {
       await audit(request, "ambiguous");
-      const challengeToken = issueDisambiguationChallenge(
-        searchKey,
-        hashRequesterIp(request),
-      );
+      const challengeToken = issueDisambiguationChallenge(searchKey, hashRequesterIp(request));
       return noStoreJson({ needsMoreInfo: true, challengeToken });
     }
     const studentSnapshot = { docs: eligibleCandidates };
@@ -331,10 +330,7 @@ export async function POST(request: NextRequest) {
       await audit(request, "ambiguous");
       return noStoreJson({
         needsMoreInfo: true,
-        challengeToken: issueDisambiguationChallenge(
-          searchKey,
-          hashRequesterIp(request),
-        ),
+        challengeToken: issueDisambiguationChallenge(searchKey, hashRequesterIp(request)),
       });
     }
     if (studentSnapshot.docs.length !== 1) {

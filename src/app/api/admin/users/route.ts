@@ -2,18 +2,12 @@ import { randomBytes } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-
 import { adminAuth, db } from "@/server/firebase-admin";
 import { escapeHtml, sendMail } from "@/server/mailer";
-import {
-  requireAdmin,
-  requireSensitiveReauth,
-  writeAuditLog,
-  apiError,
-} from "@/server/security";
+import { requireAdmin, requireSensitiveReauth, writeAuditLog, apiError } from "@/server/security";
 import { adminInviteProfileSchema, adminInviteSchema } from "@/shared/validation";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 async function superadmin(request: NextRequest) {
   const actor = await requireAdmin(request);
@@ -85,8 +79,12 @@ export async function POST(request: NextRequest) {
       });
     } catch (error) {
       await Promise.all([
-        adminAuth.deleteUser(user.uid).catch(() => undefined),
-        db.collection("admins").doc(user.uid).delete().catch(() => undefined),
+        adminAuth.deleteUser(user.uid).catch(() => {}),
+        db
+          .collection("admins")
+          .doc(user.uid)
+          .delete()
+          .catch(() => {}),
       ]);
       throw error;
     }
@@ -101,16 +99,8 @@ export async function PATCH(request: NextRequest) {
     const actor = await superadmin(request);
     await requireSensitiveReauth(request, actor);
     const body: unknown = await request.json();
-    if (
-      !body ||
-      typeof body !== "object" ||
-      !("uid" in body) ||
-      typeof body.uid !== "string"
-    )
-      return NextResponse.json(
-        { error: "Invalid administrator update." },
-        { status: 400 },
-      );
+    if (!body || typeof body !== "object" || !("uid" in body) || typeof body.uid !== "string")
+      return NextResponse.json({ error: "Invalid administrator update." }, { status: 400 });
     const uid = body.uid;
     const disabled = "disabled" in body ? body.disabled : undefined;
     const role = "role" in body ? body.role : undefined;
@@ -126,20 +116,11 @@ export async function PATCH(request: NextRequest) {
     )
       return NextResponse.json({ error: "Invalid role." }, { status: 400 });
     if (disabled === undefined && role === undefined && !hasProfile)
-      return NextResponse.json(
-        { error: "No changes supplied." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "No changes supplied." }, { status: 400 });
     if (uid === actor.uid && disabled === true)
-      return NextResponse.json(
-        { error: "You cannot disable your own account." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "You cannot disable your own account." }, { status: 400 });
     if (uid === actor.uid && role)
-      return NextResponse.json(
-        { error: "You cannot change your own role." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "You cannot change your own role." }, { status: 400 });
     const updates: Record<string, unknown> = {
       updatedAt: new Date(),
       updatedBy: actor.uid,
@@ -169,7 +150,13 @@ export async function PATCH(request: NextRequest) {
     await writeAuditLog(
       request,
       actor.uid,
-      hasProfile ? "admin.profile_edit" : role ? "admin.role_change" : disabled ? "admin.disable" : "admin.enable",
+      hasProfile
+        ? "admin.profile_edit"
+        : role
+          ? "admin.role_change"
+          : disabled
+            ? "admin.disable"
+            : "admin.enable",
       uid,
     );
     return NextResponse.json({ ok: true });
@@ -191,11 +178,19 @@ export async function DELETE(request: NextRequest) {
 
     const targetRef = db.collection("admins").doc(uid);
     const target = await targetRef.get();
-    if (!target.exists) return NextResponse.json({ error: "Administrator account not found." }, { status: 404 });
+    if (!target.exists)
+      return NextResponse.json({ error: "Administrator account not found." }, { status: 404 });
     if (target.get("role") === "superadmin" && target.get("status") === "active") {
-      const activeSuperadmins = await db.collection("admins").where("role", "==", "superadmin").where("status", "==", "active").get();
+      const activeSuperadmins = await db
+        .collection("admins")
+        .where("role", "==", "superadmin")
+        .where("status", "==", "active")
+        .get();
       if (activeSuperadmins.size <= 1)
-        return NextResponse.json({ error: "You cannot delete the last active superadmin." }, { status: 400 });
+        return NextResponse.json(
+          { error: "You cannot delete the last active superadmin." },
+          { status: 400 },
+        );
     }
 
     await adminAuth.deleteUser(uid);

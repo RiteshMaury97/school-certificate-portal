@@ -26,7 +26,9 @@ export default function DuplicateHashWarning({
           translate="no"
           type="checkbox"
           checked={acknowledged}
-          onChange={(e) => { setAcknowledged(e.target.checked); }}
+          onChange={(e) => {
+            setAcknowledged(e.target.checked);
+          }}
           className="h-5 w-5"
         />{" "}
         I confirm this is intentional
@@ -36,7 +38,9 @@ export default function DuplicateHashWarning({
         <textarea
           translate="no"
           value={reason}
-          onChange={(e) => { setReason(e.target.value); }}
+          onChange={(e) => {
+            setReason(e.target.value);
+          }}
           minLength={10}
           maxLength={500}
           className="mt-1 block w-full rounded border bg-[var(--surface)] p-2"

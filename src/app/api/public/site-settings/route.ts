@@ -9,15 +9,9 @@ export async function GET() {
     const data = snapshot.exists ? (snapshot.data() ?? {}) : {};
     const safe = {
       maintenanceMode: data.maintenanceMode === true,
-      retentionScheduleConfirmed: data.retentionScheduleConfirmed === true,
-      retentionYears: Math.max(
-        1,
-        Math.min(30, Number(data.retentionYears ?? 7)),
-      ),
-      backupRotationDays: Math.max(
-        7,
-        Math.min(365, Number(data.backupRotationDays ?? 30)),
-      ),
+      emergencyLockdown: data.emergencyLockdown === true,
+      retentionYears: Math.max(1, Math.min(30, Number(data.retentionYears ?? 7))),
+      backupRotationDays: Math.max(7, Math.min(365, Number(data.backupRotationDays ?? 30))),
       schoolName: String(data.schoolName ?? ""),
       includedLanguages:
         typeof data.includedLanguages === "string"
@@ -31,8 +25,7 @@ export async function GET() {
       tagline: String(data.tagline ?? ""),
       logoUrl: String(data.logoUrl ?? ""),
       statusPageUrl:
-        typeof data.statusPageUrl === "string" &&
-        /^https:\/\//i.test(data.statusPageUrl)
+        typeof data.statusPageUrl === "string" && /^https:\/\//i.test(data.statusPageUrl)
           ? data.statusPageUrl
           : "",
       boardName: String(data.boardName ?? ""),
@@ -47,16 +40,12 @@ export async function GET() {
       jurisdiction: String(data.jurisdiction ?? ""),
       officeHours: String(data.officeHours ?? ""),
       mapUrl:
-        typeof data.mapUrl === "string" && /^https:\/\//i.test(data.mapUrl)
-          ? data.mapUrl
-          : "",
+        typeof data.mapUrl === "string" && /^https:\/\//i.test(data.mapUrl) ? data.mapUrl : "",
       faqs: Array.isArray(data.faqs)
-        ? data.faqs
-            .slice(0, 30)
-            .map((item: Record<string, unknown>) => ({
-              questionEn: String(item.questionEn ?? "").slice(0, 180),
-              answerEn: String(item.answerEn ?? "").slice(0, 1500),
-            }))
+        ? data.faqs.slice(0, 30).map((item: Record<string, unknown>) => ({
+            questionEn: String(item.questionEn ?? "").slice(0, 180),
+            answerEn: String(item.answerEn ?? "").slice(0, 1500),
+          }))
         : [],
       socialLinks: Array.isArray(data.socialLinks)
         ? data.socialLinks
@@ -82,21 +71,11 @@ export async function GET() {
           data.announcement && typeof data.announcement === "object"
             ? (data.announcement as Record<string, unknown>)
             : null;
-        if (
-          !a ||
-          a.enabled !== true ||
-          !["info", "warning"].includes(String(a.type))
-        )
-          return null;
+        if (!a || a.enabled !== true || !["info", "warning"].includes(String(a.type))) return null;
         const start = Date.parse(String(a.startAt ?? "")),
           end = Date.parse(String(a.endAt ?? "")),
           now = Date.now();
-        if (
-          !Number.isFinite(start) ||
-          !Number.isFinite(end) ||
-          start > now ||
-          end <= now
-        )
+        if (!Number.isFinite(start) || !Number.isFinite(end) || start > now || end <= now)
           return null;
         const text = (value: unknown) =>
           typeof value === "string"
@@ -110,21 +89,12 @@ export async function GET() {
         return {
           type: a.type,
           textEn,
-          linkUrl:
-            typeof a.linkUrl === "string" && /^https:\/\//i.test(a.linkUrl)
-              ? a.linkUrl
-              : "",
+          linkUrl: typeof a.linkUrl === "string" && /^https:\/\//i.test(a.linkUrl) ? a.linkUrl : "",
         };
       })(),
     };
-    return NextResponse.json(
-      { settings: safe },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return NextResponse.json({ settings: safe }, { headers: { "Cache-Control": "no-store" } });
   } catch {
-    return NextResponse.json(
-      { settings: {} },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return NextResponse.json({ settings: {} }, { headers: { "Cache-Control": "no-store" } });
   }
 }

@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
-test("superadmin can upload a certificate and approve a pending record", async ({
-  page,
-}) => {
+test("superadmin can upload a certificate and approve a pending record", async ({ page }) => {
   let published = false;
   await page.addInitScript(() => {
     Object.defineProperty(window, "grecaptcha", {
       configurable: true,
       value: {
-        ready: (callback: () => void) => { callback(); },
+        ready: (callback: () => void) => {
+          callback();
+        },
         execute: () => Promise.resolve("e2e-recaptcha-token"),
       },
     });
@@ -31,7 +31,7 @@ test("superadmin can upload a certificate and approve a pending record", async (
     type: "Marksheet",
     issueDate: "2024-05-01",
     fileName: "marksheet.pdf",
-    status: published ? "published" : "pending",
+    status: "pending",
     uploadedBy: "different-uploader",
   };
   await page.route("**/api/admin/session", (route) =>
@@ -57,17 +57,14 @@ test("superadmin can upload a certificate and approve a pending record", async (
     }),
   );
   await page.route("**/api/admin/certificates**", (route) => {
-    if (route.request().method() === "POST")
-      return route.fulfill({ json: { ok: true } });
+    if (route.request().method() === "POST") return route.fulfill({ json: { ok: true } });
     if (route.request().url().includes("status=pending"))
       return route.fulfill({
         json: { certificates: published ? [] : [pendingCertificate] },
       });
     return route.fulfill({
       json: {
-        certificates: published
-          ? [{ ...pendingCertificate, status: "published" }]
-          : [],
+        certificates: published ? [{ ...pendingCertificate, status: "published" }] : [],
       },
     });
   });
@@ -91,13 +88,11 @@ test("superadmin can upload a certificate and approve a pending record", async (
   await page.getByLabel("Certificate type").selectOption("Marksheet");
   await page.getByLabel("Certificate number").fill("E2E-2024-001");
   await page.getByLabel("Issue date").fill("2024-05-01");
-  await page
-    .getByLabel("Finished certificate file")
-    .setInputFiles({
-      name: "marksheet.pdf",
-      mimeType: "application/pdf",
-      buffer: Buffer.from("%PDF-1.4 test"),
-    });
+  await page.getByLabel("Finished certificate file").setInputFiles({
+    name: "marksheet.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4 test"),
+  });
   await page.getByRole("button", { name: "Upload certificate" }).click();
   await expect(page.getByText("Changes saved successfully.")).toBeVisible();
   await page.getByRole("button", { name: "Pending approvals" }).click();

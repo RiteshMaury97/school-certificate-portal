@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "@/server/firebase-admin";
 import { apiError, requireRoles, writeAuditLog } from "@/server/security";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const schema = z
@@ -31,9 +31,7 @@ const schema = z
       .min(20)
       .max(40)
       .refine(
-        (value) =>
-          Number.isFinite(Date.parse(value)) &&
-          /(?:Z|[+-]\d{2}:\d{2})$/.test(value),
+        (value) => Number.isFinite(Date.parse(value)) && /(?:Z|[+-]\d{2}:\d{2})$/.test(value),
       ),
     endAt: z
       .string()
@@ -41,16 +39,12 @@ const schema = z
       .min(20)
       .max(40)
       .refine(
-        (value) =>
-          Number.isFinite(Date.parse(value)) &&
-          /(?:Z|[+-]\d{2}:\d{2})$/.test(value),
+        (value) => Number.isFinite(Date.parse(value)) && /(?:Z|[+-]\d{2}:\d{2})$/.test(value),
       ),
   })
-  .refine(
-    (value) =>
-      new Date(value.endAt).getTime() > new Date(value.startAt).getTime(),
-    { message: "End date must be after start date." },
-  );
+  .refine((value) => new Date(value.endAt).getTime() > new Date(value.startAt).getTime(), {
+    message: "End date must be after start date.",
+  });
 function plainText(value: string): string {
   return value
     .replace(/<[^>]*>/g, "")
@@ -62,7 +56,7 @@ export async function GET(request: NextRequest) {
   try {
     await requireRoles(request, ["approver", "admin", "superadmin"]);
     const snapshot = await db.collection("siteSettings").doc("main").get();
-    const value = snapshot.get("announcement");
+    const value: unknown = snapshot.get("announcement");
     return NextResponse.json(
       {
         announcement:
@@ -90,8 +84,7 @@ export async function PATCH(request: NextRequest) {
     if (!parsed.success)
       return NextResponse.json(
         {
-          error:
-            "Provide an announcement, a valid date range and an optional HTTPS link.",
+          error: "Provide an announcement, a valid date range and an optional HTTPS link.",
         },
         { status: 400 },
       );
@@ -102,22 +95,13 @@ export async function PATCH(request: NextRequest) {
       updatedBy: admin.uid,
     };
     if (!value.textEn)
-      return NextResponse.json(
-        { error: "Announcement text must not be empty." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Announcement text must not be empty." }, { status: 400 });
     await db
       .collection("siteSettings")
       .doc("main")
-      .set(
-        { announcement: value, updatedAt: FieldValue.serverTimestamp() },
-        { merge: true },
-      );
+      .set({ announcement: value, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
     await writeAuditLog(request, admin.uid, "site_announcement.update", "main");
-    return NextResponse.json(
-      { ok: true },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return apiError(error);
   }

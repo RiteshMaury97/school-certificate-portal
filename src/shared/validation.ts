@@ -5,17 +5,24 @@ const personName = z
   .trim()
   .min(2, "Enter at least 2 characters.")
   .max(100, "Maximum 100 characters.")
-  .regex(
-    /^[\p{L}\p{M} .'-]+$/u,
-    "Use letters, spaces, apostrophes, periods or hyphens only.",
-  );
+  .regex(/^[\p{L}\p{M} .'-]+$/u, "Use letters, spaces, apostrophes, periods or hyphens only.");
 
 export const studentLookupSchema = z.object({
   studentName: personName,
   fatherName: personName,
   motherName: personName,
-  className: z.string().trim().min(1).max(40).regex(/^[\p{L}\p{M}\p{N} ./'-]+$/u),
-  scholarNumber: z.string().trim().min(1).max(40).regex(/^[\p{L}\p{M}\p{N} /-]+$/u),
+  className: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .regex(/^[\p{L}\p{M}\p{N} ./'-]+$/u),
+  scholarNumber: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .regex(/^[\p{L}\p{M}\p{N} /-]+$/u),
   session: z
     .string()
     .trim()
@@ -33,18 +40,25 @@ export const studentCreateSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .refine((value) => {
       const date = new Date(`${value}T00:00:00.000Z`);
-      return (
-        Number.isFinite(date.getTime()) &&
-        date.toISOString().slice(0, 10) === value
-      );
+      return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
     }, "Enter a valid date of birth.")
     .optional()
     .or(z.literal("")),
   studentName: personName,
   fatherName: personName,
   motherName: personName,
-  className: z.string().trim().min(1).max(40).regex(/^[\p{L}\p{M}\p{N} ./'-]+$/u),
-  scholarNumber: z.string().trim().min(1).max(40).regex(/^[\p{L}\p{M}\p{N} /-]+$/u),
+  className: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .regex(/^[\p{L}\p{M}\p{N} ./'-]+$/u),
+  scholarNumber: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .regex(/^[\p{L}\p{M}\p{N} /-]+$/u),
   session: z
     .string()
     .trim()
@@ -57,6 +71,12 @@ export const studentCreateSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
+export const studentProfileCreateSchema = studentCreateSchema.omit({
+  certificateType: true,
+  certificateNumber: true,
+  issuedAt: true,
+});
+
 export function normalize(value: string): string {
   return value
     .normalize("NFD")
@@ -66,16 +86,27 @@ export function normalize(value: string): string {
     .toLowerCase();
 }
 
-export const studentUpdateSchema = studentCreateSchema.pick({
-  studentName: true,
-  fatherName: true,
-  motherName: true,
-  className: true,
-  scholarNumber: true,
-  session: true,
-  admissionNumber: true,
-  dateOfBirth: true,
-});
+export const studentUpdateSchema = studentCreateSchema
+  .pick({
+    studentName: true,
+    fatherName: true,
+    motherName: true,
+    className: true,
+    scholarNumber: true,
+    session: true,
+    admissionNumber: true,
+    dateOfBirth: true,
+  })
+  .extend({
+    parentEmail: z.union([z.email().trim().max(254), z.literal("")]).default(""),
+    parentMobile: z
+      .string()
+      .trim()
+      .max(16)
+      .regex(/^\+?[0-9]{0,15}$/)
+      .default(""),
+    notificationConsent: z.boolean().default(false),
+  });
 
 export const studentDisambiguationSchema = z.object({
   challengeToken: z.string().min(20).max(2048),
@@ -101,46 +132,51 @@ export const catalogItemSchema = z
     label: z.string().trim().min(2).max(80).optional(),
     name: z.string().trim().min(2).max(80).optional(),
   })
-  .refine(
-    (value) => Boolean(value.label ?? value.name),
-    "A catalog label is required.",
-  );
+  .refine((value) => Boolean(value.label ?? value.name), "A catalog label is required.");
 
 export const dataRightsResolutionSchema = z.object({
   id: z.string().trim().min(1).max(160),
   resolution: z.string().trim().min(1).max(2000),
 });
 
-const optionalProfileDate = z.string().max(10).refine((value) => {
-  if (!value) return true;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}, "Enter a valid date.").default("");
+const optionalProfileDate = z
+  .string()
+  .max(10)
+  .refine((value) => {
+    if (!value) return true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const date = new Date(`${value}T00:00:00.000Z`);
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  }, "Enter a valid date.")
+  .default("");
 
-export const adminInviteProfileSchema = z.object({
-  name: z.string().trim().min(2).max(100),
-  preferredName: z.string().trim().max(80).default(""),
-  staffId: z.string().trim().max(50).default(""),
-  gender: z.enum(["", "female", "male", "nonbinary", "prefer-not-to-say", "self-described"]).default(""),
-  dateOfBirth: optionalProfileDate,
-  position: z.string().trim().max(120).default(""),
-  department: z.string().trim().max(120).default(""),
-  designation: z.string().trim().max(120).default(""),
-  campus: z.string().trim().max(120).default(""),
-  joiningDate: optionalProfileDate,
-  reportingManager: z.string().trim().max(100).default(""),
-  officeLocation: z.string().trim().max(160).default(""),
-  alternateEmail: z.union([z.string().trim().email().max(254), z.literal("")]).default(""),
-  primaryPhone: z.string().trim().max(30).default(""),
-  secondaryPhone: z.string().trim().max(30).default(""),
-  address: z.string().trim().max(500).default(""),
-  emergencyContactName: z.string().trim().max(100).default(""),
-  emergencyContactPhone: z.string().trim().max(30).default(""),
-}).strict();
+export const adminInviteProfileSchema = z
+  .object({
+    name: z.string().trim().min(2).max(100),
+    preferredName: z.string().trim().max(80).default(""),
+    staffId: z.string().trim().max(50).default(""),
+    gender: z
+      .enum(["", "female", "male", "nonbinary", "prefer-not-to-say", "self-described"])
+      .default(""),
+    dateOfBirth: optionalProfileDate,
+    position: z.string().trim().max(120).default(""),
+    department: z.string().trim().max(120).default(""),
+    designation: z.string().trim().max(120).default(""),
+    campus: z.string().trim().max(120).default(""),
+    joiningDate: optionalProfileDate,
+    reportingManager: z.string().trim().max(100).default(""),
+    officeLocation: z.string().trim().max(160).default(""),
+    alternateEmail: z.union([z.email().trim().max(254), z.literal("")]).default(""),
+    primaryPhone: z.string().trim().max(30).default(""),
+    secondaryPhone: z.string().trim().max(30).default(""),
+    address: z.string().trim().max(500).default(""),
+    emergencyContactName: z.string().trim().max(100).default(""),
+    emergencyContactPhone: z.string().trim().max(30).default(""),
+  })
+  .strict();
 
 export const adminInviteSchema = z.object({
-  email: z.string().trim().email().max(254),
+  email: z.email().trim().max(254),
   role: z.enum(["uploader", "approver", "admin", "superadmin"]).default("uploader"),
   profile: adminInviteProfileSchema,
 });
@@ -166,13 +202,10 @@ export const certificateUploadMetadataSchema = z.object({
 
 export const auditFilterSchema = z
   .object({
-    start: z.string().datetime({ offset: true }).optional(),
-    end: z.string().datetime({ offset: true }).optional(),
+    start: z.iso.datetime({ offset: true }).optional(),
+    end: z.iso.datetime({ offset: true }).optional(),
     action: z.string().trim().max(100).optional(),
   })
-  .refine(
-    (value) => !value.start || !value.end || value.start <= value.end,
-    "Invalid date range.",
-  );
+  .refine((value) => !value.start || !value.end || value.start <= value.end, "Invalid date range.");
 
 export const documentIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,160}$/);

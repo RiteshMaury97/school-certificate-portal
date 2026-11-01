@@ -4,10 +4,7 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-if (!encoded)
-  throw new Error(
-    "Set FIREBASE_SERVICE_ACCOUNT_BASE64 before running this migration.",
-  );
+if (!encoded) throw new Error("Set FIREBASE_SERVICE_ACCOUNT_BASE64 before running this migration.");
 const credentials = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
 const app =
   getApps()[0] ??
@@ -35,13 +32,9 @@ async function main() {
     await batch.commit();
     cursor = page.docs[page.docs.length - 1];
   }
-  process.stdout.write(
-    `Backfilled public IDs on ${updated} certificate records.\n`,
-  );
+  process.stdout.write(`Backfilled public IDs on ${updated} certificate records.\n`);
 }
 main().catch((error) => {
-  process.stderr.write(
-    `${error instanceof Error ? error.message : "Migration failed"}\n`,
-  );
+  process.stderr.write(`${error instanceof Error ? error.message : "Migration failed"}\n`);
   process.exitCode = 1;
 });

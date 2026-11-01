@@ -6,10 +6,7 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 const projectId = process.env.FIREBASE_PROJECT_ID;
 const secret = process.env.CERTIFICATE_NUMBER_HMAC_SECRET;
-const encryptionKey = Buffer.from(
-  process.env.CERTIFICATE_NUMBER_ENCRYPTION_KEY ?? "",
-  "base64",
-);
+const encryptionKey = Buffer.from(process.env.CERTIFICATE_NUMBER_ENCRYPTION_KEY ?? "", "base64");
 if (
   !encoded ||
   !projectId ||
@@ -22,17 +19,11 @@ if (
   );
 }
 const credentials = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
-const app =
-  getApps()[0] ?? initializeApp({ credential: cert(credentials), projectId });
+const app = getApps()[0] ?? initializeApp({ credential: cert(credentials), projectId });
 const db = getFirestore(app);
 function numberHash(value) {
-  const normalized = String(value)
-    .normalize("NFKC")
-    .trim()
-    .replace(/\s+/g, " ")
-    .toUpperCase();
-  if (!normalized || normalized.length > 80)
-    throw new Error("Invalid legacy certificate number");
+  const normalized = String(value).normalize("NFKC").trim().replace(/\s+/g, " ").toUpperCase();
+  if (!normalized || normalized.length > 80) throw new Error("Invalid legacy certificate number");
   return createHmac("sha256", secret).update(normalized, "utf8").digest("hex");
 }
 function encryptNumber(value) {
@@ -42,9 +33,7 @@ function encryptNumber(value) {
     cipher.update(String(value).normalize("NFKC").trim(), "utf8"),
     cipher.final(),
   ]);
-  return [iv, cipher.getAuthTag(), ciphertext]
-    .map((part) => part.toString("base64url"))
-    .join(".");
+  return [iv, cipher.getAuthTag(), ciphertext].map((part) => part.toString("base64url")).join(".");
 }
 const certificates = await db.collection("certificates").get();
 const seen = new Map();
@@ -76,9 +65,7 @@ for (const document of certificates.docs) {
   await db.runTransaction(async (transaction) => {
     const existing = await transaction.get(indexRef);
     if (existing.exists && existing.get("certificateId") !== document.id) {
-      throw new Error(
-        "Certificate number index collision or duplicate detected.",
-      );
+      throw new Error("Certificate number index collision or duplicate detected.");
     }
     transaction.set(
       indexRef,
@@ -103,15 +90,11 @@ for (const collection of ["sessions", "certificateTypes"]) {
   const docs = await db.collection(collection).get();
   for (const document of docs.docs) {
     const fields =
-      collection === "sessions"
-        ? ["driveFolderId", "typeFolderIds"]
-        : ["driveFolderId"];
-    const patch = Object.fromEntries(
-      fields.map((field) => [field, FieldValue.delete()]),
-    );
+      collection === "sessions" ? ["driveFolderId", "typeFolderIds"] : ["driveFolderId"];
+    const patch = Object.fromEntries(fields.map((field) => [field, FieldValue.delete()]));
     await document.ref.update(patch);
   }
 }
-console.log(
-  `Migrated ${indexed} certificate number(s) into HMAC lookup indexes, AES-256-GCM encrypted the stored values, and removed plaintext/legacy storage fields.`,
+process.stdout.write(
+  `Migrated ${indexed} certificate number(s) into HMAC lookup indexes, AES-256-GCM encrypted the stored values, and removed plaintext/legacy storage fields.\n`,
 );

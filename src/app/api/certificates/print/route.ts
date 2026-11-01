@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
+import { publicEmergencyMaintenanceResponse } from "@/server/public-maintenance";
 import { readR2Object } from "@/server/r2";
-import {
-  studentAccessTokenOwnsStudent,
-  verifyStudentAccessToken,
-} from "@/server/security";
+import { studentAccessTokenOwnsStudent, verifyStudentAccessToken } from "@/server/security";
 import { watermarkCertificate } from "@/server/watermark";
+import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const unavailable = () =>
@@ -19,49 +18,40 @@ const unavailable = () =>
 function esc(value: string) {
   return value.replace(
     /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ]!,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
 }
 export async function GET(request: NextRequest) {
   try {
+    const maintenance = await publicEmergencyMaintenanceResponse();
+    if (maintenance) return maintenance;
     const token = request.nextUrl.searchParams.get("token") ?? "";
     const claims = verifyStudentAccessToken(token, request);
     if (!claims) return unavailable();
-    const requestedIds = (request.nextUrl.searchParams.get("ids") ?? "").split(
-      ",",
-    );
+    const requestedIds = (request.nextUrl.searchParams.get("ids") ?? "").split(",");
     if (!requestedIds.length || requestedIds.length > 20) return unavailable();
     const ids = requestedIds.filter((id) => /^[A-Za-z0-9_-]{20,80}$/.test(id));
     if (!ids.length) return unavailable();
     const settings = await db.collection("siteSettings").doc("main").get();
-    const schoolName = (String(settings.get("schoolName") ?? "").trim() || "Satyam International School");
+    const schoolName =
+      String(settings.get("schoolName") ?? "").trim() || "Satyam International School";
     const docs = [];
     const studentStates = new Map<string, boolean>();
     for (const id of ids) {
-      const found = await db
-        .collection("certificates")
-        .where("publicId", "==", id)
-        .limit(1)
-        .get();
+      const found = await db.collection("certificates").where("publicId", "==", id).limit(1).get();
       if (found.empty) continue;
       const doc = found.docs[0]!;
       const d = doc.data();
       const studentId = String(d.studentId ?? "");
-      if (!studentId || !studentAccessTokenOwnsStudent(claims, studentId))
-        continue;
+      if (!studentId || !studentAccessTokenOwnsStudent(claims, studentId)) continue;
       let visible = studentStates.get(studentId);
       if (visible === undefined) {
         const student = await db.collection("students").doc(studentId).get();
-        const visibleNow =
-          student.exists && student.get("erasurePending") !== true;
+        const visibleNow = student.exists && student.get("erasurePending") !== true;
         visible = visibleNow;
         studentStates.set(studentId, visibleNow);
       }
-      if (d.status === "published" && d.published !== false && visible)
-        docs.push(doc);
+      if (d.status === "published" && d.published !== false && visible) docs.push(doc);
     }
     const pages: string[] = [];
     for (const doc of docs) {
@@ -70,7 +60,7 @@ export async function GET(request: NextRequest) {
       if (
         !["application/pdf", "image/jpeg", "image/png"].includes(mime) ||
         !d.r2Key ||
-        Number(d.size ?? 0) > 5 * 1024 * 1024
+        Number(d.size ?? 0) > UPLOAD_MAX_BYTES
       )
         continue;
       const bytes = await watermarkCertificate(

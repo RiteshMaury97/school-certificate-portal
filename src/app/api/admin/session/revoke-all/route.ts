@@ -4,14 +4,10 @@ import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 import { adminAuth, db } from "@/server/firebase-admin";
-import {
-  adminSessionCookieOptions,
-  csrfCookieOptions,
-  writeAuditLog,
-} from "@/server/security";
+import { adminSessionCookieOptions, csrfCookieOptions, writeAuditLog } from "@/server/security";
 import { isAllowedRequestOrigin } from "@/shared/origin-policy";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 const tokenRef = (token: string) => {
   const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
@@ -27,12 +23,7 @@ async function consume(token: string) {
     const snap = await tx.get(ref);
     const expires = snap.get("expiresAt")?.toDate?.()?.getTime?.() ?? 0;
     const value = snap.get("uid");
-    if (
-      !snap.exists ||
-      typeof value !== "string" ||
-      snap.get("usedAt") ||
-      Date.now() > expires
-    )
+    if (!snap.exists || typeof value !== "string" || snap.get("usedAt") || Date.now() > expires)
       throw new Error("TOKEN_INVALID");
     uid = value;
     tx.update(ref, { usedAt: FieldValue.serverTimestamp() });
@@ -42,19 +33,13 @@ async function consume(token: string) {
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token") ?? "";
   if (token.length < 32)
-    return NextResponse.redirect(
-      new URL("/admin/login?security=invalid", request.url),
-      303,
-    );
+    return NextResponse.redirect(new URL("/admin/login?security=invalid", request.url), 303);
   try {
     const ref = tokenRef(token),
       snap = await ref.get(),
       expires = snap.get("expiresAt")?.toDate?.()?.getTime?.() ?? 0;
     if (!snap.exists || snap.get("usedAt") || Date.now() > expires)
-      return NextResponse.redirect(
-        new URL("/admin/login?security=expired", request.url),
-        303,
-      );
+      return NextResponse.redirect(new URL("/admin/login?security=expired", request.url), 303);
     const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirm sign out</title><main><h1>Sign out of all admin devices?</h1><p>This will revoke every active administrator session for your account.</p><form method="post"><input type="hidden" name="token" value="${token.replace(/[^A-Za-z0-9_-]/g, "")}"><button type="submit">Sign out everywhere</button></form></main></html>`;
     return new NextResponse(html, {
       headers: {
@@ -65,10 +50,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch {
-    return NextResponse.redirect(
-      new URL("/admin/login?security=error", request.url),
-      303,
-    );
+    return NextResponse.redirect(new URL("/admin/login?security=error", request.url), 303);
   }
 }
 export async function POST(request: NextRequest) {
@@ -86,33 +68,22 @@ export async function POST(request: NextRequest) {
     const form = await request.formData();
     const token = String(form.get("token") ?? "");
     if (token.length < 32)
-      return NextResponse.redirect(
-        new URL("/admin/login?security=invalid", request.url),
-        303,
-      );
+      return NextResponse.redirect(new URL("/admin/login?security=invalid", request.url), 303);
     const uid = await consume(token);
     await adminAuth.revokeRefreshTokens(uid);
-    const sessions = await db
-      .collection("adminSessions")
-      .where("uid", "==", uid)
-      .get();
+    const sessions = await db.collection("adminSessions").where("uid", "==", uid).get();
     const batch = db.batch();
-    for (const doc of sessions.docs) batch.set(
+    for (const doc of sessions.docs)
+      batch.set(
         doc.ref,
         {
           revokedAt: FieldValue.serverTimestamp(),
           revokeReason: "email_security_link",
         },
         { merge: true },
-      )
-    ;
+      );
     if (!sessions.empty) await batch.commit();
-    await writeAuditLog(
-      request,
-      uid,
-      "admin.sign_out_all_devices",
-      "email_security_link",
-    );
+    await writeAuditLog(request, uid, "admin.sign_out_all_devices", "email_security_link");
     const response = NextResponse.redirect(
       new URL("/admin/login?security=signed-out", request.url),
       303,
@@ -127,9 +98,6 @@ export async function POST(request: NextRequest) {
     });
     return response;
   } catch {
-    return NextResponse.redirect(
-      new URL("/admin/login?security=error", request.url),
-      303,
-    );
+    return NextResponse.redirect(new URL("/admin/login?security=error", request.url), 303);
   }
 }

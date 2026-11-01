@@ -26,8 +26,7 @@ export default async function NotFound() {
       <p>The page may have moved, or the address may be incorrect.</p>
       <Link href="/">Return to home</Link>
       <p className="error-support">
-        {schoolName} support:{" "}
-        {email ? <a href={`mailto:${email}`}>{email}</a> : null}{" "}
+        {schoolName} support: {email ? <a href={`mailto:${email}`}>{email}</a> : null}{" "}
         {phone ? <a href={`tel:${phone}`}>{phone}</a> : null}
       </p>
     </main>

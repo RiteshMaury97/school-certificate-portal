@@ -1,35 +1,59 @@
 import * as Sentry from "@sentry/nextjs";
+
+type BeforeSend = NonNullable<NonNullable<Parameters<typeof Sentry.init>[0]>["beforeSend"]>;
+type SentryEvent = Parameters<BeforeSend>[0];
+type SentryRequest = NonNullable<SentryEvent["request"]>;
+
+function scrubRequest(request: SentryRequest) {
+  delete request.data;
+  delete request.cookies;
+  delete request.headers;
+  if (request.query_string) request.query_string = "[redacted]";
+  if (request.url) {
+    request.url = request.url
+      .replace(/\?.*$/, "")
+      .replace(/(certificates|students|reports)\/[^/]+/g, "$1/[id]");
+  }
+}
+
+function scrubEventMessage(event: SentryEvent) {
+  if (event.message) event.message = "[redacted application error]";
+  if (event.logentry?.message) event.logentry.message = "[redacted application error]";
+}
+
+function scrubExceptions(event: SentryEvent) {
+  for (const item of event.exception?.values ?? []) {
+    if (item.value) item.value = "[redacted]";
+  }
+}
+
+function scrubBreadcrumbs(event: SentryEvent) {
+  for (const crumb of event.breadcrumbs ?? []) {
+    delete crumb.data;
+    if (crumb.message) crumb.message = "[redacted]";
+  }
+}
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   tracesSampleRate: 0,
-  sendDefaultPii: false,
+  dataCollection: {
+    userInfo: false,
+    cookies: false,
+    httpHeaders: false,
+    httpBodies: [],
+    urlQueryParams: false,
+  },
   beforeSend(event) {
     delete event.user;
     delete event.extra;
     delete event.contexts;
     delete event.tags;
     delete event.transaction;
-    if (event.request) {
-      delete event.request.data;
-      delete event.request.cookies;
-      delete event.request.headers;
-      if (event.request.query_string) event.request.query_string = "[redacted]";
-      const requestUrl = event.request.url;
-      if (requestUrl) {
-        event.request.url = requestUrl
-          .split("?")[0]!
-          .replace(/(certificates|students|reports)\/[^/]+/g, "$1/[id]");
-      }
-    }
-    if (event.message) event.message = "[redacted application error]";
-    if (event.logentry?.message)
-      event.logentry.message = "[redacted application error]";
-    for (const item of event.exception?.values ?? [])
-      if (item.value) item.value = "[redacted]";
-    for (const crumb of event.breadcrumbs ?? []) {
-      delete crumb.data;
-      if (crumb.message) crumb.message = "[redacted]";
-    }
+    if (event.request) scrubRequest(event.request);
+    scrubEventMessage(event);
+    scrubExceptions(event);
+    scrubBreadcrumbs(event);
     return event;
   },
 });

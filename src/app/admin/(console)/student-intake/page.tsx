@@ -1,8 +1,8 @@
 import { pageMetadata } from "@/lib/page-metadata";
 
 export const metadata = pageMetadata(
-  "Backup and retention",
-  "Satyam International School administration.",
+  "Add Student",
+  "Create a student record and attach certificate documents.",
   { index: false },
 );
 

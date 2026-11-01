@@ -38,7 +38,11 @@ function AdminAuthContent() {
   }
 
   return (
-    <main id="main-content" tabIndex={-1} className="h-dvh overflow-hidden bg-[#f5f7f4] text-[#17251f] lg:grid lg:grid-cols-2">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="h-dvh overflow-hidden bg-[#f5f7f4] text-[#17251f] lg:grid lg:grid-cols-2"
+    >
       <AdminAuthBrandPanel settings={settings} />
       <AdminAuthSignInPanel settings={settings} flow={flow} />
     </main>

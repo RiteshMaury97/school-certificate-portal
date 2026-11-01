@@ -3,6 +3,8 @@ import {
   UserRound,
   LayoutDashboard,
   Users,
+  UserPlus,
+  FileSpreadsheet,
   FileCheck2,
   ClipboardCheck,
   CalendarDays,
@@ -10,8 +12,6 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
-  Database,
-  HelpCircle,
   FileText,
   History,
   LockKeyhole,
@@ -22,10 +22,11 @@ import {
 import type { Tab } from "../types/admin.types";
 
 export const tabIcons = {
-  help: HelpCircle,
   dashboard: LayoutDashboard,
   approvals: ClipboardCheck,
   students: Users,
+  studentIntake: UserPlus,
+  studentImport: FileSpreadsheet,
   certificates: FileCheck2,
   catalog: CalendarDays,
   audit: ScrollText,
@@ -37,15 +38,15 @@ export const tabIcons = {
   branding: Settings,
   announcement: Bell,
   faqs: FileText,
-  retention: Database,
   contacts: Mail,
   profile: ContactRound,
-} satisfies Record<Tab, typeof HelpCircle>;
+} satisfies Record<Tab, typeof LayoutDashboard>;
 export const tabs: Tab[] = [
-  "help",
   "dashboard",
   "approvals",
   "students",
+  "studentIntake",
+  "studentImport",
   "certificates",
   "catalog",
   "audit",
@@ -58,15 +59,15 @@ export const tabs: Tab[] = [
   "branding",
   "announcement",
   "faqs",
-  "retention",
   "profile",
 ];
 
 export const tabRoutes: Record<Tab, string> = {
-  help: "/admin/help",
   dashboard: "/admin",
   approvals: "/admin/approvals",
   students: "/admin/students",
+  studentIntake: "/admin/student-intake",
+  studentImport: "/admin/student-import",
   certificates: "/admin/certificates",
   catalog: "/admin/sessions",
   audit: "/admin/audit",
@@ -79,15 +80,15 @@ export const tabRoutes: Record<Tab, string> = {
   branding: "/admin/settings",
   announcement: "/admin/announcements",
   faqs: "/admin/faqs",
-  retention: "/admin/backup",
   profile: "/admin/profile",
 };
 
 export const tabLabels: Record<Tab, string> = {
-  help: "Help & Policies",
   dashboard: "Overview",
   approvals: "Pending Approvals",
   students: "Students",
+  studentIntake: "Add Student",
+  studentImport: "Import Students",
   certificates: "Certificates",
   catalog: "School Catalog",
   audit: "Audit",
@@ -100,6 +101,5 @@ export const tabLabels: Record<Tab, string> = {
   branding: "Site Branding",
   announcement: "Announcements",
   faqs: "FAQ Editor",
-  retention: "Retention Review",
   profile: "My Profile",
 };

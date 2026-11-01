@@ -1,5 +1,6 @@
 "use client";
 import { Menu, X, ShieldCheck } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -7,7 +8,11 @@ import { useState } from "react";
 import IconButton from "@/components/ui/IconButton";
 import ThemeToggle from "@/features/theme/ThemeToggle";
 import LanguageButton from "@/features/translate/LanguageButton";
-type Props = { schoolName?: string | undefined; logoUrl?: string | undefined; includedLanguages?: string | undefined };
+type Props = {
+  schoolName?: string | undefined;
+  logoUrl?: string | undefined;
+  includedLanguages?: string | undefined;
+};
 const links = [
   { label: "Home", to: "/" },
   { label: "Certificates", to: "/certificates" },
@@ -41,6 +46,68 @@ function Utilities({ includedLanguages }: { includedLanguages?: string | undefin
     </div>
   );
 }
+
+function MobileNavigation({
+  open,
+  pathname,
+  includedLanguages,
+  onClose,
+}: {
+  open: boolean;
+  pathname: string;
+  includedLanguages?: string | undefined;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[var(--scrim)] lg:hidden">
+      <button
+        type="button"
+        aria-label="Close navigation menu"
+        onClick={onClose}
+        className="absolute inset-0 h-full w-full cursor-default"
+      />
+      <aside
+        id="mobile-navigation-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Mobile navigation"
+        className="relative ml-auto flex h-dvh w-[min(88vw,22rem)] flex-col overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl"
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <span className="font-bold text-[var(--text)]">Menu</span>
+          <IconButton
+            label="Close navigation menu"
+            onClick={onClose}
+          >
+            <X size={20} />
+          </IconButton>
+        </div>
+        <nav aria-label="Mobile main navigation" className="grid gap-1">
+          {links.map((link) => (
+            <Link
+              key={link.to}
+              href={link.to}
+              onClick={onClose}
+              aria-current={isActive(pathname, link.to) ? "page" : undefined}
+              className={`flex min-h-12 items-center rounded-xl px-3 text-base font-semibold ${isActive(pathname, link.to) ? "bg-[var(--surface-2)] text-[var(--text)]" : "text-[var(--text)] hover:bg-[var(--surface-2)]"}`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="mt-6 border-t border-[var(--border)] pt-5">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+            Preferences
+          </p>
+          <Utilities includedLanguages={includedLanguages} />
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 export default function Header({
   schoolName = "Satyam International School",
   logoUrl,
@@ -57,9 +124,12 @@ export default function Header({
             className="flex min-w-0 shrink items-center gap-2.5 rounded-lg text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
           >
             {logoUrl ? (
-              <img
+              <Image
                 src={logoUrl}
                 alt=""
+                width={40}
+                height={40}
+                unoptimized
                 className="h-10 w-10 shrink-0 rounded-lg bg-[var(--surface-2)] object-contain"
               />
             ) : (
@@ -103,55 +173,23 @@ export default function Header({
               label={open ? "Close navigation menu" : "Open navigation menu"}
               aria-expanded={open}
               aria-controls="mobile-navigation-drawer"
-              onClick={() => { setOpen((value) => !value); }}
+              onClick={() => {
+                setOpen((value) => !value);
+              }}
             >
               {open ? <X size={21} /> : <Menu size={21} />}
             </IconButton>
           </div>
         </div>
       </header>
-      {open && (
-        <div
-          className="fixed inset-0 z-50 bg-[var(--scrim)] lg:hidden"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setOpen(false);
-          }}
-        >
-          <aside
-            id="mobile-navigation-drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Mobile navigation"
-            className="ml-auto flex h-dvh w-[min(88vw,22rem)] flex-col overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl"
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <span className="font-bold text-[var(--text)]">Menu</span>
-              <IconButton label="Close navigation menu" onClick={() => { setOpen(false); }}>
-                <X size={20} />
-              </IconButton>
-            </div>
-            <nav aria-label="Mobile main navigation" className="grid gap-1">
-              {links.map((link) => (
-                <Link
-                  key={link.to}
-                  href={link.to}
-                  onClick={() => { setOpen(false); }}
-                  aria-current={isActive(pathname, link.to) ? "page" : undefined}
-                  className={`flex min-h-12 items-center rounded-xl px-3 text-base font-semibold ${isActive(pathname, link.to) ? "bg-[var(--surface-2)] text-[var(--text)]" : "text-[var(--text)] hover:bg-[var(--surface-2)]"}`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-            <div className="mt-6 border-t border-[var(--border)] pt-5">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                Preferences
-              </p>
-              <Utilities includedLanguages={includedLanguages} />
-            </div>
-          </aside>
-        </div>
-      )}
+      <MobileNavigation
+        open={open}
+        pathname={pathname}
+        includedLanguages={includedLanguages}
+        onClose={() => {
+          setOpen(false);
+        }}
+      />
     </>
   );
 }

@@ -49,19 +49,25 @@ export default function AdminMobileNav({
         <div
           className="fixed inset-0 z-[95] bg-[var(--scrim)] md:hidden"
           role="presentation"
-          onClick={() => { setMobileAdminNav(false); }}
+          onClick={() => {
+            setMobileAdminNav(false);
+          }}
         >
           <nav
             aria-label="Mobile admin navigation"
             className="h-dvh w-[min(86vw,22rem)] overflow-y-auto border-r border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--text)] shadow-xl"
-            onClick={(event) => { event.stopPropagation(); }}
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
           >
             <div className="mb-4 flex items-center justify-between">
               <strong>Admin navigation</strong>
               <button
                 type="button"
                 aria-label="Close navigation"
-                onClick={() => { setMobileAdminNav(false); }}
+                onClick={() => {
+                  setMobileAdminNav(false);
+                }}
                 className="utility-icon"
               >
                 <X size={18} />

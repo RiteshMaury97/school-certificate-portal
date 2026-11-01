@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, CalendarDays, Download, Filter, Search, ShieldCheck } from "lucide-react";
+
 import type { Dispatch, SetStateAction } from "react";
 
 type AuditTabProps = {
@@ -46,8 +47,12 @@ export default function AuditTab({
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">Admin / Audit logs</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-[var(--text)] sm:text-3xl">Audit logs</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--primary)]">
+              Admin / Audit logs
+            </p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-[var(--text)] sm:text-3xl">
+              Audit logs
+            </h2>
             <p className="mt-2 max-w-2xl text-sm text-[var(--text-muted)]">
               Review security sensitive actions and trace changes across your school workspace.
             </p>
@@ -65,40 +70,60 @@ export default function AuditTab({
           </span>
           <div>
             <h3 className="font-semibold text-[var(--text)]">Filter records</h3>
-            <p className="text-xs text-[var(--text-muted)]">Narrow results by action and date range</p>
+            <p className="text-xs text-[var(--text-muted)]">
+              Narrow results by action and date range
+            </p>
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(180px,1.2fr)_minmax(150px,1fr)_minmax(150px,1fr)_auto_auto]">
           <label className="relative block">
-            <Search size={15} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+            <Search
+              size={15}
+              aria-hidden="true"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+            />
             <span className="sr-only">Filter by action</span>
             <input
               translate="no"
               value={auditAction}
-              onChange={(event) => setAuditAction(event.target.value)}
+              onChange={(event) => {
+                setAuditAction(event.target.value);
+              }}
               placeholder="Filter by action"
               className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)]"
             />
           </label>
           <label className="relative block">
-            <CalendarDays size={15} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+            <CalendarDays
+              size={15}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+            />
             <span className="sr-only">Start date</span>
             <input
               translate="no"
               type="date"
               value={auditStart}
-              onChange={(event) => setAuditStart(event.target.value)}
+              onChange={(event) => {
+                setAuditStart(event.target.value);
+              }}
               className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)]"
             />
           </label>
           <label className="relative block">
-            <CalendarDays size={15} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+            <CalendarDays
+              size={15}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+            />
             <span className="sr-only">End date</span>
             <input
               translate="no"
               type="date"
               value={auditEnd}
-              onChange={(event) => setAuditEnd(event.target.value)}
+              onChange={(event) => {
+                setAuditEnd(event.target.value);
+              }}
               className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)]"
             />
           </label>
@@ -122,7 +147,9 @@ export default function AuditTab({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--divider)] px-5 py-4">
           <div>
             <h3 className="text-lg font-bold text-[var(--text)]">Latest events</h3>
-            <p className="mt-0.5 text-sm text-[var(--text-muted)]">{logs.length.toLocaleString()} records · newest first</p>
+            <p className="mt-0.5 text-sm text-[var(--text-muted)]">
+              {logs.length.toLocaleString()} records · newest first
+            </p>
           </div>
           <span className="inline-flex items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--success)_12%,transparent)] px-3 py-1.5 text-xs font-semibold text-[var(--success)]">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" /> Recent activity
@@ -132,9 +159,13 @@ export default function AuditTab({
         {logs.length === 0 ? (
           <div className="grid min-h-56 place-items-center px-5 py-12 text-center">
             <div>
-              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--surface-2)] text-[var(--text-muted)]"><Activity size={20} /></div>
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--surface-2)] text-[var(--text-muted)]">
+                <Activity size={20} />
+              </div>
               <h4 className="mt-3 font-semibold text-[var(--text)]">No audit records found</h4>
-              <p className="mt-1 text-sm text-[var(--text-muted)]">Try a different action or date range.</p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">
+                Try a different action or date range.
+              </p>
             </div>
           </div>
         ) : (
@@ -150,12 +181,24 @@ export default function AuditTab({
                   <article className="rounded-xl border border-[var(--divider)] bg-[var(--bg)] px-4 py-3 transition-colors hover:bg-[var(--surface-2)]">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                        <span className="rounded-md bg-[var(--surface-2)] px-2 py-1 font-mono text-xs font-bold text-[var(--text)]">{action}</span>
-                        <time dateTime={typeof log.timestamp === "string" ? log.timestamp : undefined} className="text-xs text-[var(--text-muted)]">{formatTimestamp(log.timestamp)}</time>
+                        <span className="rounded-md bg-[var(--surface-2)] px-2 py-1 font-mono text-xs font-bold text-[var(--text)]">
+                          {action}
+                        </span>
+                        <time
+                          dateTime={typeof log.timestamp === "string" ? log.timestamp : undefined}
+                          className="text-xs text-[var(--text-muted)]"
+                        >
+                          {formatTimestamp(log.timestamp)}
+                        </time>
                       </div>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Audit event</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                        Audit event
+                      </span>
                     </div>
-                    <p className="mt-2 truncate font-mono text-[11px] text-[var(--text-muted)]" title={`Actor: ${actor} · IP hash: ${ipHash}`}>
+                    <p
+                      className="mt-2 truncate font-mono text-[11px] text-[var(--text-muted)]"
+                      title={`Actor: ${actor} · IP hash: ${ipHash}`}
+                    >
                       <span className="font-sans font-medium">Actor:</span> {actor}
                       <span className="mx-2 text-[var(--divider)]">·</span>
                       <span className="font-sans font-medium">IP hash:</span> {ipHash}
@@ -163,6 +206,14 @@ export default function AuditTab({
                     {action === "certificate.search" && targetId && (
                       <p className="mt-1 text-xs text-[var(--text-muted)]">
                         Search outcome: <span className="font-mono">{targetId}</span>
+                      </p>
+                    )}
+                    {Array.isArray(log.changedFields) && log.changedFields.length > 0 && (
+                      <p className="mt-1 text-xs text-[var(--text-muted)]">
+                        Changed fields:{" "}
+                        {log.changedFields
+                          .filter((field): field is string => typeof field === "string")
+                          .join(", ")}
                       </p>
                     )}
                   </article>

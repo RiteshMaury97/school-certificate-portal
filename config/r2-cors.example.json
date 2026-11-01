@@ -1,19 +1,9 @@
 [
   {
-    "AllowedOrigins": [
-      "https://YOUR-PORTAL-DOMAIN"
-    ],
-    "AllowedMethods": [
-      "GET",
-      "HEAD",
-      "PUT"
-    ],
-    "AllowedHeaders": [
-      "Content-Type"
-    ],
-    "ExposeHeaders": [
-      "ETag"
-    ],
+    "AllowedOrigins": ["https://YOUR-PORTAL-DOMAIN"],
+    "AllowedMethods": ["GET", "HEAD", "PUT"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 300
   }
 ]

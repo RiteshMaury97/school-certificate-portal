@@ -3,15 +3,14 @@ import { createHmac } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
+import { enforceAdminLocation } from "@/server/admin-location";
+import { incrementDailySecurityMetric } from "@/server/daily-security-summary";
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
-import {
-  hashRequesterIp,
-  verifyRequestAppCheck,
-  sameOrigin,
-} from "@/server/security";
+import { hasTrustedRequesterIp } from "@/server/request-origin";
+import { hashRequesterIp, verifyRequestAppCheck, sameOrigin } from "@/server/security";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 const key = () => {
   const value = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
@@ -21,10 +20,17 @@ const key = () => {
 async function notifySuperadmins(email: string, count: number) {
   const admins = await db.collection("admins").where("role", "==", "superadmin").limit(10).get();
   const recipients = admins.docs.map((doc) => String(doc.get("email") ?? "")).filter(Boolean);
-  if (recipients.length) await sendMail({ to: recipients, subject: "School Portal: repeated administrator sign-in failures", text: `Repeated sign-in failures detected. Attempts: ${count}. Account: ${email}.` }).catch(() => {});
+  if (recipients.length)
+    await sendMail({
+      to: recipients,
+      subject: "School Portal: repeated administrator sign-in failures",
+      text: `Repeated sign-in failures detected. Attempts: ${count}. Account: ${email}.`,
+    }).catch(() => {});
 }
 export async function POST(request: NextRequest) {
   try {
+    if (!hasTrustedRequesterIp(request))
+      return NextResponse.json({ error: "Sign-in is temporarily unavailable." }, { status: 503 });
     await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
@@ -39,12 +45,12 @@ export async function POST(request: NextRequest) {
     )
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     const email = body.email.trim().toLowerCase();
-    const knownAdmin = await db
-      .collection("admins")
-      .where("email", "==", email)
-      .limit(1)
-      .get();
+    if (body.action === "failure")
+      await incrementDailySecurityMetric("failedSignIns").catch(() => {});
+    const knownAdmin = await db.collection("admins").where("email", "==", email).limit(1).get();
     if (knownAdmin.empty) return NextResponse.json({ locked: false });
+    const locationDenied = await enforceAdminLocation(request, knownAdmin.docs[0]?.id);
+    if (locationDenied) return locationDenied;
     const emailHash = createHmac("sha256", key()).update(email).digest("hex");
     const ipHash = hashRequesterIp(request);
     const ref = db.collection("adminLoginFailures").doc(emailHash);
@@ -112,7 +118,8 @@ export async function POST(request: NextRequest) {
       { merge: true },
     );
     if (lock && Number(snap.get("count") ?? 0) < 5)
-      await notifySuperadmins(email, nextCount);
+      await incrementDailySecurityMetric("lockouts").catch(() => {});
+    if (lock && Number(snap.get("count") ?? 0) < 5) await notifySuperadmins(email, nextCount);
     return NextResponse.json({ recorded: true, locked: lock });
   } catch (error) {
     const message =

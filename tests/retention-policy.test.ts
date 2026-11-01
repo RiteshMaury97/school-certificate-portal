@@ -1,25 +1,16 @@
+import { readFile } from "node:fs/promises";
+
 import { describe, expect, it } from "vitest";
 
-import {
-  isRetentionExpired,
-  retentionExpiryFromSession,
-} from "@/shared/retention-policy";
-describe("retention schedule", () => {
-  it("calculates retention after the end of the academic session", () => {
-    expect(retentionExpiryFromSession("2023-24", 7)?.toISOString()).toBe(
-      "2031-03-31T23:59:59.000Z",
-    );
-  });
-  it("rejects invalid sessions and periods", () => {
-    expect(retentionExpiryFromSession("2023/24", 7)).toBeNull();
-    expect(retentionExpiryFromSession("2023-24", 0)).toBeNull();
-  });
-  it("flags only records past the expiry", () => {
-    expect(
-      isRetentionExpired(new Date("2020-01-01"), new Date("2021-01-01")),
-    ).toBe(true);
-    expect(
-      isRetentionExpired(new Date("2022-01-01"), new Date("2021-01-01")),
-    ).toBe(false);
+describe("student record retention disclosure", () => {
+  it("keeps the configured retention period and describes manual deletion", async () => {
+    const privacy = await readFile("src/features/legal/PrivacyView.tsx", "utf8");
+    const settings = await readFile("src/features/admin/components/site/BrandingTab.tsx", "utf8");
+    expect(privacy).toContain("retentionYears} years");
+    expect(privacy).toContain("verified erasure request");
+    expect(privacy).toContain("authorized manual review");
+    expect(privacy).not.toContain("flagged for a human");
+    expect(privacy).not.toContain("retentionScheduleConfirmed");
+    expect(settings).toContain("Retention period after the end of the academic session");
   });
 });

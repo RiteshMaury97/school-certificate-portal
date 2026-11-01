@@ -26,11 +26,11 @@ describe("lazy Google Translate integration", () => {
     const results = await readFile("src/features/certificates/ResultsView.tsx", "utf8");
     const print = await readFile("src/features/certificates/PrintView.tsx", "utf8");
     const finder = await readFile("src/features/certificates/FinderView.tsx", "utf8");
-    const routes = await readFile("src/app/routes.tsx", "utf8");
+    const adminArea = await readFile("src/features/auth/AdminArea.tsx", "utf8");
     expect(results).toContain('className="mx-auto max-w-5xl notranslate"');
     expect(print).toContain('className="mx-auto max-w-4xl p-6 print:p-0 notranslate"');
     expect(finder).toContain('className="notranslate mt-8"');
-    expect(routes).toContain('className="notranslate" translate="no"');
+    expect(adminArea).toContain('className="notranslate" translate="no"');
   });
   it("documents Google translation processing and the googtrans functional cookie", async () => {
     const privacy = await readFile("src/features/legal/PrivacyView.tsx", "utf8");

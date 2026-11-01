@@ -58,11 +58,14 @@ await adminRef.set(
   { merge: true },
 );
 
-console.log("Superadministrator promotion completed.");
-console.log(`UID: ${user.uid}`);
-console.log(`Email: ${email}`);
-console.log("Firestore admins/{uid}: role=superadmin, status=active");
-console.log("Firebase custom claim: role=superadmin");
-console.log(
-  "Next: sign out of the portal completely, then sign in again with this Google account.",
+process.stdout.write(
+  [
+    "Superadministrator promotion completed.",
+    `UID: ${user.uid}`,
+    `Email: ${email}`,
+    "Firestore admins/{uid}: role=superadmin, status=active",
+    "Firebase custom claim: role=superadmin",
+    "Next: sign out of the portal completely, then sign in again with this Google account.",
+    "",
+  ].join("\n"),
 );

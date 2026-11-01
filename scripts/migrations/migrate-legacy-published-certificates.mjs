@@ -5,9 +5,7 @@ if (!encoded) throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 is required");
 const app =
   getApps()[0] ??
   initializeApp({
-    credential: cert(
-      JSON.parse(Buffer.from(encoded, "base64").toString("utf8")),
-    ),
+    credential: cert(JSON.parse(Buffer.from(encoded, "base64").toString("utf8"))),
   });
 const db = getFirestore(app);
 const snapshot = await db.collection("certificates").get();
@@ -22,7 +20,7 @@ for (const doc of snapshot.docs) {
     migrated++;
   }
 }
-console.log(
-  `Marked ${migrated} legacy records as published. Records with explicit non-published flags were not changed.`,
+process.stdout.write(
+  `Marked ${migrated} legacy records as published. Records with explicit non-published flags were not changed.\n`,
 );
 await app.delete();

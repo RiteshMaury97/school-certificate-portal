@@ -4,12 +4,9 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 const projectId = process.env.FIREBASE_PROJECT_ID;
 if (!encoded || !projectId)
-  throw new Error(
-    "Set FIREBASE_SERVICE_ACCOUNT_BASE64 and FIREBASE_PROJECT_ID.",
-  );
+  throw new Error("Set FIREBASE_SERVICE_ACCOUNT_BASE64 and FIREBASE_PROJECT_ID.");
 const credentials = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
-const app =
-  getApps()[0] ?? initializeApp({ credential: cert(credentials), projectId });
+const app = getApps()[0] ?? initializeApp({ credential: cert(credentials), projectId });
 const db = getFirestore(app);
 
 const sessions = (process.env.SEED_SESSIONS || "2026-27")
@@ -33,8 +30,7 @@ const slugify = (value) =>
     .slice(0, 60);
 
 for (const session of sessions) {
-  if (!/^\d{4}-\d{2}$/.test(session))
-    throw new Error(`Invalid session format: ${session}`);
+  if (!/^\d{4}-\d{2}$/.test(session)) throw new Error(`Invalid session format: ${session}`);
   await db.collection("sessions").doc(session).set(
     {
       label: session,
@@ -56,6 +52,6 @@ for (const type of types) {
     { merge: true },
   );
 }
-console.log(
-  `Seeded ${sessions.length} session(s) and ${types.length} certificate type(s).`,
+process.stdout.write(
+  `Seeded ${sessions.length} session(s) and ${types.length} certificate type(s).\n`,
 );

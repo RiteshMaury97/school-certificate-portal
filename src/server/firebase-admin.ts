@@ -6,7 +6,41 @@ import { getFirestore } from "firebase-admin/firestore";
 
 type ServiceAccountInput = Parameters<typeof cert>[0];
 
-const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function decodeServiceAccount(encoded: string): ServiceAccountInput {
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
+    return normalizeServiceAccount(parsed);
+  } catch {
+    throw new Error(
+      "FIREBASE_SERVICE_ACCOUNT_BASE64 is set but is not base64-encoded service-account JSON. " +
+        "Encode the file with: base64 -w0 service-account.json",
+    );
+  }
+}
+
+function normalizeServiceAccount(value: unknown): ServiceAccountInput {
+  if (!isRecord(value)) throw new Error("Invalid service-account object");
+  const parsedProjectId = value.projectId ?? value.project_id;
+  const clientEmail = value.clientEmail ?? value.client_email;
+  const privateKey = value.privateKey ?? value.private_key;
+  if (
+    (parsedProjectId !== undefined && typeof parsedProjectId !== "string") ||
+    typeof clientEmail !== "string" ||
+    typeof privateKey !== "string"
+  ) {
+    throw new Error("Invalid service-account fields");
+  }
+  return {
+    ...(parsedProjectId ? { projectId: parsedProjectId } : {}),
+    clientEmail,
+    privateKey,
+  };
+}
 
 /**
  * Credentials are read, in order, from:
@@ -17,16 +51,7 @@ const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIR
  */
 function readServiceAccount(): ServiceAccountInput | null {
   const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();
-  if (encoded) {
-    try {
-      return JSON.parse(Buffer.from(encoded, "base64").toString("utf8")) as ServiceAccountInput;
-    } catch {
-      throw new Error(
-        "FIREBASE_SERVICE_ACCOUNT_BASE64 is set but is not base64-encoded service-account JSON. " +
-          "Encode the file with: base64 -w0 service-account.json",
-      );
-    }
-  }
+  if (encoded) return decodeServiceAccount(encoded);
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
   if (projectId && clientEmail && privateKey) return { projectId, clientEmail, privateKey };
@@ -53,18 +78,31 @@ export const db = getFirestore(app);
  */
 export function describeFirebaseError(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error);
-  const code = (error as { code?: string | number } | null)?.code;
+  const code = getErrorCode(error);
   const message = raw.replace(/\s+/g, " ").slice(0, 220);
-  let hint = "";
-  if (/default credentials|could not load/i.test(raw) || (!usingExplicitCredentials && /UNAUTHENTICATED|16/.test(String(code))))
-    hint =
-      " | HINT: no Firebase Admin credentials were found. Set FIREBASE_SERVICE_ACCOUNT_BASE64 " +
-      "(or FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY) in the server environment.";
-  else if (/NOT_FOUND|5 NOT_FOUND/.test(raw) || String(code) === "5")
-    hint = " | HINT: the Firestore database does not exist for this project. Create it in the Firebase console.";
-  else if (/PERMISSION_DENIED|7 PERMISSION/.test(raw) || String(code) === "7")
-    hint = " | HINT: the service account lacks Firestore access (needs the 'Cloud Datastore User' role).";
-  else if (!projectId)
-    hint = " | HINT: FIREBASE_PROJECT_ID is not set.";
+  const hint = firebaseErrorHint(raw, code);
   return `${code === undefined ? "" : `[${String(code)}] `}${message}${hint}`;
+}
+
+function getErrorCode(error: unknown): string | number | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) return undefined;
+  const code: unknown = error.code;
+  return typeof code === "string" || typeof code === "number" ? code : undefined;
+}
+
+function firebaseErrorHint(raw: string, code: string | number | undefined): string {
+  if (
+    /default credentials|could not load/i.test(raw) ||
+    (!usingExplicitCredentials && /UNAUTHENTICATED|16/.test(String(code)))
+  )
+    return (
+      " | HINT: no Firebase Admin credentials were found. Set FIREBASE_SERVICE_ACCOUNT_BASE64 " +
+      "(or FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY) in the server environment."
+    );
+  else if (/NOT_FOUND|5 NOT_FOUND/.test(raw) || String(code) === "5")
+    return " | HINT: the Firestore database does not exist for this project. Create it in the Firebase console.";
+  else if (/PERMISSION_DENIED|7 PERMISSION/.test(raw) || String(code) === "7")
+    return " | HINT: the service account lacks Firestore access (needs the 'Cloud Datastore User' role).";
+  if (!projectId) return " | HINT: FIREBASE_PROJECT_ID is not set.";
+  return "";
 }

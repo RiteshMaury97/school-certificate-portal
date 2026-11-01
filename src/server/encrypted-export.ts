@@ -1,7 +1,7 @@
 import "server-only";
 import { createCipheriv, randomBytes, scryptSync } from "node:crypto";
 
-import { FieldPath } from "firebase-admin/firestore";
+import { FieldPath, Timestamp } from "firebase-admin/firestore";
 
 import { db } from "@/server/firebase-admin";
 
@@ -19,29 +19,21 @@ function encryptionKey(
       mode: "scrypt-passphrase",
     };
   }
-  if (!env)
-    throw new Error("Configure EXPORT_ENCRYPTION_KEY or provide a passphrase.");
+  if (!env) throw new Error("Configure EXPORT_ENCRYPTION_KEY or provide a passphrase.");
   const key = Buffer.from(env, "base64");
   if (key.length !== 32)
-    throw new Error(
-      "EXPORT_ENCRYPTION_KEY must be a base64-encoded 32-byte key.",
-    );
+    throw new Error("EXPORT_ENCRYPTION_KEY must be a base64-encoded 32-byte key.");
   return { key, salt: Buffer.alloc(0), mode: "env-key" };
 }
 function plainValue(value: unknown): unknown {
-  if (
-    value &&
-    typeof value === "object" &&
-    "toDate" in value &&
-    typeof (value as { toDate?: unknown }).toDate === "function"
-  )
-    return (value as { toDate: () => Date }).toDate().toISOString();
+  if (value instanceof Timestamp) return value.toDate().toISOString();
   if (Array.isArray(value)) return value.map(plainValue);
   if (value && typeof value === "object" && !Buffer.isBuffer(value))
-    return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [k, plainValue(v)]),
-    );
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, plainValue(v)]));
   return value;
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 export async function collectExportData(): Promise<Record<string, unknown[]>> {
   const result: Record<string, unknown[]> = {};
@@ -49,21 +41,20 @@ export async function collectExportData(): Promise<Record<string, unknown[]>> {
   for (const collection of collections) {
     const name = collection.id;
     const rows: unknown[] = [];
-    let page = await collection
-      .orderBy(FieldPath.documentId())
-      .limit(500)
-      .get();
+    let page = await collection.orderBy(FieldPath.documentId()).limit(500).get();
     while (!page.empty) {
       rows.push(
-        ...page.docs.map((doc) => ({
-          id: doc.id,
-          ...(plainValue(doc.data()) as Record<string, unknown>),
-        })),
+        ...page.docs.map((doc) => {
+          const value = plainValue(doc.data());
+          return { id: doc.id, ...(isRecord(value) ? value : {}) };
+        }),
       );
       if (page.size < 500) break;
+      const lastDocument = page.docs.at(-1);
+      if (!lastDocument) break;
       page = await collection
         .orderBy(FieldPath.documentId())
-        .startAfter(page.docs[page.docs.length - 1]!)
+        .startAfter(lastDocument)
         .limit(500)
         .get();
     }
@@ -75,12 +66,17 @@ function toCsv(data: Record<string, unknown[]>): string {
   const lines = ["collection,id,data"];
   for (const [collection, docs] of Object.entries(data))
     for (const doc of docs) {
-      const item = doc as Record<string, unknown>;
-      const cell = (value: unknown) =>
-        `"${String(value ?? "").replace(/"/g, '""')}"`;
-      lines.push(
-        [collection, cell(item.id), cell(JSON.stringify(item))].join(","),
-      );
+      const item = isRecord(doc) ? doc : {};
+      const cell = (value: unknown) => {
+        const text =
+          value === null || value === undefined
+            ? ""
+            : typeof value === "string"
+              ? value
+              : JSON.stringify(value);
+        return `"${text.replace(/"/g, '""')}"`;
+      };
+      lines.push([collection, cell(item.id), cell(item)].join(","));
     }
   return lines.join("\r\n");
 }
@@ -92,11 +88,7 @@ export async function createEncryptedExport(
   const plain = Buffer.from(
     format === "csv"
       ? toCsv(data)
-      : JSON.stringify(
-          { exportedAt: new Date().toISOString(), collections: data },
-          null,
-          2,
-        ),
+      : JSON.stringify({ exportedAt: new Date().toISOString(), collections: data }, null, 2),
     "utf8",
   );
   const salt = passphrase ? randomBytes(16) : undefined;

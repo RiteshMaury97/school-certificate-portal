@@ -1,7 +1,7 @@
 // Firebase session cookies support a maximum lifetime of two weeks.
-export const ADMIN_IDLE_TIMEOUT_MS = 6 * 60 * 60_000;
-export const ADMIN_IDLE_WARNING_MS = 5 * 60 * 60_000 + 45 * 60_000;
-export const ADMIN_HARD_SESSION_LIMIT_MS = 14 * 24 * 60 * 60_000;
+export const ADMIN_IDLE_TIMEOUT_MS = 15 * 60_000;
+export const ADMIN_IDLE_WARNING_MS = 13 * 60_000;
+export const ADMIN_HARD_SESSION_LIMIT_MS = 8 * 60 * 60_000;
 export function isAdminSessionExpired(
   lastActivityAt: number,
   absoluteExpiresAt: number,

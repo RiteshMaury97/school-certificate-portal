@@ -6,16 +6,11 @@ if (!encoded) throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 is required");
 const app =
   getApps()[0] ??
   initializeApp({
-    credential: cert(
-      JSON.parse(Buffer.from(encoded, "base64").toString("utf8")),
-    ),
+    credential: cert(JSON.parse(Buffer.from(encoded, "base64").toString("utf8"))),
   });
 const auth = getAuth(app),
   db = getFirestore(app);
-const oldAdmins = await db
-  .collection("admins")
-  .where("role", "==", "admin")
-  .get();
+const oldAdmins = await db.collection("admins").where("role", "==", "admin").get();
 for (const doc of oldAdmins.docs) {
   await doc.ref.update({ role: "approver", migratedRoleAt: new Date() });
   const user = await auth.getUser(doc.id);
@@ -23,9 +18,9 @@ for (const doc of oldAdmins.docs) {
     ...user.customClaims,
     role: "approver",
   });
-  console.log(`Migrated ${doc.id} to approver`);
+  process.stdout.write(`Migrated ${doc.id} to approver\n`);
 }
-console.log(
-  `Migrated ${oldAdmins.size} legacy admin records. Users must sign in again.`,
+process.stdout.write(
+  `Migrated ${oldAdmins.size} legacy admin records. Users must sign in again.\n`,
 );
 await app.delete();

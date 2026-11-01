@@ -1,11 +1,11 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
-  async rewrites() {
+  rewrites() {
     return {
       beforeFiles: [{ source: "/offline", destination: "/offline.html" }],
     };
   },
-  async headers() {
+  headers() {
     const production = process.env.NODE_ENV === "production";
     return [
       {
@@ -16,8 +16,7 @@ const config: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           {
             key: "Permissions-Policy",
-            value:
-              "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
           },
           { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
           ...(production
@@ -49,6 +48,5 @@ const config: NextConfig = {
     "/api/certificates/print": ["./public/fonts/*.ttf"],
     "/api/public/report": ["./public/fonts/*.ttf"],
   },
-  experimental: { serverActions: { bodySizeLimit: "10mb" } },
 };
 export default config;

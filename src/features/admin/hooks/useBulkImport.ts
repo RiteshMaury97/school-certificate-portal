@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type Dispatch, type SetStateAction } from "react";
+import { useState, type SubmitEvent, type Dispatch, type SetStateAction } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 
@@ -6,15 +6,31 @@ import { csrf } from "../utils/admin-helpers";
 
 import type { BulkPreviewItem } from "../types/admin-state.types";
 
-type Api = <T extends Record<string, unknown> = Record<string, unknown>>(url: string, init?: RequestInit) => Promise<T>;
+type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
+  url: string,
+  init?: RequestInit,
+) => Promise<T>;
 type Props = {
-  api: Api; act: (fn: () => Promise<void>) => Promise<void>; setError: Dispatch<SetStateAction<string>>;
-  load: () => Promise<void>; loadStudents: () => Promise<void>;
-  duplicateHashAcknowledged: boolean; duplicateHashReason: string;
+  api: Api;
+  act: (fn: () => Promise<void>) => Promise<void>;
+  setError: Dispatch<SetStateAction<string>>;
+  load: () => Promise<void>;
+  loadStudents: () => Promise<void>;
+  duplicateHashAcknowledged: boolean;
+  duplicateHashReason: string;
   setDuplicateHashWarning: Dispatch<SetStateAction<string>>;
 };
 
-export function useBulkImport({ api, act, setError, load, loadStudents, duplicateHashAcknowledged, duplicateHashReason, setDuplicateHashWarning }: Props) {
+export function useBulkImport({
+  api,
+  act,
+  setError,
+  load,
+  loadStudents,
+  duplicateHashAcknowledged,
+  duplicateHashReason,
+  setDuplicateHashWarning,
+}: Props) {
   const [csv, setCsv] = useState<File | null>(null);
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null);
   const [bulkFiles, setBulkFiles] = useState<File[]>([]);
@@ -115,7 +131,9 @@ export function useBulkImport({ api, act, setError, load, loadStudents, duplicat
                     );
                   }
                 };
-                xhr.onerror = () => { reject(new Error(`Network error uploading ${row.fileName}`)); };
+                xhr.onerror = () => {
+                  reject(new Error(`Network error uploading ${row.fileName}`));
+                };
                 xhr.send(body);
               })
               .catch(reject);
@@ -148,6 +166,22 @@ export function useBulkImport({ api, act, setError, load, loadStudents, duplicat
       URL.revokeObjectURL(url);
     });
   }
-  return { csv, setCsv, preview, setPreview, bulkFiles, setBulkFiles, bulkCsv, setBulkCsv,
-    bulkPreview, setBulkPreview, bulkProgress, setBulkProgress, importCsv, previewBulk, commitBulk, downloadTemplate };
+  return {
+    csv,
+    setCsv,
+    preview,
+    setPreview,
+    bulkFiles,
+    setBulkFiles,
+    bulkCsv,
+    setBulkCsv,
+    bulkPreview,
+    setBulkPreview,
+    bulkProgress,
+    setBulkProgress,
+    importCsv,
+    previewBulk,
+    commitBulk,
+    downloadTemplate,
+  };
 }

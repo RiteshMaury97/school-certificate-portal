@@ -10,22 +10,22 @@ Do not add broad client-side `allow read` or `allow write` rules. If direct brow
 
 ## Role matrix
 
-| Capability / data area                      |                     Uploader |                     Approver | Superadmin |
-| ------------------------------------------- | ---------------------------: | ---------------------------: | ---------: |
-| Create/import student records               |                          Yes |                           No |        Yes |
-| Upload and preview certificates             |                          Yes |                           No |        Yes |
-| Read certificate review queues              |                           No |                          Yes |        Yes |
-| Approve/reject certificate submissions      |                           No |                          Yes |        Yes |
-| Revoke certificates                         |                           No |                          Yes |        Yes |
-| Read certificate/student operational data   |   Scoped to upload workflows |             Review workflows |        Yes |
-| Manage public catalog content               | Yes, as route policy permits | Yes, as route policy permits |        Yes |
-| Read audit/timeline records                 |                           No |                          Yes |        Yes |
-| Manage announcements                        |                           No |                          Yes |        Yes |
-| Manage administrator accounts and roles     |                           No |                           No |        Yes |
-| Change site settings and FAQs               |                           No |                           No |        Yes |
-| Export/backup portal data                   |                           No |                           No |        Yes |
-| Manage retention reviews and breach records |                           No |                           No |        Yes |
-| Manage own sessions / revoke own sessions   |                          Yes |                          Yes |        Yes |
+| Capability / data area                    |                     Uploader |                     Approver | Superadmin |
+| ----------------------------------------- | ---------------------------: | ---------------------------: | ---------: |
+| Create/import student records             |                          Yes |                           No |        Yes |
+| Upload and preview certificates           |                          Yes |                           No |        Yes |
+| Read certificate review queues            |                           No |                          Yes |        Yes |
+| Approve/reject certificate submissions    |                           No |                          Yes |        Yes |
+| Revoke certificates                       |                           No |                          Yes |        Yes |
+| Read certificate/student operational data |   Scoped to upload workflows |             Review workflows |        Yes |
+| Manage public catalog content             | Yes, as route policy permits | Yes, as route policy permits |        Yes |
+| Read audit/timeline records               |                           No |                          Yes |        Yes |
+| Manage announcements                      |                           No |                          Yes |        Yes |
+| Manage administrator accounts and roles   |                           No |                           No |        Yes |
+| Change site settings and FAQs             |                           No |                           No |        Yes |
+| Export/backup portal data                 |                           No |                           No |        Yes |
+| Manage breach records                     |                           No |                           No |        Yes |
+| Manage own sessions / revoke own sessions |                          Yes |                          Yes |        Yes |
 
 Superadmin is intentionally an override in `src/shared/role-policy.ts`. For non-superadmin roles, access is granted only when the route explicitly lists the role in `requireRoles`. Sensitive superadmin actions also require one-time reauthentication where implemented.
 
@@ -60,3 +60,7 @@ The command deploys the Firestore rules and indexes configured in `firebase.json
 ## Storage note
 
 This project stores certificate objects in Cloudflare R2 through server-side code; it does not configure Firebase Storage rules. Protect R2 credentials as server-only secrets and never expose object keys or credentials to the browser. If Firebase Storage is enabled separately, configure and deploy a separate `storage.rules` file with default deny and narrowly scoped access.
+
+## Vulnerability reporting
+
+The public disclosure contact and policy are published at [`/.well-known/security.txt`](https://satyaminternationalschool.in/.well-known/security.txt) and [`/security-policy.html`](https://satyaminternationalschool.in/security-policy.html). Review the [security checklist](SECURITY-CHECKLIST.md) before launch.

@@ -1,6 +1,11 @@
 "use client";
 import { getApps, initializeApp } from "firebase/app";
-import { getToken, initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from "firebase/app-check";
+import {
+  getToken,
+  initializeAppCheck,
+  ReCaptchaV3Provider,
+  type AppCheck,
+} from "firebase/app-check";
 import { getAuth } from "firebase/auth";
 
 function requiredFirebaseConfig(value: string | undefined, name: string): string {
@@ -10,13 +15,26 @@ function requiredFirebaseConfig(value: string | undefined, name: string): string
 }
 
 const config = {
-  apiKey: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_API_KEY, "NEXT_PUBLIC_FIREBASE_API_KEY"),
-  authDomain: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"),
-  projectId: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, "NEXT_PUBLIC_FIREBASE_PROJECT_ID"),
-  appId: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_APP_ID, "NEXT_PUBLIC_FIREBASE_APP_ID"),
+  apiKey: requiredFirebaseConfig(
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    "NEXT_PUBLIC_FIREBASE_API_KEY",
+  ),
+  authDomain: requiredFirebaseConfig(
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+  ),
+  projectId: requiredFirebaseConfig(
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+  ),
+  appId: requiredFirebaseConfig(
+    process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    "NEXT_PUBLIC_FIREBASE_APP_ID",
+  ),
 };
 
-export const firebaseApp = getApps().length ? getApps()[0]! : initializeApp(config);
+const existingApps = getApps();
+export const firebaseApp = existingApps[0] ?? initializeApp(config);
 export const auth = getAuth(firebaseApp);
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -35,7 +53,7 @@ function appCheck(): AppCheck {
     if (!siteKey) throw new Error("Firebase App Check site key is not configured.");
     if (!isProduction) {
       // The debug token is printed to the console once; register it in Firebase console → App Check.
-      (self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean }).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+      Reflect.set(self, "FIREBASE_APPCHECK_DEBUG_TOKEN", true);
     }
     appCheckInstance = initializeAppCheck(firebaseApp, {
       provider: new ReCaptchaV3Provider(siteKey),

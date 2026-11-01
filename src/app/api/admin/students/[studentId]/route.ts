@@ -3,10 +3,7 @@ import { NextResponse } from "next/server";
 
 import { removeCertificateNumberIndex } from "@/server/certificate-index";
 import { db } from "@/server/firebase-admin";
-import {
-  ensurePublicSessions,
-  rebuildPublicSessions,
-} from "@/server/public-sessions";
+import { ensurePublicSessions, rebuildPublicSessions } from "@/server/public-sessions";
 import { softDeleteR2Object } from "@/server/r2";
 import {
   createSearchKey,
@@ -17,15 +14,15 @@ import {
 } from "@/server/security";
 import {
   encryptStudentIdentifier,
+  decryptStudentIdentifier,
   scholarLookupHmac,
   studentIdentifierHmac,
   studentIdentityMatches,
 } from "@/server/student-pii";
-import { retentionExpiryFromSession } from "@/shared/retention-policy";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { studentUpdateSchema } from "@/shared/validation";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export async function PATCH(
   request: NextRequest,
@@ -36,21 +33,23 @@ export async function PATCH(
     const { studentId } = await context.params;
     const parsed = studentUpdateSchema.safeParse(await request.json());
     if (!parsed.success)
+      return NextResponse.json({ error: "Invalid student details." }, { status: 400 });
+    const data = parsed.data;
+    const parentEmail = data.parentEmail.trim().toLowerCase();
+    const parentMobile = data.parentMobile.trim();
+    if (data.notificationConsent && !parentEmail && !parentMobile)
       return NextResponse.json(
-        { error: "Invalid student details." },
+        {
+          error:
+            "A parent email or mobile number is required when notification consent is enabled.",
+        },
         { status: 400 },
       );
-    const data = parsed.data;
     const ref = db.collection("students").doc(studentId);
     const snapshot = await ref.get();
     if (!snapshot.exists)
-      return NextResponse.json(
-        { error: "Student not found." },
-        { status: 404 },
-      );
-    const currentSession = normalizeAcademicSession(
-      String(snapshot.get("session") ?? ""),
-    );
+      return NextResponse.json({ error: "Student not found." }, { status: 404 });
+    const currentSession = normalizeAcademicSession(String(snapshot.get("session") ?? ""));
     const linkedCertificates = await db
       .collection("certificates")
       .where("studentId", "==", studentId)
@@ -61,8 +60,7 @@ export async function PATCH(
       requestedSession !== currentSession &&
       linkedCertificates.docs.some(
         (certificate) =>
-          normalizeAcademicSession(String(certificate.get("session") ?? "")) !==
-          requestedSession,
+          normalizeAcademicSession(String(certificate.get("session") ?? "")) !== requestedSession,
       )
     )
       return NextResponse.json(
@@ -73,11 +71,7 @@ export async function PATCH(
         { status: 409 },
       );
     const searchKey = createSearchKey(data);
-    const scholarLookupKey = scholarLookupHmac(
-      data.scholarNumber,
-      data.className,
-      data.session,
-    );
+    const scholarLookupKey = scholarLookupHmac(data.scholarNumber, data.className, data.session);
     const scholarMatches = await db
       .collection("students")
       .where("scholarLookupKey", "==", scholarLookupKey)
@@ -87,22 +81,14 @@ export async function PATCH(
         { error: "That scholar number is already assigned in this class and session." },
         { status: 409 },
       );
-    const duplicates = await db
-      .collection("students")
-      .where("searchKey", "==", searchKey)
-      .get();
+    const duplicates = await db.collection("students").where("searchKey", "==", searchKey).get();
     const dateOfBirth = data.dateOfBirth || "";
-    const legacyAdmissionNumber = String(snapshot.get("admissionNo") ?? "");
-    const admissionNumber = data.admissionNumber || legacyAdmissionNumber;
-    const dateOfBirthDisambiguationKey = dateOfBirth
-      ? studentIdentifierHmac(dateOfBirth)
-      : "";
+    const admissionNumber = data.admissionNumber || "";
+    const dateOfBirthDisambiguationKey = dateOfBirth ? studentIdentifierHmac(dateOfBirth) : "";
     const admissionNumberDisambiguationKey = admissionNumber
       ? studentIdentifierHmac(admissionNumber)
       : "";
-    const otherDuplicates = duplicates.docs.filter(
-      (doc) => doc.id !== studentId,
-    );
+    const otherDuplicates = duplicates.docs.filter((doc) => doc.id !== studentId);
     if (
       otherDuplicates.length &&
       !dateOfBirthDisambiguationKey &&
@@ -131,20 +117,6 @@ export async function PATCH(
         },
         { status: 409 },
       );
-    const settings = await db.collection("siteSettings").doc("main").get();
-    const retentionYears = Math.max(
-      1,
-      Math.min(30, Number(settings.get("retentionYears") ?? 7)),
-    );
-    const retentionExpiresAt = retentionExpiryFromSession(
-      data.session,
-      retentionYears,
-    );
-    if (!retentionExpiresAt)
-      return NextResponse.json(
-        { error: "Invalid academic session for retention calculation." },
-        { status: 400 },
-      );
     const update: Record<string, unknown> = {
       studentName: data.studentName,
       fatherName: data.fatherName,
@@ -153,30 +125,94 @@ export async function PATCH(
       scholarNumber: encryptStudentIdentifier(data.scholarNumber),
       scholarLookupKey,
       session: data.session,
+      parentEmail,
+      parentMobile,
+      notificationConsent: data.notificationConsent,
+      notificationOptOut: !data.notificationConsent,
       searchKey,
-      retentionExpiresAt,
       updatedAt: FieldValue.serverTimestamp(),
       updatedBy: admin.uid,
       ...(admissionNumber ? { admissionNo: FieldValue.delete() } : {}),
+      admissionNumber: FieldValue.delete(),
+      admissionNumberDisambiguationKey: FieldValue.delete(),
+      dateOfBirth: FieldValue.delete(),
+      dateOfBirthDisambiguationKey: FieldValue.delete(),
     };
+    const notificationConsentWasActive =
+      snapshot.get("notificationConsent") === true && snapshot.get("notificationOptOut") !== true;
+    const notificationContactChanged =
+      String(snapshot.get("parentEmail") ?? "") !== parentEmail ||
+      String(snapshot.get("parentMobile") ?? "") !== parentMobile;
+    if (data.notificationConsent) {
+      if (!notificationConsentWasActive || notificationContactChanged)
+        update.notificationConsentAt = FieldValue.serverTimestamp();
+      update.notificationConsentPurpose = "certificate_availability";
+    } else {
+      update.notificationConsentAt = FieldValue.delete();
+      update.notificationConsentPurpose = FieldValue.delete();
+    }
     if (dateOfBirth) {
       update.dateOfBirth = encryptStudentIdentifier(dateOfBirth);
       update.dateOfBirthDisambiguationKey = dateOfBirthDisambiguationKey;
     }
     if (admissionNumber) {
       update.admissionNumber = encryptStudentIdentifier(admissionNumber);
-      update.admissionNumberDisambiguationKey =
-        admissionNumberDisambiguationKey;
+      update.admissionNumberDisambiguationKey = admissionNumberDisambiguationKey;
       update.admissionNo = FieldValue.delete();
     }
+    const currentAdmission = (() => {
+      const encrypted = snapshot.get("admissionNumber");
+      if (typeof encrypted !== "string") return String(snapshot.get("admissionNo") ?? "");
+      try {
+        return decryptStudentIdentifier(encrypted);
+      } catch {
+        return "";
+      }
+    })();
+    const currentDateOfBirth = (() => {
+      const encrypted = snapshot.get("dateOfBirth");
+      if (typeof encrypted !== "string") return "";
+      try {
+        return decryptStudentIdentifier(encrypted);
+      } catch {
+        return "";
+      }
+    })();
+    const currentScholarNumber = (() => {
+      const encrypted = snapshot.get("scholarNumber");
+      if (typeof encrypted !== "string") return "";
+      try {
+        return decryptStudentIdentifier(encrypted);
+      } catch {
+        return "";
+      }
+    })();
+    const compareValues: Record<string, [string, string]> = {
+      "Student name": [String(snapshot.get("studentName") ?? ""), data.studentName],
+      "Father name": [String(snapshot.get("fatherName") ?? ""), data.fatherName],
+      "Mother name": [String(snapshot.get("motherName") ?? ""), data.motherName],
+      "Class / section": [String(snapshot.get("className") ?? ""), data.className],
+      "Scholar number": [currentScholarNumber, data.scholarNumber],
+      "Academic session": [String(snapshot.get("session") ?? ""), data.session],
+      "Admission number": [currentAdmission, data.admissionNumber || ""],
+      "Date of birth": [currentDateOfBirth, data.dateOfBirth || ""],
+      "Parent email": [String(snapshot.get("parentEmail") ?? ""), parentEmail],
+      "Parent mobile": [String(snapshot.get("parentMobile") ?? ""), parentMobile],
+      "Notification consent": [
+        String(
+          snapshot.get("notificationConsent") === true &&
+            snapshot.get("notificationOptOut") !== true,
+        ),
+        String(data.notificationConsent),
+      ],
+    };
+    const changedFields = Object.entries(compareValues)
+      .filter(([, [before, after]]) => before.trim() !== after.trim())
+      .map(([field]) => field);
     await ref.update(update);
-    await writeAuditLog(
-      request,
-      admin.uid,
-      "student.update",
-      studentId,
-      studentId,
-    );
+    await writeAuditLog(request, admin.uid, "student.update", studentId, studentId, {
+      changedFields,
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return apiError(error);
@@ -192,17 +228,9 @@ export async function DELETE(
     const { studentId } = await context.params;
     const ref = db.collection("students").doc(studentId);
     const student = await ref.get();
-    if (!student.exists)
-      return NextResponse.json(
-        { error: "Student not found." },
-        { status: 404 },
-      );
-    const certs = await db
-      .collection("certificates")
-      .where("studentId", "==", studentId)
-      .get();
-    if (certs.docs.some((cert) => cert.get("status") === "published"))
-      await ensurePublicSessions();
+    if (!student.exists) return NextResponse.json({ error: "Student not found." }, { status: 404 });
+    const certs = await db.collection("certificates").where("studentId", "==", studentId).get();
+    if (certs.docs.some((cert) => cert.get("status") === "published")) await ensurePublicSessions();
     for (const cert of certs.docs) {
       const r2Key = String(cert.get("r2Key") ?? "");
       if (r2Key) await softDeleteR2Object(r2Key, studentId);
@@ -216,19 +244,10 @@ export async function DELETE(
       await db
         .collection("metricsCounters")
         .doc("portal")
-        .set(
-          { totalCertificates: FieldValue.increment(-certs.size) },
-          { merge: true },
-        );
+        .set({ totalCertificates: FieldValue.increment(-certs.size) }, { merge: true });
     if (certs.docs.some((cert) => cert.get("status") === "published"))
       await rebuildPublicSessions();
-    await writeAuditLog(
-      request,
-      admin.uid,
-      "student.delete",
-      studentId,
-      studentId,
-    );
+    await writeAuditLog(request, admin.uid, "student.delete", studentId, studentId);
     return NextResponse.json({ ok: true, deletedCertificates: certs.size });
   } catch (error) {
     return apiError(error);

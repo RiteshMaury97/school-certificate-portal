@@ -8,33 +8,66 @@ function parseBlock(css: string, selector: string): Tokens {
   const start = css.indexOf(`${selector} {`);
   const end = css.indexOf("}", start);
   const tokens: Tokens = {};
-  for (const match of css.slice(start, end).matchAll(/--([a-z0-9-]+):\s*(#[0-9a-f]{6});/gi))
-    tokens[match[1]!] = match[2]!;
+  for (const match of css.slice(start, end).matchAll(/--([a-z0-9-]+):\s*(#[0-9a-f]{6});/gi)) {
+    const name = match[1];
+    const value = match[2];
+    if (name && value) tokens[name] = value;
+  }
   return tokens;
 }
 function luminance(hex: string): number {
-  const [r, g, b] = [1, 3, 5].map((i) => {
-    const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+  const channel = (index: number) => {
+    const c = Number.parseInt(hex.slice(index, index + 2), 16) / 255;
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  }) as [number, number, number];
+  };
+  const r = channel(1);
+  const g = channel(3);
+  const b = channel(5);
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 function ratio(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  const luminances = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  const hi = luminances[0];
+  const lo = luminances[1];
+  if (hi === undefined || lo === undefined) {
+    throw new Error("Expected two color luminance values");
+  }
   return (hi + 0.05) / (lo + 0.05);
 }
 
+function requiredToken(tokens: Tokens, name: string): string {
+  const token = tokens[name];
+  if (!token) {
+    throw new Error(`Missing color token: ${name}`);
+  }
+  return token;
+}
+
 const TEXT_PAIRS: [string, string][] = [
-  ["text", "bg"], ["text", "surface"], ["text", "surface-2"],
-  ["text-muted", "bg"], ["text-muted", "surface"], ["text-muted", "surface-2"],
-  ["on-primary", "primary"], ["on-primary", "primary-hover"],
-  ["accent", "bg"], ["accent", "surface"],
-  ["danger", "surface"], ["success", "surface"], ["warning", "surface"],
-  ["danger", "bg"], ["success", "bg"], ["warning", "bg"],
+  ["text", "bg"],
+  ["text", "surface"],
+  ["text", "surface-2"],
+  ["text-muted", "bg"],
+  ["text-muted", "surface"],
+  ["text-muted", "surface-2"],
+  ["on-primary", "primary"],
+  ["on-primary", "primary-hover"],
+  ["accent", "bg"],
+  ["accent", "surface"],
+  ["danger", "surface"],
+  ["success", "surface"],
+  ["warning", "surface"],
+  ["danger", "bg"],
+  ["success", "bg"],
+  ["warning", "bg"],
 ];
 const UI_PAIRS: [string, string][] = [
-  ["border", "bg"], ["border", "surface"], ["focus", "bg"], ["focus", "surface"],
-  ["primary", "bg"], ["primary", "surface"],
+  ["border", "bg"],
+  ["border", "surface"],
+  ["focus", "bg"],
+  ["focus", "surface"],
+  ["primary", "bg"],
+  ["primary", "surface"],
 ];
 
 describe("design tokens", () => {
@@ -46,9 +79,15 @@ describe("design tokens", () => {
     const base = parseBlock(css, ":root");
     const tokens = selector === ":root" ? base : { ...base, ...parseBlock(css, selector) };
     for (const [fg, bg] of TEXT_PAIRS)
-      expect(ratio(tokens[fg]!, tokens[bg]!), `${fg} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+      expect(
+        ratio(requiredToken(tokens, fg), requiredToken(tokens, bg)),
+        `${fg} on ${bg}`,
+      ).toBeGreaterThanOrEqual(4.5);
     for (const [fg, bg] of UI_PAIRS)
-      expect(ratio(tokens[fg]!, tokens[bg]!), `${fg} on ${bg}`).toBeGreaterThanOrEqual(3);
+      expect(
+        ratio(requiredToken(tokens, fg), requiredToken(tokens, bg)),
+        `${fg} on ${bg}`,
+      ).toBeGreaterThanOrEqual(3);
   });
 
   it("has no high-contrast mode and no legacy palette left", async () => {

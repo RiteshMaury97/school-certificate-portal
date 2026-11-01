@@ -21,9 +21,7 @@ const execute = process.argv.includes("--execute");
 const app =
   getApps()[0] ??
   initializeApp({
-    credential: cert(
-      JSON.parse(Buffer.from(service, "base64").toString("utf8")),
-    ),
+    credential: cert(JSON.parse(Buffer.from(service, "base64").toString("utf8"))),
   });
 const db = getFirestore(app);
 const s3 = new S3Client({
@@ -53,9 +51,7 @@ let scanned = 0,
   unattributed = 0;
 async function tag(key, studentId) {
   scanned++;
-  const head = await s3.send(
-    new HeadObjectCommand({ Bucket: bucket, Key: key }),
-  );
+  const head = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
   if (head.Metadata?.studentid) {
     if (head.Metadata.studentid !== studentId) ambiguous++;
     return;
@@ -99,42 +95,41 @@ do {
   );
   for (const object of page.Contents ?? []) {
     if (!object.Key) continue;
-    const head = await s3.send(
-      new HeadObjectCommand({ Bucket: bucket, Key: object.Key }),
-    );
+    const head = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: object.Key }));
     if (head.Metadata?.studentid) continue;
     scanned++;
     const sha = head.Metadata?.sha256 ?? "";
     const owners = hashOwners.get(sha);
-    if (owners?.size === 1) {
-      const studentId = [...owners][0];
-      taggable++;
-      if (execute) {
-        const source = `${bucket}/${object.Key.split("/").map(encodeURIComponent).join("/")}`;
-        await s3.send(
-          new CopyObjectCommand({
-            Bucket: bucket,
-            Key: object.Key,
-            CopySource: source,
-            MetadataDirective: "REPLACE",
-            Metadata: { ...(head.Metadata ?? {}), studentid: studentId },
-            ContentType: head.ContentType,
-            CacheControl: head.CacheControl,
-            ContentDisposition: head.ContentDisposition,
-            ContentEncoding: head.ContentEncoding,
-            ContentLanguage: head.ContentLanguage,
-            Expires: head.Expires,
-          }),
-        );
-        tagged++;
-      }
-    } else if (owners && owners.size > 1) ambiguous++;
-    else unattributed++;
+    if (!owners || owners.size === 0) unattributed++;
+    if (owners && owners.size > 1) ambiguous++;
+    if (!owners || owners.size !== 1) {
+      continue;
+    }
+    const studentId = [...owners][0];
+    taggable++;
+    if (!execute) continue;
+    const source = `${bucket}/${object.Key.split("/").map(encodeURIComponent).join("/")}`;
+    await s3.send(
+      new CopyObjectCommand({
+        Bucket: bucket,
+        Key: object.Key,
+        CopySource: source,
+        MetadataDirective: "REPLACE",
+        Metadata: { ...(head.Metadata ?? {}), studentid: studentId },
+        ContentType: head.ContentType,
+        CacheControl: head.CacheControl,
+        ContentDisposition: head.ContentDisposition,
+        ContentEncoding: head.ContentEncoding,
+        ContentLanguage: head.ContentLanguage,
+        Expires: head.Expires,
+      }),
+    );
+    tagged++;
   }
   token = page.IsTruncated ? page.NextContinuationToken : undefined;
 } while (token);
-console.log(
-  JSON.stringify(
+process.stdout.write(
+  `${JSON.stringify(
     {
       mode: execute ? "execute" : "dry-run",
       activeCertificateKeys: activeKeys.size,
@@ -146,11 +141,11 @@ console.log(
     },
     null,
     2,
-  ),
+  )}\n`,
 );
 if (!execute)
-  console.log(
-    "Dry run only. Back up R2 and Firestore, review ambiguous/unattributed objects, then rerun with --execute.",
+  process.stdout.write(
+    "Dry run only. Back up R2 and Firestore, review ambiguous/unattributed objects, then rerun with --execute.\n",
   );
 await app.delete();
 await s3.destroy();

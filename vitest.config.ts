@@ -10,5 +10,6 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.{ts,tsx,mjs}"],
     clearMocks: true,
+    setupFiles: [fileURLToPath(new URL("./tests/setup.ts", import.meta.url))],
   },
 });

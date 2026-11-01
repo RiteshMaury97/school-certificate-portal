@@ -1,6 +1,5 @@
-import { Database, HelpCircle, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import Link from "next/link";
-
 
 import { tabIcons, tabLabels } from "../../config/admin-navigation";
 import { getVisibleTabs } from "../../utils/admin-tab-access";
@@ -14,7 +13,6 @@ type AdminSidebarProps = {
   setTab: (tab: Tab) => void;
   setPage: (page: number) => void;
   onSettings: () => void;
-  onSystemHealth: () => void;
   onLoadSessions: () => void;
 };
 
@@ -25,7 +23,6 @@ export default function AdminSidebar({
   setTab,
   setPage,
   onSettings,
-  onSystemHealth,
   onLoadSessions,
 }: AdminSidebarProps) {
   return (
@@ -72,21 +69,6 @@ export default function AdminSidebar({
           <Settings size={17} />
           <span>Settings</span>
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setTab("help");
-            setPage(0);
-          }}
-          className="sis-admin-nav-item"
-        >
-          <HelpCircle size={17} />
-          <span>Help & Policies</span>
-        </button>
-        <button type="button" onClick={onSystemHealth} className="sis-admin-nav-item">
-          <Database size={17} />
-          <span>System Health</span>
-        </button>
       </div>
       <div className="sis-admin-user-footer">
         <span className="sis-admin-avatar">
@@ -94,7 +76,9 @@ export default function AdminSidebar({
         </span>
         <span className="min-w-0 flex-1">
           <strong className="block truncate text-xs">{email || "Administrator"}</strong>
-          <small className="block text-[10px] capitalize">{role === "superadmin" ? "Super Administrator" : role}</small>
+          <small className="block text-[10px] capitalize">
+            {role === "superadmin" ? "Super Administrator" : role}
+          </small>
         </span>
         <button
           type="button"

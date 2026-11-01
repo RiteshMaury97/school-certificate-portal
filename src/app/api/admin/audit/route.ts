@@ -1,12 +1,18 @@
+import { Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
 import { requireRoles, apiError } from "@/server/security";
 import { auditFilterSchema } from "@/shared/validation";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export async function GET(request: NextRequest) {
   try {
     await requireRoles(request, ["approver", "admin"]);
@@ -16,10 +22,7 @@ export async function GET(request: NextRequest) {
       action: request.nextUrl.searchParams.get("action") ?? undefined,
     });
     if (!filters.success)
-      return NextResponse.json(
-        { error: "Invalid audit filters." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid audit filters." }, { status: 400 });
     const { start, end, action } = filters.data;
     const exporting = request.nextUrl.searchParams.get("format") === "csv";
     let query = db
@@ -37,27 +40,36 @@ export async function GET(request: NextRequest) {
       action: string | undefined;
       targetId: string | undefined;
       ipHash: string | undefined;
+      changedFields?: string[];
     };
     const logs: AuditRow[] = snap.docs.map((d) => {
-      const data = d.data() as Record<string, unknown>;
-      const timestampValue = d.get("timestamp") as
-        | { toDate?: () => Date }
-        | undefined;
+      const rawData: unknown = d.data();
+      const data = isRecord(rawData) ? rawData : {};
+      const rawTimestamp: unknown = d.get("timestamp");
+      const timestampValue = rawTimestamp instanceof Timestamp ? rawTimestamp.toDate() : undefined;
       return {
         id: d.id,
-        timestamp: timestampValue?.toDate?.().toISOString?.() ?? null,
+        timestamp:
+          timestampValue instanceof Date ? timestampValue.toISOString() : null,
         actorUid: typeof data.actorUid === "string" ? data.actorUid : undefined,
         action: typeof data.action === "string" ? data.action : undefined,
         targetId: typeof data.targetId === "string" ? data.targetId : undefined,
         ipHash: typeof data.ipHash === "string" ? data.ipHash : undefined,
+        ...(Array.isArray(data.changedFields)
+          ? {
+              changedFields: data.changedFields.filter(
+                (value): value is string => typeof value === "string",
+              ),
+            }
+          : {}),
       };
     });
     if (exporting) {
       const lines = [
-        "timestamp,actorUid,action,targetId,ipHash",
+        "timestamp,actorUid,action,targetId,ipHash,changedFields",
         ...logs.map((x) =>
-          [x.timestamp, x.actorUid, x.action, x.targetId, x.ipHash]
-            .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`)
+          [x.timestamp, x.actorUid, x.action, x.targetId, x.ipHash, x.changedFields?.join(" | ")]
+            .map((v) => `"${(v ?? "").replace(/"/g, '""')}"`)
             .join(","),
         ),
       ];
@@ -69,10 +81,7 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-    return NextResponse.json(
-      { logs },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return NextResponse.json({ logs }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return apiError(e);
   }

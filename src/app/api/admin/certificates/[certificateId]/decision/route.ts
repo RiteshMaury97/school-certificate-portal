@@ -12,7 +12,7 @@ import {
 import { apiError, requireRoles, writeAuditLog } from "@/server/security";
 import { canReviewUpload } from "@/shared/role-policy";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,18 +26,12 @@ export async function POST(
     const { certificateId } = await context.params;
     const body: unknown = await request.json();
     if (!body || typeof body !== "object" || !("decision" in body))
-      return NextResponse.json(
-        { error: "Choose approve or reject." },
-        { status: 400 },
-      );
-    const decision = String((body).decision);
+      return NextResponse.json({ error: "Choose approve or reject." }, { status: 400 });
+    const decision = String(body.decision);
     const reason =
-      "reason" in body
-        ? String((body as { reason?: unknown }).reason ?? "").trim()
-        : "";
+      "reason" in body ? String((body as { reason?: unknown }).reason ?? "").trim() : "";
     const detailsMatch =
-      "detailsMatch" in body &&
-      (body as { detailsMatch?: unknown }).detailsMatch === true;
+      "detailsMatch" in body && (body as { detailsMatch?: unknown }).detailsMatch === true;
     if (decision !== "approve" && decision !== "reject")
       return NextResponse.json({ error: "Invalid decision." }, { status: 400 });
     if (decision === "reject" && (reason.length < 5 || reason.length > 1000))
@@ -63,8 +57,7 @@ export async function POST(
       const uploaderUid = String(snap.get("uploadedBy") ?? "");
       if (!uploaderUid) throw new Error("UPLOADER_UNKNOWN");
       const privilegedSelfReview =
-        actor.uid === uploaderUid &&
-        (actor.role === "admin" || actor.role === "superadmin");
+        actor.uid === uploaderUid && (actor.role === "admin" || actor.role === "superadmin");
       if (!canReviewUpload(actor.uid, uploaderUid) && !privilegedSelfReview)
         throw new Error("SELF_APPROVAL");
       const now = FieldValue.serverTimestamp();
@@ -122,17 +115,12 @@ export async function POST(
       };
     });
     if (decision === "approve") {
-      const changes: { session: string; delta: 1 | -1 }[] = [
-        { session: result.session, delta: 1 },
-      ];
+      const changes: { session: string; delta: 1 | -1 }[] = [{ session: result.session, delta: 1 }];
       if (result.replacedCertificateId && result.replacedSession)
         changes.push({ session: result.replacedSession, delta: -1 });
-      await adjustPublicSessions(changes).catch(async () =>
-        rebuildPublicSessions(),
-      );
+      await adjustPublicSessions(changes).catch(async () => rebuildPublicSessions());
     }
-    if (decision === "reject")
-      await removeCertificateNumberIndex(certificateId);
+    if (decision === "reject") await removeCertificateNumberIndex(certificateId);
     await writeAuditLog(
       request,
       actor.uid,
@@ -149,17 +137,13 @@ export async function POST(
         result.studentId,
       );
     if (decision === "approve" && result.studentId)
-      await sendCertificateAvailableNotice(result.studentId).catch(() => { console.error(
-          "Consent-based certificate notification could not be sent.",
-        ); },
-      );
+      await sendCertificateAvailableNotice(result.studentId).catch(() => {
+        console.error("Consent-based certificate notification could not be sent.");
+      });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     if (error instanceof Error && error.message === "NOT_FOUND")
-      return NextResponse.json(
-        { error: "Certificate not found." },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
     if (error instanceof Error && error.message === "NOT_PENDING")
       return NextResponse.json(
         { error: "This certificate is no longer pending." },
@@ -170,22 +154,17 @@ export async function POST(
         { error: "The uploader cannot approve or reject their own upload." },
         { status: 403 },
       );
-    if (
-      error instanceof Error &&
-      error.message === "REPLACED_CERTIFICATE_UNAVAILABLE"
-    )
+    if (error instanceof Error && error.message === "REPLACED_CERTIFICATE_UNAVAILABLE")
       return NextResponse.json(
         {
-          error:
-            "The original published certificate is no longer eligible for replacement.",
+          error: "The original published certificate is no longer eligible for replacement.",
         },
         { status: 409 },
       );
     if (error instanceof Error && error.message === "UPLOADER_UNKNOWN")
       return NextResponse.json(
         {
-          error:
-            "Uploader identity is missing. Reconcile this legacy record before approval.",
+          error: "Uploader identity is missing. Reconcile this legacy record before approval.",
         },
         { status: 409 },
       );

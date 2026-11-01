@@ -6,15 +6,14 @@ import { PDFDocument } from "pdf-lib";
 
 import { recordCertificateDownloads } from "@/server/download-metrics";
 import { db } from "@/server/firebase-admin";
+import { publicEmergencyMaintenanceResponse } from "@/server/public-maintenance";
 import { readR2Object } from "@/server/r2";
-import {
-  studentAccessTokenOwnsStudent,
-  verifyStudentAccessToken,
-} from "@/server/security";
+import { studentAccessTokenOwnsStudent, verifyStudentAccessToken } from "@/server/security";
 import { watermarkCertificate } from "@/server/watermark";
+import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
 
 import type { DocumentReference } from "firebase-admin/firestore";
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,41 +33,35 @@ function safePart(value: string) {
 }
 export async function GET(request: NextRequest) {
   try {
+    const maintenance = await publicEmergencyMaintenanceResponse();
+    if (maintenance) return maintenance;
     const token = request.nextUrl.searchParams.get("token") ?? "";
     const claims = verifyStudentAccessToken(token, request);
     if (!claims) return unavailable();
     const settings = await db.collection("siteSettings").doc("main").get();
-    const schoolName = (String(settings.get("schoolName") ?? "").trim() || "Satyam International School");
-    const requestedIds = (request.nextUrl.searchParams.get("ids") ?? "").split(
-      ",",
-    );
+    const schoolName =
+      String(settings.get("schoolName") ?? "").trim() || "Satyam International School";
+    const requestedIds = (request.nextUrl.searchParams.get("ids") ?? "").split(",");
     if (!requestedIds.length || requestedIds.length > 20) return unavailable();
     const ids = requestedIds.filter((id) => /^[A-Za-z0-9_-]{20,80}$/.test(id));
     if (!ids.length) return unavailable();
     const docs = [];
     const studentStates = new Map<string, boolean>();
     for (const id of ids) {
-      const found = await db
-        .collection("certificates")
-        .where("publicId", "==", id)
-        .limit(1)
-        .get();
+      const found = await db.collection("certificates").where("publicId", "==", id).limit(1).get();
       if (found.empty) continue;
       const doc = found.docs[0]!;
       const d = doc.data();
       const studentId = String(d.studentId ?? "");
-      if (!studentId || !studentAccessTokenOwnsStudent(claims, studentId))
-        continue;
+      if (!studentId || !studentAccessTokenOwnsStudent(claims, studentId)) continue;
       let visible = studentStates.get(studentId);
       if (visible === undefined) {
         const student = await db.collection("students").doc(studentId).get();
-        const visibleNow =
-          student.exists && student.get("erasurePending") !== true;
+        const visibleNow = student.exists && student.get("erasurePending") !== true;
         visible = visibleNow;
         studentStates.set(studentId, visibleNow);
       }
-      if (d.status === "published" && d.published !== false && visible)
-        docs.push(doc);
+      if (d.status === "published" && d.published !== false && visible) docs.push(doc);
     }
     if (!docs.length) return unavailable();
     const output = new PassThrough();
@@ -87,21 +80,14 @@ export async function GET(request: NextRequest) {
             : mime === "image/png"
               ? "png"
               : "";
-      if (!ext || Number(data.size ?? 0) > 5 * 1024 * 1024 || !data.r2Key)
-        continue;
+      if (!ext || Number(data.size ?? 0) > UPLOAD_MAX_BYTES || !data.r2Key) continue;
       const original = await readR2Object(String(data.r2Key));
-      const watermarked = await watermarkCertificate(
-        original,
-        mime,
-        schoolName,
-      );
+      const watermarked = await watermarkCertificate(original, mime, schoolName);
       let pdfBytes = watermarked;
       if (mime !== "application/pdf") {
         const pdf = await PDFDocument.create();
         const image =
-          mime === "image/jpeg"
-            ? await pdf.embedJpg(watermarked)
-            : await pdf.embedPng(watermarked);
+          mime === "image/jpeg" ? await pdf.embedJpg(watermarked) : await pdf.embedPng(watermarked);
         const page = pdf.addPage([image.width, image.height]);
         page.drawImage(image, {
           x: 0,
@@ -118,11 +104,7 @@ export async function GET(request: NextRequest) {
     if (!included.length) return unavailable();
     void Promise.resolve(archive.finalize())
       .then(() => recordCertificateDownloads(included))
-      .catch(() =>
-        output.destroy(
-          new Error("Archive finalization or download metrics failed"),
-        ),
-      );
+      .catch(() => output.destroy(new Error("Archive finalization or download metrics failed")));
     const body = Readable.toWeb(output) as ReadableStream<Uint8Array>;
     return new NextResponse(body, {
       headers: {

@@ -6,7 +6,7 @@ import { appCheckHeaders } from "@/lib/firebase-client";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import type { LegalSection } from "@/components/layout/LegalPageLayout";
-import type { FormEvent} from "react";
+import type { SubmitEvent } from "react";
 
 const region = process.env.NEXT_PUBLIC_DATA_HOSTING_REGION || "{{HOSTING_REGION}}";
 const version = process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION || "2026-10";
@@ -22,9 +22,7 @@ export default function PrivacyPage() {
   const updated = settings.lastUpdated?.trim() || "No data found";
   const retentionYears =
     settings.retentionYears ?? Number(process.env.NEXT_PUBLIC_RETENTION_YEARS || 7);
-  const retentionText = settings.retentionScheduleConfirmed
-    ? `${retentionYears} years`
-    : `provisional ${retentionYears} years (awaiting School confirmation)`;
+  const retentionText = `${retentionYears} years`;
   const backupRotationDays = settings.backupRotationDays ?? 30;
   const [requestType, setRequestType] = useState("access");
   const [requesterName, setRequesterName] = useState("");
@@ -36,7 +34,7 @@ export default function PrivacyPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setAcknowledgment("");
@@ -107,10 +105,19 @@ export default function PrivacyPage() {
             technical security data. Do not submit information that the form does not request.
           </p>
           <p>
+            For administrator security, the portal uses the country code supplied by its hosting
+            network and an IP address to enforce the school&apos;s location policy, protect sign-in
+            and investigate access attempts. IP addresses are stored only as a cryptographic hash;
+            the country code is stored with administrator session and security audit records. The
+            portal does not use browser GPS or precise device location for this purpose.
+          </p>
+          <p>
             If you submit a wrong-record report, the School receives the name, passing session,
             issue description, contact detail and consent you provide. The portal assigns a
             reference ID and records ticket status, staff handling notes and a hashed network
-            identifier for abuse prevention and audit purposes.
+            identifier for abuse prevention and audit purposes. You can use the reference ID on the
+            report-status page to see whether the report was received, is in review or is resolved;
+            that page does not disclose personal or case details and uses Turnstile and rate limits.
           </p>
           <p>
             If you use the optional “Was this helpful?” widget, the portal stores only your
@@ -238,11 +245,10 @@ export default function PrivacyPage() {
             metadata. Wrong-record reports are retained under the School’s approved support-ticket
             and recordkeeping schedule; the School should publish and configure that schedule before
             launch. The configured student-record retention period is {retentionText} after the end
-            of the passing session. When that period expires, records are flagged for a human
-            retention review; they are not automatically deleted. Erasure occurs only after an
-            authorized superadministrator reviews and approves it, and only where no legal hold,
-            statutory requirement, legitimate school-recordkeeping need or pending dispute requires
-            continued retention.
+            of the passing session. Student records are deleted when a verified erasure request is
+            approved or after an authorized manual review confirms they are no longer required,
+            subject to any legal hold, statutory requirement, legitimate school-recordkeeping need
+            or pending dispute.
           </p>
           <p>
             The School must validate this schedule against applicable education, archival,
@@ -286,7 +292,10 @@ export default function PrivacyPage() {
             <strong>Grievance Officer / Data Protection contact:</strong> {officer}
             <br />
             <strong>Email:</strong>{" "}
-            <a className="font-semibold text-[var(--text)] underline" href={`mailto:${officerEmail}`}>
+            <a
+              className="font-semibold text-[var(--text)] underline"
+              href={`mailto:${officerEmail}`}
+            >
               {officerEmail}
             </a>
             <br />
@@ -394,7 +403,10 @@ export default function PrivacyPage() {
         title: "Request access, correction or erasure",
       }}
     >
-      <section id="rights-request" className="mt-10 scroll-mt-8 border-t border-[var(--divider)] pt-8">
+      <section
+        id="rights-request"
+        className="mt-10 scroll-mt-8 border-t border-[var(--divider)] pt-8"
+      >
         <h2 className="text-xl font-bold tracking-tight text-[var(--text)]">
           Request access, correction or erasure
         </h2>
@@ -411,7 +423,9 @@ export default function PrivacyPage() {
             <select
               translate="no"
               value={requestType}
-              onChange={(e) => { setRequestType(e.target.value); }}
+              onChange={(e) => {
+                setRequestType(e.target.value);
+              }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
             >
               <option value="access">Access</option>
@@ -426,7 +440,9 @@ export default function PrivacyPage() {
               required
               maxLength={100}
               value={requesterName}
-              onChange={(e) => { setRequesterName(e.target.value); }}
+              onChange={(e) => {
+                setRequesterName(e.target.value);
+              }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
             />
           </label>
@@ -438,7 +454,9 @@ export default function PrivacyPage() {
               required
               maxLength={254}
               value={contactEmail}
-              onChange={(e) => { setContactEmail(e.target.value); }}
+              onChange={(e) => {
+                setContactEmail(e.target.value);
+              }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
             />
           </label>
@@ -449,7 +467,9 @@ export default function PrivacyPage() {
               required
               maxLength={100}
               value={studentName}
-              onChange={(e) => { setStudentName(e.target.value); }}
+              onChange={(e) => {
+                setStudentName(e.target.value);
+              }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
             />
           </label>
@@ -462,7 +482,9 @@ export default function PrivacyPage() {
               maxLength={1500}
               rows={4}
               value={description}
-              onChange={(e) => { setDescription(e.target.value); }}
+              onChange={(e) => {
+                setDescription(e.target.value);
+              }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
               placeholder="Describe the access, correction or erasure you are requesting."
             />
@@ -473,7 +495,9 @@ export default function PrivacyPage() {
               type="checkbox"
               required
               checked={guardianConfirmation}
-              onChange={(e) => { setGuardianConfirmation(e.target.checked); }}
+              onChange={(e) => {
+                setGuardianConfirmation(e.target.checked);
+              }}
               className="mt-1 size-4"
             />
             <span>
@@ -483,7 +507,8 @@ export default function PrivacyPage() {
             </span>
           </label>
           <button
-            disabled={busy} aria-busy={busy}
+            disabled={busy}
+            aria-busy={busy}
             className="rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50 sm:col-span-2"
           >
             {busy ? "Submitting…" : "Submit privacy request"}

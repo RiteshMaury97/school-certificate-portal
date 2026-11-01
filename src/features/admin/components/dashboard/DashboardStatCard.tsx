@@ -42,11 +42,15 @@ export default function DashboardStatCard({ label, value, detail, tone, icon }: 
   return (
     <article className="rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm">
       <div className="flex items-center justify-between gap-2">
-        <span className={`grid h-9 w-9 place-items-center rounded-full ${tones[tone]}`}><Icon size={16} aria-hidden="true" /></span>
+        <span className={`grid h-9 w-9 place-items-center rounded-full ${tones[tone]}`}>
+          <Icon size={16} aria-hidden="true" />
+        </span>
         <span className="text-right text-[10px] text-[var(--text-muted)]">{detail}</span>
       </div>
       <p className="mt-3 text-xs text-[var(--text-muted)]">{label}</p>
-      <p className="mt-0.5 text-2xl font-semibold tabular-nums text-[var(--text)]">{displayValue}</p>
+      <p className="mt-0.5 text-2xl font-semibold tabular-nums text-[var(--text)]">
+        {displayValue}
+      </p>
     </article>
   );
 }

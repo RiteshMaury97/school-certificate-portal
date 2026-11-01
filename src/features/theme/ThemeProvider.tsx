@@ -34,7 +34,9 @@ function applyThemeAnimated(mode: ThemeMode): void {
   const root = document.documentElement;
   root.classList.add("theme-fade");
   applyTheme(mode);
-  window.setTimeout(() => { root.classList.remove("theme-fade"); }, 360);
+  window.setTimeout(() => {
+    root.classList.remove("theme-fade");
+  }, 360);
 }
 
 export function useTheme() {
@@ -55,9 +57,13 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(theme);
     if (theme !== "system") return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const update = () => { applyTheme("system"); };
+    const update = () => {
+      applyTheme("system");
+    };
     media.addEventListener("change", update);
-    return () => { media.removeEventListener("change", update); };
+    return () => {
+      media.removeEventListener("change", update);
+    };
   }, [theme]);
 
   const value = useMemo<ThemeContextValue>(

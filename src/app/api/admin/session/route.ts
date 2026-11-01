@@ -4,9 +4,11 @@ import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { after } from "next/server";
 
+import { enforceAdminLocation } from "@/server/admin-location";
 import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
 import { escapeHtml, sendMail } from "@/server/mailer";
+import { hasTrustedRequesterIp, requesterCity, requesterCountry } from "@/server/request-origin";
 import {
   adminSessionCookieOptions,
   createCsrfToken,
@@ -17,38 +19,40 @@ import {
   verifyCsrf,
   hashRequesterIp,
 } from "@/server/security";
-import {
-  ADMIN_HARD_SESSION_LIMIT_MS,
-  isAdminSessionExpired,
-} from "@/shared/session-policy";
+import { ADMIN_HARD_SESSION_LIMIT_MS, isAdminSessionExpired } from "@/shared/session-policy";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const COOKIE = "sis_admin_session";
 const DEVICE_COOKIE = "sis_admin_device";
 const secret = () => {
   const value = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
-  if (Buffer.byteLength(value) < 32)
-    throw new Error("AUDIT_LOG_HMAC_SECRET is not configured");
+  if (Buffer.byteLength(value) < 32) throw new Error("AUDIT_LOG_HMAC_SECRET is not configured");
   return value;
 };
-const digest = (value: string) =>
-  createHmac("sha256", secret()).update(value).digest("hex");
+const digest = (value: string) => createHmac("sha256", secret()).update(value).digest("hex");
 function browser(ua: string) {
-  if (ua.includes('Edg/')) return "Edge";
-  if (ua.includes('Chrome/')) return "Chrome";
-  if (ua.includes('Firefox/')) return "Firefox";
-  if (ua.includes('Safari/')) return "Safari";
+  if (ua.includes("Edg/")) return "Edge";
+  if (ua.includes("Chrome/")) return "Chrome";
+  if (ua.includes("Firefox/")) return "Firefox";
+  if (ua.includes("Safari/")) return "Safari";
   return "Unknown browser";
 }
 async function sendAlert(to: string, body: string) {
   const siteSettings = await db.collection("siteSettings").doc("main").get();
-  const schoolName = String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
-  await sendMail({ to, subject: `${schoolName}: new staff sign-in`, html: `<p>${escapeHtml(schoolName)}</p>${body}` });
+  const schoolName =
+    String(siteSettings.get("schoolName") ?? "").trim() || "Satyam International School";
+  await sendMail({
+    to,
+    subject: `${schoolName}: new staff sign-in`,
+    html: `<p>${escapeHtml(schoolName)}</p>${body}`,
+  });
 }
 export async function POST(request: NextRequest) {
   try {
+    if (!hasTrustedRequesterIp(request))
+      return NextResponse.json({ error: "Sign-in is temporarily unavailable." }, { status: 503 });
     await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
@@ -59,26 +63,24 @@ export async function POST(request: NextRequest) {
       !("idToken" in body) ||
       typeof body.idToken !== "string"
     )
-      return NextResponse.json(
-        { error: "Authentication failed." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Authentication failed." }, { status: 400 });
     const decoded = await adminAuth.verifyIdToken(body.idToken, true);
-    if (!("challengeId" in body) || typeof body.challengeId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.challengeId))
-      return NextResponse.json({ error: "Complete email verification before continuing." }, { status: 403 });
+    if (
+      !("challengeId" in body) ||
+      typeof body.challengeId !== "string" ||
+      !/^[0-9a-f-]{36}$/i.test(body.challengeId)
+    )
+      return NextResponse.json(
+        { error: "Complete email verification before continuing." },
+        { status: 403 },
+      );
     const email = decoded.email?.toLowerCase() ?? "";
-    const emailHash = createHmac("sha256", secret())
-      .update(email)
-      .digest("hex");
-    const failureState = await db
-      .collection("adminLoginFailures")
-      .doc(emailHash)
-      .get();
+    const emailHash = createHmac("sha256", secret()).update(email).digest("hex");
+    const failureState = await db.collection("adminLoginFailures").doc(emailHash).get();
     if (Number(failureState.get("lockedUntil") ?? 0) > Date.now())
       return NextResponse.json(
         {
-          error:
-            "This account is temporarily locked after repeated failed sign-ins.",
+          error: "This account is temporarily locked after repeated failed sign-ins.",
         },
         { status: 423 },
       );
@@ -87,17 +89,18 @@ export async function POST(request: NextRequest) {
     const status = String(admin.get("status"));
     if (
       !admin.exists ||
-      admin.get("mustChangePassword") === true || decoded.mustChangePassword === true ||
+      admin.get("mustChangePassword") === true ||
+      decoded.mustChangePassword === true ||
       !["active", "invited"].includes(status) ||
       !email ||
       admin.get("email")?.toLowerCase() !== email ||
       (role !== "uploader" && role !== "approver" && role !== "admin" && role !== "superadmin") ||
       decoded.role !== role
     )
-      return NextResponse.json(
-        { error: "This account is not authorized." },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "This account is not authorized." }, { status: 403 });
+
+    const locationDenied = await enforceAdminLocation(request, decoded.uid);
+    if (locationDenied) return locationDenied;
 
     const challengeRef = db.collection("adminOtpChallenges").doc(body.challengeId);
     const challengeConsumed = await db.runTransaction((transaction) =>
@@ -135,14 +138,10 @@ export async function POST(request: NextRequest) {
     const sessionHash = digest(session),
       now = new Date();
     const deviceId =
-      request.cookies.get(DEVICE_COOKIE)?.value ??
-      randomBytes(24).toString("base64url");
+      request.cookies.get(DEVICE_COOKIE)?.value ?? randomBytes(24).toString("base64url");
     const ua = request.headers.get("user-agent") ?? "";
     const deviceHash = digest(`${ua}|${deviceId}`);
-    const rawCity =
-      request.headers.get("x-vercel-ip-city") ??
-      request.headers.get("cf-ipcity") ??
-      "Unknown city";
+    const rawCity = requesterCity(request) || "Unknown city";
     const city = (() => {
       try {
         return decodeURIComponent(rawCity).slice(0, 80);
@@ -150,14 +149,20 @@ export async function POST(request: NextRequest) {
         return rawCity.slice(0, 80);
       }
     })();
-    const country = (
-      request.headers.get("x-vercel-ip-country") ??
-      request.headers.get("cf-ipcountry") ??
-      ""
-    ).slice(0, 8);
-    const deviceRef = db
-      .collection("adminDevices")
-      .doc(`${decoded.uid}_${deviceHash}`);
+    const country = requesterCountry(request).slice(0, 8);
+    const previousSessions = await db
+      .collection("adminSessions")
+      .where("uid", "==", decoded.uid)
+      .limit(50)
+      .get();
+    const newCountrySignIn = Boolean(
+      country &&
+      previousSessions.docs.some((sessionRecord) => {
+        const previousCountry = String(sessionRecord.get("country") ?? "").toUpperCase();
+        return previousCountry && previousCountry !== country;
+      }),
+    );
+    const deviceRef = db.collection("adminDevices").doc(`${decoded.uid}_${deviceHash}`);
     const known = await deviceRef.get();
     await deviceRef.set(
       {
@@ -188,12 +193,10 @@ export async function POST(request: NextRequest) {
         ipHash: hashRequesterIp(request),
         createdAt: now,
         lastActivityAt: now,
-        absoluteExpiresAt: new Date(
-          now.getTime() + ADMIN_HARD_SESSION_LIMIT_MS,
-        ),
+        absoluteExpiresAt: new Date(now.getTime() + ADMIN_HARD_SESSION_LIMIT_MS),
         revokedAt: null,
       });
-    if (!known.exists) {
+    if (!known.exists || newCountrySignIn) {
       const actionToken = randomBytes(32).toString("base64url"),
         tokenHash = digest(actionToken);
       await db
@@ -214,22 +217,21 @@ export async function POST(request: NextRequest) {
         '"': "&quot;",
         "'": "&#39;",
       };
-      const safeCity = city.replace(
-        /[&<>"']/g,
-        (char: string) => escapeMap[char] ?? char,
-      );
+      const safeCity = city.replace(/[&<>"']/g, (char: string) => escapeMap[char] ?? char);
       const localTime =
         new Intl.DateTimeFormat("en-IN", {
           timeZone: "Asia/Kolkata",
           dateStyle: "medium",
           timeStyle: "short",
         }).format(now) + " IST";
-      after(() => sendAlert(
-        email,
-        `<p>New sign-in to the admin panel from ${escapeHtml(browser(ua))}, ${safeCity}, ${escapeHtml(localTime)}.</p><p>If this wasn't you, <a href="${escapeHtml(link)}">sign out everywhere</a>.</p>`,
-      ).catch((alertError: unknown) => {
-        console.error("[admin/session new-device alert]", describeFirebaseError(alertError));
-      }));
+      after(() =>
+        sendAlert(
+          email,
+          `<p>New sign-in to the admin panel from ${escapeHtml(browser(ua))}, ${safeCity}, country ${escapeHtml(country || "unknown")}, ${escapeHtml(localTime)}.</p><p>If this wasn't you, <a href="${escapeHtml(link)}">sign out everywhere</a>.</p>`,
+        ).catch((alertError: unknown) => {
+          console.error("[admin/session new-device alert]", describeFirebaseError(alertError));
+        }),
+      );
     }
     const csrf = createCsrfToken();
     await writeAuditLog(request, decoded.uid, "admin.login", "session");
@@ -272,17 +274,14 @@ export async function GET(request: NextRequest) {
   }
   try {
     const session = request.cookies.get(COOKIE)?.value;
-    if (!session)
-      return NextResponse.json({ authenticated: false }, { status: 401 });
+    if (!session) return NextResponse.json({ authenticated: false }, { status: 401 });
     const decoded = await adminAuth.verifySessionCookie(session, true);
     const admin = await db.collection("admins").doc(decoded.uid).get();
     const role = admin.get("role");
     const sessionHash = digest(session),
       sessionDoc = await db.collection("adminSessions").doc(sessionHash).get();
-    const lastActivity =
-      sessionDoc.get("lastActivityAt")?.toDate?.()?.getTime?.() ?? 0;
-    const expiry =
-      sessionDoc.get("absoluteExpiresAt")?.toDate?.()?.getTime?.() ?? 0;
+    const lastActivity = sessionDoc.get("lastActivityAt")?.toDate?.()?.getTime?.() ?? 0;
+    const expiry = sessionDoc.get("absoluteExpiresAt")?.toDate?.()?.getTime?.() ?? 0;
     if (
       !sessionDoc.exists ||
       sessionDoc.get("uid") !== decoded.uid ||
@@ -329,13 +328,9 @@ export async function DELETE(request: NextRequest) {
   try {
     await verifyRequestAppCheck(request);
   } catch {
-    return NextResponse.json(
-      { error: "App verification failed" },
-      { status: 403 },
-    );
+    return NextResponse.json({ error: "App verification failed" }, { status: 403 });
   }
-  if (!verifyCsrf(request))
-    return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+  if (!verifyCsrf(request)) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
   const session = request.cookies.get(COOKIE)?.value;
   if (session) {
     try {

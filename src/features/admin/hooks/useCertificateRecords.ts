@@ -8,10 +8,7 @@ type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
   init?: RequestInit,
 ) => Promise<T>;
 
-export function useCertificateRecords(
-  api: Api,
-  act: (fn: () => Promise<void>) => Promise<void>,
-) {
+export function useCertificateRecords(api: Api, act: (fn: () => Promise<void>) => Promise<void>) {
   const [certs, setCerts] = useState<Cert[]>([]);
   const [certificateHistory, setCertificateHistory] = useState<CertificateHistory>({});
 

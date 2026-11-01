@@ -9,7 +9,10 @@ export type Certificate = {
 };
 export type StudentResult = {
   studentName: string;
+  fatherName: string;
+  motherName: string;
   className: string;
+  scholarNumber: string;
   session: string;
   accessToken: string;
   tokenExpiresIn: number;

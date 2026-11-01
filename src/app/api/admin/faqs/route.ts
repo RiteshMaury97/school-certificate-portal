@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "@/server/firebase-admin";
 import { apiError, requireAdmin, writeAuditLog } from "@/server/security";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const schema = z
@@ -20,10 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const admin = await requireAdmin(request);
     if (admin.role !== "superadmin")
-      return NextResponse.json(
-        { error: "Superadmin access required." },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Superadmin access required." }, { status: 403 });
     const s = await db.collection("siteSettings").doc("main").get();
     return NextResponse.json(
       {
@@ -44,27 +41,18 @@ export async function PATCH(request: NextRequest) {
   try {
     const admin = await requireAdmin(request);
     if (admin.role !== "superadmin")
-      return NextResponse.json(
-        { error: "Superadmin access required." },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Superadmin access required." }, { status: 403 });
     const parsed = schema.safeParse((await request.json()).faqs);
     if (!parsed.success)
-      return NextResponse.json(
-        { error: "Check the FAQ content." },
-        { status: 400 },
-      );
-    await db
-      .collection("siteSettings")
-      .doc("main")
-      .set(
-        {
-          faqs: parsed.data,
-          updatedAt: FieldValue.serverTimestamp(),
-          updatedBy: admin.uid,
-        },
-        { merge: true },
-      );
+      return NextResponse.json({ error: "Check the FAQ content." }, { status: 400 });
+    await db.collection("siteSettings").doc("main").set(
+      {
+        faqs: parsed.data,
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: admin.uid,
+      },
+      { merge: true },
+    );
     await writeAuditLog(request, admin.uid, "site_faqs.update", "main");
     return NextResponse.json({ ok: true });
   } catch (e) {

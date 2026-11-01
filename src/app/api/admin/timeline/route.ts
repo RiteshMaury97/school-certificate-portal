@@ -4,7 +4,7 @@ import { db } from "@/server/firebase-admin";
 import { apiError, requireRoles } from "@/server/security";
 
 import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
@@ -41,16 +41,15 @@ export async function GET(request: NextRequest) {
       ]);
       rows = [
         ...new Map(
-          [
-            ...byStudent.docs,
-            ...legacy.flatMap((snapshot) => snapshot.docs),
-          ].map((doc) => [doc.id, doc]),
+          [...byStudent.docs, ...legacy.flatMap((snapshot) => snapshot.docs)].map((doc) => [
+            doc.id,
+            doc,
+          ]),
         ).values(),
       ]
         .sort(
           (a, b) =>
-            (b.get("timestamp")?.toMillis?.() ?? 0) -
-            (a.get("timestamp")?.toMillis?.() ?? 0),
+            (b.get("timestamp")?.toMillis?.() ?? 0) - (a.get("timestamp")?.toMillis?.() ?? 0),
         )
         .slice(0, 150);
     } else {
@@ -63,17 +62,11 @@ export async function GET(request: NextRequest) {
     }
     const actorIds = [
       ...new Set(
-        rows
-          .map((d) => String(d.get("actorUid") ?? ""))
-          .filter((id) => id && id !== "public"),
+        rows.map((d) => String(d.get("actorUid") ?? "")).filter((id) => id && id !== "public"),
       ),
     ].slice(0, 50);
-    const actors = await Promise.all(
-      actorIds.map((id) => db.collection("admins").doc(id).get()),
-    );
-    const actorNames = new Map(
-      actors.map((d) => [d.id, String(d.get("email") ?? d.id)]),
-    );
+    const actors = await Promise.all(actorIds.map((id) => db.collection("admins").doc(id).get()));
+    const actorNames = new Map(actors.map((d) => [d.id, String(d.get("email") ?? d.id)]));
     return NextResponse.json(
       {
         events: rows.map((d) => ({

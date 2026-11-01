@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-  const sendMail = vi.fn(async (..._args: unknown[]) => {});
+  const sendMail = vi.fn((message: unknown) => Promise.resolve(message));
   const createTransport = vi.fn(() => ({ sendMail }));
   const set = vi.fn();
-  const get = vi.fn(async () => ({ get: () => 0 }));
-  const runTransaction = vi.fn(async (callback: (transaction: {
-    get: typeof get;
-    set: typeof set;
-  }) => Promise<number>) => callback({ get, set }));
-  const doc = vi.fn(() => ({ }));
+  const get = vi.fn(() => Promise.resolve({ get: () => 0 }));
+  const runTransaction = vi.fn(
+    async (callback: (transaction: { get: typeof get; set: typeof set }) => Promise<number>) =>
+      callback({ get, set }),
+  );
+  const doc = vi.fn(() => ({}));
   const collection = vi.fn(() => ({ doc }));
   return { sendMail, createTransport, set, get, runTransaction, doc, collection };
 });
@@ -50,11 +50,16 @@ describe("central Gmail mailer", () => {
       subject: "Hello\r\nBcc:attacker@example.com",
       text: "Message",
     });
-    const message = mocks.sendMail.mock.calls[0]?.[0] as {
-      to: string[];
-      subject: string;
-      from: string;
-    };
+    const message = mocks.sendMail.mock.calls[0]?.[0];
+    if (
+      typeof message !== "object" ||
+      message === null ||
+      !Array.isArray(message.to) ||
+      typeof message.subject !== "string" ||
+      typeof message.from !== "string"
+    ) {
+      throw new Error("Expected sendMail to receive a mail message");
+    }
     expect(message.to).toEqual(["parent@example.com Bcc:attacker@example.com"]);
     expect(message.subject).toBe("Hello Bcc:attacker@example.com");
     expect(message.from).not.toContain("\r");
@@ -73,7 +78,15 @@ describe("central Gmail mailer", () => {
       code: "012345",
       schoolName: `<School & "Friends">`,
     });
-    const message = mocks.sendMail.mock.calls[0]?.[0] as { html?: string };
+    const message: unknown = mocks.sendMail.mock.calls[0]?.[0];
+    if (
+      typeof message !== "object" ||
+      message === null ||
+      !("html" in message) ||
+      typeof message.html !== "string"
+    ) {
+      throw new Error("Expected sendMail to receive an HTML message");
+    }
     expect(message.html).toContain("&lt;School &amp; &quot;Friends&quot;&gt;");
     expect(message.html).toContain("012345");
     expect(message.html).toContain("valid for 10 minutes");
@@ -83,17 +96,19 @@ describe("central Gmail mailer", () => {
 
   it("throws a clear error when Gmail credentials are missing", async () => {
     delete process.env.GMAIL_USER;
-    await expect(sendMail({
-      to: "parent@example.com",
-      subject: "Test",
-      text: "Test",
-    })).rejects.toThrow(/GMAIL_USER and GMAIL_APP_PASSWORD/);
+    await expect(
+      sendMail({
+        to: "parent@example.com",
+        subject: "Test",
+        text: "Test",
+      }),
+    ).rejects.toThrow(/GMAIL_USER/);
   });
 
   it("uses the development OTP fallback without logging SMTP secrets", async () => {
     delete process.env.GMAIL_USER;
     delete process.env.GMAIL_APP_PASSWORD;
-    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => null);
     await sendAdminOtpEmail({
       to: "admin@example.com",
       code: "012345",
@@ -108,12 +123,14 @@ describe("central Gmail mailer", () => {
     vi.stubEnv("NODE_ENV", "production");
     delete process.env.GMAIL_USER;
     delete process.env.GMAIL_APP_PASSWORD;
-    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
-    await expect(sendAdminOtpEmail({
-      to: "admin@example.com",
-      code: "012345",
-      schoolName: "School",
-    })).rejects.toThrow(/GMAIL_USER and GMAIL_APP_PASSWORD/);
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => null);
+    await expect(
+      sendAdminOtpEmail({
+        to: "admin@example.com",
+        code: "012345",
+        schoolName: "School",
+      }),
+    ).rejects.toThrow(/GMAIL_USER/);
     expect(warning).not.toHaveBeenCalled();
   });
 });

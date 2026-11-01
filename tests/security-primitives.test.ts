@@ -73,27 +73,15 @@ describe("student lookup normalization", () => {
 describe("certificate access token", () => {
   it("verifies a correctly signed, unexpired token for the bound IP", () => {
     const token = signStudentAccessToken(claims, secret);
-    expect(
-      verifyStudentAccessToken(token, secret, "ip-hash-abc", 1_800_000_100)
-        ?.sid,
-    ).toBe(claims.sid);
+    expect(verifyStudentAccessToken(token, secret, "ip-hash-abc", 1_800_000_100)?.sid).toBe(
+      claims.sid,
+    );
   });
   it("rejects tampering, wrong IP and expired tokens", () => {
     const token = signStudentAccessToken(claims, secret);
-    expect(
-      verifyStudentAccessToken(
-        `${token}x`,
-        secret,
-        "ip-hash-abc",
-        1_800_000_100,
-      ),
-    ).toBeNull();
-    expect(
-      verifyStudentAccessToken(token, secret, "different-ip", 1_800_000_100),
-    ).toBeNull();
-    expect(
-      verifyStudentAccessToken(token, secret, "ip-hash-abc", 1_800_000_301),
-    ).toBeNull();
+    expect(verifyStudentAccessToken(`${token}x`, secret, "ip-hash-abc", 1_800_000_100)).toBeNull();
+    expect(verifyStudentAccessToken(token, secret, "different-ip", 1_800_000_100)).toBeNull();
+    expect(verifyStudentAccessToken(token, secret, "ip-hash-abc", 1_800_000_301)).toBeNull();
   });
 });
 
@@ -141,9 +129,7 @@ describe("duplicate student disambiguation", () => {
   });
   it("resolves a duplicate search only when exactly one candidate matches", () => {
     expect(classifySearchMatchCount(2)).toBe("ambiguous");
-    expect(selectUniqueDisambiguationMatch(candidates, "dob-b")?.id).toBe(
-      "student-b",
-    );
+    expect(selectUniqueDisambiguationMatch(candidates, "dob-b")?.id).toBe("student-b");
   });
   it("returns no candidate for a wrong identifier or a colliding identifier", () => {
     expect(selectUniqueDisambiguationMatch(candidates, "wrong")).toBeNull();
@@ -170,19 +156,13 @@ describe("duplicate student disambiguation", () => {
 
 describe("encrypted student identifiers and challenge token", () => {
   it("encrypts DOB/admission values with authenticated AES-256-GCM", () => {
-    process.env.STUDENT_PII_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString(
-      "base64",
-    );
+    process.env.STUDENT_PII_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
     process.env.DISAMBIGUATION_HMAC_SECRET = secret;
     const encrypted = encryptStudentIdentifier("15-04-2010");
     expect(encrypted).not.toContain("15-04-2010");
     expect(decryptStudentIdentifier(encrypted)).toBe("2010-04-15");
-    expect(() =>
-      decryptStudentIdentifier(`${encrypted.slice(0, -1)}x`),
-    ).toThrow();
-    expect(studentIdentifierHmac("15-04-2010")).toBe(
-      studentIdentifierHmac("2010-04-15"),
-    );
+    expect(() => decryptStudentIdentifier(`${encrypted.slice(0, -1)}x`)).toThrow();
+    expect(studentIdentifierHmac("15-04-2010")).toBe(studentIdentifierHmac("2010-04-15"));
     expect(
       studentIdentityMatches(
         { dateOfBirthDisambiguationKey: studentIdentifierHmac("2010-04-15") },
@@ -212,29 +192,14 @@ describe("encrypted student identifiers and challenge token", () => {
       nonce: "b".repeat(32),
     };
     const token = signDisambiguationChallenge(claims, challengeSecret);
+    expect(verifyDisambiguationChallenge(token, challengeSecret, "ip-one", 1_800_000_100)).toEqual(
+      claims,
+    );
     expect(
-      verifyDisambiguationChallenge(
-        token,
-        challengeSecret,
-        "ip-one",
-        1_800_000_100,
-      ),
-    ).toEqual(claims);
-    expect(
-      verifyDisambiguationChallenge(
-        token,
-        challengeSecret,
-        "ip-two",
-        1_800_000_100,
-      ),
+      verifyDisambiguationChallenge(token, challengeSecret, "ip-two", 1_800_000_100),
     ).toBeNull();
     expect(
-      verifyDisambiguationChallenge(
-        token,
-        challengeSecret,
-        "ip-one",
-        1_800_000_121,
-      ),
+      verifyDisambiguationChallenge(token, challengeSecret, "ip-one", 1_800_000_121),
     ).toBeNull();
   });
 });

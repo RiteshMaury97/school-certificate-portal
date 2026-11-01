@@ -46,7 +46,9 @@ export default function BreachesTab({ breaches, loaded, act, api, load }: Props)
       </button>
       <div className="mt-5 space-y-3">
         {loaded && breaches.length === 0 && (
-          <p className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-2)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">No data found. No incidents have been recorded.</p>
+          <p className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-2)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+            No data found. No incidents have been recorded.
+          </p>
         )}
         {breaches.map((b) => (
           <article key={String(b.id)} className="rounded-lg border p-4">
