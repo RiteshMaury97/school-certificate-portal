@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
+import { requesterIp } from "@/server/request-origin";
 import {
   hashRequesterIp,
   verifyRequestAppCheck,
@@ -25,6 +26,7 @@ async function notifySuperadmins(email: string, count: number) {
 }
 export async function POST(request: NextRequest) {
   try {
+    if (!requesterIp(request)) return NextResponse.json({ error: "Client network information is unavailable." }, { status: 503 });
     await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin." }, { status: 403 });

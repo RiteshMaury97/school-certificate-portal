@@ -1,4 +1,4 @@
-import { Database, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import Link from "next/link";
 
 
@@ -13,7 +13,6 @@ type AdminSidebarProps = {
   tab: Tab;
   setTab: (tab: Tab) => void;
   onSettings: () => void;
-  onSystemHealth: () => void;
   onLoadSessions: () => void;
 };
 
@@ -23,10 +22,10 @@ export default function AdminSidebar({
   tab,
   setTab,
   onSettings,
-  onSystemHealth,
   onLoadSessions,
 }: AdminSidebarProps) {
   const username = email.split("@")[0];
+  const avatarName = username.length > 0 ? username : "RM";
   return (
     <aside
       className="sis-admin-sidebar hidden w-[258px] shrink-0 flex-col md:flex"
@@ -70,14 +69,10 @@ export default function AdminSidebar({
           <Settings size={17} />
           <span>Settings</span>
         </button>
-        <button type="button" onClick={onSystemHealth} className="sis-admin-nav-item">
-          <Database size={17} />
-          <span>System Health</span>
-        </button>
       </div>
       <div className="sis-admin-user-footer">
         <span className="sis-admin-avatar">
-          {(username ? username : "RM").slice(0, 2).toUpperCase()}
+          {avatarName.slice(0, 2).toUpperCase()}
         </span>
         <span className="min-w-0 flex-1">
           <strong className="block truncate text-xs">{email || "Administrator"}</strong>

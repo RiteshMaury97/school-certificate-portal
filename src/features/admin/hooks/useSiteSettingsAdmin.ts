@@ -18,7 +18,6 @@ export function useSiteSettingsAdmin(
   setToast: Dispatch<SetStateAction<string>>,
 ) {
   const [retentionYears, setRetentionYears] = useState("7");
-  const [retentionConfirmed, setRetentionConfirmed] = useState(false);
   const [backupRotationDays, setBackupRotationDays] = useState("30");
   const [faqs, setFaqs] = useState<FaqItem[]>(createDefaultFaqs());
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -52,7 +51,6 @@ export function useSiteSettingsAdmin(
           socialLinks,
           maintenanceMode,
           retentionYears: Number(retentionYears),
-          retentionScheduleConfirmed: retentionConfirmed,
           backupRotationDays: Number(backupRotationDays),
         }),
       });
@@ -77,8 +75,6 @@ export function useSiteSettingsAdmin(
   return {
     retentionYears,
     setRetentionYears,
-    retentionConfirmed,
-    setRetentionConfirmed,
     backupRotationDays,
     setBackupRotationDays,
     faqs,

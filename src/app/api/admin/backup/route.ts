@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 import {
   S3Client,
   PutObjectCommand,
@@ -102,7 +104,11 @@ async function performBackup(trigger: string, actorUid?: string) {
 export async function GET(request: NextRequest) {
   try {
     const secret = process.env.CRON_SECRET;
-    if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`)
+    const authorization = request.headers.get("authorization") ?? "";
+    const expected = secret ? `Bearer ${secret}` : "";
+    const suppliedBuffer = Buffer.from(authorization, "utf8");
+    const expectedBuffer = Buffer.from(expected, "utf8");
+    if (!secret || suppliedBuffer.length !== expectedBuffer.length || !timingSafeEqual(suppliedBuffer, expectedBuffer))
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     return NextResponse.json({
       ok: true,
@@ -129,3 +135,4 @@ export async function POST(request: NextRequest) {
     return apiError(error);
   }
 }
+

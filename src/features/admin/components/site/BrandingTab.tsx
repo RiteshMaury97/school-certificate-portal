@@ -1,12 +1,12 @@
 import type { Dispatch, SubmitEventHandler, SetStateAction } from "react";
 type Props = {
  branding: Record<string,string>; setBranding: Dispatch<SetStateAction<Record<string,string>>>;
- retentionYears: string; setRetentionYears: Dispatch<SetStateAction<string>>; retentionConfirmed: boolean; setRetentionConfirmed: Dispatch<SetStateAction<boolean>>;
+ retentionYears: string; setRetentionYears: Dispatch<SetStateAction<string>>;
  backupRotationDays: string; setBackupRotationDays: Dispatch<SetStateAction<string>>; maintenanceMode: boolean; setMaintenanceMode: Dispatch<SetStateAction<boolean>>;
  busy: boolean; saveBranding: SubmitEventHandler<HTMLFormElement>;
 };
 export default function BrandingTab(props: Props) {
- const {branding,setBranding,retentionYears,setRetentionYears,retentionConfirmed,setRetentionConfirmed,backupRotationDays,setBackupRotationDays,maintenanceMode,setMaintenanceMode,busy,saveBranding}=props;
+ const {branding,setBranding,retentionYears,setRetentionYears,backupRotationDays,setBackupRotationDays,maintenanceMode,setMaintenanceMode,busy,saveBranding}=props;
  return (
   <section className="rounded-xl border bg-[var(--surface)] p-5">
                 <h2 className="text-lg font-bold">Public site branding</h2>
@@ -38,17 +38,6 @@ export default function BrandingTab(props: Props) {
                       onChange={(e) => { setBackupRotationDays(e.target.value); }}
                       className="mt-1 w-full rounded border p-2.5"
                     />
-                  </label>
-                  <label className="flex items-center gap-2 text-sm font-semibold">
-                    <input
-                      translate="no"
-                      type="checkbox"
-                      checked={retentionConfirmed}
-                      onChange={(e) => { setRetentionConfirmed(e.target.checked); }}
-                      className="h-5 w-5"
-                    />{" "}
-                    I confirm this retention schedule has been reviewed against applicable
-                    school/legal requirements
                   </label>
                   <label className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4 text-sm font-semibold text-[var(--text)] sm:col-span-2">
                     <input

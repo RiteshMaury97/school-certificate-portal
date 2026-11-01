@@ -4,6 +4,7 @@ import { createHmac, randomInt, randomBytes, timingSafeEqual } from "node:crypto
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { hashRequestIp, requireRequesterIp } from "./request-origin";
 import { adminAuth, adminAppCheck, db, describeFirebaseError } from "./firebase-admin";
 import {
   bindStudentId,
@@ -26,13 +27,8 @@ function requiredSecret(name: string): string {
   }
   return value;
 }
-function requesterIp(request: NextRequest): string {
-  return request.headers.get("cf-connecting-ip") ?? "unknown";
-}
 export function hashRequesterIp(request: NextRequest): string {
-  return createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET"))
-    .update(requesterIp(request), "utf8")
-    .digest("hex");
+  return hashRequestIp(requireRequesterIp(request), requiredSecret("AUDIT_LOG_HMAC_SECRET"));
 }
 export function createSearchKey(input: {
   studentName: string;

@@ -11,8 +11,6 @@
     "backfill:certificate-ids": "node scripts/migrations/backfill-public-certificate-ids.mjs",
     "audit": "npm audit --audit-level=high",
     "audit:fix": "npm audit fix",
-    "retention:dry-run": "node scripts/maintenance/expire-records.mjs",
-    "retention:execute": "node scripts/maintenance/expire-records.mjs --execute",
     "seed": "node scripts/maintenance/seed-firestore.mjs",
     "admin:create-superadmin": "node scripts/admin/create-first-superadmin.mjs",
     "test": "vitest run",

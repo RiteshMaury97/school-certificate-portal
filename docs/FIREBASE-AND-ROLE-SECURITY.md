@@ -24,7 +24,6 @@ Do not add broad client-side `allow read` or `allow write` rules. If direct brow
 | Manage administrator accounts and roles     |                           No |                           No |        Yes |
 | Change site settings and FAQs               |                           No |                           No |        Yes |
 | Export/backup portal data                   |                           No |                           No |        Yes |
-| Manage retention reviews and breach records |                           No |                           No |        Yes |
 | Manage own sessions / revoke own sessions   |                          Yes |                          Yes |        Yes |
 
 Superadmin is intentionally an override in `src/shared/role-policy.ts`. For non-superadmin roles, access is granted only when the route explicitly lists the role in `requireRoles`. Sensitive superadmin actions also require one-time reauthentication where implemented.

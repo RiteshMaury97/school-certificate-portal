@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { decryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
+import { requesterIp } from "@/server/request-origin";
 import {
   createCertificateNumberHash,
   consumeVerificationBudget,
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
       await delayFailedLookup();
       return response(failed);
     }
-    const remoteIp = request.headers.get("cf-connecting-ip") ?? null;
+    const remoteIp = requesterIp(request);
     if (!(await verifyTurnstile(input.turnstileToken, remoteIp))) {
       await audit(request, "turnstile_failed");
       await delayFailedLookup();

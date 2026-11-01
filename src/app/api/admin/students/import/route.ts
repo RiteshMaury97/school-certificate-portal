@@ -16,7 +16,6 @@ import {
   studentIdentityMatches,
 } from "@/server/student-pii";
 import { normalizeAcademicSession } from "@/shared/academic-session";
-import { retentionExpiryFromSession } from "@/shared/retention-policy";
 import { studentCreateSchema } from "@/shared/validation";
 
 import type { Cell } from "exceljs";
@@ -433,11 +432,6 @@ export async function POST(request: NextRequest) {
       );
     let created = 0,
       updated = 0;
-    const siteSettings = await db.collection("siteSettings").doc("main").get();
-    const retentionYears = Math.max(
-      1,
-      Math.min(30, Number(siteSettings.get("retentionYears") ?? 7)),
-    );
     for (const item of preview) {
       if (!item.data) continue;
       const data = item.data;
@@ -482,12 +476,6 @@ export async function POST(request: NextRequest) {
         throw new Error(
           `Import row ${item.row} matches multiple existing students.`,
         );
-      const retentionExpiresAt = retentionExpiryFromSession(
-        data.session,
-        retentionYears,
-      );
-      if (!retentionExpiresAt)
-        throw new Error(`Invalid academic session on import row ${item.row}.`);
       const common = {
         studentName: data.studentName,
         fatherName: data.fatherName,
@@ -497,7 +485,6 @@ export async function POST(request: NextRequest) {
         scholarLookupKey: scholarKey,
         session: data.session,
         searchKey: key,
-        retentionExpiresAt,
         ...(dob
           ? {
               dateOfBirth: encryptStudentIdentifier(dob),

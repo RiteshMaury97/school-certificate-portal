@@ -9,7 +9,6 @@ export async function GET() {
     const data = snapshot.exists ? (snapshot.data() ?? {}) : {};
     const safe = {
       maintenanceMode: data.maintenanceMode === true,
-      retentionScheduleConfirmed: data.retentionScheduleConfirmed === true,
       retentionYears: Math.max(
         1,
         Math.min(30, Number(data.retentionYears ?? 7)),

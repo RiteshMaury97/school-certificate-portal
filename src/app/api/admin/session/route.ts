@@ -7,6 +7,7 @@ import { after } from "next/server";
 import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
 import { escapeHtml, sendMail } from "@/server/mailer";
+import { getRequestOrigin, requesterIp } from "@/server/request-origin";
 import {
   adminSessionCookieOptions,
   createCsrfToken,
@@ -49,6 +50,7 @@ async function sendAlert(to: string, body: string) {
 }
 export async function POST(request: NextRequest) {
   try {
+    if (!requesterIp(request)) return NextResponse.json({ error: "Client network information is unavailable." }, { status: 503 });
     await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
@@ -139,10 +141,8 @@ export async function POST(request: NextRequest) {
       randomBytes(24).toString("base64url");
     const ua = request.headers.get("user-agent") ?? "";
     const deviceHash = digest(`${ua}|${deviceId}`);
-    const rawCity =
-      request.headers.get("x-vercel-ip-city") ??
-      request.headers.get("cf-ipcity") ??
-      "Unknown city";
+    const requestOrigin = getRequestOrigin(request);
+    const rawCity = requestOrigin.city ?? "Unknown city";
     const city = (() => {
       try {
         return decodeURIComponent(rawCity).slice(0, 80);
@@ -150,11 +150,7 @@ export async function POST(request: NextRequest) {
         return rawCity.slice(0, 80);
       }
     })();
-    const country = (
-      request.headers.get("x-vercel-ip-country") ??
-      request.headers.get("cf-ipcountry") ??
-      ""
-    ).slice(0, 8);
+    const country = (requestOrigin.country ?? "").slice(0, 8);
     const deviceRef = db
       .collection("adminDevices")
       .doc(`${decoded.uid}_${deviceHash}`);

@@ -57,7 +57,6 @@ const schema = z.object({
   lastUpdated: z.string().trim().max(80),
   maintenanceMode: z.boolean().optional().default(false),
   retentionYears: z.number().int().min(1).max(30).optional().default(7),
-  retentionScheduleConfirmed: z.boolean().optional().default(false),
   backupRotationDays: z.number().int().min(7).max(365).optional().default(30),
 });
 export async function GET(request: NextRequest) {

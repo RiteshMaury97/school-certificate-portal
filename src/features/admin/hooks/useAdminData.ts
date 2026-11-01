@@ -9,17 +9,16 @@ type Props = {
  setStats:Dispatch<SetStateAction<Record<string,unknown>>>; setPending:Dispatch<SetStateAction<Cert[]>>;
  setSessionOptions:Dispatch<SetStateAction<CatalogOption[]>>; setTypeOptions:Dispatch<SetStateAction<CatalogOption[]>>; setClassOptions:Dispatch<SetStateAction<CatalogOption[]>>; setCerts:Dispatch<SetStateAction<Cert[]>>;
  setCatalog:Dispatch<SetStateAction<CatalogOption[]>>; setLogs:Dispatch<SetStateAction<Record<string,unknown>[]>>; setRights:Dispatch<SetStateAction<Record<string,unknown>[]>>;
- setRetentionRecords:Dispatch<SetStateAction<Record<string,unknown>[]>>; setRetentionRetryJobs:Dispatch<SetStateAction<Record<string,unknown>[]>>;
  setBreaches:Dispatch<SetStateAction<Record<string,unknown>[]>>; setReports:Dispatch<SetStateAction<Record<string,unknown>[]>>; setTimeline:Dispatch<SetStateAction<Record<string,unknown>[]>>;
  setReportsLoaded:Dispatch<SetStateAction<boolean>>; setRightsLoaded:Dispatch<SetStateAction<boolean>>; setBreachesLoaded:Dispatch<SetStateAction<boolean>>;
  setContactEnquiries:Dispatch<SetStateAction<Record<string,unknown>[]>>;
  setFaqs:Dispatch<SetStateAction<FaqItem[]>>; setAdmins:Dispatch<SetStateAction<Record<string,unknown>[]>>; setMaintenanceMode:Dispatch<SetStateAction<boolean>>;
- setRetentionYears:Dispatch<SetStateAction<string>>; setRetentionConfirmed:Dispatch<SetStateAction<boolean>>; setBackupRotationDays:Dispatch<SetStateAction<string>>;
+ setRetentionYears:Dispatch<SetStateAction<string>>; setBackupRotationDays:Dispatch<SetStateAction<string>>;
  setBranding:Dispatch<SetStateAction<Record<string,string>>>; setAnnouncement:Dispatch<SetStateAction<AnnouncementState>>;
 };
 export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,auditStart,auditEnd,role,timelineStudentId,
- setStats,setPending,setSessionOptions,setTypeOptions,setClassOptions,setCerts,setCatalog,setLogs,setRights,setRetentionRecords,setRetentionRetryJobs,
- setBreaches,setReports,setReportsLoaded,setRightsLoaded,setBreachesLoaded,setTimeline,setContactEnquiries,setFaqs,setAdmins,setMaintenanceMode,setRetentionYears,setRetentionConfirmed,setBackupRotationDays,setBranding,setAnnouncement}:Props) {
+ setStats,setPending,setSessionOptions,setTypeOptions,setClassOptions,setCerts,setCatalog,setLogs,setRights,
+ setBreaches,setReports,setReportsLoaded,setRightsLoaded,setBreachesLoaded,setTimeline,setContactEnquiries,setFaqs,setAdmins,setMaintenanceMode,setRetentionYears,setBackupRotationDays,setBranding,setAnnouncement}:Props) {
   const load = useCallback(async () => {
     if (tab === "dashboard") {
       const d = await api<{ stats: Record<string, unknown> }>("/api/admin/dashboard");
@@ -83,14 +82,6 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
       setRights(d.requests ?? []);
       setRightsLoaded(true);
     }
-    if (tab === "retention" && role === "superadmin") {
-      const d = await api<{
-        records: Record<string, unknown>[];
-        retryJobs: Record<string, unknown>[];
-      }>("/api/admin/retention-review");
-      setRetentionRecords(d.records ?? []);
-      setRetentionRetryJobs(d.retryJobs ?? []);
-    }
     if (tab === "breaches") {
       setBreachesLoaded(false);
       const d = await api<{ breaches: Record<string, unknown>[] }>("/api/admin/breaches");
@@ -131,7 +122,6 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
       const x = d.settings ?? {};
       setMaintenanceMode(x.maintenanceMode === true);
       setRetentionYears(String(x.retentionYears ?? 7));
-      setRetentionConfirmed(x.retentionScheduleConfirmed === true);
       setBackupRotationDays(String(x.backupRotationDays ?? 30));
       setBranding((v) => ({
         ...v,

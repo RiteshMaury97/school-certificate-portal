@@ -23,9 +23,7 @@ export default function PrivacyPage() {
   const updated = settings.lastUpdated?.trim() || "No data found";
   const retentionYears =
     settings.retentionYears ?? Number(process.env.NEXT_PUBLIC_RETENTION_YEARS || 7);
-  const retentionText = settings.retentionScheduleConfirmed
-    ? `${retentionYears} years`
-    : `provisional ${retentionYears} years (awaiting School confirmation)`;
+  const retentionText = `${retentionYears} years`;
   const backupRotationDays = settings.backupRotationDays ?? 30;
   const [requestType, setRequestType] = useState("access");
   const [requesterName, setRequesterName] = useState("");
@@ -238,12 +236,11 @@ export default function PrivacyPage() {
             Authorized School administrators can correct inaccurate student details and certificate
             metadata. Wrong-record reports are retained under the School’s approved support-ticket
             and recordkeeping schedule; the School should publish and configure that schedule before
-            launch. The configured student-record retention period is {retentionText} after the end
-            of the passing session. When that period expires, records are flagged for a human
-            retention review; they are not automatically deleted. Erasure occurs only after an
-            authorized superadministrator reviews and approves it, and only where no legal hold,
-            statutory requirement, legitimate school-recordkeeping need or pending dispute requires
-            continued retention.
+            launch. The student-record retention period is {retentionText} after the end of the
+            passing session. Records are deleted on request or after manual review, unless a legal
+            hold, statutory requirement, legitimate school-recordkeeping need or pending dispute
+            requires continued retention. The configured period does not trigger automatic review
+            or deletion.
           </p>
           <p>
             The School must validate this schedule against applicable education, archival,

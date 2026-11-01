@@ -1,5 +1,5 @@
 "use client";
-/* eslint-disable max-lines */
+/* eslint-disable max-lines -- reason: the shared route-driven console owns all admin sections pending component extraction. */
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -68,7 +68,7 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unable to load admin data.";
 }
 
-// eslint-disable-next-line max-lines-per-function, complexity
+// eslint-disable-next-line max-lines-per-function, complexity -- reason: the shared console coordinates section state and routing across the admin workspace.
 export default function AdminPage() {
   const [mobileAdminNav, setMobileAdminNav] = useState(false);
   const router = useRouter();
@@ -348,9 +348,6 @@ export default function AdminPage() {
           setTab={setTab}
           onSettings={() => {
             router.push("/admin/settings");
-          }}
-          onSystemHealth={() => {
-            router.push("/admin/backup");
           }}
           onLoadSessions={() => void loadSessions()}
         />

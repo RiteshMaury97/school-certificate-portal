@@ -42,6 +42,10 @@ npm run admin:create-superadmin -- someone@school.example
 ```
 The user must already exist in Firebase Authentication with a verified email. On each sign-in, they receive a six-digit code through Gmail SMTP.
 
+### Student record retention
+
+The student-record policy states a configured retention period after the end of the academic session. The period does not trigger an automatic review or deletion job. Records may be deleted on request or after an authorized manual review, subject to legal holds and applicable recordkeeping requirements. Encrypted backups continue to follow the configured backup rotation.
+
 ## Project layout
 
 ```

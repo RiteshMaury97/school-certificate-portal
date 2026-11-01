@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { decryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
+import { requesterIp } from "@/server/request-origin";
 import {
   completeDisambiguationChallenge,
   consumeDisambiguationAttempt,
@@ -191,6 +192,7 @@ async function retrieveStudent(
 
 export async function POST(request: NextRequest) {
   try {
+    if (!requesterIp(request)) return NextResponse.json({ error: "Service temporarily unavailable." }, { status: 503 });
     await verifyRequestAppCheck(request);
     const raw: unknown = await request.json().catch(() => null);
     if (typeof raw !== "object" || raw === null) {
@@ -297,7 +299,7 @@ export async function POST(request: NextRequest) {
       await delayFailedLookup();
       return genericResponse();
     }
-    const remoteIp = request.headers.get("cf-connecting-ip") ?? null;
+    const remoteIp = requesterIp(request);
     if (!(await verifyTurnstile(input.turnstileToken, remoteIp))) {
       await audit(request, "turnstile_failed");
       await delayFailedLookup();

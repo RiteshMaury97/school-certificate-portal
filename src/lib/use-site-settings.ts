@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 export type PublicSiteSettings = {
   schoolName?: string;
   retentionYears?: number;
-  retentionScheduleConfirmed?: boolean;
   backupRotationDays?: number;
   tagline?: string;
   logoUrl?: string;
@@ -90,8 +89,6 @@ function isAnnouncement(value: unknown): boolean {
 
 function hasValidOptionalSettings(settings: Record<string, unknown>): boolean {
   return (
-    (settings.retentionScheduleConfirmed === undefined ||
-      typeof settings.retentionScheduleConfirmed === "boolean") &&
     (settings.socialLinks === undefined || isSocialLinks(settings.socialLinks)) &&
     (settings.announcement === undefined ||
       settings.announcement === null ||

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
+import { requesterIp } from "@/server/request-origin";
 import { hashRequesterIp } from "@/server/security";
 
 import type { NextRequest} from "next/server";
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     if (
       !(await verifyTurnstile(
         parsed.data.turnstileToken,
-        request.headers.get("cf-connecting-ip"),
+        requesterIp(request),
       ))
     )
       return NextResponse.json(

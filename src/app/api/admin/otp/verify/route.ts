@@ -7,6 +7,7 @@ import {
   verifyAdminOtpChallenge,
 } from "@/server/admin-otp";
 import { adminAuth, db } from "@/server/firebase-admin";
+import { requesterIp } from "@/server/request-origin";
 import {
   sameOrigin,
   verifyRequestAppCheck,
@@ -29,6 +30,7 @@ function validBody(value: unknown): value is VerifyBody & { idToken: string; cha
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    if (!requesterIp(request)) return NextResponse.json({ error: "Client network information is unavailable." }, { status: 503 });
     await verifyRequestAppCheck(request);
     if (!sameOrigin(request)) return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
     const body: unknown = await request.json();

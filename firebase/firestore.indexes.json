@@ -93,20 +93,6 @@
       ]
     },
     {
-      "collectionGroup": "retentionReview",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "flaggedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "adminSessions",
       "queryScope": "COLLECTION",
       "fields": [

@@ -15,6 +15,12 @@ browser storage and is discarded when the visitor leaves `/certificates`.
 section shown is derived from the pathname; the `page.tsx` files only provide the page title. Login
 (`/admin/login`) sits outside this layout.
 
+## Student record retention
+The privacy policy states a configured retention period after the end of the academic session. There is no
+automatic retention review or expiry job. Records may be deleted on request or after authorized
+manual review, subject to legal holds and applicable recordkeeping requirements. Encrypted backups
+continue to follow their configured rotation period.
+
 ## Known follow-up
 `features/admin/AdminConsole.tsx` is still one ~3,600-line component (the ESLint `max-lines` rule of 600
 already flags it). Split it into one component per section using the existing tab boundaries.

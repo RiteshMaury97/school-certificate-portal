@@ -23,7 +23,6 @@ import {
   studentIdentityMatches,
 } from "@/server/student-pii";
 import { normalizeAcademicSession } from "@/shared/academic-session";
-import { retentionExpiryFromSession } from "@/shared/retention-policy";
 import { studentUpdateSchema } from "@/shared/validation";
 
 import type { NextRequest} from "next/server";
@@ -141,20 +140,6 @@ export async function PATCH(
         },
         { status: 409 },
       );
-    const settings = await db.collection("siteSettings").doc("main").get();
-    const retentionYears = Math.max(
-      1,
-      Math.min(30, Number(settings.get("retentionYears") ?? 7)),
-    );
-    const retentionExpiresAt = retentionExpiryFromSession(
-      data.session,
-      retentionYears,
-    );
-    if (!retentionExpiresAt)
-      return NextResponse.json(
-        { error: "Invalid academic session for retention calculation." },
-        { status: 400 },
-      );
     const update: Record<string, unknown> = {
       studentName: data.studentName,
       fatherName: data.fatherName,
@@ -164,7 +149,6 @@ export async function PATCH(
       scholarLookupKey,
       session: data.session,
       searchKey,
-      retentionExpiresAt,
       updatedAt: FieldValue.serverTimestamp(),
       updatedBy: admin.uid,
       ...(admissionNumber ? { admissionNo: FieldValue.delete() } : {}),

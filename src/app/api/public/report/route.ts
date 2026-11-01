@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
+import { requesterIp } from "@/server/request-origin";
 import {
   consumeSearchBudget,
   hashRequesterIp,
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
         { error: "Please check the report details." },
         { status: 400 },
       );
-    const ip = request.headers.get("cf-connecting-ip") ?? "";
+    const ip = requesterIp(request) ?? "";
     if (!(await verifyTurnstile(parsed.data.turnstileToken, ip)))
       return NextResponse.json(
         { error: "Security verification failed." },

@@ -30,7 +30,6 @@ import {
 } from "@/server/student-pii";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
-import { retentionExpiryFromSession } from "@/shared/retention-policy";
 import { normalize, studentCreateSchema } from "@/shared/validation";
 
 import type { NextRequest} from "next/server";
@@ -259,20 +258,6 @@ export async function POST(request: NextRequest) {
       studentRef.id,
     );
     const now = FieldValue.serverTimestamp();
-    const siteSettings = await db.collection("siteSettings").doc("main").get();
-    const retentionYears = Math.max(
-      1,
-      Math.min(30, Number(siteSettings.get("retentionYears") ?? 7)),
-    );
-    const retentionExpiresAt = retentionExpiryFromSession(
-      data.session,
-      retentionYears,
-    );
-    if (!retentionExpiresAt)
-      return NextResponse.json(
-        { error: "Invalid academic session for retention calculation." },
-        { status: 400 },
-      );
     try {
       if (!reuseExisting) {
         await studentRef.set({
@@ -284,7 +269,6 @@ export async function POST(request: NextRequest) {
           scholarLookupKey,
           session: data.session,
           searchKey,
-          retentionExpiresAt,
           createdAt: now,
           updatedAt: now,
           createdBy: admin.uid,

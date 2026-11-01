@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
+import { requesterIp } from "@/server/request-origin";
 import { consumeSearchBudget, hashRequesterIp, verifyRequestAppCheck, writeAuditLog } from "@/server/security";
 
 import type { NextRequest } from "next/server";
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json({ error: "Check the required contact form fields and try again." }, { status: 400 });
-    if (!(await verifyTurnstile(parsed.data.turnstileToken, request.headers.get("cf-connecting-ip"))))
+    if (!(await verifyTurnstile(parsed.data.turnstileToken, requesterIp(request))))
       return NextResponse.json({ error: "Security verification failed. Please complete the check again." }, { status: 400 });
 
     const enquiry = parsed.data;
