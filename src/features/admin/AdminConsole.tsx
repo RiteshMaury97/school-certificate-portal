@@ -114,6 +114,17 @@ export default function AdminPage() {
     setAnnouncement,
     branding,
     setBranding,
+    allowedAdminCountries,
+    setAllowedAdminCountries,
+    adminIpAllowlist,
+    setAdminIpAllowlist,
+    adminLocationEnforcementMode,
+    setAdminLocationEnforcementMode,
+    recentLocationBlocks,
+    setRecentLocationBlocks,
+    adminLocationExceptions,
+    setAdminLocationExceptions,
+    addAdminLocationException,
     saveFaqs,
     saveBranding,
     saveAnnouncement,
@@ -235,6 +246,11 @@ export default function AdminPage() {
     setBackupRotationDays,
     setBranding,
     setAnnouncement,
+    setAllowedAdminCountries,
+    setAdminIpAllowlist,
+    setAdminLocationEnforcementMode,
+    setRecentLocationBlocks,
+    setAdminLocationExceptions,
   });
   useEffect(() => {
     loadRef.current = load;
@@ -596,6 +612,15 @@ export default function AdminPage() {
               <BrandingTab
                 branding={branding}
                 setBranding={setBranding}
+                allowedAdminCountries={allowedAdminCountries}
+                setAllowedAdminCountries={setAllowedAdminCountries}
+                adminIpAllowlist={adminIpAllowlist}
+                setAdminIpAllowlist={setAdminIpAllowlist}
+                adminLocationEnforcementMode={adminLocationEnforcementMode}
+                setAdminLocationEnforcementMode={setAdminLocationEnforcementMode}
+                recentLocationBlocks={recentLocationBlocks}
+                adminLocationExceptions={adminLocationExceptions}
+                addAdminLocationException={(input) => act(() => addAdminLocationException(input))}
                 retentionYears={retentionYears}
                 setRetentionYears={setRetentionYears}
                 backupRotationDays={backupRotationDays}

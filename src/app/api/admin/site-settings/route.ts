@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
+import { isValidCidr, normalizeAdminLocationPolicy } from "@/server/admin-location";
 import { apiError, requireAdmin, writeAuditLog } from "@/server/security";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const url = z
@@ -58,18 +59,59 @@ const schema = z.object({
   maintenanceMode: z.boolean().optional().default(false),
   retentionYears: z.number().int().min(1).max(30).optional().default(7),
   backupRotationDays: z.number().int().min(7).max(365).optional().default(30),
+  allowedAdminCountries: z
+    .array(z.string().regex(/^[A-Z]{2}$/))
+    .max(250)
+    .optional()
+    .default(["IN"]),
+  adminIpAllowlist: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(100)
+        .refine(isValidCidr, "Enter an IPv4 or IPv6 CIDR, such as 203.0.113.0/24."),
+    )
+    .max(100)
+    .optional()
+    .default([]),
+  adminLocationEnforcementMode: z.enum(["off", "alert", "block"]).optional(),
 });
 export async function GET(request: NextRequest) {
   try {
     const admin = await requireAdmin(request);
     if (admin.role !== "superadmin")
-      return NextResponse.json(
-        { error: "Superadmin access required." },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Superadmin access required." }, { status: 403 });
     const snapshot = await db.collection("siteSettings").doc("main").get();
+    const locationPolicy = normalizeAdminLocationPolicy(snapshot.data());
+    const recent = await db.collection("auditLogs").orderBy("timestamp", "desc").limit(100).get();
+    const recentLocationBlocks = recent.docs
+      .filter((document) =>
+        [
+          "admin.location.blocked",
+          "admin.location.alert",
+          "admin.location.session_country_changed",
+        ].includes(String(document.get("action"))),
+      )
+      .slice(0, 10)
+      .map((document) => {
+        const timestamp: unknown = document.get("timestamp");
+        const date =
+          typeof timestamp === "object" &&
+          timestamp !== null &&
+          "toDate" in timestamp &&
+          typeof timestamp.toDate === "function"
+            ? timestamp.toDate()
+            : null;
+        return {
+          action: String(document.get("action")),
+          country: String(document.get("country") ?? "Unknown"),
+          at: date?.toISOString() ?? null,
+        };
+      });
     return NextResponse.json(
-      { settings: snapshot.exists ? snapshot.data() : {} },
+      { settings: { ...(snapshot.data() ?? {}), ...locationPolicy }, recentLocationBlocks },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
@@ -80,10 +122,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const admin = await requireAdmin(request);
     if (admin.role !== "superadmin")
-      return NextResponse.json(
-        { error: "Superadmin access required." },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Superadmin access required." }, { status: 403 });
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json(
@@ -104,7 +143,18 @@ export async function PATCH(request: NextRequest) {
       .set(
         {
           ...parsed.data,
-          includedLanguages: Array.from(new Set(["en", ...parsed.data.includedLanguages.split(",").map((code) => code.trim().toLowerCase()).filter(Boolean)])).join(","),
+          adminLocationEnforcementMode:
+            parsed.data.adminLocationEnforcementMode ??
+            (process.env.NODE_ENV === "production" ? "block" : "off"),
+          includedLanguages: Array.from(
+            new Set([
+              "en",
+              ...parsed.data.includedLanguages
+                .split(",")
+                .map((code) => code.trim().toLowerCase())
+                .filter(Boolean),
+            ]),
+          ).join(","),
           lastUpdated,
           updatedAt: FieldValue.serverTimestamp(),
           updatedBy: admin.uid,
@@ -112,10 +162,7 @@ export async function PATCH(request: NextRequest) {
         { merge: true },
       );
     await writeAuditLog(request, admin.uid, "site_settings.update", "main");
-    return NextResponse.json(
-      { ok: true },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return apiError(error);
   }

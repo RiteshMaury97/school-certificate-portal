@@ -5,7 +5,7 @@ import { appCheckHeaders } from "@/lib/firebase-client";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import type { LegalSection } from "@/components/layout/LegalPageLayout";
-import type { SubmitEvent} from "react";
+import type { SubmitEvent } from "react";
 
 import LegalPageLayout from "@/components/layout/LegalPageLayout";
 
@@ -104,6 +104,13 @@ export default function PrivacyPage() {
             For security and administration, the system may also record consent version and
             timestamp, hashed network identifiers, request outcomes, administrator audit events and
             technical security data. Do not submit information that the form does not request.
+          </p>
+          <p>
+            For administrator account security, the School stores a hash of the administrator&apos;s
+            network IP address and the country code supplied by the hosting provider. These are used
+            to rate-limit sign-in attempts, enforce the School&apos;s admin location policy and
+            audit access. The raw IP address is not stored in these location-policy records, and
+            browser GPS is not used.
           </p>
           <p>
             If you submit a wrong-record report, the School receives the name, passing session,
@@ -239,8 +246,8 @@ export default function PrivacyPage() {
             launch. The student-record retention period is {retentionText} after the end of the
             passing session. Records are deleted on request or after manual review, unless a legal
             hold, statutory requirement, legitimate school-recordkeeping need or pending dispute
-            requires continued retention. The configured period does not trigger automatic review
-            or deletion.
+            requires continued retention. The configured period does not trigger automatic review or
+            deletion.
           </p>
           <p>
             The School must validate this schedule against applicable education, archival,
@@ -284,7 +291,10 @@ export default function PrivacyPage() {
             <strong>Grievance Officer / Data Protection contact:</strong> {officer}
             <br />
             <strong>Email:</strong>{" "}
-            <a className="font-semibold text-[var(--text)] underline" href={`mailto:${officerEmail}`}>
+            <a
+              className="font-semibold text-[var(--text)] underline"
+              href={`mailto:${officerEmail}`}
+            >
               {officerEmail}
             </a>
             <br />
@@ -392,7 +402,10 @@ export default function PrivacyPage() {
         title: "Request access, correction or erasure",
       }}
     >
-      <section id="rights-request" className="mt-10 scroll-mt-8 border-t border-[var(--divider)] pt-8">
+      <section
+        id="rights-request"
+        className="mt-10 scroll-mt-8 border-t border-[var(--divider)] pt-8"
+      >
         <h2 className="text-xl font-bold tracking-tight text-[var(--text)]">
           Request access, correction or erasure
         </h2>
@@ -409,7 +422,9 @@ export default function PrivacyPage() {
             <select
               translate="no"
               value={requestType}
-              onChange={(e) => { setRequestType(e.target.value); }}
+              onChange={(e) => {
+                setRequestType(e.target.value);
+              }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
             >
               <option value="access">Access</option>
@@ -424,7 +439,9 @@ export default function PrivacyPage() {
               required
               maxLength={100}
               value={requesterName}
-              onChange={(e) => { setRequesterName(e.target.value); }}
+              onChange={(e) => {
+                setRequesterName(e.target.value);
+              }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
             />
           </label>
@@ -436,7 +453,9 @@ export default function PrivacyPage() {
               required
               maxLength={254}
               value={contactEmail}
-              onChange={(e) => { setContactEmail(e.target.value); }}
+              onChange={(e) => {
+                setContactEmail(e.target.value);
+              }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
             />
           </label>
@@ -447,7 +466,9 @@ export default function PrivacyPage() {
               required
               maxLength={100}
               value={studentName}
-              onChange={(e) => { setStudentName(e.target.value); }}
+              onChange={(e) => {
+                setStudentName(e.target.value);
+              }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
             />
           </label>
@@ -460,7 +481,9 @@ export default function PrivacyPage() {
               maxLength={1500}
               rows={4}
               value={description}
-              onChange={(e) => { setDescription(e.target.value); }}
+              onChange={(e) => {
+                setDescription(e.target.value);
+              }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
               placeholder="Describe the access, correction or erasure you are requesting."
             />
@@ -471,7 +494,9 @@ export default function PrivacyPage() {
               type="checkbox"
               required
               checked={guardianConfirmation}
-              onChange={(e) => { setGuardianConfirmation(e.target.checked); }}
+              onChange={(e) => {
+                setGuardianConfirmation(e.target.checked);
+              }}
               className="mt-1 size-4"
             />
             <span>
@@ -481,7 +506,8 @@ export default function PrivacyPage() {
             </span>
           </label>
           <button
-            disabled={busy} aria-busy={busy}
+            disabled={busy}
+            aria-busy={busy}
             className="rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50 sm:col-span-2"
           >
             {busy ? "Submitting…" : "Submit privacy request"}

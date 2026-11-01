@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 
+import { enforceAdminLocation } from "@/server/admin-location";
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
+import { requesterIp } from "@/server/request-origin";
 import { sameOrigin, verifyRequestAppCheck } from "@/server/security";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
+    if (!requesterIp(request))
+      return NextResponse.json(
+        { error: "Administrator verification is temporarily unavailable." },
+        { status: 503 },
+      );
     await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
@@ -22,19 +29,17 @@ export async function POST(request: NextRequest) {
       // "invited" accounts must be able to complete email verification on first sign-in.
       !["active", "invited"].includes(String(admin.get("status"))) ||
       admin.get("email")?.toLowerCase() !== email ||
-      !["uploader", "approver", "admin", "superadmin"].includes(
-        String(admin.get("role")),
-      ) ||
+      !["uploader", "approver", "admin", "superadmin"].includes(String(admin.get("role"))) ||
       decoded.role !== admin.get("role")
     )
+      return NextResponse.json({ error: "This account is not authorized." }, { status: 403 });
+    const location = await enforceAdminLocation({ request, adminUid: decoded.uid });
+    if (!location.allowed)
       return NextResponse.json(
-        { error: "This account is not authorized." },
+        { error: "This sign-in cannot be completed from your current network." },
         { status: 403 },
       );
-    return NextResponse.json(
-      { authorized: true },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return NextResponse.json({ authorized: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const code = String((error as { code?: unknown } | null)?.code ?? "");
     if (error instanceof Error && error.message === "APP_CHECK") {

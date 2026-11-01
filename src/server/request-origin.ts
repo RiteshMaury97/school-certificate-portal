@@ -1,6 +1,3 @@
-import "server-only";
-import { createHmac } from "node:crypto";
-
 export type RequestLike = { headers: Headers };
 export type RequestOrigin = { ip: string | null; country: string | null; city: string | null };
 export type RequestOriginOptions = {
@@ -53,8 +50,4 @@ export function requireRequesterIp(request: RequestLike, options?: RequestOrigin
   const ip = requesterIp(request, options);
   if (!ip) throw new Error("TRUSTED_CLIENT_IP_UNAVAILABLE");
   return ip;
-}
-
-export function hashRequestIp(ip: string, secret: string): string {
-  return createHmac("sha256", secret).update(ip, "utf8").digest("hex");
 }

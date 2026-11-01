@@ -4,7 +4,7 @@ import { createHmac, randomInt, randomBytes, timingSafeEqual } from "node:crypto
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { hashRequestIp, requireRequesterIp } from "./request-origin";
+import { requireRequesterIp } from "./request-origin";
 import { adminAuth, adminAppCheck, db, describeFirebaseError } from "./firebase-admin";
 import {
   bindStudentId,
@@ -12,10 +12,15 @@ import {
   createSearchKey as makeSearchKey,
   isWithinRateLimit,
   canConsumeDisambiguationAttempt,
+  hashRequesterIpValue,
   signStudentAccessToken,
   verifyStudentAccessToken as verifyAccessToken,
 } from "./security-primitives";
-import { signDisambiguationChallenge, verifyDisambiguationChallenge, type DisambiguationClaims } from "./student-pii";
+import {
+  signDisambiguationChallenge,
+  verifyDisambiguationChallenge,
+  type DisambiguationClaims,
+} from "./student-pii";
 import { isAllowedRequestOrigin } from "../shared/origin-policy";
 import { hasAnyRole as hasRole } from "../shared/role-policy";
 import { ADMIN_HARD_SESSION_LIMIT_MS, isAdminSessionExpired } from "../shared/session-policy";
@@ -28,7 +33,7 @@ function requiredSecret(name: string): string {
   return value;
 }
 export function hashRequesterIp(request: NextRequest): string {
-  return hashRequestIp(requireRequesterIp(request), requiredSecret("AUDIT_LOG_HMAC_SECRET"));
+  return hashRequesterIpValue(requireRequesterIp(request), requiredSecret("AUDIT_LOG_HMAC_SECRET"));
 }
 export function createSearchKey(input: {
   studentName: string;
@@ -94,7 +99,11 @@ export async function writeAuditLog(
     );
   }
 }
-export async function writeConsentLog(request: NextRequest, policyVersion: string, studentId?: string): Promise<void> {
+export async function writeConsentLog(
+  request: NextRequest,
+  policyVersion: string,
+  studentId?: string,
+): Promise<void> {
   await db.collection("consentLogs").add({
     ipHash: hashRequesterIp(request),
     ...(studentId ? { studentId } : {}),
@@ -123,10 +132,16 @@ function hasBudgetRoom(budgets: Budget[], snapshots: { get(key: string): unknown
   });
 }
 
-async function consumeBudgets(request: NextRequest, budgets: Budget[], lockoutIpHash?: string): Promise<boolean> {
+async function consumeBudgets(
+  request: NextRequest,
+  budgets: Budget[],
+  lockoutIpHash?: string,
+): Promise<boolean> {
   const now = Date.now();
   const refs = budgets.map((item) => db.collection("abuseCounters").doc(item.id));
-  const lockoutRef = lockoutIpHash ? db.collection("abuseCounters").doc(`miss_state_${lockoutIpHash}`) : null;
+  const lockoutRef = lockoutIpHash
+    ? db.collection("abuseCounters").doc(`miss_state_${lockoutIpHash}`)
+    : null;
   return db.runTransaction(async (transaction) => {
     const snapshots = await Promise.all(refs.map((ref) => transaction.get(ref)));
     const lockoutSnapshot = lockoutRef ? await transaction.get(lockoutRef) : null;
@@ -150,7 +165,10 @@ async function consumeBudgets(request: NextRequest, budgets: Budget[], lockoutIp
     return true;
   });
 }
-export async function consumeSearchBudget(request: NextRequest, searchKey?: string): Promise<boolean> {
+export async function consumeSearchBudget(
+  request: NextRequest,
+  searchKey?: string,
+): Promise<boolean> {
   const now = Date.now();
   const ipHash = hashRequesterIp(request);
   const minute = 60_000;
@@ -200,8 +218,15 @@ export function issueDisambiguationChallenge(searchKey: string, ipHash: string):
     disambiguationChallengeSecret(),
   );
 }
-export function verifyDisambiguationChallengeToken(token: string, request: NextRequest): DisambiguationClaims | null {
-  return verifyDisambiguationChallenge(token, disambiguationChallengeSecret(), hashRequesterIp(request));
+export function verifyDisambiguationChallengeToken(
+  token: string,
+  request: NextRequest,
+): DisambiguationClaims | null {
+  return verifyDisambiguationChallenge(
+    token,
+    disambiguationChallengeSecret(),
+    hashRequesterIp(request),
+  );
 }
 export async function consumeDisambiguationAttempt(nonce: string): Promise<boolean> {
   const ref = db.collection("abuseCounters").doc(`disambiguation_${nonce}`);
@@ -237,9 +262,15 @@ export async function completeDisambiguationChallenge(nonce: string): Promise<vo
     );
 }
 export function createCertificateNumberHash(certificateNumber: string): string {
-  return makeCertificateNumberHash(certificateNumber, requiredSecret("CERTIFICATE_NUMBER_HMAC_SECRET"));
+  return makeCertificateNumberHash(
+    certificateNumber,
+    requiredSecret("CERTIFICATE_NUMBER_HMAC_SECRET"),
+  );
 }
-export async function consumeVerificationBudget(request: NextRequest, certificateHash?: string): Promise<boolean> {
+export async function consumeVerificationBudget(
+  request: NextRequest,
+  certificateHash?: string,
+): Promise<boolean> {
   const now = Date.now();
   const ipHash = hashRequesterIp(request);
   const minute = 60_000;
@@ -278,7 +309,8 @@ export async function recordLookupMiss(request: NextRequest): Promise<void> {
   await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(ref);
     const windowStart = Number(snapshot.get("missWindowStart") ?? 0);
-    const priorMisses = windowStart > 0 && now - windowStart < 10 * 60_000 ? Number(snapshot.get("misses") ?? 0) : 0;
+    const priorMisses =
+      windowStart > 0 && now - windowStart < 10 * 60_000 ? Number(snapshot.get("misses") ?? 0) : 0;
     const misses = priorMisses + 1;
     transaction.set(
       ref,
@@ -351,7 +383,10 @@ export type AdminIdentity = { uid: string; email: string; role: AdminRole };
 export function hasAnyRole(admin: AdminIdentity, roles: readonly AdminRole[]): boolean {
   return hasRole(admin.role, roles);
 }
-export async function requireRoles(request: NextRequest, roles: readonly AdminRole[]): Promise<AdminIdentity> {
+export async function requireRoles(
+  request: NextRequest,
+  roles: readonly AdminRole[],
+): Promise<AdminIdentity> {
   const admin = await requireAdmin(request);
   if (!hasAnyRole(admin, roles)) throw new Error("FORBIDDEN");
   return admin;
@@ -359,7 +394,10 @@ export async function requireRoles(request: NextRequest, roles: readonly AdminRo
 export async function verifyRequestAppCheck(request: NextRequest): Promise<void> {
   if (process.env.NODE_ENV !== "production") {
     if (process.env.APP_CHECK_ENFORCE === "false") return;
-    if (process.env.APP_CHECK_ENFORCE !== "true" && !process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY) {
+    if (
+      process.env.APP_CHECK_ENFORCE !== "true" &&
+      !process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY
+    ) {
       return;
     }
   }
@@ -372,7 +410,9 @@ export async function verifyRequestAppCheck(request: NextRequest): Promise<void>
   }
 }
 function isAdminRole(value: unknown): value is AdminRole {
-  return value === "uploader" || value === "approver" || value === "admin" || value === "superadmin";
+  return (
+    value === "uploader" || value === "approver" || value === "admin" || value === "superadmin"
+  );
 }
 function readStringField(value: { get(key: string): unknown }, key: string): string | undefined {
   const field = value.get(key);
@@ -398,20 +438,35 @@ function readTimestampMs(value: { get(key: string): unknown }, key: string): num
   const timestamp = callKnownMethod<unknown>(getTime, date);
   return typeof timestamp === "number" ? timestamp : 0;
 }
-function isAuthorizedAdmin(admin: { exists: boolean; get(key: string): unknown }, email: string, role: string | undefined, decodedRole: string): boolean {
+function isAuthorizedAdmin(
+  admin: { exists: boolean; get(key: string): unknown },
+  email: string,
+  role: string | undefined,
+  decodedRole: string,
+): boolean {
   const status = readStringField(admin, "status");
   const adminEmail = readStringField(admin, "email");
-  return admin.exists && status === "active" && adminEmail?.toLowerCase() === email && isAdminRole(role) && decodedRole === role;
+  return (
+    admin.exists &&
+    status === "active" &&
+    adminEmail?.toLowerCase() === email &&
+    isAdminRole(role) &&
+    decodedRole === role
+  );
 }
 
-function hasActiveAdminSession(sessionSnapshot: { exists: boolean; get(key: string): unknown }, uid: string): boolean {
+function hasActiveAdminSession(
+  sessionSnapshot: { exists: boolean; get(key: string): unknown },
+  uid: string,
+): boolean {
   const sessionUid = readStringField(sessionSnapshot, "uid");
   return sessionSnapshot.exists && sessionUid === uid && !sessionSnapshot.get("revokedAt");
 }
 
 export async function requireAdmin(request: NextRequest): Promise<AdminIdentity> {
   await verifyRequestAppCheck(request);
-  if (!["GET", "HEAD", "OPTIONS"].includes(request.method) && !verifyCsrf(request)) throw new Error("CSRF");
+  if (!["GET", "HEAD", "OPTIONS"].includes(request.method) && !verifyCsrf(request))
+    throw new Error("CSRF");
   const session = request.cookies.get("sis_admin_session")?.value;
   if (!session) throw new Error("UNAUTHORIZED");
   const decoded = await adminAuth.verifySessionCookie(session, true);
@@ -421,7 +476,9 @@ export async function requireAdmin(request: NextRequest): Promise<AdminIdentity>
   const role = readStringField(admin, "role");
   const decodedRole = typeof decoded.role === "string" ? decoded.role : "";
   if (!isAuthorizedAdmin(admin, email, role, decodedRole)) throw new Error("FORBIDDEN");
-  const sessionKey = createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET")).update(session).digest("hex");
+  const sessionKey = createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET"))
+    .update(session)
+    .digest("hex");
   const sessionRef = db.collection("adminSessions").doc(sessionKey);
   const sessionSnapshot = await sessionRef.get();
   if (!hasActiveAdminSession(sessionSnapshot, decoded.uid)) throw new Error("UNAUTHORIZED");
@@ -429,15 +486,23 @@ export async function requireAdmin(request: NextRequest): Promise<AdminIdentity>
   const lastActivity = readTimestampMs(sessionSnapshot, "lastActivityAt");
   const absoluteExpiry = readTimestampMs(sessionSnapshot, "absoluteExpiresAt");
   if (isAdminSessionExpired(lastActivity, absoluteExpiry, now)) {
-    await sessionRef.set({ revokedAt: FieldValue.serverTimestamp(), revokeReason: "timeout" }, { merge: true });
+    await sessionRef.set(
+      { revokedAt: FieldValue.serverTimestamp(), revokeReason: "timeout" },
+      { merge: true },
+    );
     throw new Error("UNAUTHORIZED");
   }
   return { uid: decoded.uid, email, role };
 }
-export async function requireSensitiveReauth(request: NextRequest, admin: AdminIdentity): Promise<void> {
+export async function requireSensitiveReauth(
+  request: NextRequest,
+  admin: AdminIdentity,
+): Promise<void> {
   const token = request.headers.get("x-admin-reauth") ?? "";
   if (token.length < 32) throw new Error("REAUTH_REQUIRED");
-  const hash = createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET")).update(token).digest("hex");
+  const hash = createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET"))
+    .update(token)
+    .digest("hex");
   const ref = db.collection("adminReauthGrants").doc(hash);
   await db.runTransaction(async (transaction) => {
     const snap = await transaction.get(ref);
@@ -480,7 +545,8 @@ export function csrfCookieOptions() {
 }
 export function apiError(error: unknown): NextResponse {
   const message = error instanceof Error ? error.message : "Unexpected error";
-  const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
+  const code =
+    typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
   const invalidSessionCodes = new Set([
     "auth/argument-error",
     "auth/id-token-expired",
@@ -505,7 +571,10 @@ export function apiError(error: unknown): NextResponse {
     return response;
   }
   const responses = new Map<string, { error: string; status: number }>([
-    ["REAUTH_REQUIRED", { error: "Re-authentication with password and email code is required.", status: 428 }],
+    [
+      "REAUTH_REQUIRED",
+      { error: "Re-authentication with password and email code is required.", status: 428 },
+    ],
     ["FORBIDDEN", { error: "Administrator access required", status: 403 }],
     ["CSRF", { error: "CSRF validation failed", status: 403 }],
     ["APP_CHECK", { error: "App verification failed", status: 403 }],
@@ -517,7 +586,10 @@ export function apiError(error: unknown): NextResponse {
         status: 409,
       },
     ],
-    ["ERASURE_JOB_NOT_RETRYABLE", { error: "This erasure job is not in a retryable state.", status: 409 }],
+    [
+      "ERASURE_JOB_NOT_RETRYABLE",
+      { error: "This erasure job is not in a retryable state.", status: 409 },
+    ],
     ["STUDENT_NOT_FOUND", { error: "Student record not found.", status: 404 }],
     [
       "ERASURE_LEGAL_HOLD",

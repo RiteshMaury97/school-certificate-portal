@@ -1,24 +1,95 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 
-import type { AnnouncementState, CatalogKind, CatalogOption, FaqItem } from "../types/admin-state.types";
+import type {
+  AnnouncementState,
+  CatalogKind,
+  CatalogOption,
+  FaqItem,
+} from "../types/admin-state.types";
 import type { Cert, Role, Tab } from "../types/admin.types";
 
-type Api = <T extends Record<string, unknown> = Record<string, unknown>>(url:string,init?:RequestInit)=>Promise<T>;
+type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
+  url: string,
+  init?: RequestInit,
+) => Promise<T>;
 type Props = {
- tab:Tab; api:Api; loadStudents:()=>Promise<void>; catalogKind:CatalogKind; auditAction:string; auditStart:string; auditEnd:string; role:Role; timelineStudentId:string;
- setStats:Dispatch<SetStateAction<Record<string,unknown>>>; setPending:Dispatch<SetStateAction<Cert[]>>;
- setSessionOptions:Dispatch<SetStateAction<CatalogOption[]>>; setTypeOptions:Dispatch<SetStateAction<CatalogOption[]>>; setClassOptions:Dispatch<SetStateAction<CatalogOption[]>>; setCerts:Dispatch<SetStateAction<Cert[]>>;
- setCatalog:Dispatch<SetStateAction<CatalogOption[]>>; setLogs:Dispatch<SetStateAction<Record<string,unknown>[]>>; setRights:Dispatch<SetStateAction<Record<string,unknown>[]>>;
- setBreaches:Dispatch<SetStateAction<Record<string,unknown>[]>>; setReports:Dispatch<SetStateAction<Record<string,unknown>[]>>; setTimeline:Dispatch<SetStateAction<Record<string,unknown>[]>>;
- setReportsLoaded:Dispatch<SetStateAction<boolean>>; setRightsLoaded:Dispatch<SetStateAction<boolean>>; setBreachesLoaded:Dispatch<SetStateAction<boolean>>;
- setContactEnquiries:Dispatch<SetStateAction<Record<string,unknown>[]>>;
- setFaqs:Dispatch<SetStateAction<FaqItem[]>>; setAdmins:Dispatch<SetStateAction<Record<string,unknown>[]>>; setMaintenanceMode:Dispatch<SetStateAction<boolean>>;
- setRetentionYears:Dispatch<SetStateAction<string>>; setBackupRotationDays:Dispatch<SetStateAction<string>>;
- setBranding:Dispatch<SetStateAction<Record<string,string>>>; setAnnouncement:Dispatch<SetStateAction<AnnouncementState>>;
+  tab: Tab;
+  api: Api;
+  loadStudents: () => Promise<void>;
+  catalogKind: CatalogKind;
+  auditAction: string;
+  auditStart: string;
+  auditEnd: string;
+  role: Role;
+  timelineStudentId: string;
+  setStats: Dispatch<SetStateAction<Record<string, unknown>>>;
+  setPending: Dispatch<SetStateAction<Cert[]>>;
+  setSessionOptions: Dispatch<SetStateAction<CatalogOption[]>>;
+  setTypeOptions: Dispatch<SetStateAction<CatalogOption[]>>;
+  setClassOptions: Dispatch<SetStateAction<CatalogOption[]>>;
+  setCerts: Dispatch<SetStateAction<Cert[]>>;
+  setCatalog: Dispatch<SetStateAction<CatalogOption[]>>;
+  setLogs: Dispatch<SetStateAction<Record<string, unknown>[]>>;
+  setRights: Dispatch<SetStateAction<Record<string, unknown>[]>>;
+  setBreaches: Dispatch<SetStateAction<Record<string, unknown>[]>>;
+  setReports: Dispatch<SetStateAction<Record<string, unknown>[]>>;
+  setTimeline: Dispatch<SetStateAction<Record<string, unknown>[]>>;
+  setReportsLoaded: Dispatch<SetStateAction<boolean>>;
+  setRightsLoaded: Dispatch<SetStateAction<boolean>>;
+  setBreachesLoaded: Dispatch<SetStateAction<boolean>>;
+  setContactEnquiries: Dispatch<SetStateAction<Record<string, unknown>[]>>;
+  setFaqs: Dispatch<SetStateAction<FaqItem[]>>;
+  setAdmins: Dispatch<SetStateAction<Record<string, unknown>[]>>;
+  setMaintenanceMode: Dispatch<SetStateAction<boolean>>;
+  setRetentionYears: Dispatch<SetStateAction<string>>;
+  setBackupRotationDays: Dispatch<SetStateAction<string>>;
+  setBranding: Dispatch<SetStateAction<Record<string, string>>>;
+  setAnnouncement: Dispatch<SetStateAction<AnnouncementState>>;
+  setAllowedAdminCountries: Dispatch<SetStateAction<string>>;
+  setAdminIpAllowlist: Dispatch<SetStateAction<string>>;
+  setAdminLocationEnforcementMode: Dispatch<SetStateAction<string>>;
+  setRecentLocationBlocks: Dispatch<SetStateAction<Record<string, unknown>[]>>;
+  setAdminLocationExceptions: Dispatch<SetStateAction<Record<string, unknown>[]>>;
 };
-export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,auditStart,auditEnd,role,timelineStudentId,
- setStats,setPending,setSessionOptions,setTypeOptions,setClassOptions,setCerts,setCatalog,setLogs,setRights,
- setBreaches,setReports,setReportsLoaded,setRightsLoaded,setBreachesLoaded,setTimeline,setContactEnquiries,setFaqs,setAdmins,setMaintenanceMode,setRetentionYears,setBackupRotationDays,setBranding,setAnnouncement}:Props) {
+export function useAdminData({
+  tab,
+  api,
+  loadStudents,
+  catalogKind,
+  auditAction,
+  auditStart,
+  auditEnd,
+  role,
+  timelineStudentId,
+  setStats,
+  setPending,
+  setSessionOptions,
+  setTypeOptions,
+  setClassOptions,
+  setCerts,
+  setCatalog,
+  setLogs,
+  setRights,
+  setBreaches,
+  setReports,
+  setReportsLoaded,
+  setRightsLoaded,
+  setBreachesLoaded,
+  setTimeline,
+  setContactEnquiries,
+  setFaqs,
+  setAdmins,
+  setMaintenanceMode,
+  setRetentionYears,
+  setBackupRotationDays,
+  setBranding,
+  setAnnouncement,
+  setAllowedAdminCountries,
+  setAdminIpAllowlist,
+  setAdminLocationEnforcementMode,
+  setRecentLocationBlocks,
+  setAdminLocationExceptions,
+}: Props) {
   const load = useCallback(async () => {
     if (tab === "dashboard") {
       const d = await api<{ stats: Record<string, unknown> }>("/api/admin/dashboard");
@@ -118,8 +189,22 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
       setAdmins(d.admins ?? []);
     }
     if (tab === "branding" && role === "superadmin") {
-      const d = await api<{ settings: Record<string, unknown> }>("/api/admin/site-settings");
+      const d = await api<{
+        settings: Record<string, unknown>;
+        recentLocationBlocks: Record<string, unknown>[];
+      }>("/api/admin/site-settings");
       const x = d.settings ?? {};
+      setAllowedAdminCountries(
+        Array.isArray(x.allowedAdminCountries) ? x.allowedAdminCountries.join(", ") : "IN",
+      );
+      setAdminIpAllowlist(Array.isArray(x.adminIpAllowlist) ? x.adminIpAllowlist.join("\n") : "");
+      setAdminLocationEnforcementMode(String(x.adminLocationEnforcementMode ?? "block"));
+      setRecentLocationBlocks(d.recentLocationBlocks ?? []);
+      setAdminLocationExceptions(
+        Array.isArray(x.adminLocationExceptions)
+          ? (x.adminLocationExceptions as Record<string, unknown>[])
+          : [],
+      );
       setMaintenanceMode(x.maintenanceMode === true);
       setRetentionYears(String(x.retentionYears ?? 7));
       setBackupRotationDays(String(x.backupRotationDays ?? 30));
@@ -139,7 +224,10 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
         ),
       }));
     }
-    if (tab === "announcement" && (role === "superadmin" || role === "approver" || role === "admin")) {
+    if (
+      tab === "announcement" &&
+      (role === "superadmin" || role === "approver" || role === "admin")
+    ) {
       const d = await api<{ announcement: Record<string, unknown> }>("/api/admin/announcements");
       const a = d.announcement ?? {};
       const local = (value: unknown) => {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getRequestOrigin } from "./server/request-origin";
 import { isAllowedRequestOrigin } from "./shared/origin-policy";
 
 import type { NextRequest } from "next/server";
@@ -117,8 +118,101 @@ function isAdminPage(path: string): boolean {
   return path === "/admin" || path.startsWith("/admin/");
 }
 
+function isAdminPath(path: string): boolean {
+  return isAdminPage(path) || path === "/api/admin" || path.startsWith("/api/admin/");
+}
+
+function isRevokedSessionReason(reason: string | undefined): boolean {
+  return reason === "country_changed" || reason === "session_revoked";
+}
+
+async function adminLocationGate(
+  request: NextRequest,
+  nonce: string,
+  production: boolean,
+): Promise<NextResponse | null> {
+  if (!isAdminPath(request.nextUrl.pathname)) return null;
+  const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
+  if (secret.length < 32) return production ? locationGateResponse(nonce, production, 503) : null;
+  try {
+    const decision = await checkLocationPolicy(request, secret);
+    if (decision.allowed) return null;
+    if (isRevokedSessionReason(decision.reason)) {
+      const isLoginPage = request.nextUrl.pathname === "/admin/login";
+      const response =
+        isAdminPage(request.nextUrl.pathname) && !isLoginPage
+          ? NextResponse.redirect(new URL("/admin/login", request.url), 307)
+          : isLoginPage
+            ? createRequestResponse(request, production).response
+            : locationGateResponse(nonce, production, 403);
+      response.cookies.set("sis_admin_session", "", { path: "/", maxAge: 0 });
+      response.cookies.set("sis_admin_csrf", "", { path: "/", maxAge: 0 });
+      response.headers.set("Cache-Control", "no-store");
+      return response;
+    }
+    return locationGateResponse(nonce, production, 403);
+  } catch {
+    return locationGateResponse(nonce, production, 503);
+  }
+}
+
+function locationGateResponse(nonce: string, production: boolean, status: 403 | 503): NextResponse {
+  const response = NextResponse.json({ error: "Request could not be authorized." }, { status });
+  securityHeaders(response, nonce, production);
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
+
+async function checkLocationPolicy(
+  request: NextRequest,
+  secret: string,
+): Promise<{ allowed: boolean; reason?: string }> {
+  const timestamp = Date.now().toString();
+  const origin = getRequestOrigin(request);
+  const payload = JSON.stringify({
+    path: request.nextUrl.pathname,
+    ip: origin.ip,
+    country: origin.country,
+    sessionCookie: request.cookies.get("sis_admin_session")?.value ?? null,
+  });
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(`admin-location-check:${timestamp}:${payload}`),
+  );
+  const token = Array.from(new Uint8Array(signature), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  const response = await fetch(new URL("/api/internal/admin-location-check", request.url), {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${timestamp}.${token}` },
+    body: payload,
+    cache: "no-store",
+    signal: AbortSignal.timeout(2500),
+  });
+  if (!response.ok) throw new Error("Location policy check unavailable");
+  const result: unknown = await response.json();
+  if (typeof result !== "object" || result === null || !("allowed" in result))
+    return { allowed: false };
+  return {
+    allowed: result.allowed === true,
+    ...("reason" in result && typeof result.reason === "string" ? { reason: result.reason } : {}),
+  };
+}
+
 function adminLoginRedirect(request: NextRequest, path: string): NextResponse | null {
-  if (!isAdminPage(path) || path === "/admin/login" || request.cookies.get("sis_admin_session")?.value)
+  if (
+    !isAdminPage(path) ||
+    path === "/admin/login" ||
+    request.cookies.get("sis_admin_session")?.value
+  )
     return null;
   const login = request.nextUrl.clone();
   login.pathname = "/admin/login";
@@ -185,7 +279,11 @@ function isNoIndexPath(path: string): boolean {
   );
 }
 
-function setResponsePolicyHeaders(response: NextResponse, request: NextRequest, path: string): void {
+function setResponsePolicyHeaders(
+  response: NextResponse,
+  request: NextRequest,
+  path: string,
+): void {
   if (isNoIndexPath(path) || (path === "/verify" && request.nextUrl.searchParams.size > 0)) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
   }
@@ -218,6 +316,8 @@ async function continueRequest(
   const path = request.nextUrl.pathname;
   const origin = originResponse(request, production);
   if (origin) return origin;
+  const locationBlocked = await adminLocationGate(request, nonce, production);
+  if (locationBlocked) return locationBlocked;
   const login = adminLoginRedirect(request, path);
   if (login) return login;
   const maintenance = await maintenanceResponse(request, path, production, nonce);
@@ -235,5 +335,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|api/internal/admin-location-check).*)",
+  ],
 };

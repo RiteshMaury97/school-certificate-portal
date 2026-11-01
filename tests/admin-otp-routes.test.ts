@@ -70,12 +70,13 @@ vi.mock("@/server/firebase-admin", () => ({
   },
 }));
 vi.mock("@/server/request-origin", () => ({
-  hasTrustedRequesterIp: vi.fn(() => true),
-  requesterCity: vi.fn(() => "Test city"),
-  requesterCountry: vi.fn(() => "IN"),
+  requesterIp: vi.fn(() => "203.0.113.12"),
+  getRequestOrigin: vi.fn(() => ({ ip: "203.0.113.12", city: "Test city", country: "IN" })),
 }));
 vi.mock("@/server/admin-location", () => ({
-  enforceAdminLocation: vi.fn(() => Promise.resolve()),
+  enforceAdminLocation: vi.fn(() =>
+    Promise.resolve({ allowed: true, country: "IN", ip: "203.0.113.12" }),
+  ),
 }));
 vi.mock("@/server/security", () => ({
   verifyRequestAppCheck: vi.fn(() => Promise.resolve()),
@@ -95,6 +96,7 @@ function request(path: string, body: Record<string, string>): NextRequest {
     headers: {
       origin: "http://localhost",
       "content-type": "application/json",
+      "x-vercel-forwarded-for": "203.0.113.12",
       cookie: "sis_admin_session=test; sis_admin_csrf=test",
     },
     body: JSON.stringify(body),

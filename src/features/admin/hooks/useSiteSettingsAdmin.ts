@@ -23,6 +23,13 @@ export function useSiteSettingsAdmin(
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [announcement, setAnnouncement] = useState<AnnouncementState>(createDefaultAnnouncement());
   const [branding, setBranding] = useState<Record<string, string>>(createDefaultBranding());
+  const [allowedAdminCountries, setAllowedAdminCountries] = useState("IN");
+  const [adminIpAllowlist, setAdminIpAllowlist] = useState("");
+  const [adminLocationEnforcementMode, setAdminLocationEnforcementMode] = useState("block");
+  const [recentLocationBlocks, setRecentLocationBlocks] = useState<Record<string, unknown>[]>([]);
+  const [adminLocationExceptions, setAdminLocationExceptions] = useState<Record<string, unknown>[]>(
+    [],
+  );
   async function saveFaqs() {
     await act(async () => {
       await api("/api/admin/faqs", {
@@ -52,9 +59,36 @@ export function useSiteSettingsAdmin(
           maintenanceMode,
           retentionYears: Number(retentionYears),
           backupRotationDays: Number(backupRotationDays),
+          allowedAdminCountries: allowedAdminCountries
+            .split(/[\n,]/)
+            .map((value) => value.trim().toUpperCase())
+            .filter(Boolean),
+          adminIpAllowlist: adminIpAllowlist
+            .split(/[\n,]/)
+            .map((value) => value.trim())
+            .filter(Boolean),
+          adminLocationEnforcementMode,
         }),
       });
     });
+  }
+
+  async function addAdminLocationException(input: {
+    country?: string;
+    adminUid?: string;
+    expiresInHours: number;
+    reason: string;
+  }) {
+    const result = await api<{ exception: Record<string, unknown> }>(
+      "/api/admin/location-exceptions",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      },
+    );
+    setAdminLocationExceptions((current) => [result.exception, ...current]);
+    setToast("Temporary location exception added.");
   }
 
   async function saveAnnouncement(e: SubmitEvent<HTMLFormElement>) {
@@ -85,8 +119,19 @@ export function useSiteSettingsAdmin(
     setAnnouncement,
     branding,
     setBranding,
+    allowedAdminCountries,
+    setAllowedAdminCountries,
+    adminIpAllowlist,
+    setAdminIpAllowlist,
+    adminLocationEnforcementMode,
+    setAdminLocationEnforcementMode,
+    recentLocationBlocks,
+    setRecentLocationBlocks,
+    adminLocationExceptions,
+    setAdminLocationExceptions,
     saveFaqs,
     saveBranding,
+    addAdminLocationException,
     saveAnnouncement,
   };
 }

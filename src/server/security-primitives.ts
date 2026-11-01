@@ -1,5 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+export function hashRequesterIpValue(ip: string, secret: string): string {
+  return createHmac("sha256", secret).update(ip, "utf8").digest("hex");
+}
+
 export type StudentAccessClaims = {
   v: 1;
   sid: string;
@@ -65,32 +69,19 @@ export function createSearchKey(
   return createHmac("sha256", secret).update(canonical, "utf8").digest("hex");
 }
 
-export function createCertificateNumberHash(
-  value: string,
-  secret: string,
-): string {
+export function createCertificateNumberHash(value: string, secret: string): string {
   if (Buffer.byteLength(secret, "utf8") < 32)
     throw new Error("Certificate number HMAC secret must be at least 32 bytes");
-  const normalized = value
-    .normalize("NFKC")
-    .trim()
-    .replace(/\s+/g, " ")
-    .toUpperCase();
-  if (!normalized || normalized.length > 80)
-    throw new Error("Invalid certificate number");
+  const normalized = value.normalize("NFKC").trim().replace(/\s+/g, " ").toUpperCase();
+  if (!normalized || normalized.length > 80) throw new Error("Invalid certificate number");
   return createHmac("sha256", secret).update(normalized, "utf8").digest("hex");
 }
 
 export function bindStudentId(studentId: string, secret: string): string {
-  return createHmac("sha256", secret)
-    .update(`student:${studentId}`, "utf8")
-    .digest("hex");
+  return createHmac("sha256", secret).update(`student:${studentId}`, "utf8").digest("hex");
 }
 
-export function signStudentAccessToken(
-  claims: StudentAccessClaims,
-  secret: string,
-): string {
+export function signStudentAccessToken(claims: StudentAccessClaims, secret: string): string {
   if (Buffer.byteLength(secret, "utf8") < 32)
     throw new Error("Access token secret must be at least 32 bytes");
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
@@ -128,7 +119,8 @@ export function verifyStudentAccessToken(
     const actual = Buffer.from(signature, "base64url");
     if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
     const parsed: unknown = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    if (!isStudentAccessClaims(parsed) || !hasValidAccessClaims(parsed, expectedIpHash, now)) return null;
+    if (!isStudentAccessClaims(parsed) || !hasValidAccessClaims(parsed, expectedIpHash, now))
+      return null;
     return parsed;
   } catch {
     return null;
