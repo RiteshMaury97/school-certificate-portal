@@ -1,163 +1,228 @@
 "use client";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import ReportWrongRecordModal from "@/features/report/ReportWrongRecordModal";
-type SiteSettings = {
-  schoolName?: string;
-  tagline?: string;
-  logoUrl?: string;
-  statusPageUrl?: string;
-  announcement?: { type: "info" | "warning"; textEn: string; linkUrl: string } | null;
-  boardName?: string;
-  affiliationNumber?: string;
-  schoolCode?: string;
-  principalPhotoUrl?: string;
-  principalName?: string;
-  principalMessage?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  officeHours?: string;
-  mapUrl?: string;
-  socialLinks?: { label: string; url: string }[];
-  lastUpdated?: string;
-  includedLanguages?: string;
-};
-export default function SiteShell({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<SiteSettings>({});
-  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
-  const [translationCookieUsed, setTranslationCookieUsed] = useState(false);
-  const pathname = usePathname();
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      if (process.env.NODE_ENV === "production") {
-        void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
-      } else {
-        void navigator.serviceWorker
-          .getRegistrations()
-          .then((items) => Promise.all(items.map((item) => item.unregister())))
-          .catch(() => {});
-        void caches
-          .keys()
-          .then((names) =>
-            Promise.all(names.filter((n) => n.startsWith("sis-static-")).map((n) => caches.delete(n))),
-          )
-          .catch(() => {});
-      }
-    }
-    try {
-      setAnnouncementDismissed(sessionStorage.getItem("sis-announcement-dismissed") === "true");
-    } catch {
-      setAnnouncementDismissed(false);
-    }
-    setTranslationCookieUsed(
-      document.cookie
-        .split("; ")
-        .some((cookie) => cookie.startsWith("googtrans=") && cookie.split("=")[1] !== ""),
-    );
-    const onTranslationChoice = (event: Event) => {
-      const detail = (event as CustomEvent<{ cookieUsed: boolean }>).detail;
-      const hasGoogleCookie = document.cookie
-        .split("; ")
-        .some((cookie) => cookie.startsWith("googtrans=") && cookie.split("=")[1] !== "");
-      setTranslationCookieUsed((detail?.cookieUsed) && hasGoogleCookie);
-    };
-    window.addEventListener("sis-google-translate-choice", onTranslationChoice);
+import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
+import type { PublicSiteSettings } from "@/lib/use-site-settings";
+
+function hasTranslationCookie(): boolean {
+  return document.cookie
+    .split("; ")
+    .some((cookie) => cookie.startsWith("googtrans=") && cookie.split("=")[1] !== "");
+}
+
+function displaySchoolName(name: string | undefined): string {
+  if (name?.trim()) return name.trim();
+  return "Satyam International School";
+}
+
+function cookieUsedFromEvent(event: Event): boolean {
+  if (!(event instanceof CustomEvent)) return false;
+  const detail: unknown = event.detail;
+  return (
+    typeof detail === "object" &&
+    detail !== null &&
+    "cookieUsed" in detail &&
+    typeof detail.cookieUsed === "boolean" &&
+    detail.cookieUsed
+  );
+}
+
+function useAnnouncementDismissal() {
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
     let active = true;
-    fetch("/api/public/site-settings", { cache: "no-store" })
-      .then((response) => response.json())
-      .then((data) => {
-        if (active && data && typeof data.settings === "object" && data.settings)
-          setSettings(data.settings as SiteSettings);
-      })
-      .catch(() => {});
+    const timer = window.setTimeout(() => {
+      if (!active) return;
+      try {
+        setDismissed(sessionStorage.getItem("sis-announcement-dismissed") === "true");
+      } catch {
+        setDismissed(false);
+      }
+    }, 0);
     return () => {
       active = false;
+      window.clearTimeout(timer);
+    };
+  }, []);
+  return [dismissed, setDismissed] as const;
+}
+
+function useTranslationCookie() {
+  const [used, setUsed] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setUsed(hasTranslationCookie());
+    }, 0);
+    const onTranslationChoice = (event: Event) => {
+      setUsed(cookieUsedFromEvent(event) && hasTranslationCookie());
+    };
+    window.addEventListener("sis-google-translate-choice", onTranslationChoice);
+    return () => {
+      window.clearTimeout(timer);
       window.removeEventListener("sis-google-translate-choice", onTranslationChoice);
     };
   }, []);
-  const announcementText = settings.announcement?.textEn?.trim();
-  const schoolName = settings.schoolName?.trim() || "Satyam International School";
-  const includedLanguages = settings.includedLanguages;
+  return used;
+}
+
+function useServiceWorkerMaintenance() {
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    if (process.env.NODE_ENV === "production") {
+      void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => null);
+      return;
+    }
+    void navigator.serviceWorker
+      .getRegistrations()
+      .then((items) => Promise.all(items.map((item) => item.unregister())))
+      .catch(() => null);
+    void caches
+      .keys()
+      .then((names) =>
+        Promise.all(
+          names.filter((name) => name.startsWith("sis-static-")).map((name) => caches.delete(name)),
+        ),
+      )
+      .catch(() => null);
+  }, []);
+}
+
+function AnnouncementBanner({
+  announcement,
+  text,
+  onDismiss,
+}: {
+  announcement: NonNullable<PublicSiteSettings["announcement"]>;
+  text: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <aside
+      role="status"
+      aria-live="polite"
+      className={`border-b px-4 py-3 text-sm ${announcement.type === "warning" ? "border-[var(--warning)] bg-[var(--surface-2)] text-[var(--text)]" : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)]"}`}
+    >
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
+        <p className="min-w-0 flex-1">
+          {text}
+          {announcement.linkUrl && (
+            <a
+              href={announcement.linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-2 font-semibold underline underline-offset-4"
+            >
+              View announcement details
+            </a>
+          )}
+        </p>
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss announcement"
+          className="min-h-11 rounded-lg border border-[var(--border)] px-3 font-semibold"
+        >
+          Dismiss
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function SchoolMetadata({ settings }: { settings: PublicSiteSettings }) {
+  const fields = [
+    { label: "Board / Affiliation", value: settings.boardName },
+    { label: "Affiliation number", value: settings.affiliationNumber },
+    { label: "School code", value: settings.schoolCode },
+  ].filter((field) => field.value?.trim());
+  if (!fields.length) return null;
+
+  return (
+    <section className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+      <div className="mx-auto grid max-w-6xl gap-3 px-4 py-3 text-xs sm:grid-cols-3 sm:px-6 lg:px-8">
+        {fields.map((field) => (
+          <div key={field.label}>
+            <span className="block text-[var(--text-muted)]">{field.label}</span>
+            <strong className="mt-1 block text-sm">{field.value}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PrincipalMessage({ settings }: { settings: PublicSiteSettings }) {
+  if (!settings.principalMessage?.trim()) return null;
+
+  return (
+    <section className="border-t border-[var(--border)] bg-[var(--surface)]">
+      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-9 sm:grid-cols-[180px_1fr] sm:items-center sm:px-6 lg:px-8">
+        <div className="mx-auto h-36 w-36 overflow-hidden rounded-full bg-[var(--surface-2)] sm:mx-0">
+          {settings.principalPhotoUrl && (
+            <Image
+              src={settings.principalPhotoUrl}
+              alt={settings.principalName ? `Photo of ${settings.principalName}` : "Principal"}
+              width={144}
+              height={144}
+              unoptimized
+              className="h-full w-full object-cover"
+            />
+          )}
+        </div>
+        <div>
+          <h2 className="text-xl font-bold">{"Principal’s Message"}</h2>
+          <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[var(--text-muted)]">
+            {settings.principalMessage}
+          </p>
+          {settings.principalName && (
+            <p className="mt-3 font-semibold">{settings.principalName}</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function SiteShell({ children }: { children: ReactNode }) {
+  const settings = usePublicSiteSettings();
+  const [announcementDismissed, setAnnouncementDismissed] = useAnnouncementDismissal();
+  const [reportOpen, setReportOpen] = useState(false);
+  const translationCookieUsed = useTranslationCookie();
+  const pathname = usePathname();
+  useServiceWorkerMaintenance();
+
+  const announcement = settings.announcement;
+  const announcementText = announcement?.textEn.trim();
+  const schoolName = displaySchoolName(settings.schoolName);
+
   return (
     <div className="site-frame flex min-h-dvh flex-col bg-[var(--bg)] text-[var(--text)] transition-colors duration-200">
       <Header
         schoolName={schoolName}
         logoUrl={settings.logoUrl}
-        includedLanguages={includedLanguages}
+        includedLanguages={settings.includedLanguages}
       />
-      {pathname === "/" &&
-        settings.announcement &&
-        !announcementDismissed &&
-        announcementText && (
-          <aside
-            role="status"
-            aria-live="polite"
-            className={`border-b px-4 py-3 text-sm ${settings.announcement.type === "warning" ? "border-[var(--warning)] bg-[var(--surface-2)] text-[var(--text)]" : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)]"}`}
-          >
-            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-              <p className="min-w-0 flex-1">
-                {announcementText}
-                {settings.announcement.linkUrl && (
-                  <a
-                    href={settings.announcement.linkUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-2 font-semibold underline underline-offset-4"
-                  >
-                    Learn more
-                  </a>
-                )}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    sessionStorage.setItem("sis-announcement-dismissed", "true");
-                  } catch {
-                    /* Session storage is optional. */
-                  }
-                  setAnnouncementDismissed(true);
-                }}
-                aria-label="Dismiss announcement"
-                className="min-h-11 rounded-lg border border-[var(--border)] px-3 font-semibold"
-              >
-                Dismiss
-              </button>
-            </div>
-          </aside>
-        )}
-      {(settings.boardName?.trim() ||
-        settings.affiliationNumber?.trim() ||
-        settings.schoolCode?.trim()) && (
-        <section className="border-b border-[var(--border)] bg-[var(--surface-2)]">
-          <div className="mx-auto grid max-w-6xl gap-3 px-4 py-3 text-xs sm:grid-cols-3 sm:px-6 lg:px-8">
-            {settings.boardName?.trim() && (
-              <div>
-                <span className="block text-[var(--text-muted)]">Board / Affiliation</span>
-                <strong className="mt-1 block text-sm">{settings.boardName}</strong>
-              </div>
-            )}
-            {settings.affiliationNumber?.trim() && (
-              <div>
-                <span className="block text-[var(--text-muted)]">Affiliation number</span>
-                <strong className="mt-1 block text-sm">{settings.affiliationNumber}</strong>
-              </div>
-            )}
-            {settings.schoolCode?.trim() && (
-              <div>
-                <span className="block text-[var(--text-muted)]">School code</span>
-                <strong className="mt-1 block text-sm">{settings.schoolCode}</strong>
-              </div>
-            )}
-          </div>
-        </section>
+      {pathname === "/" && announcement && !announcementDismissed && announcementText && (
+        <AnnouncementBanner
+          announcement={announcement}
+          text={announcementText}
+          onDismiss={() => {
+            try {
+              sessionStorage.setItem("sis-announcement-dismissed", "true");
+            } catch {
+              /* Session storage is optional. */
+            }
+            setAnnouncementDismissed(true);
+          }}
+        />
       )}
+      <SchoolMetadata settings={settings} />
       <main
         id="main-content"
         tabIndex={-1}
@@ -165,30 +230,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
       >
         {children}
       </main>
-      {pathname === "/" && settings.principalMessage?.trim() && (
-        <section className="border-t border-[var(--border)] bg-[var(--surface)]">
-          <div className="mx-auto grid max-w-6xl gap-6 px-4 py-9 sm:grid-cols-[180px_1fr] sm:items-center sm:px-6 lg:px-8">
-            <div className="mx-auto h-36 w-36 overflow-hidden rounded-full bg-[var(--surface-2)] sm:mx-0">
-              {settings.principalPhotoUrl && (
-                <img
-                  src={settings.principalPhotoUrl}
-                  alt={settings.principalName ? `Photo of ${settings.principalName}` : "Principal"}
-                  className="h-full w-full object-cover"
-                />
-              )}
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">{"Principal’s Message"}</h2>
-              <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[var(--text-muted)]">
-                {settings.principalMessage}
-              </p>
-              {settings.principalName && (
-                <p className="mt-3 font-semibold">{settings.principalName}</p>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
+      {pathname === "/" && <PrincipalMessage settings={settings} />}
       <Footer
         schoolName={schoolName}
         tagline={settings.tagline}
@@ -204,9 +246,17 @@ export default function SiteShell({ children }: { children: ReactNode }) {
         statusPageUrl={settings.statusPageUrl}
         socialLinks={settings.socialLinks}
         translationCookieUsed={translationCookieUsed}
-        onReport={() => { setReportOpen(true); }}
+        onReport={() => {
+          setReportOpen(true);
+        }}
       />
-      {reportOpen && <ReportWrongRecordModal onClose={() => { setReportOpen(false); }} />}
+      {reportOpen && (
+        <ReportWrongRecordModal
+          onClose={() => {
+            setReportOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -3,10 +3,11 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
-import SiteShell from "@/components/layout/SiteShell";
 import { appCheckHeaders } from "@/lib/firebase-client";
 
-import type { FormEvent} from "react";
+import type { SubmitEvent} from "react";
+
+import SiteShell from "@/components/layout/SiteShell";
 
 type Verification =
   | {
@@ -123,7 +124,7 @@ export default function VerifyPage() {
     };
   }, [result, failed]);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setFailed(false);
     setNetworkError(false);

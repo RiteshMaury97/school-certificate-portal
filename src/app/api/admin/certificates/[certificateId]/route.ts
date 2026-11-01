@@ -4,6 +4,8 @@ import { randomUUID, createHash } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
+import { formString } from "@/app/api/_lib/form-data";
+import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import {
   createCertificateNumberIndex,
   replaceCertificateNumberIndex,
@@ -12,7 +14,6 @@ import {
 } from "@/server/certificate-index";
 import { encryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
-import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import {
   ensurePublicSessions,
   rebuildPublicSessions,
@@ -28,9 +29,9 @@ import {
   writeAuditLog,
   apiError,
 } from "@/server/security";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 import { canReplacePublishedCertificate } from "@/shared/certificate-lifecycle";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
-import { normalizeAcademicSession } from "@/shared/academic-session";
 import { certificateMetadataSchema } from "@/shared/validation";
 
 import type { NextRequest} from "next/server";
@@ -152,7 +153,7 @@ export async function PUT(
     const parsed = certificateMetadataSchema.safeParse({
       session: String(form.get("session") ?? current.get("session")),
       type: String(form.get("type") ?? current.get("type")),
-      certificateNumber: String(form.get("certificateNumber") ?? ""),
+      certificateNumber: formString(form, "certificateNumber"),
       issueDate: String(form.get("issueDate") ?? current.get("issueDate")),
     });
     if (!parsed.success)
@@ -210,7 +211,7 @@ export async function PUT(
         { status: 409 },
       );
     const intentional =
-      String(form.get("confirmDuplicateHash") ?? "") === "true";
+      formString(form, "confirmDuplicateHash") === "true";
     const duplicateReason = String(
       form.get("duplicateHashReason") ?? "",
     ).trim();

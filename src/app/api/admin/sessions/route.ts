@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 import { db, describeFirebaseError } from "@/server/firebase-admin";
@@ -13,15 +13,67 @@ import {
 } from "@/server/security";
 import { isAdminSessionExpired } from "@/shared/session-policy";
 
-import type { NextRequest} from "next/server";
 import type { DocumentSnapshot, QueryDocumentSnapshot } from "firebase-admin/firestore";
+import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 
 function timestampMillis(value: unknown): number {
   if (value instanceof Date) return value.getTime();
-  if (value && typeof value === "object" && "toMillis" in value && typeof value.toMillis === "function")
-    return value.toMillis();
+  if (value instanceof Timestamp) return value.toMillis();
   return 0;
+}
+
+function documentValue(document: DocumentSnapshot, field: string): unknown {
+  const value: unknown = document.get(field);
+  return value;
+}
+
+function documentTimestamp(document: DocumentSnapshot, field: string): string | null {
+  const value = documentValue(document, field);
+  if (value instanceof Timestamp) return value.toDate().toISOString();
+  if (value instanceof Date) return value.toISOString();
+  return null;
+}
+
+function isRevoked(document: DocumentSnapshot): boolean {
+  return (
+    Boolean(documentValue(document, "revokedAt")) ||
+    isAdminSessionExpired(
+      timestampMillis(documentValue(document, "lastActivityAt")),
+      timestampMillis(documentValue(document, "absoluteExpiresAt")),
+    )
+  );
+}
+
+function sessionDetails(document: DocumentSnapshot, currentHash: string) {
+  return {
+    sessionId: documentValue(document, "sessionId"),
+    browser: documentValue(document, "browser"),
+    city: documentValue(document, "city"),
+    country: documentValue(document, "country"),
+    createdAt: documentTimestamp(document, "createdAt"),
+    lastActivityAt: documentTimestamp(document, "lastActivityAt"),
+    current: document.id === currentHash,
+    revoked: isRevoked(document),
+  };
+}
+
+function deviceDetails(document: DocumentSnapshot) {
+  return {
+    browser: documentValue(document, "browser"),
+    city: documentValue(document, "city"),
+    country: documentValue(document, "country"),
+    createdAt: documentTimestamp(document, "createdAt"),
+    lastSeenAt: documentTimestamp(document, "lastSeenAt"),
+  };
+}
+
+function currentSessionHash(request: NextRequest): string {
+  const cookie = request.cookies.get("sis_admin_session")?.value ?? "";
+  const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
+  return cookie && Buffer.byteLength(secret) >= 32
+    ? createHmac("sha256", secret).update(cookie).digest("hex")
+    : "";
 }
 
 async function listRecentByUid(
@@ -38,7 +90,8 @@ async function listRecentByUid(
       .get();
     return snapshot.docs;
   } catch (error) {
-    const code = (error as { code?: unknown } | null)?.code;
+    const code =
+      typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
     if (code !== 9 && code !== "9" && code !== "failed-precondition" && code !== "FAILED_PRECONDITION") throw error;
 
     // The ordered query requires a deployed composite index. Keep the panel
@@ -60,37 +113,11 @@ export async function GET(request: NextRequest) {
       listRecentByUid("adminSessions", admin.uid, "createdAt"),
       listRecentByUid("adminDevices", admin.uid, "lastSeenAt"),
     ]);
-    const cookie = request.cookies.get("sis_admin_session")?.value ?? "";
-    const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
-    const currentHash =
-      cookie && Buffer.byteLength(secret) >= 32
-        ? createHmac("sha256", secret).update(cookie).digest("hex")
-        : "";
+    const currentHash = currentSessionHash(request);
     return NextResponse.json(
       {
-        sessions: sessions.map((d) => ({
-          sessionId: d.get("sessionId"),
-          browser: d.get("browser"),
-          city: d.get("city"),
-          country: d.get("country"),
-          createdAt: d.get("createdAt")?.toDate?.()?.toISOString?.() ?? null,
-          lastActivityAt:
-            d.get("lastActivityAt")?.toDate?.()?.toISOString?.() ?? null,
-          current: d.id === currentHash,
-          revoked:
-            Boolean(d.get("revokedAt")) ||
-            isAdminSessionExpired(
-              d.get("lastActivityAt")?.toDate?.()?.getTime?.() ?? 0,
-              d.get("absoluteExpiresAt")?.toDate?.()?.getTime?.() ?? 0,
-            ),
-        })),
-        recentLogins: devices.map((d) => ({
-          browser: d.get("browser"),
-          city: d.get("city"),
-          country: d.get("country"),
-          createdAt: d.get("createdAt")?.toDate?.()?.toISOString?.() ?? null,
-          lastSeenAt: d.get("lastSeenAt")?.toDate?.()?.toISOString?.() ?? null,
-        })),
+        sessions: sessions.map((document) => sessionDetails(document, currentHash)),
+        recentLogins: devices.map(deviceDetails),
       },
       { headers: { "Cache-Control": "no-store" } },
     );
@@ -102,8 +129,12 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const admin = await requireAdmin(request);
-    const body = (await request.json()) as { sessionId?: unknown };
-    if (typeof body.sessionId !== "string")
+    const rawBody: unknown = await request.json();
+    const body =
+      typeof rawBody === "object" && rawBody !== null
+        ? rawBody
+        : {};
+    if (!("sessionId" in body) || typeof body.sessionId !== "string")
       return NextResponse.json({ error: "Choose a session." }, { status: 400 });
     const snap = await db
       .collection("adminSessions")
@@ -111,12 +142,13 @@ export async function DELETE(request: NextRequest) {
       .where("sessionId", "==", body.sessionId)
       .limit(1)
       .get();
-    if (snap.empty)
+    const session = snap.docs[0];
+    if (!session)
       return NextResponse.json(
         { error: "Session not found." },
         { status: 404 },
       );
-    await snap.docs[0]!.ref.set(
+    await session.ref.set(
       { revokedAt: FieldValue.serverTimestamp(), revokeReason: "user_revoked" },
       { merge: true },
     );
@@ -126,14 +158,9 @@ export async function DELETE(request: NextRequest) {
       "admin.session_revoke",
       body.sessionId,
     );
-    const cookie = request.cookies.get("sis_admin_session")?.value ?? "";
-    const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
-    const currentHash =
-      cookie && Buffer.byteLength(secret) >= 32
-        ? createHmac("sha256", secret).update(cookie).digest("hex")
-        : "";
+    const currentHash = currentSessionHash(request);
     const response = NextResponse.json({ ok: true });
-    if (snap.docs[0]!.id === currentHash) {
+    if (session.id === currentHash) {
       response.cookies.set("sis_admin_session", "", {
         ...adminSessionCookieOptions(),
         maxAge: 0,

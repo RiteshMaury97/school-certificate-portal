@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type Dispatch, type SetStateAction } from "react";
+import { useState, type SubmitEvent, type Dispatch, type SetStateAction } from "react";
 
 import {
   createDefaultAnnouncement,
@@ -33,7 +33,7 @@ export function useSiteSettingsAdmin(
       });
     });
   }
-  async function saveBranding(e: FormEvent) {
+  async function saveBranding(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     await act(async () => {
       const socialLinks = (branding.socialLinks ?? "")
@@ -59,7 +59,7 @@ export function useSiteSettingsAdmin(
     });
   }
 
-  async function saveAnnouncement(e: FormEvent) {
+  async function saveAnnouncement(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     await act(async () => {
       await api("/api/admin/announcements", {

@@ -6,6 +6,17 @@ import { FieldPath } from "firebase-admin/firestore";
 import { db } from "@/server/firebase-admin";
 
 export type ExportFormat = "json" | "csv";
+
+type PlainRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is PlainRecord {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isDateConvertible(value: unknown): value is { toDate: () => Date } {
+  return isRecord(value) && typeof value.toDate === "function";
+}
+
 function encryptionKey(
   passphrase?: string,
   salt?: Buffer,
@@ -19,51 +30,40 @@ function encryptionKey(
       mode: "scrypt-passphrase",
     };
   }
-  if (!env)
-    throw new Error("Configure EXPORT_ENCRYPTION_KEY or provide a passphrase.");
+  if (!env) throw new Error("Configure EXPORT_ENCRYPTION_KEY or provide a passphrase.");
   const key = Buffer.from(env, "base64");
   if (key.length !== 32)
-    throw new Error(
-      "EXPORT_ENCRYPTION_KEY must be a base64-encoded 32-byte key.",
-    );
+    throw new Error("EXPORT_ENCRYPTION_KEY must be a base64-encoded 32-byte key.");
   return { key, salt: Buffer.alloc(0), mode: "env-key" };
 }
 function plainValue(value: unknown): unknown {
-  if (
-    value &&
-    typeof value === "object" &&
-    "toDate" in value &&
-    typeof (value as { toDate?: unknown }).toDate === "function"
-  )
-    return (value as { toDate: () => Date }).toDate().toISOString();
+  if (isDateConvertible(value)) return value.toDate().toISOString();
   if (Array.isArray(value)) return value.map(plainValue);
-  if (value && typeof value === "object" && !Buffer.isBuffer(value))
-    return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [k, plainValue(v)]),
-    );
+  if (isRecord(value) && !Buffer.isBuffer(value))
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, plainValue(v)]));
   return value;
 }
+
+function plainDocument(value: unknown): PlainRecord {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(Object.entries(value).map(([key, field]) => [key, plainValue(field)]));
+}
+
 export async function collectExportData(): Promise<Record<string, unknown[]>> {
   const result: Record<string, unknown[]> = {};
   const collections = await db.listCollections();
   for (const collection of collections) {
     const name = collection.id;
     const rows: unknown[] = [];
-    let page = await collection
-      .orderBy(FieldPath.documentId())
-      .limit(500)
-      .get();
+    let page = await collection.orderBy(FieldPath.documentId()).limit(500).get();
     while (!page.empty) {
-      rows.push(
-        ...page.docs.map((doc) => ({
-          id: doc.id,
-          ...(plainValue(doc.data()) as Record<string, unknown>),
-        })),
-      );
+      rows.push(...page.docs.map((doc) => ({ id: doc.id, ...plainDocument(doc.data()) })));
       if (page.size < 500) break;
+      const lastDocument = page.docs.at(-1);
+      if (!lastDocument) break;
       page = await collection
         .orderBy(FieldPath.documentId())
-        .startAfter(page.docs[page.docs.length - 1]!)
+        .startAfter(lastDocument)
         .limit(500)
         .get();
     }
@@ -75,12 +75,23 @@ function toCsv(data: Record<string, unknown[]>): string {
   const lines = ["collection,id,data"];
   for (const [collection, docs] of Object.entries(data))
     for (const doc of docs) {
-      const item = doc as Record<string, unknown>;
-      const cell = (value: unknown) =>
-        `"${String(value ?? "").replace(/"/g, '""')}"`;
-      lines.push(
-        [collection, cell(item.id), cell(JSON.stringify(item))].join(","),
-      );
+      const item = isRecord(doc) ? doc : {};
+      const cell = (value: unknown) => {
+        let text = "";
+        if (value !== null && value !== undefined) {
+          if (typeof value === "object") text = JSON.stringify(value);
+          else if (
+            typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean" ||
+            typeof value === "bigint" ||
+            typeof value === "symbol"
+          )
+            text = String(value);
+        }
+        return `"${text.replace(/"/g, '""')}"`;
+      };
+      lines.push([collection, cell(item.id), cell(JSON.stringify(item))].join(","));
     }
   return lines.join("\r\n");
 }
@@ -92,11 +103,7 @@ export async function createEncryptedExport(
   const plain = Buffer.from(
     format === "csv"
       ? toCsv(data)
-      : JSON.stringify(
-          { exportedAt: new Date().toISOString(), collections: data },
-          null,
-          2,
-        ),
+      : JSON.stringify({ exportedAt: new Date().toISOString(), collections: data }, null, 2),
     "utf8",
   );
   const salt = passphrase ? randomBytes(16) : undefined;

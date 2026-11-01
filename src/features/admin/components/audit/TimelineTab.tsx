@@ -28,13 +28,13 @@ function categoryOf(action: string): Exclude<Filter, "all"> | "other" {
 
 function statusLabel(action: string) {
   const lower = action.toLowerCase();
-  if (lower.includes("fail") || lower.includes("reject") || lower.includes("lock") || lower.includes("revoke")) return "Attention";
+  if (/fail|reject|lock|revoke/.test(lower)) return "Attention";
   if (lower.includes("approv")) return "Approved";
   if (lower.includes("otp.verified")) return "Verified";
   if (lower.includes("otp.sent")) return "Sent";
-  if (lower.includes("login")) return "Sign in";
-  if (lower.includes("logout")) return "Sign out";
-  if (lower.includes("update") || lower.includes("edit") || lower.includes("upsert")) return "Updated";
+  if (/login/.test(lower)) return "Sign in";
+  if (/logout/.test(lower)) return "Sign out";
+  if (/update|edit|upsert/.test(lower)) return "Updated";
   return "Recorded";
 }
 
@@ -103,7 +103,7 @@ export default function TimelineTab({
             {timelineStudentId && (
               <button
                 type="button"
-                onClick={() => setTimelineStudentId("")}
+                onClick={() => { setTimelineStudentId(""); }}
                 className="min-h-10 rounded-lg border border-[var(--border)] px-3 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)]"
               >
                 Show global activity
@@ -132,12 +132,14 @@ export default function TimelineTab({
             <h3 className="text-lg font-bold text-[var(--text)]">Recent activity</h3>
             <p className="mt-1 text-sm text-[var(--text-muted)]">Monitor important changes across your workspace</p>
           </div>
-          <label className="relative block w-full sm:w-72">
+          <label htmlFor="timeline-search" className="relative block w-full sm:w-72">
             <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
             <span className="sr-only">Search events or users</span>
             <input
+              id="timeline-search"
+              aria-label="Search events or users"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => { setSearch(event.target.value); }}
               placeholder="Search events or users"
               className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)]"
             />
@@ -154,7 +156,7 @@ export default function TimelineTab({
                 key={item.id}
                 type="button"
                 aria-pressed={filter === item.id}
-                onClick={() => setFilter(item.id)}
+                onClick={() => { setFilter(item.id); }}
                 className={`min-h-10 shrink-0 rounded-t-lg border-b-2 px-3 text-sm font-medium transition-colors ${filter === item.id ? "border-[var(--primary)] text-[var(--text)]" : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"}`}
               >
                 {item.label} <span className="ml-1 text-xs opacity-70">{count}</span>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState, type SubmitEvent, type Dispatch, type SetStateAction } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 
@@ -62,7 +62,7 @@ export function useCertificateIntake({ api, act, setToast, tab, load }: Props) {
     [students, search],
   );
   const visible = filtered.slice(page * 10, page * 10 + 10);
-  async function addStudent(e: FormEvent) {
+  async function addStudent(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     let duplicateWarning = "";
     await act(async () => {
@@ -125,7 +125,7 @@ export function useCertificateIntake({ api, act, setToast, tab, load }: Props) {
       await loadStudents();
     });
   }
-  async function uploadMany(e: FormEvent) {
+  async function uploadMany(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!selectedStudent || !files.length) return;
     await act(async () => {

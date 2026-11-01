@@ -24,6 +24,52 @@ type Props = {
 const linkClass =
   "transition-colors hover:text-[var(--primary)] hover:underline hover:underline-offset-4";
 
+function SchoolLogo({ logoUrl, schoolName }: Pick<Props, "logoUrl" | "schoolName">) {
+  if (logoUrl) {
+    return (
+      <Image
+        src={logoUrl}
+        alt=""
+        width={36}
+        height={36}
+        unoptimized
+        className="h-9 w-9 rounded-full object-contain"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--primary)] text-sm font-bold text-[var(--on-primary)]"
+    >
+      {schoolName?.trim().charAt(0)}
+    </span>
+  );
+}
+
+function SchoolStatus({
+  schoolCode,
+  statusPageUrl,
+}: Pick<Props, "schoolCode" | "statusPageUrl">) {
+  if (!schoolCode?.trim() && !statusPageUrl?.trim()) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
+      {schoolCode?.trim() && <span>School code: {schoolCode}</span>}
+      {statusPageUrl?.trim() && (
+        <a
+          href={statusPageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={linkClass}
+        >
+          System status ↗
+        </a>
+      )}
+    </div>
+  );
+}
+
 function SchoolIdentity({
   schoolName,
   tagline,
@@ -47,23 +93,7 @@ function SchoolIdentity({
   return (
     <section className="min-w-0">
       <div className="flex items-center gap-2.5">
-        {logoUrl ? (
-          <Image
-            src={logoUrl}
-            alt=""
-            width={36}
-            height={36}
-            unoptimized
-            className="h-9 w-9 rounded-full object-contain"
-          />
-        ) : (
-          <span
-            aria-hidden="true"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--primary)] text-sm font-bold text-[var(--on-primary)]"
-          >
-            {schoolName?.trim().charAt(0)}
-          </span>
-        )}
+        <SchoolLogo logoUrl={logoUrl} schoolName={schoolName} />
         <div className="min-w-0">
           <h2 translate="no" className="truncate text-sm font-bold uppercase tracking-wide">
             {schoolName}
@@ -82,21 +112,7 @@ function SchoolIdentity({
           {address}
         </p>
       )}
-      {(schoolCode?.trim() || statusPageUrl?.trim()) && (
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
-          {schoolCode?.trim() && <span>School code: {schoolCode}</span>}
-          {statusPageUrl?.trim() && (
-            <a
-              href={statusPageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={linkClass}
-            >
-              System status ↗
-            </a>
-          )}
-        </div>
-      )}
+      <SchoolStatus schoolCode={schoolCode} statusPageUrl={statusPageUrl} />
     </section>
   );
 }

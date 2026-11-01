@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 
-import type { FormEvent} from "react";
+import type { SubmitEvent} from "react";
 
 
 
@@ -93,7 +93,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       widget.current = null;
     };
   }, [siteKey]);
-  async function submit(event: FormEvent) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     if (!consent || !token) {

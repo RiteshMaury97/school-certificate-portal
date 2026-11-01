@@ -7,7 +7,7 @@ export async function recordCertificateDownloads(
   items: { ref: DocumentReference; session: string }[],
 ): Promise<void> {
   if (!items.length) return;
-  await db.runTransaction(async (tx) => {
+  await db.runTransaction((tx) => {
     const bySession = new Map<string, number>();
     for (const item of items) {
       tx.update(item.ref, {
@@ -27,5 +27,6 @@ export async function recordCertificateDownloads(
         { merge: true },
       );
     }
+    return Promise.resolve();
   });
 }

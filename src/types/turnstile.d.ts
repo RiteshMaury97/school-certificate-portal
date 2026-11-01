@@ -17,7 +17,5 @@ type TurnstileApi = {
 };
 
 declare global {
-  interface Window {
-    turnstile?: TurnstileApi;
-  }
+  var turnstile: TurnstileApi | undefined;
 }

@@ -1,3 +1,4 @@
+import { Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -8,12 +9,12 @@ import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 const schema = z.object({
   summary: z.string().trim().min(10).max(2000),
-  discoveredAt: z.string().datetime({ offset: true }),
+  discoveredAt: z.iso.datetime({ offset: true }),
   affectedData: z.string().trim().min(3).max(500),
   affectedPrincipalsEstimate: z.number().int().min(0).max(1000000),
-  boardNotifiedAt: z.string().datetime({ offset: true }).optional(),
-  boardDetailedReportAt: z.string().datetime({ offset: true }).optional(),
-  principalsNotifiedAt: z.string().datetime({ offset: true }).optional(),
+  boardNotifiedAt: z.iso.datetime({ offset: true }).optional(),
+  boardDetailedReportAt: z.iso.datetime({ offset: true }).optional(),
+  principalsNotifiedAt: z.iso.datetime({ offset: true }).optional(),
   status: z.enum(["investigating", "contained", "notified", "closed"]),
 });
 export async function GET(request: NextRequest) {
@@ -24,17 +25,19 @@ export async function GET(request: NextRequest) {
       .orderBy("createdAt", "desc")
       .limit(100)
       .get();
-    const iso = (v: unknown) =>
-      v &&
-      typeof v === "object" &&
-      "toDate" in v &&
-      typeof v.toDate === "function"
-        ? v.toDate().toISOString()
-        : (v ?? null);
+    const iso = (value: unknown) => {
+      if (value instanceof Timestamp) return value.toDate().toISOString();
+      if (value instanceof Date) return value.toISOString();
+      return value ?? null;
+    };
     return NextResponse.json(
       {
         breaches: snap.docs.map((d) => {
-          const x = d.data();
+          const value: unknown = d.data();
+          const x =
+            typeof value === "object" && value !== null && !Array.isArray(value)
+              ? value
+              : {};
           return {
             id: d.id,
             ...x,
@@ -94,18 +97,15 @@ const updateSchema = z
       .enum(["investigating", "contained", "notified", "closed"])
       .optional(),
     boardNotifiedAt: z
-      .string()
-      .datetime({ offset: true })
+      .pipe(z.iso.datetime({ offset: true }))
       .nullable()
       .optional(),
     boardDetailedReportAt: z
-      .string()
-      .datetime({ offset: true })
+      .pipe(z.iso.datetime({ offset: true }))
       .nullable()
       .optional(),
     principalsNotifiedAt: z
-      .string()
-      .datetime({ offset: true })
+      .pipe(z.iso.datetime({ offset: true }))
       .nullable()
       .optional(),
   })

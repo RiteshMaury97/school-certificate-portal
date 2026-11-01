@@ -67,16 +67,22 @@ async function reserveDailyRecipients(recipientCount: number): Promise<void> {
       throw new Error("Daily Gmail recipient limit reached. Try again tomorrow.");
     }
     const next = current + recipientCount;
-    transaction.set(ref, {
-      count: next,
-      date: day,
-      updatedAt: new Date(),
-      expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-    }, { merge: true });
+    transaction.set(
+      ref,
+      {
+        count: next,
+        date: day,
+        updatedAt: new Date(),
+        expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      },
+      { merge: true },
+    );
     return next;
   });
   if (total >= WARN_RECIPIENT_LIMIT) {
-    console.warn(`[mailer] Gmail daily recipient usage is ${total}/${DAILY_RECIPIENT_LIMIT}.`);
+    console.warn(
+      `[mailer] Gmail daily recipient usage is ${String(total)}/${String(DAILY_RECIPIENT_LIMIT)}.`,
+    );
   }
 }
 
@@ -127,7 +133,9 @@ export async function sendAdminOtpEmail(input: {
   code: string;
   schoolName?: string;
 }): Promise<void> {
-  const name = input.schoolName?.trim() || await schoolName();
+  let name = input.schoolName?.trim();
+  if (name === "") name = undefined;
+  name ??= await schoolName();
   const safeName = escapeHtml(name);
   const safeCode = escapeHtml(input.code);
   const message: MailInput = {
@@ -141,10 +149,12 @@ export async function sendAdminOtpEmail(input: {
     await sendMail(message);
   } catch (error) {
     const missingConfig =
-      error instanceof Error &&
-      /GMAIL_USER|GMAIL_APP_PASSWORD/.test(error.message);
+      error instanceof Error && /GMAIL_USER|GMAIL_APP_PASSWORD/.test(error.message);
     if (process.env.NODE_ENV !== "production" && missingConfig) {
-      console.warn("[mailer] DEVELOPMENT FALLBACK — Gmail is not configured. Admin OTP:", input.code);
+      console.warn(
+        "[mailer] DEVELOPMENT FALLBACK — Gmail is not configured. Admin OTP:",
+        input.code,
+      );
       return;
     }
     throw error;

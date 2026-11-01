@@ -21,8 +21,10 @@ export default function DuplicateHashWarning({
   return (
     <div className={className}>
       <p className="font-bold text-[var(--text)]">{warning}</p>
-      <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
+      <label htmlFor="duplicate-hash-acknowledged" className="mt-3 flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
         <input
+          id="duplicate-hash-acknowledged"
+          aria-label="Confirm duplicate is intentional"
           translate="no"
           type="checkbox"
           checked={acknowledged}
@@ -31,9 +33,11 @@ export default function DuplicateHashWarning({
         />{" "}
         I confirm this is intentional
       </label>
-      <label className="mt-2 block text-sm font-semibold text-[var(--text)]">
+      <label htmlFor="duplicate-hash-reason" className="mt-2 block text-sm font-semibold text-[var(--text)]">
         Reason
         <textarea
+          id="duplicate-hash-reason"
+          aria-label="Reason for duplicate warning acknowledgement"
           translate="no"
           value={reason}
           onChange={(e) => { setReason(e.target.value); }}

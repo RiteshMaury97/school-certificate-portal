@@ -1,14 +1,8 @@
 import "server-only";
-import {
-  createHmac,
-  randomInt,
-  randomBytes,
-  timingSafeEqual,
-} from "node:crypto";
+import { createHmac, randomInt, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { FieldValue } from "firebase-admin/firestore";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { adminAuth, adminAppCheck, db, describeFirebaseError } from "./firebase-admin";
 import {
@@ -20,19 +14,10 @@ import {
   signStudentAccessToken,
   verifyStudentAccessToken as verifyAccessToken,
 } from "./security-primitives";
-import {
-  signDisambiguationChallenge,
-  verifyDisambiguationChallenge,
-  type DisambiguationClaims,
-} from "./student-pii";
+import { signDisambiguationChallenge, verifyDisambiguationChallenge, type DisambiguationClaims } from "./student-pii";
 import { isAllowedRequestOrigin } from "../shared/origin-policy";
 import { hasAnyRole as hasRole } from "../shared/role-policy";
-import {
-  ADMIN_HARD_SESSION_LIMIT_MS,
-  isAdminSessionExpired,
-} from "../shared/session-policy";
-
-import type { NextRequest} from "next/server";
+import { ADMIN_HARD_SESSION_LIMIT_MS, isAdminSessionExpired } from "../shared/session-policy";
 
 function requiredSecret(name: string): string {
   const value = process.env[name];
@@ -41,19 +26,14 @@ function requiredSecret(name: string): string {
   }
   return value;
 }
-
 function requesterIp(request: NextRequest): string {
-  // Trust only Cloudflare's edge-injected address header. Other forwarded headers
-  // can be client-spoofed unless the deployment proxy explicitly strips and sets them.
   return request.headers.get("cf-connecting-ip") ?? "unknown";
 }
-
 export function hashRequesterIp(request: NextRequest): string {
   return createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET"))
     .update(requesterIp(request), "utf8")
     .digest("hex");
 }
-
 export function createSearchKey(input: {
   studentName: string;
   fatherName: string;
@@ -64,32 +44,27 @@ export function createSearchKey(input: {
 }): string {
   return makeSearchKey(input, requiredSecret("SEARCH_HMAC_SECRET"));
 }
-
 export async function writeAuditLog(
   request: NextRequest,
-  actorUid: string | "public",
+  actorUid: string,
   action: string,
-  targetId: string,
-  studentId?: string,
+  ...details: [string, string?]
 ): Promise<void> {
+  const [targetId, studentId] = details;
   const timestamp = FieldValue.serverTimestamp();
-  await db
-    .collection("auditLogs")
-    .add({
-      actorUid,
-      action,
-      targetId,
-      ...(studentId ? { studentId } : {}),
-      ipHash: hashRequesterIp(request),
-      timestamp,
-    });
+  await db.collection("auditLogs").add({
+    actorUid,
+    action,
+    targetId,
+    ...(studentId ? { studentId } : {}),
+    ipHash: hashRequesterIp(request),
+    timestamp,
+  });
   const counters = db.collection("metricsCounters");
   const weeklyId = new Date().toISOString().slice(0, 10);
   const updates: Record<string, unknown> = {};
-  if (action === "certificate.search")
-    updates.searchesTotal = FieldValue.increment(1);
-  if (action === "certificate.verify")
-    updates.verificationChecks = FieldValue.increment(1);
+  if (action === "certificate.search") updates.searchesTotal = FieldValue.increment(1);
+  if (action === "certificate.verify") updates.verificationChecks = FieldValue.increment(1);
   if (
     action === "certificate.search" &&
     [
@@ -105,37 +80,24 @@ export async function writeAuditLog(
     ].includes(targetId)
   )
     updates.failedLookups = FieldValue.increment(1);
-  if (action === "certificate.upload")
-    updates.totalCertificates = FieldValue.increment(1);
-  if (action === "student.create")
-    updates.totalStudents = FieldValue.increment(1);
-  if (action === "student.delete")
-    updates.totalStudents = FieldValue.increment(-1);
-  if (action === "certificate.delete")
-    updates.totalCertificates = FieldValue.increment(-1);
+  if (action === "certificate.upload") updates.totalCertificates = FieldValue.increment(1);
+  if (action === "student.create") updates.totalStudents = FieldValue.increment(1);
+  if (action === "student.delete") updates.totalStudents = FieldValue.increment(-1);
+  if (action === "certificate.delete") updates.totalCertificates = FieldValue.increment(-1);
   if (Object.keys(updates).length)
-    await counters
-      .doc("portal")
-      .set({ ...updates, updatedAt: timestamp }, { merge: true });
+    await counters.doc("portal").set({ ...updates, updatedAt: timestamp }, { merge: true });
   if (action === "certificate.search") {
-    await counters
-      .doc(`searches_${weeklyId}`)
-      .set(
-        {
-          date: weeklyId,
-          count: FieldValue.increment(1),
-          updatedAt: timestamp,
-        },
-        { merge: true },
-      );
+    await counters.doc(`searches_${weeklyId}`).set(
+      {
+        date: weeklyId,
+        count: FieldValue.increment(1),
+        updatedAt: timestamp,
+      },
+      { merge: true },
+    );
   }
 }
-
-export async function writeConsentLog(
-  request: NextRequest,
-  policyVersion: string,
-  studentId?: string,
-): Promise<void> {
+export async function writeConsentLog(request: NextRequest, policyVersion: string, studentId?: string): Promise<void> {
   await db.collection("consentLogs").add({
     ipHash: hashRequesterIp(request),
     ...(studentId ? { studentId } : {}),
@@ -147,54 +109,39 @@ export async function writeConsentLog(
     noticeVersion: policyVersion,
   });
 }
-
 type Budget = { id: string; limit: number; windowMs: number };
-function bucketId(
-  prefix: string,
-  identity: string,
-  windowMs: number,
-  now: number,
-): string {
-  return `${prefix}_${identity}_${Math.floor(now / windowMs)}`;
+function bucketId(prefix: string, identity: string, windowMs: number, now: number): string {
+  return `${prefix}_${identity}_${Math.floor(now / windowMs).toString()}`;
 }
-
 /**
  * Firestore transaction-based abuse limits. Unlike process memory, these counters
  * are shared by serverless instances. Configure Firestore TTL on expiresAt for cleanup.
  */
-async function consumeBudgets(
-  request: NextRequest,
-  budgets: Budget[],
-  lockoutIpHash?: string,
-): Promise<boolean> {
-  const now = Date.now();
-  const ipHash = hashRequesterIp(request);
-  const refs = budgets.map((item) =>
-    db.collection("abuseCounters").doc(item.id),
-  );
-  const lockoutRef = lockoutIpHash
-    ? db.collection("abuseCounters").doc(`miss_state_${lockoutIpHash}`)
-    : null;
+function hasBudgetRoom(budgets: Budget[], snapshots: { get(key: string): unknown }[]): boolean {
+  return budgets.every((budget, index) => {
+    const snapshot = snapshots[index];
+    if (!snapshot) return false;
+    const current = Number(snapshot.get("count") ?? 0);
+    return isWithinRateLimit(current, budget.limit);
+  });
+}
 
+async function consumeBudgets(request: NextRequest, budgets: Budget[], lockoutIpHash?: string): Promise<boolean> {
+  const now = Date.now();
+  const refs = budgets.map((item) => db.collection("abuseCounters").doc(item.id));
+  const lockoutRef = lockoutIpHash ? db.collection("abuseCounters").doc(`miss_state_${lockoutIpHash}`) : null;
   return db.runTransaction(async (transaction) => {
-    const snapshots = await Promise.all(
-      refs.map((ref) => transaction.get(ref)),
-    );
-    const lockoutSnapshot = lockoutRef
-      ? await transaction.get(lockoutRef)
-      : null;
+    const snapshots = await Promise.all(refs.map((ref) => transaction.get(ref)));
+    const lockoutSnapshot = lockoutRef ? await transaction.get(lockoutRef) : null;
     const lockoutUntil = Number(lockoutSnapshot?.get("lockoutUntil") ?? 0);
     if (lockoutUntil > now) return false;
-
-    for (let index = 0; index < budgets.length; index += 1) {
-      const current = Number(snapshots[index]?.get("count") ?? 0);
-      if (!isWithinRateLimit(current, budgets[index]!.limit)) return false;
-    }
-
+    if (!hasBudgetRoom(budgets, snapshots)) return false;
     for (const [index, budget] of budgets.entries()) {
+      const ref = refs[index];
+      if (!ref) return false;
       const current = Number(snapshots[index]?.get("count") ?? 0);
       transaction.set(
-        refs[index]!,
+        ref,
         {
           count: current + 1,
           updatedAt: FieldValue.serverTimestamp(),
@@ -206,11 +153,7 @@ async function consumeBudgets(
     return true;
   });
 }
-
-export async function consumeSearchBudget(
-  request: NextRequest,
-  searchKey?: string,
-): Promise<boolean> {
+export async function consumeSearchBudget(request: NextRequest, searchKey?: string): Promise<boolean> {
   const now = Date.now();
   const ipHash = hashRequesterIp(request);
   const minute = 60_000;
@@ -243,14 +186,10 @@ export async function consumeSearchBudget(
   }
   return consumeBudgets(request, budgets, ipHash);
 }
-
 function disambiguationChallengeSecret(): string {
   return requiredSecret("DISAMBIGUATION_CHALLENGE_SECRET");
 }
-export function issueDisambiguationChallenge(
-  searchKey: string,
-  ipHash: string,
-): string {
+export function issueDisambiguationChallenge(searchKey: string, ipHash: string): string {
   const now = Math.floor(Date.now() / 1000);
   return signDisambiguationChallenge(
     {
@@ -264,31 +203,16 @@ export function issueDisambiguationChallenge(
     disambiguationChallengeSecret(),
   );
 }
-export function verifyDisambiguationChallengeToken(
-  token: string,
-  request: NextRequest,
-): DisambiguationClaims | null {
-  return verifyDisambiguationChallenge(
-    token,
-    disambiguationChallengeSecret(),
-    hashRequesterIp(request),
-  );
+export function verifyDisambiguationChallengeToken(token: string, request: NextRequest): DisambiguationClaims | null {
+  return verifyDisambiguationChallenge(token, disambiguationChallengeSecret(), hashRequesterIp(request));
 }
-export async function consumeDisambiguationAttempt(
-  nonce: string,
-): Promise<boolean> {
+export async function consumeDisambiguationAttempt(nonce: string): Promise<boolean> {
   const ref = db.collection("abuseCounters").doc(`disambiguation_${nonce}`);
   const now = Date.now();
   return db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(ref);
     const count = Number(snapshot.get("count") ?? 0);
-    if (
-      !canConsumeDisambiguationAttempt(
-        count,
-        snapshot.get("completed") === true,
-      )
-    )
-      return false;
+    if (!canConsumeDisambiguationAttempt(count, snapshot.get("completed") === true)) return false;
     transaction.set(
       ref,
       {
@@ -301,9 +225,7 @@ export async function consumeDisambiguationAttempt(
     return true;
   });
 }
-export async function completeDisambiguationChallenge(
-  nonce: string,
-): Promise<void> {
+export async function completeDisambiguationChallenge(nonce: string): Promise<void> {
   await db
     .collection("abuseCounters")
     .doc(`disambiguation_${nonce}`)
@@ -317,18 +239,10 @@ export async function completeDisambiguationChallenge(
       { merge: true },
     );
 }
-
 export function createCertificateNumberHash(certificateNumber: string): string {
-  return makeCertificateNumberHash(
-    certificateNumber,
-    requiredSecret("CERTIFICATE_NUMBER_HMAC_SECRET"),
-  );
+  return makeCertificateNumberHash(certificateNumber, requiredSecret("CERTIFICATE_NUMBER_HMAC_SECRET"));
 }
-
-export async function consumeVerificationBudget(
-  request: NextRequest,
-  certificateHash?: string,
-): Promise<boolean> {
+export async function consumeVerificationBudget(request: NextRequest, certificateHash?: string): Promise<boolean> {
   const now = Date.now();
   const ipHash = hashRequesterIp(request);
   const minute = 60_000;
@@ -360,7 +274,6 @@ export async function consumeVerificationBudget(
     );
   return consumeBudgets(request, budgets, ipHash);
 }
-
 export async function recordLookupMiss(request: NextRequest): Promise<void> {
   const ipHash = hashRequesterIp(request);
   const ref = db.collection("abuseCounters").doc(`miss_state_${ipHash}`);
@@ -368,20 +281,14 @@ export async function recordLookupMiss(request: NextRequest): Promise<void> {
   await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(ref);
     const windowStart = Number(snapshot.get("missWindowStart") ?? 0);
-    const priorMisses =
-      windowStart > 0 && now - windowStart < 10 * 60_000
-        ? Number(snapshot.get("misses") ?? 0)
-        : 0;
+    const priorMisses = windowStart > 0 && now - windowStart < 10 * 60_000 ? Number(snapshot.get("misses") ?? 0) : 0;
     const misses = priorMisses + 1;
     transaction.set(
       ref,
       {
         misses,
         missWindowStart: priorMisses === 0 ? now : windowStart,
-        lockoutUntil:
-          misses >= 5
-            ? now + 15 * 60_000
-            : Number(snapshot.get("lockoutUntil") ?? 0),
+        lockoutUntil: misses >= 5 ? now + 15 * 60_000 : Number(snapshot.get("lockoutUntil") ?? 0),
         updatedAt: FieldValue.serverTimestamp(),
         expiresAt: new Date(now + 24 * 60 * 60_000),
       },
@@ -389,7 +296,6 @@ export async function recordLookupMiss(request: NextRequest): Promise<void> {
     );
   });
 }
-
 export async function recordLookupSuccess(request: NextRequest): Promise<void> {
   const ipHash = hashRequesterIp(request);
   await db
@@ -406,13 +312,9 @@ export async function recordLookupSuccess(request: NextRequest): Promise<void> {
       { merge: true },
     );
 }
-
 export async function delayFailedLookup(): Promise<void> {
-  await new Promise<void>((resolve) =>
-    setTimeout(resolve, 120 + randomInt(180)),
-  );
+  await new Promise<void>((resolve) => setTimeout(resolve, 120 + randomInt(180)));
 }
-
 type AccessClaims = {
   v: 1;
   sid: string;
@@ -421,19 +323,13 @@ type AccessClaims = {
   exp: number;
   nonce: string;
 };
-
 function accessTokenSecret(): string {
   return requiredSecret("CERTIFICATE_ACCESS_TOKEN_SECRET");
 }
-
 function studentBinding(studentId: string): string {
   return bindStudentId(studentId, accessTokenSecret());
 }
-
-export function issueStudentAccessToken(
-  studentId: string,
-  ipHash: string,
-): string {
+export function issueStudentAccessToken(studentId: string, ipHash: string): string {
   const now = Math.floor(Date.now() / 1000);
   return signStudentAccessToken(
     {
@@ -447,56 +343,26 @@ export function issueStudentAccessToken(
     accessTokenSecret(),
   );
 }
-
-export function verifyStudentAccessToken(
-  token: string,
-  request: NextRequest,
-): AccessClaims | null {
-  return verifyAccessToken(
-    token,
-    accessTokenSecret(),
-    hashRequesterIp(request),
-  );
+export function verifyStudentAccessToken(token: string, request: NextRequest): AccessClaims | null {
+  return verifyAccessToken(token, accessTokenSecret(), hashRequesterIp(request));
 }
-
-export function studentAccessTokenOwnsStudent(
-  claims: AccessClaims,
-  studentId: string,
-): boolean {
+export function studentAccessTokenOwnsStudent(claims: AccessClaims, studentId: string): boolean {
   return claims.sid === studentBinding(studentId);
 }
-
 export type AdminRole = "uploader" | "approver" | "admin" | "superadmin";
 export type AdminIdentity = { uid: string; email: string; role: AdminRole };
-export function hasAnyRole(
-  admin: AdminIdentity,
-  roles: readonly AdminRole[],
-): boolean {
+export function hasAnyRole(admin: AdminIdentity, roles: readonly AdminRole[]): boolean {
   return hasRole(admin.role, roles);
 }
-export async function requireRoles(
-  request: NextRequest,
-  roles: readonly AdminRole[],
-): Promise<AdminIdentity> {
+export async function requireRoles(request: NextRequest, roles: readonly AdminRole[]): Promise<AdminIdentity> {
   const admin = await requireAdmin(request);
   if (!hasAnyRole(admin, roles)) throw new Error("FORBIDDEN");
   return admin;
 }
-
-export async function verifyRequestAppCheck(
-  request: NextRequest,
-): Promise<void> {
-  // Keep the browser and server policies aligned in local development.
-  // The browser SDK deliberately omits an App Check token when no reCAPTCHA
-  // site key is configured. In development, mirror that behaviour unless
-  // APP_CHECK_ENFORCE=true explicitly opts into testing App Check.
-  // Production always requires a valid App Check token.
+export async function verifyRequestAppCheck(request: NextRequest): Promise<void> {
   if (process.env.NODE_ENV !== "production") {
     if (process.env.APP_CHECK_ENFORCE === "false") return;
-    if (
-      process.env.APP_CHECK_ENFORCE !== "true" &&
-      !process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY
-    ) {
+    if (process.env.APP_CHECK_ENFORCE !== "true" && !process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY) {
       return;
     }
   }
@@ -508,90 +374,82 @@ export async function verifyRequestAppCheck(
     throw new Error("APP_CHECK");
   }
 }
+function isAdminRole(value: unknown): value is AdminRole {
+  return value === "uploader" || value === "approver" || value === "admin" || value === "superadmin";
+}
+function readStringField(value: { get(key: string): unknown }, key: string): string | undefined {
+  const field = value.get(key);
+  return typeof field === "string" ? field : undefined;
+}
 
-export async function requireAdmin(
-  request: NextRequest,
-): Promise<AdminIdentity> {
+function readUnknownField(source: object, key: string): unknown {
+  return Reflect.get(source, key);
+}
+
+function callKnownMethod(fn: unknown, thisArg: object): unknown {
+  if (typeof fn !== "function") return undefined;
+  return Function.prototype.apply.call(fn, thisArg, []);
+}
+
+function readTimestampMs(value: { get(key: string): unknown }, key: string): number {
+  const field = value.get(key);
+  if (typeof field !== "object" || field === null) return 0;
+  const toDate = readUnknownField(field, "toDate");
+  const date = callKnownMethod<unknown>(toDate, field);
+  if (typeof date !== "object" || date === null) return 0;
+  const getTime = readUnknownField(date, "getTime");
+  const timestamp = callKnownMethod<unknown>(getTime, date);
+  return typeof timestamp === "number" ? timestamp : 0;
+}
+function isAuthorizedAdmin(admin: { exists: boolean; get(key: string): unknown }, email: string, role: string | undefined, decodedRole: string): boolean {
+  const status = readStringField(admin, "status");
+  const adminEmail = readStringField(admin, "email");
+  return admin.exists && status === "active" && adminEmail?.toLowerCase() === email && isAdminRole(role) && decodedRole === role;
+}
+
+function hasActiveAdminSession(sessionSnapshot: { exists: boolean; get(key: string): unknown }, uid: string): boolean {
+  const sessionUid = readStringField(sessionSnapshot, "uid");
+  return sessionSnapshot.exists && sessionUid === uid && !sessionSnapshot.get("revokedAt");
+}
+
+export async function requireAdmin(request: NextRequest): Promise<AdminIdentity> {
   await verifyRequestAppCheck(request);
-  if (
-    !["GET", "HEAD", "OPTIONS"].includes(request.method) &&
-    !verifyCsrf(request)
-  )
-    throw new Error("CSRF");
+  if (!["GET", "HEAD", "OPTIONS"].includes(request.method) && !verifyCsrf(request)) throw new Error("CSRF");
   const session = request.cookies.get("sis_admin_session")?.value;
   if (!session) throw new Error("UNAUTHORIZED");
   const decoded = await adminAuth.verifySessionCookie(session, true);
   const email = decoded.email?.toLowerCase() ?? "";
   if (!email) throw new Error("FORBIDDEN");
   const admin = await db.collection("admins").doc(decoded.uid).get();
-  const role = admin.get("role");
-  if (
-    !admin.exists ||
-    // A disabled or still-invited account must not keep working on an old cookie.
-    admin.get("status") !== "active" ||
-    admin.get("email")?.toLowerCase() !== email ||
-    (role !== "uploader" && role !== "approver" && role !== "admin" && role !== "superadmin") ||
-    decoded.role !== role
-  )
-    throw new Error("FORBIDDEN");
-
-  // Server-side inactivity and hard-expiry checks on every protected endpoint.
-  const sessionKey = createHmac(
-    "sha256",
-    requiredSecret("AUDIT_LOG_HMAC_SECRET"),
-  )
-    .update(session)
-    .digest("hex");
+  const role = readStringField(admin, "role");
+  const decodedRole = typeof decoded.role === "string" ? decoded.role : "";
+  if (!isAuthorizedAdmin(admin, email, role, decodedRole)) throw new Error("FORBIDDEN");
+  const sessionKey = createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET")).update(session).digest("hex");
   const sessionRef = db.collection("adminSessions").doc(sessionKey);
   const sessionSnapshot = await sessionRef.get();
-  if (
-    !sessionSnapshot.exists ||
-    sessionSnapshot.get("uid") !== decoded.uid ||
-    sessionSnapshot.get("revokedAt")
-  ) {
-    throw new Error("UNAUTHORIZED");
-  }
+  if (!hasActiveAdminSession(sessionSnapshot, decoded.uid)) throw new Error("UNAUTHORIZED");
   const now = Date.now();
-  const lastActivity =
-    sessionSnapshot.get("lastActivityAt")?.toDate?.()?.getTime?.() ?? 0;
-  const absoluteExpiry =
-    sessionSnapshot.get("absoluteExpiresAt")?.toDate?.()?.getTime?.() ?? 0;
+  const lastActivity = readTimestampMs(sessionSnapshot, "lastActivityAt");
+  const absoluteExpiry = readTimestampMs(sessionSnapshot, "absoluteExpiresAt");
   if (isAdminSessionExpired(lastActivity, absoluteExpiry, now)) {
-    await sessionRef.set(
-      { revokedAt: FieldValue.serverTimestamp(), revokeReason: "timeout" },
-      { merge: true },
-    );
+    await sessionRef.set({ revokedAt: FieldValue.serverTimestamp(), revokeReason: "timeout" }, { merge: true });
     throw new Error("UNAUTHORIZED");
   }
-  // Activity is refreshed only by the dedicated session heartbeat endpoint,
-  // which the client calls after real user interaction (not background API polling).
   return { uid: decoded.uid, email, role };
 }
-
-export async function requireSensitiveReauth(
-  request: NextRequest,
-  admin: AdminIdentity,
-): Promise<void> {
+export async function requireSensitiveReauth(request: NextRequest, admin: AdminIdentity): Promise<void> {
   const token = request.headers.get("x-admin-reauth") ?? "";
   if (token.length < 32) throw new Error("REAUTH_REQUIRED");
-  const hash = createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET"))
-    .update(token)
-    .digest("hex");
+  const hash = createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET")).update(token).digest("hex");
   const ref = db.collection("adminReauthGrants").doc(hash);
   await db.runTransaction(async (transaction) => {
     const snap = await transaction.get(ref);
-    const expiry = snap.get("expiresAt")?.toDate?.()?.getTime?.() ?? 0;
-    if (
-      !snap.exists ||
-      snap.get("uid") !== admin.uid ||
-      snap.get("usedAt") ||
-      Date.now() > expiry
-    )
+    const expiry = readTimestampMs(snap, "expiresAt");
+    if (!snap.exists || snap.get("uid") !== admin.uid || snap.get("usedAt") || Date.now() > expiry)
       throw new Error("REAUTH_REQUIRED");
     transaction.update(ref, { usedAt: FieldValue.serverTimestamp() });
   });
 }
-
 export function verifyCsrf(request: NextRequest): boolean {
   const cookie = request.cookies.get("sis_admin_csrf")?.value ?? "";
   const header = request.headers.get("x-csrf-token") ?? "";
@@ -602,11 +460,9 @@ export function verifyCsrf(request: NextRequest): boolean {
     sameOrigin(request)
   );
 }
-
 export function createCsrfToken(): string {
   return randomBytes(32).toString("base64url");
 }
-
 export function adminSessionCookieOptions() {
   return {
     httpOnly: true,
@@ -616,7 +472,6 @@ export function adminSessionCookieOptions() {
     maxAge: Math.floor(ADMIN_HARD_SESSION_LIMIT_MS / 1000),
   };
 }
-
 export function csrfCookieOptions() {
   return {
     httpOnly: false,
@@ -626,13 +481,9 @@ export function csrfCookieOptions() {
     maxAge: Math.floor(ADMIN_HARD_SESSION_LIMIT_MS / 1000),
   };
 }
-
 export function apiError(error: unknown): NextResponse {
   const message = error instanceof Error ? error.message : "Unexpected error";
-  const code =
-    typeof error === "object" && error !== null && "code" in error
-      ? String(error.code)
-      : "";
+  const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
   const invalidSessionCodes = new Set([
     "auth/argument-error",
     "auth/id-token-expired",
@@ -645,10 +496,7 @@ export function apiError(error: unknown): NextResponse {
     "auth/user-not-found",
   ]);
   if (message === "UNAUTHORIZED" || invalidSessionCodes.has(code)) {
-    const response = NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    );
+    const response = NextResponse.json({ error: "Authentication required" }, { status: 401 });
     response.cookies.set("sis_admin_session", "", {
       ...adminSessionCookieOptions(),
       maxAge: 0,
@@ -659,52 +507,32 @@ export function apiError(error: unknown): NextResponse {
     });
     return response;
   }
-  if (message === "REAUTH_REQUIRED")
-    return NextResponse.json(
-      { error: "Re-authentication with password and email code is required." },
-      { status: 428 },
-    );
-  if (message === "FORBIDDEN")
-    return NextResponse.json(
-      { error: "Administrator access required" },
-      { status: 403 },
-    );
-  if (message === "CSRF")
-    return NextResponse.json(
-      { error: "CSRF validation failed" },
-      { status: 403 },
-    );
-  if (message === "APP_CHECK")
-    return NextResponse.json(
-      { error: "App verification failed" },
-      { status: 403 },
-    );
-  if (message === "ERASURE_STORAGE_RECONCILIATION_REQUIRED")
-    return NextResponse.json(
+  const responses = new Map<string, { error: string; status: number }>([
+    ["REAUTH_REQUIRED", { error: "Re-authentication with password and email code is required.", status: 428 }],
+    ["FORBIDDEN", { error: "Administrator access required", status: 403 }],
+    ["CSRF", { error: "CSRF validation failed", status: 403 }],
+    ["APP_CHECK", { error: "App verification failed", status: 403 }],
+    [
+      "ERASURE_STORAGE_RECONCILIATION_REQUIRED",
       {
         error:
           "Legacy R2 objects need manual ownership reconciliation before erasure can be confirmed. No other student's objects were deleted.",
+        status: 409,
       },
-      { status: 409 },
-    );
-  if (message === "ERASURE_JOB_NOT_RETRYABLE")
-    return NextResponse.json(
-      { error: "This erasure job is not in a retryable state." },
-      { status: 409 },
-    );
-  if (message === "STUDENT_NOT_FOUND")
-    return NextResponse.json(
-      { error: "Student record not found." },
-      { status: 404 },
-    );
-  if (message === "ERASURE_LEGAL_HOLD")
-    return NextResponse.json(
+    ],
+    ["ERASURE_JOB_NOT_RETRYABLE", { error: "This erasure job is not in a retryable state.", status: 409 }],
+    ["STUDENT_NOT_FOUND", { error: "Student record not found.", status: 404 }],
+    [
+      "ERASURE_LEGAL_HOLD",
       {
         error:
           "A legal or statutory retention hold prevents erasure. The School must review the obligation before proceeding.",
+        status: 409,
       },
-      { status: 409 },
-    );
+    ],
+  ]);
+  const response = responses.get(message);
+  if (response) return NextResponse.json({ error: response.error }, { status: response.status });
   console.error("[Admin API request failed]", describeFirebaseError(error));
   return NextResponse.json(
     {
@@ -716,7 +544,6 @@ export function apiError(error: unknown): NextResponse {
     { status: 500 },
   );
 }
-
 export function sameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
   return isAllowedRequestOrigin(

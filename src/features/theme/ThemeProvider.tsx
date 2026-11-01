@@ -29,25 +29,26 @@ function writeStorage(value: string): void {
   } catch {
     /* Storage may be unavailable (private mode). The choice then lasts for this visit only. */
   }
-  function subscribeToTheme(subscriber: () => void): () => void {
-    themeSubscribers.add(subscriber);
-    return () => {
-      themeSubscribers.delete(subscriber);
-    };
-  }
-  function getThemeSnapshot(): ThemeMode {
-    return themeSnapshot;
-  }
-  function getServerThemeSnapshot(): ThemeMode {
-    return "system";
-  }
-  function updateThemeSnapshot(theme: ThemeMode): void {
-    themeSnapshot = theme;
-    for (const subscriber of themeSubscribers) subscriber();
-  }
-  function isThemeMode(value: string | null): value is ThemeMode {
-    return value === "light" || value === "dark" || value === "system";
-  }
+}
+
+function subscribeToTheme(subscriber: () => void): () => void {
+  themeSubscribers.add(subscriber);
+  return () => {
+    themeSubscribers.delete(subscriber);
+  };
+}
+function getThemeSnapshot(): ThemeMode {
+  return themeSnapshot;
+}
+function getServerThemeSnapshot(): ThemeMode {
+  return "system";
+}
+function updateThemeSnapshot(theme: ThemeMode): void {
+  themeSnapshot = theme;
+  for (const subscriber of themeSubscribers) subscriber();
+}
+function isThemeMode(value: string | null): value is ThemeMode {
+  return value === "light" || value === "dark" || value === "system";
 }
 function applyTheme(mode: ThemeMode): void {
   const dark =

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
+
 
 import { eraseStudentData } from "@/server/erasure";
 import { db } from "@/server/firebase-admin";
@@ -11,6 +11,7 @@ import {
   apiError,
 } from "@/server/security";
 
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 

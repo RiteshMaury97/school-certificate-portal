@@ -4,6 +4,8 @@ import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { formString } from "@/app/api/_lib/form-data";
+import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import {
   createCertificateNumberIndex,
   DuplicateCertificateNumberError,
@@ -11,7 +13,6 @@ import {
 } from "@/server/certificate-index";
 import { encryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
-import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import {
   uploadCertificate,
   softDeleteR2Object,
@@ -19,8 +20,8 @@ import {
 } from "@/server/r2";
 import { apiError, requireRoles, writeAuditLog } from "@/server/security";
 import { studentIdentifierHmac } from "@/server/student-pii";
-import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
 import { normalizeAcademicSession } from "@/shared/academic-session";
+import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
 
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
@@ -153,7 +154,7 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     const intentional =
-      String(form.get("confirmDuplicateHash") ?? "") === "true";
+      formString(form, "confirmDuplicateHash") === "true";
     const duplicateReason = String(
       form.get("duplicateHashReason") ?? "",
     ).trim();

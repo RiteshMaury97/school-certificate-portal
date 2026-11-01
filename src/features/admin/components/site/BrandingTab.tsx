@@ -1,9 +1,9 @@
-import type { Dispatch, FormEventHandler, SetStateAction } from "react";
+import type { Dispatch, SubmitEventHandler, SetStateAction } from "react";
 type Props = {
  branding: Record<string,string>; setBranding: Dispatch<SetStateAction<Record<string,string>>>;
  retentionYears: string; setRetentionYears: Dispatch<SetStateAction<string>>; retentionConfirmed: boolean; setRetentionConfirmed: Dispatch<SetStateAction<boolean>>;
  backupRotationDays: string; setBackupRotationDays: Dispatch<SetStateAction<string>>; maintenanceMode: boolean; setMaintenanceMode: Dispatch<SetStateAction<boolean>>;
- busy: boolean; saveBranding: FormEventHandler<HTMLFormElement>;
+ busy: boolean; saveBranding: SubmitEventHandler<HTMLFormElement>;
 };
 export default function BrandingTab(props: Props) {
  const {branding,setBranding,retentionYears,setRetentionYears,retentionConfirmed,setRetentionConfirmed,backupRotationDays,setBackupRotationDays,maintenanceMode,setMaintenanceMode,busy,saveBranding}=props;

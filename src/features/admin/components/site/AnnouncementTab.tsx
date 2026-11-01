@@ -1,6 +1,6 @@
 import type { AnnouncementState } from "../../types/admin-state.types";
-import type { Dispatch, FormEventHandler, SetStateAction } from "react";
-type Props = { announcement: AnnouncementState; setAnnouncement: Dispatch<SetStateAction<AnnouncementState>>; busy: boolean; saveAnnouncement: FormEventHandler<HTMLFormElement> };
+import type { Dispatch, SubmitEventHandler, SetStateAction } from "react";
+type Props = { announcement: AnnouncementState; setAnnouncement: Dispatch<SetStateAction<AnnouncementState>>; busy: boolean; saveAnnouncement: SubmitEventHandler<HTMLFormElement> };
 export default function AnnouncementTab({announcement,setAnnouncement,busy,saveAnnouncement}:Props) {
  return (
   <section className="rounded-xl border bg-[var(--surface)] p-5">

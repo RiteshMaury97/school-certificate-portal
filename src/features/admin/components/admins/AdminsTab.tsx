@@ -1,6 +1,7 @@
-import type { AdminInviteProfile, AdminInviteRole } from "../../types/admin-state.types";
-import { useMemo, useState, type FormEventHandler, type Dispatch, type SetStateAction } from "react";
 import { Clock3, Download, MoreHorizontal, Pencil, ShieldCheck, UserCheck, UserX, Users } from "lucide-react";
+import { useMemo, useState, type SubmitEventHandler, type Dispatch, type SetStateAction } from "react";
+
+import type { AdminInviteProfile, AdminInviteRole } from "../../types/admin-state.types";
 
 type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
   url: string,
@@ -15,7 +16,7 @@ type AdminsTabProps = {
   setInviteRole: Dispatch<SetStateAction<AdminInviteRole>>;
   inviteProfile: AdminInviteProfile;
   setInviteProfile: Dispatch<SetStateAction<AdminInviteProfile>>;
-  invite: FormEventHandler<HTMLFormElement>;
+  invite: SubmitEventHandler<HTMLFormElement>;
   exportData: (format: "json" | "csv") => Promise<void>;
   createBackup: () => Promise<void>;
   changeRole: (uid: string, role: AdminInviteRole) => Promise<void>;

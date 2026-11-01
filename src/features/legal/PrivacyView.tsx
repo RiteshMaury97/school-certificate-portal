@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
 
-import LegalPageLayout from "@/components/layout/LegalPageLayout";
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import type { LegalSection } from "@/components/layout/LegalPageLayout";
-import type { FormEvent} from "react";
+import type { SubmitEvent} from "react";
+
+import LegalPageLayout from "@/components/layout/LegalPageLayout";
 
 const region = process.env.NEXT_PUBLIC_DATA_HOSTING_REGION || "{{HOSTING_REGION}}";
 const version = process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION || "2026-10";
@@ -36,7 +37,7 @@ export default function PrivacyPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setAcknowledgment("");

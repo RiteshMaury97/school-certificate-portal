@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type Dispatch, type SetStateAction } from "react";
+import { useState, type SubmitEvent, type Dispatch, type SetStateAction } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 
@@ -71,7 +71,7 @@ export function useAdminUsers({api,act,setToast,setError,load}:Props){
       await load();
     });
   }
-  async function invite(e: FormEvent) {
+  async function invite(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     await act(async () => {
       await api("/api/admin/users", {

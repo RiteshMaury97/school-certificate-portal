@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
       });
     } catch (error) {
       await Promise.all([
-        adminAuth.deleteUser(user.uid).catch(() => undefined),
-        db.collection("admins").doc(user.uid).delete().catch(() => undefined),
+        adminAuth.deleteUser(user.uid).catch(() => {}),
+        db.collection("admins").doc(user.uid).delete().catch(() => {}),
       ]);
       throw error;
     }

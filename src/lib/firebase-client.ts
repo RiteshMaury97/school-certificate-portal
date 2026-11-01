@@ -16,7 +16,8 @@ const config = {
   appId: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_APP_ID, "NEXT_PUBLIC_FIREBASE_APP_ID"),
 };
 
-export const firebaseApp = getApps().length ? getApps()[0]! : initializeApp(config);
+const existingApps = getApps();
+export const firebaseApp = existingApps[0] ?? initializeApp(config);
 export const auth = getAuth(firebaseApp);
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -35,7 +36,7 @@ function appCheck(): AppCheck {
     if (!siteKey) throw new Error("Firebase App Check site key is not configured.");
     if (!isProduction) {
       // The debug token is printed to the console once; register it in Firebase console → App Check.
-      (self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean }).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+      Reflect.set(self, "FIREBASE_APPCHECK_DEBUG_TOKEN", true);
     }
     appCheckInstance = initializeAppCheck(firebaseApp, {
       provider: new ReCaptchaV3Provider(siteKey),

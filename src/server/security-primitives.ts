@@ -9,6 +9,29 @@ export type StudentAccessClaims = {
   nonce: string;
 };
 
+function readUnknownField(source: object, key: string): unknown {
+  return Reflect.get(source, key);
+}
+
+function isStudentAccessClaims(value: unknown): value is StudentAccessClaims {
+  if (typeof value !== "object" || value === null) return false;
+  const sid = readUnknownField(value, "sid");
+  const iph = readUnknownField(value, "iph");
+  const iat = readUnknownField(value, "iat");
+  const exp = readUnknownField(value, "exp");
+  const nonce = readUnknownField(value, "nonce");
+  return (
+    readUnknownField(value, "v") === 1 &&
+    typeof sid === "string" &&
+    sid.length > 0 &&
+    typeof iph === "string" &&
+    typeof iat === "number" &&
+    typeof exp === "number" &&
+    typeof nonce === "string" &&
+    nonce.length > 0
+  );
+}
+
 export function normalizeForLookup(value: string): string {
   return value
     .normalize("NFD")
@@ -71,10 +94,22 @@ export function signStudentAccessToken(
   if (Buffer.byteLength(secret, "utf8") < 32)
     throw new Error("Access token secret must be at least 32 bytes");
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
-  const signature = createHmac("sha256", secret)
-    .update(payload)
-    .digest("base64url");
+  const signature = createHmac("sha256", secret).update(payload).digest("base64url");
   return `${payload}.${signature}`;
+}
+
+function hasValidAccessClaims(
+  claims: StudentAccessClaims,
+  expectedIpHash: string,
+  now: number,
+): boolean {
+  return (
+    claims.iph === expectedIpHash &&
+    claims.exp > now &&
+    claims.iat <= now + 30 &&
+    claims.exp - claims.iat <= 5 * 60 &&
+    claims.iat > 0
+  );
 }
 
 export function verifyStudentAccessToken(
@@ -84,44 +119,24 @@ export function verifyStudentAccessToken(
   now = Math.floor(Date.now() / 1000),
 ): StudentAccessClaims | null {
   try {
-    if (Buffer.byteLength(secret, "utf8") < 32 || token.length > 2048)
-      return null;
+    if (Buffer.byteLength(secret, "utf8") < 32 || token.length > 2048) return null;
     const parts = token.split(".");
     if (parts.length !== 2) return null;
-    const [payload, signature] = parts as [string, string];
+    const [payload, signature] = parts;
+    if (!payload || !signature) return null;
     const expected = createHmac("sha256", secret).update(payload).digest();
     const actual = Buffer.from(signature, "base64url");
-    if (actual.length !== expected.length || !timingSafeEqual(actual, expected))
-      return null;
-    const claims = JSON.parse(
-      Buffer.from(payload, "base64url").toString("utf8"),
-    ) as StudentAccessClaims;
-    if (
-      claims.v !== 1 ||
-      typeof claims.sid !== "string" ||
-      !claims.sid ||
-      typeof claims.iph !== "string" ||
-      claims.iph !== expectedIpHash ||
-      typeof claims.exp !== "number" ||
-      claims.exp <= now ||
-      typeof claims.iat !== "number" ||
-      claims.iat > now + 30 ||
-      claims.exp - claims.iat > 5 * 60 ||
-      typeof claims.nonce !== "string" ||
-      !claims.nonce
-    )
-      return null;
-    return claims;
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+    const parsed: unknown = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (!isStudentAccessClaims(parsed) || !hasValidAccessClaims(parsed, expectedIpHash, now)) return null;
+    return parsed;
   } catch {
     return null;
   }
 }
 
 /** Fixed-window admission predicate shared by the Firestore transaction and unit tests. */
-export function isWithinRateLimit(
-  currentCount: number,
-  limit: number,
-): boolean {
+export function isWithinRateLimit(currentCount: number, limit: number): boolean {
   return (
     Number.isFinite(currentCount) &&
     Number.isInteger(currentCount) &&
@@ -133,11 +148,8 @@ export function isWithinRateLimit(
   );
 }
 
-export function classifySearchMatchCount(
-  count: number,
-): "none" | "unique" | "ambiguous" {
-  if (!Number.isInteger(count) || count < 0)
-    throw new Error("Invalid match count");
+export function classifySearchMatchCount(count: number): "none" | "unique" | "ambiguous" {
+  if (!Number.isInteger(count) || count < 0) throw new Error("Invalid match count");
   return count === 0 ? "none" : count === 1 ? "unique" : "ambiguous";
 }
 
@@ -152,12 +164,10 @@ export function selectUniqueDisambiguationMatch<
       candidate.dateOfBirthDisambiguationKey === answerHash ||
       candidate.admissionNumberDisambiguationKey === answerHash,
   );
-  return matches.length === 1 ? matches[0]! : null;
+  const [match] = matches;
+  return match ?? null;
 }
 
-export function canConsumeDisambiguationAttempt(
-  currentCount: number,
-  completed: boolean,
-): boolean {
+export function canConsumeDisambiguationAttempt(currentCount: number, completed: boolean): boolean {
   return !completed && isWithinRateLimit(currentCount, 3);
 }

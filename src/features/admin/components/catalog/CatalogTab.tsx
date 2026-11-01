@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { CatalogKind, CatalogOption } from "../../types/admin-state.types";
 import type { Role } from "../../types/admin.types";
-import type { FormEventHandler, Dispatch, SetStateAction } from "react";
+import type { SubmitEventHandler, Dispatch, SetStateAction } from "react";
 
 type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
   url: string,
@@ -19,7 +19,7 @@ type CatalogTabProps = {
   catalogName: string;
   setCatalogName: Dispatch<SetStateAction<string>>;
   catalog: CatalogOption[];
-  saveCatalog: FormEventHandler<HTMLFormElement>;
+  saveCatalog: SubmitEventHandler<HTMLFormElement>;
   act: (fn: () => Promise<void>) => Promise<void>;
   api: Api;
   load: () => Promise<void>;
@@ -64,7 +64,7 @@ export default function CatalogTab({ role, catalogKind, setCatalogKind, catalogN
           {sections.map(({ kind, label, icon: SectionIcon }) => {
             const selected = catalogKind === kind;
             return (
-              <button key={kind} type="button" role="tab" aria-selected={selected} onClick={() => changeSection(kind)} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition ${selected ? "border-[var(--primary)] bg-[var(--surface)] text-[var(--primary)] shadow-sm" : "border-[var(--divider)] bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface)]"}`}>
+              <button key={kind} type="button" role="tab" aria-selected={selected} onClick={() => { changeSection(kind); }} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition ${selected ? "border-[var(--primary)] bg-[var(--surface)] text-[var(--primary)] shadow-sm" : "border-[var(--divider)] bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface)]"}`}>
                 <SectionIcon size={16} aria-hidden="true" />{label}
               </button>
             );
@@ -123,9 +123,9 @@ export default function CatalogTab({ role, catalogKind, setCatalogKind, catalogN
           <nav aria-label={`${section.label} pagination`} className="flex items-center justify-between border-t border-[var(--divider)] bg-[var(--surface)] px-4 py-3">
               <span className="text-[11px] text-[var(--text-muted)]">Showing {catalog.length ? page * pageSize + 1 : 0}–{Math.min((page + 1) * pageSize, catalog.length)} of {catalog.length}</span>
               <div className="flex items-center gap-2">
-                <button type="button" disabled={page === 0} onClick={() => setPage((current) => current - 1)} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--divider)] text-[var(--text)] disabled:opacity-40"><ChevronLeft size={15} aria-hidden="true" /><span className="sr-only">Previous page</span></button>
+                <button type="button" disabled={page === 0} onClick={() => { setPage((current) => current - 1); }} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--divider)] text-[var(--text)] disabled:opacity-40"><ChevronLeft size={15} aria-hidden="true" /><span className="sr-only">Previous page</span></button>
                 <span className="min-w-16 text-center text-xs text-[var(--text-muted)]">{page + 1} / {pageCount}</span>
-                <button type="button" disabled={page + 1 >= pageCount} onClick={() => setPage((current) => current + 1)} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--divider)] text-[var(--text)] disabled:opacity-40"><ChevronRight size={15} aria-hidden="true" /><span className="sr-only">Next page</span></button>
+                <button type="button" disabled={page + 1 >= pageCount} onClick={() => { setPage((current) => current + 1); }} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--divider)] text-[var(--text)] disabled:opacity-40"><ChevronRight size={15} aria-hidden="true" /><span className="sr-only">Next page</span></button>
               </div>
           </nav>
         </div>

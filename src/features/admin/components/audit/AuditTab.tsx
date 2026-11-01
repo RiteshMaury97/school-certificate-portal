@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, CalendarDays, Download, Filter, Search, ShieldCheck } from "lucide-react";
+
 import type { Dispatch, SetStateAction } from "react";
 
 type AuditTabProps = {
@@ -75,7 +76,7 @@ export default function AuditTab({
             <input
               translate="no"
               value={auditAction}
-              onChange={(event) => setAuditAction(event.target.value)}
+              onChange={(event) => { setAuditAction(event.target.value); }}
               placeholder="Filter by action"
               className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)]"
             />
@@ -87,7 +88,7 @@ export default function AuditTab({
               translate="no"
               type="date"
               value={auditStart}
-              onChange={(event) => setAuditStart(event.target.value)}
+              onChange={(event) => { setAuditStart(event.target.value); }}
               className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)]"
             />
           </label>
@@ -98,7 +99,7 @@ export default function AuditTab({
               translate="no"
               type="date"
               value={auditEnd}
-              onChange={(event) => setAuditEnd(event.target.value)}
+              onChange={(event) => { setAuditEnd(event.target.value); }}
               className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)]"
             />
           </label>

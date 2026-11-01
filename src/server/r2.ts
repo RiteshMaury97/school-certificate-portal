@@ -14,11 +14,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { PDFDocument, PDFArray, PDFDict, PDFName, PDFRef } from "pdf-lib";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-const allowedTypes = {
-  "application/pdf": ".pdf",
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-} as const;
+type SupportedMimeType = "application/pdf" | "image/jpeg" | "image/png";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -53,17 +49,12 @@ export function certificateTypeSlug(value: string): string {
   return slug;
 }
 function detectFile(buffer: Buffer): {
-  mimeType: keyof typeof allowedTypes;
+  mimeType: SupportedMimeType;
   extension: string;
 } {
   if (buffer.length >= 5 && buffer.subarray(0, 5).toString("ascii") === "%PDF-")
     return { mimeType: "application/pdf", extension: ".pdf" };
-  if (
-    buffer.length >= 3 &&
-    buffer[0] === 0xff &&
-    buffer[1] === 0xd8 &&
-    buffer[2] === 0xff
-  )
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff)
     return { mimeType: "image/jpeg", extension: ".jpg" };
   const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   if (buffer.length >= 8 && buffer.subarray(0, 8).equals(png))
@@ -74,16 +65,60 @@ function validateSession(session: string): void {
   if (!/^\d{4}-\d{2}$/.test(session)) throw new Error("Invalid session");
 }
 function validateCertificateKey(key: string): void {
-  if (
-    !/^certificates\/\d{4}-\d{2}\/[a-z0-9-]{1,60}\/[0-9a-f-]{36}\.(pdf|jpg|png)$/.test(
-      key,
-    )
-  ) {
+  if (!/^certificates\/\d{4}-\d{2}\/[a-z0-9-]{1,60}\/[0-9a-f-]{36}\.(pdf|jpg|png)$/.test(key)) {
     throw new Error("Invalid certificate object reference");
   }
 }
 
 const MAX_PDF_PAGES = 100;
+
+function isUnsafeName(value: PDFName, unsafeNames: Set<string>): boolean {
+  return unsafeNames.has(value.toString());
+}
+
+function hasUnsafeDictionaryEntry(
+  dictionary: PDFDict,
+  unsafeNames: Set<string>,
+  seen: Set<object>,
+  resolveReference: (reference: PDFRef) => unknown,
+): boolean {
+  for (const [key, child] of dictionary.entries()) {
+    if (unsafeNames.has(key.toString())) return true;
+    if (hasUnsafePdfFeature(child, unsafeNames, seen, resolveReference)) return true;
+  }
+  return false;
+}
+
+function hasUnsafeArrayEntry(
+  array: PDFArray,
+  unsafeNames: Set<string>,
+  seen: Set<object>,
+  resolveReference: (reference: PDFRef) => unknown,
+): boolean {
+  for (const child of array.asArray()) {
+    if (hasUnsafePdfFeature(child, unsafeNames, seen, resolveReference)) return true;
+  }
+  return false;
+}
+
+function hasUnsafePdfFeature(
+  value: unknown,
+  unsafeNames: Set<string>,
+  seen: Set<object>,
+  resolveReference: (reference: PDFRef) => unknown,
+): boolean {
+  if (!value || typeof value !== "object" || seen.has(value)) return false;
+  seen.add(value);
+  if (value instanceof PDFRef)
+    return hasUnsafePdfFeature(resolveReference(value), unsafeNames, seen, resolveReference);
+  if (value instanceof PDFName) return isUnsafeName(value, unsafeNames);
+  if (value instanceof PDFDict)
+    return hasUnsafeDictionaryEntry(value, unsafeNames, seen, resolveReference);
+  if (value instanceof PDFArray)
+    return hasUnsafeArrayEntry(value, unsafeNames, seen, resolveReference);
+  return false;
+}
+
 async function validatePdf(buffer: Buffer): Promise<void> {
   let document: PDFDocument;
   try {
@@ -95,7 +130,7 @@ async function validatePdf(buffer: Buffer): Promise<void> {
     throw new Error("PDF is invalid, encrypted or password-protected.");
   }
   if (document.getPageCount() < 1 || document.getPageCount() > MAX_PDF_PAGES) {
-    throw new Error(`PDF must contain between 1 and ${MAX_PDF_PAGES} pages.`);
+    throw new Error(`PDF must contain between 1 and ${String(MAX_PDF_PAGES)} pages.`);
   }
   // Inspect the parsed object graph as well as raw bytes (object streams may be compressed).
   const unsafeNames = new Set([
@@ -114,21 +149,8 @@ async function validatePdf(buffer: Buffer): Promise<void> {
     "/XFA",
   ]);
   const seen = new Set<object>();
-  const inspect = (value: unknown): boolean => {
-    if (!value || typeof value !== "object" || seen.has(value)) return false;
-    seen.add(value);
-    if (value instanceof PDFRef) return inspect(document.context.lookup(value));
-    if (value instanceof PDFName) return unsafeNames.has(value.toString());
-    if (value instanceof PDFDict) {
-      for (const [key, child] of (value).entries())
-        if (unsafeNames.has(key.toString()) || inspect(child)) return true;
-    }
-    if (value instanceof PDFArray)
-      for (const child of (value).asArray())
-        if (inspect(child)) return true;
-    return false;
-  };
-  if (inspect(document.catalog))
+  const resolveReference = (reference: PDFRef) => document.context.lookup(reference);
+  if (hasUnsafePdfFeature(document.catalog, unsafeNames, seen, resolveReference))
     throw new Error(
       "PDFs containing scripts, automatic actions or embedded attachments are not accepted.",
     );
@@ -146,23 +168,13 @@ async function scanForMalware(buffer: Buffer, mimeType: string): Promise<void> {
     cache: "no-store",
     signal: AbortSignal.timeout(15000),
   });
-  if (!response.ok)
-    throw new Error(
-      "Antivirus scanning is unavailable; upload was not accepted.",
-    );
+  if (!response.ok) throw new Error("Antivirus scanning is unavailable; upload was not accepted.");
   const result: unknown = await response.json().catch(() => null);
-  if (
-    !result ||
-    typeof result !== "object" ||
-    !("clean" in result) ||
-    result.clean !== true
-  ) {
+  if (!result || typeof result !== "object" || !("clean" in result) || result.clean !== true) {
     throw new Error("The uploaded file did not pass the antivirus scan.");
   }
 }
-export async function createCertificatePreviewUrl(
-  r2Key: string,
-): Promise<string> {
+export async function createCertificatePreviewUrl(r2Key: string): Promise<string> {
   validateCertificateKey(r2Key);
   return getSignedUrl(
     client(),
@@ -193,8 +205,7 @@ export async function uploadCertificate(
     throw new Error("Certificate must be between 1 byte and 5 MB");
   validateSession(session);
   const buffer = Buffer.from(await file.arrayBuffer());
-  if (buffer.byteLength !== file.size)
-    throw new Error("File size validation failed");
+  if (buffer.byteLength !== file.size) throw new Error("File size validation failed");
   const detected = detectFile(buffer);
   if (file.type && file.type !== detected.mimeType)
     throw new Error("File content does not match its declared type");
@@ -223,14 +234,9 @@ export async function uploadCertificate(
 }
 export async function readR2Object(r2Key: string): Promise<Buffer> {
   validateCertificateKey(r2Key);
-  const result = await client().send(
-    new GetObjectCommand({ Bucket: bucket(), Key: r2Key }),
-  );
+  const result = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: r2Key }));
   if (!result.Body) throw new Error("Certificate object is unavailable");
-  if (
-    typeof result.ContentLength === "number" &&
-    result.ContentLength > MAX_FILE_BYTES
-  ) {
+  if (typeof result.ContentLength === "number" && result.ContentLength > MAX_FILE_BYTES) {
     throw new Error("Certificate object exceeds the processing limit");
   }
   const bytes = await result.Body.transformToByteArray();
@@ -240,32 +246,31 @@ export async function readR2Object(r2Key: string): Promise<Buffer> {
 }
 export async function streamR2Object(r2Key: string) {
   validateCertificateKey(r2Key);
-  const result = await client().send(
-    new GetObjectCommand({ Bucket: bucket(), Key: r2Key }),
-  );
+  const result = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: r2Key }));
   if (!result.Body) throw new Error("Certificate object is unavailable");
   return result.Body;
 }
+
+function isObjectNotFound(error: unknown): boolean {
+  if (!error || typeof error !== "object" || !("$metadata" in error)) return false;
+  const metadata: unknown = error.$metadata;
+  if (!metadata || typeof metadata !== "object" || !("httpStatusCode" in metadata)) return false;
+  return metadata.httpStatusCode === 404;
+}
+
 /** Preserve deleted/replaced originals under a private prefix for 30 days. Configure
  * an R2 lifecycle expiration rule for _soft-delete/ objects after 30 days. */
-export async function softDeleteR2Object(
-  r2Key: string,
-  studentId?: string,
-): Promise<void> {
+export async function softDeleteR2Object(r2Key: string, studentId?: string): Promise<void> {
   validateCertificateKey(r2Key);
   const s3 = client();
   try {
     await s3.send(new HeadObjectCommand({ Bucket: bucket(), Key: r2Key }));
   } catch (error) {
-    if (
-      (error as { $metadata?: { httpStatusCode?: number } }).$metadata
-        ?.httpStatusCode === 404
-    )
-      return;
+    if (isObjectNotFound(error)) return;
     throw error;
   }
   const suffix = r2Key.split("/").pop() ?? randomUUID();
-  const archiveKey = `_soft-delete/${Date.now()}-${randomUUID()}-${suffix}`;
+  const archiveKey = `_soft-delete/${String(Date.now())}-${randomUUID()}-${suffix}`;
   await s3.send(
     new CopyObjectCommand({
       Bucket: bucket(),
@@ -275,11 +280,7 @@ export async function softDeleteR2Object(
       ...(studentId
         ? {
             Metadata: {
-              ...(
-                await s3.send(
-                  new HeadObjectCommand({ Bucket: bucket(), Key: r2Key }),
-                )
-              ).Metadata,
+              ...(await s3.send(new HeadObjectCommand({ Bucket: bucket(), Key: r2Key }))).Metadata,
               studentid: studentId,
             },
           }
@@ -294,11 +295,7 @@ export async function deleteR2Object(r2Key: string): Promise<boolean> {
   try {
     await s3.send(new HeadObjectCommand({ Bucket: bucket(), Key: r2Key }));
   } catch (error) {
-    if (
-      (error as { $metadata?: { httpStatusCode?: number } }).$metadata
-        ?.httpStatusCode === 404
-    )
-      return false;
+    if (isObjectNotFound(error)) return false;
     throw error;
   }
   await s3.send(new DeleteObjectCommand({ Bucket: bucket(), Key: r2Key }));
@@ -309,40 +306,67 @@ export async function purgeStudentR2Objects(
   knownSha256s: string[] = [],
 ): Promise<{ deleted: number; ambiguous: number; unattributed: number }> {
   const s3 = client();
-  let deleted = 0,
-    ambiguous = 0,
-    unattributed = 0;
+  const counts = { deleted: 0, ambiguous: 0, unattributed: 0 };
+  const context = {
+    s3,
+    studentId,
+    knownSha256s,
+  };
   for (const prefix of ["certificates/", "_soft-delete/"]) {
-    let token: string | undefined;
-    do {
-      const page = await s3.send(
-        new ListObjectsV2Command({
-          Bucket: bucket(),
-          Prefix: prefix,
-          ContinuationToken: token,
-          MaxKeys: 500,
-        }),
-      );
-      for (const item of page.Contents ?? []) {
-        if (!item.Key) continue;
-        const head = await s3.send(
-          new HeadObjectCommand({ Bucket: bucket(), Key: item.Key }),
-        );
-        const metadataStudent = head.Metadata?.studentid;
-        const sha = head.Metadata?.sha256;
-        if (metadataStudent === studentId) {
-          await s3.send(
-            new DeleteObjectCommand({ Bucket: bucket(), Key: item.Key }),
-          );
-          deleted++;
-        } else if (!metadataStudent) {
-          // Legacy objects without an owner tag cannot be deleted by hash alone.
-          if (sha && knownSha256s.includes(sha)) ambiguous++;
-          else unattributed++;
-        }
-      }
-      token = page.IsTruncated ? page.NextContinuationToken : undefined;
-    } while (token);
+    await purgeStudentPrefix(context, prefix, counts);
   }
-  return { deleted, ambiguous, unattributed };
+  return counts;
+}
+
+type PurgeCounts = {
+  deleted: number;
+  ambiguous: number;
+  unattributed: number;
+};
+
+type StudentPurgeContext = {
+  s3: S3Client;
+  studentId: string;
+  knownSha256s: string[];
+};
+
+async function purgeStudentObject(
+  context: StudentPurgeContext,
+  key: string,
+): Promise<keyof PurgeCounts | null> {
+  const head = await context.s3.send(new HeadObjectCommand({ Bucket: bucket(), Key: key }));
+  const metadataStudent = head.Metadata?.studentid;
+  if (metadataStudent === context.studentId) {
+    await context.s3.send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
+    return "deleted";
+  }
+  if (metadataStudent) return null;
+  // Legacy objects without an owner tag cannot be deleted by hash alone.
+  return head.Metadata?.sha256 && context.knownSha256s.includes(head.Metadata.sha256)
+    ? "ambiguous"
+    : "unattributed";
+}
+
+async function purgeStudentPrefix(
+  context: StudentPurgeContext,
+  prefix: string,
+  counts: PurgeCounts,
+): Promise<void> {
+  let token: string | undefined;
+  do {
+    const page = await context.s3.send(
+      new ListObjectsV2Command({
+        Bucket: bucket(),
+        Prefix: prefix,
+        ContinuationToken: token,
+        MaxKeys: 500,
+      }),
+    );
+    for (const item of page.Contents ?? []) {
+      if (!item.Key) continue;
+      const count = await purgeStudentObject(context, item.Key);
+      if (count) counts[count]++;
+    }
+    token = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (token);
 }

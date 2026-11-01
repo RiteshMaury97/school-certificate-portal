@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
+import { formString } from "@/app/api/_lib/form-data";
 import { adminAuth, db } from "@/server/firebase-admin";
 import {
   adminSessionCookieOptions,
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
     }
     const form = await request.formData();
-    const token = String(form.get("token") ?? "");
+    const token = formString(form, "token");
     if (token.length < 32)
       return NextResponse.redirect(
         new URL("/admin/login?security=invalid", request.url),

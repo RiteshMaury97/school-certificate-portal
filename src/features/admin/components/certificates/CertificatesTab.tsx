@@ -6,7 +6,7 @@ import DuplicateHashWarning from "../shared/DuplicateHashWarning";
 
 import type { CatalogOption, CertificateHistory, StudentFormState } from "../../types/admin-state.types";
 import type { Cert, Role, Student } from "../../types/admin.types";
-import type { Dispatch, FormEventHandler, SetStateAction } from "react";
+import type { Dispatch, SubmitEventHandler, SetStateAction } from "react";
 
 type Api = <T extends Record<string, unknown> = Record<string, unknown>>(url: string, init?: RequestInit) => Promise<T>;
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
   duplicateHashWarning: string; duplicateHashAcknowledged: boolean; setDuplicateHashAcknowledged: Dispatch<SetStateAction<boolean>>;
   duplicateHashReason: string; setDuplicateHashReason: Dispatch<SetStateAction<string>>; setDuplicateHashWarning: Dispatch<SetStateAction<string>>;
   busy: boolean; students: Student[]; selectedStudent: string; setSelectedStudent: Dispatch<SetStateAction<string>>;
-  uploadMany: FormEventHandler<HTMLFormElement>; certs: Cert[]; certificateHistory: CertificateHistory;
+  uploadMany: SubmitEventHandler<HTMLFormElement>; certs: Cert[]; certificateHistory: CertificateHistory;
   loadCertificateHistory: (id: string) => Promise<void>; act: (fn: () => Promise<void>) => Promise<void>;
   api: Api; load: () => Promise<void>; setError: Dispatch<SetStateAction<string>>;
 };

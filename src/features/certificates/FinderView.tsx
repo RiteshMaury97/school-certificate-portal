@@ -1,9 +1,9 @@
 "use client";
 import { motion, useReducedMotion } from "framer-motion";
+import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { ShieldCheck } from "lucide-react";
 import { z } from "zod";
 
 import EmptyState from "@/components/feedback/EmptyState";
@@ -15,7 +15,7 @@ import { appCheckHeaders } from "@/lib/firebase-client";
 import { studentLookupSchema } from "@/shared/validation";
 
 import type { StudentResult } from "@/types";
-import type { FormEvent} from "react";
+import type { SubmitEvent} from "react";
 
 const formSchema = z.object({
   studentName: z
@@ -268,7 +268,7 @@ export default function FinderPage() {
     };
   }, [result, notFound]);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setNetworkError(false);

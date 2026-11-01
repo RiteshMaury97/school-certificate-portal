@@ -1,21 +1,31 @@
 "use client";
 
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import IconButton from "@/components/ui/IconButton";
 
 import { useTheme } from "./ThemeProvider";
 
+function subscribeToHydration(): () => void {
+  return () => undefined;
+}
+
+function getHydratedSnapshot(): boolean {
+  return true;
+}
+
+function getServerSnapshot(): boolean {
+  return false;
+}
+
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Keep server HTML and the first browser render identical. The provider may
-  // restore localStorage while another route segment is still hydrating.
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    subscribeToHydration,
+    getHydratedSnapshot,
+    getServerSnapshot,
+  );
 
   if (!mounted) {
     return (

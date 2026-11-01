@@ -21,8 +21,8 @@ import {
   studentIdentifierHmac,
   studentIdentityMatches,
 } from "@/server/student-pii";
-import { retentionExpiryFromSession } from "@/shared/retention-policy";
 import { normalizeAcademicSession } from "@/shared/academic-session";
+import { retentionExpiryFromSession } from "@/shared/retention-policy";
 import { studentUpdateSchema } from "@/shared/validation";
 
 import type { NextRequest} from "next/server";

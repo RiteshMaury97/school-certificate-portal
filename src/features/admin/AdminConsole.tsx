@@ -14,25 +14,25 @@ import ApprovalsTab from "./components/approvals/ApprovalsTab";
 import AuditTab from "./components/audit/AuditTab";
 import TimelineTab from "./components/audit/TimelineTab";
 import CatalogTab from "./components/catalog/CatalogTab";
+import CertificatesTab from "./components/certificates/CertificatesTab";
 import BreachesTab from "./components/compliance/BreachesTab";
 import ContactEnquiriesTab from "./components/compliance/ContactEnquiriesTab";
 import ReportsTab from "./components/compliance/ReportsTab";
+import RetentionTab from "./components/compliance/RetentionTab";
+import RightsTab from "./components/compliance/RightsTab";
 import DashboardOverview from "./components/dashboard/DashboardOverview";
 import HelpPolicies from "./components/help/HelpPolicies";
-import AdminLayout from "./components/layout/AdminLayout";
-import AdminSidebar from "./components/layout/AdminSidebar";
 import AdminHeader from "./components/layout/AdminHeader";
+import AdminLayout from "./components/layout/AdminLayout";
 import AdminMobileNav from "./components/layout/AdminMobileNav";
+import AdminSidebar from "./components/layout/AdminSidebar";
 import AdminStatusBanners from "./components/layout/AdminStatusBanners";
-import ProfileTab from "./components/profile/ProfileTab";
 import IdleWarningModal from "./components/modals/IdleWarningModal";
 import SessionsModal from "./components/modals/SessionsModal";
-import RightsTab from "./components/compliance/RightsTab";
-import RetentionTab from "./components/compliance/RetentionTab";
+import ProfileTab from "./components/profile/ProfileTab";
 import AnnouncementTab from "./components/site/AnnouncementTab";
 import BrandingTab from "./components/site/BrandingTab";
 import FaqsTab from "./components/site/FaqsTab";
-import CertificatesTab from "./components/certificates/CertificatesTab";
 import StudentCreatePanel from "./components/students/StudentCreatePanel";
 import StudentsList from "./components/students/StudentsList";
 import { tabLabels, tabRoutes } from "./config/admin-navigation";
@@ -46,9 +46,6 @@ import { useBulkImport } from "./hooks/useBulkImport";
 import { useCertificateIntake } from "./hooks/useCertificateIntake";
 import { useCertificateRecords } from "./hooks/useCertificateRecords";
 import { useSiteSettingsAdmin } from "./hooks/useSiteSettingsAdmin";
-
-
-
 import ReauthModal from "./ReauthModal";
 import { csrf } from "./utils/admin-helpers";
 
@@ -57,7 +54,7 @@ import type {
   CatalogOption,
 } from "./types/admin-state.types";
 import type { Cert, Tab } from "./types/admin.types";
-import type { FormEvent} from "react";
+import type { SubmitEvent} from "react";
 export default function AdminPage() {
   const [mobileAdminNav, setMobileAdminNav] = useState(false);
   const siteSettings = usePublicSiteSettings();
@@ -166,7 +163,7 @@ export default function AdminPage() {
         .finally(() => { setBusy(false); });
     }
   }, [email, load]);
-  async function saveCatalog(e: FormEvent) {
+  async function saveCatalog(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     await act(async () => {
       await api(`/api/admin/catalog/${catalogKind}`, {

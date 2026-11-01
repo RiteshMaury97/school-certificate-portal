@@ -4,6 +4,9 @@ import { randomUUID, createHash } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
+import { formString } from "@/app/api/_lib/form-data";
+import { findAcademicSessionDocument } from "@/server/academic-session";
+import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import {
   createCertificateNumberIndex,
   DuplicateCertificateNumberError,
@@ -11,9 +14,7 @@ import {
 } from "@/server/certificate-index";
 import { encryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
-import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import { uploadCertificate, softDeleteR2Object } from "@/server/r2";
-import { findAcademicSessionDocument } from "@/server/academic-session";
 import {
   apiError,
   createSearchKey,
@@ -27,8 +28,8 @@ import {
   studentIdentifierHmac,
   studentIdentityMatches,
 } from "@/server/student-pii";
-import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
 import { normalizeAcademicSession } from "@/shared/academic-session";
+import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
 import { retentionExpiryFromSession } from "@/shared/retention-policy";
 import { normalize, studentCreateSchema } from "@/shared/validation";
 
@@ -56,20 +57,20 @@ export async function POST(request: NextRequest) {
       );
     const form = await request.formData();
     const payload = {
-      admissionNo: String(form.get("admissionNo") ?? "").trim(),
+      admissionNo: formString(form, "admissionNo").trim(),
       admissionNumber: String(
         form.get("admissionNumber") ?? form.get("admissionNo") ?? "",
       ).trim(),
-      dateOfBirth: String(form.get("dateOfBirth") ?? "").trim(),
-      studentName: String(form.get("studentName") ?? ""),
-      fatherName: String(form.get("fatherName") ?? ""),
-      motherName: String(form.get("motherName") ?? ""),
-      className: String(form.get("className") ?? ""),
-      scholarNumber: String(form.get("scholarNumber") ?? ""),
-      session: normalizeAcademicSession(String(form.get("session") ?? "")) ?? String(form.get("session") ?? ""),
-      certificateType: String(form.get("certificateType") ?? ""),
-      certificateNumber: String(form.get("certificateNumber") ?? ""),
-      issuedAt: String(form.get("issuedAt") ?? ""),
+      dateOfBirth: formString(form, "dateOfBirth").trim(),
+      studentName: formString(form, "studentName"),
+      fatherName: formString(form, "fatherName"),
+      motherName: formString(form, "motherName"),
+      className: formString(form, "className"),
+      scholarNumber: formString(form, "scholarNumber"),
+      session: normalizeAcademicSession(formString(form, "session")) ?? formString(form, "session"),
+      certificateType: formString(form, "certificateType"),
+      certificateNumber: formString(form, "certificateNumber"),
+      issuedAt: formString(form, "issuedAt"),
     };
     const parsed = studentCreateSchema.safeParse(payload);
     const file = form.get("file");
@@ -103,12 +104,12 @@ export async function POST(request: NextRequest) {
       );
     }
     const data = parsed.data;
-    const parentEmail = String(form.get("parentEmail") ?? "")
+    const parentEmail = formString(form, "parentEmail")
       .trim()
       .toLowerCase();
-    const parentMobile = String(form.get("parentMobile") ?? "").trim();
+    const parentMobile = formString(form, "parentMobile").trim();
     const notificationConsent =
-      String(form.get("notificationConsent") ?? "") === "true";
+      formString(form, "notificationConsent") === "true";
     if (
       (notificationConsent && !parentEmail && !parentMobile) ||
       ((parentEmail || parentMobile) &&
@@ -232,7 +233,7 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     const duplicateHashConfirmed =
-      String(form.get("confirmDuplicateHash") ?? "") === "true";
+      formString(form, "confirmDuplicateHash") === "true";
     const duplicateHashReason = String(
       form.get("duplicateHashReason") ?? "",
     ).trim();

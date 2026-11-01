@@ -28,6 +28,7 @@ export default function AdminSidebar({
   onSystemHealth,
   onLoadSessions,
 }: AdminSidebarProps) {
+  const username = email.split("@")[0];
   return (
     <aside
       className="sis-admin-sidebar hidden w-[258px] shrink-0 flex-col md:flex"
@@ -90,7 +91,7 @@ export default function AdminSidebar({
       </div>
       <div className="sis-admin-user-footer">
         <span className="sis-admin-avatar">
-          {(email.split("@")[0] || "RM").slice(0, 2).toUpperCase()}
+          {(username ? username : "RM").slice(0, 2).toUpperCase()}
         </span>
         <span className="min-w-0 flex-1">
           <strong className="block truncate text-xs">{email || "Administrator"}</strong>

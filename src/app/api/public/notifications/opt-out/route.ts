@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
+import { formString } from "@/app/api/_lib/form-data";
 import { db } from "@/server/firebase-admin";
 import { verifyOptOutToken } from "@/server/notifications";
 
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const form = await request.formData();
-    const token = String(form.get("token") ?? "");
+    const token = formString(form, "token");
     const verified = await verifyOptOutToken(token);
     if (!verified)
       return new NextResponse("Invalid or expired opt-out link.", {

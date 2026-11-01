@@ -20,7 +20,7 @@ export function useCertificateRecords(
       const d = await api<{ events: Record<string, unknown>[] }>(
         `/api/admin/certificates/${id}/history`,
       );
-      setCertificateHistory((v) => ({ ...v, [id]: d.events ?? [] }));
+      setCertificateHistory((v) => ({ ...v, [id]: d.events }));
     });
   }
 

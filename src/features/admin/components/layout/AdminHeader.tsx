@@ -33,13 +33,14 @@ export default function AdminHeader({
   logout,
   onProfile,
 }: AdminHeaderProps) {
+  const username = email.split("@")[0];
   return (
     <header className="sis-admin-header">
       <div className="mx-auto flex w-full items-center justify-between gap-4 px-6 py-4 lg:px-7">
         <div>
           <p className="sis-admin-breadcrumb">Workspace <span>/</span> Administration <span>/</span> {tabLabels[tab]}</p>
           <h1 className="text-lg font-semibold leading-tight text-[var(--text)]">
-            {tab === "dashboard" ? `Welcome back, ${email.split("@")[0] || "Administrator"}` : tabLabels[tab]}
+            {tab === "dashboard" ? `Welcome back, ${username ? username : "Administrator"}` : tabLabels[tab]}
           </h1>
           <p className="text-xs text-[var(--text-muted)]">Here’s what’s happening across your school portal today.</p>
         </div>

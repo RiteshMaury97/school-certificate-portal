@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 
 import CodeField from "./CodeField";
 
@@ -17,11 +17,11 @@ export function EmailCodeStep({ busy, email, onVerify, onCancel, onResend, resen
     const timer = window.setInterval(() => { setRemaining((value) => Math.max(0, value - 1)); }, 1000);
     return () => { window.clearInterval(timer); };
   }, [resendAfterSeconds]);
-  const submit = (event: FormEvent) => { event.preventDefault(); onVerify(code); };
+  const submit = (event: SubmitEvent<HTMLFormElement>) => { event.preventDefault(); onVerify(code); };
   const masked = email.replace(/^(.).+(@.+)$/, "$1***$2");
   return <form onSubmit={submit} className="mt-6 space-y-4">
     <p className="text-sm text-[var(--text-muted)]">We sent a six-digit code to <strong className="text-[var(--text)]">{masked}</strong>. It is valid for 10 minutes. Never share this code.</p>
-    <CodeField label="Email verification code" value={code} onChange={(value) => { setCode(value.replace(/\\D/g, "").slice(0, 6)); }} autoFocus />
+    <CodeField label="Email verification code" value={code} onChange={(value) => { setCode(value.replace(/\\D/g, "").slice(0, 6)); }} />
     <button disabled={busy || code.length !== 6} aria-busy={busy} className={primary}>{busy ? "Verifying…" : "Verify and sign in"}</button>
     <button type="button" disabled={busy || remaining > 0} onClick={() => { setCode(""); onResend(); }} className={secondary}>
       {remaining > 0 ? `Resend code in ${remaining}s` : "Resend code"}
@@ -45,7 +45,7 @@ export function ChangeTemporaryPasswordStep({ busy, onSubmit, onCancel }: {
 }) {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (password.length >= 12 && password === confirmation) onSubmit(password);
   };
