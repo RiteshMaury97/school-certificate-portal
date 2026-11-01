@@ -143,7 +143,7 @@ export function useBulkImport({ api, act, setError, load, loadStudents, duplicat
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `certificate-import-template.${format}`;
+      a.download = `student-import-template.${format}`;
       a.click();
       URL.revokeObjectURL(url);
     });

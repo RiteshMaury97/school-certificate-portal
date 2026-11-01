@@ -4,11 +4,12 @@ type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
 ) => Promise<T>;
 type Props = {
   breaches: Record<string, unknown>[];
+  loaded: boolean;
   act: (fn: () => Promise<void>) => Promise<void>;
   api: Api;
   load: () => Promise<void>;
 };
-export default function BreachesTab({ breaches, act, api, load }: Props) {
+export default function BreachesTab({ breaches, loaded, act, api, load }: Props) {
   return (
     <section className="rounded-xl border bg-[var(--surface)] p-5">
       <h2 className="text-lg font-bold">Personal data breach register</h2>
@@ -44,6 +45,9 @@ export default function BreachesTab({ breaches, act, api, load }: Props) {
         Record incident
       </button>
       <div className="mt-5 space-y-3">
+        {loaded && breaches.length === 0 && (
+          <p className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-2)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">No data found. No incidents have been recorded.</p>
+        )}
         {breaches.map((b) => (
           <article key={String(b.id)} className="rounded-lg border p-4">
             <p className="font-semibold">{String(b.summary ?? "Incident")}</p>

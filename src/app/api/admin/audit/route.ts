@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["approver"]);
+    await requireRoles(request, ["approver", "admin"]);
     const filters = auditFilterSchema.safeParse({
       start: request.nextUrl.searchParams.get("start") ?? undefined,
       end: request.nextUrl.searchParams.get("end") ?? undefined,

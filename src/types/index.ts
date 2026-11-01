@@ -9,6 +9,7 @@ export type Certificate = {
 };
 export type StudentResult = {
   studentName: string;
+  className: string;
   session: string;
   accessToken: string;
   tokenExpiresIn: number;

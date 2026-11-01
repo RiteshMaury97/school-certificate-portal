@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 
 import { eraseStudentData } from "@/server/erasure";
 import { db } from "@/server/firebase-admin";
@@ -12,21 +13,58 @@ import {
 
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
+
+async function getRequestsByStatus(status: string) {
+  const collection = db.collection("dataRightsRequests");
+  let docs: QueryDocumentSnapshot[];
+  try {
+    // Filter in Firestore, but avoid the status + createdAt composite index.
+    docs = (await collection.where("status", "==", status).get()).docs;
+  } catch (error) {
+    const detail = error as { code?: string | number; message?: string };
+    const message = detail.message ?? String(error);
+    if (
+      detail.code !== 9 &&
+      detail.code !== "9" &&
+      detail.code !== "failed-precondition" &&
+      !message.includes("FAILED_PRECONDITION") &&
+      !message.includes("requires an index")
+    ) {
+      throw error;
+    }
+
+    // If status indexing is also unavailable, preserve page availability by
+    // filtering the collection in memory. This is an admin-only, bounded UI.
+    docs = (await collection.get()).docs.filter((doc) => doc.get("status") === status);
+  }
+
+  const createdAtMillis = (value: unknown): number => {
+    if (value && typeof value === "object" && "toMillis" in value) {
+      const toMillis = (value as { toMillis?: () => number }).toMillis;
+      if (typeof toMillis === "function") return toMillis.call(value);
+    }
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === "string") return Date.parse(value) || 0;
+    return 0;
+  };
+
+  return {
+    docs: docs
+      .sort((a, b) => createdAtMillis(b.get("createdAt")) - createdAtMillis(a.get("createdAt")))
+      .slice(0, 200),
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["approver"]);
+    await requireRoles(request, ["approver", "admin"]);
     const status = request.nextUrl.searchParams.get("status") ?? "open";
     if (!["open", "resolved", "rejected"].includes(status))
       return NextResponse.json(
         { error: "Invalid request status." },
         { status: 400 },
       );
-    const snap = await db
-      .collection("dataRightsRequests")
-      .where("status", "==", status)
-      .orderBy("createdAt", "desc")
-      .limit(200)
-      .get();
+    const snap = await getRequestsByStatus(status);
     return NextResponse.json(
       { requests: snap.docs.map((d) => ({ id: d.id, ...d.data() })) },
       { headers: { "Cache-Control": "no-store" } },
@@ -94,7 +132,7 @@ export async function PATCH(request: NextRequest) {
         { headers: { "Cache-Control": "no-store" } },
       );
     }
-    const admin = await requireRoles(request, ["approver"]);
+    const admin = await requireRoles(request, ["approver", "admin"]);
     if (
       typeof body.id !== "string" ||
       typeof body.resolution !== "string" ||

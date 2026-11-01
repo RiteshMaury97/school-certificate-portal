@@ -9,10 +9,11 @@ import {
   apiError,
 } from "@/server/security";
 import { catalogItemSchema, documentIdSchema } from "@/shared/validation";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
-const allowed = ["sessions", "certificateTypes"] as const;
+const allowed = ["sessions", "certificateTypes", "classes"] as const;
 type Kind = (typeof allowed)[number];
 function collection(kind: string): Kind | null {
   return allowed.includes(kind as Kind) ? (kind as Kind) : null;
@@ -22,7 +23,7 @@ export async function GET(
   context: { params: Promise<{ kind: string }> },
 ) {
   try {
-    await requireRoles(request, ["uploader", "approver"]);
+    await requireRoles(request, ["uploader", "approver", "admin"]);
     const { kind } = await context.params;
     const name = collection(kind);
     if (!name)
@@ -51,7 +52,7 @@ export async function POST(
   context: { params: Promise<{ kind: string }> },
 ) {
   try {
-    const admin = await requireRoles(request, ["superadmin"]);
+    const admin = await requireRoles(request, ["superadmin", "admin"]);
     const { kind } = await context.params;
     const name = collection(kind);
     if (!name)
@@ -62,10 +63,21 @@ export async function POST(
         { error: "Enter a valid catalog name." },
         { status: 400 },
       );
-    const label = String(parsed.data.label ?? parsed.data.name);
+    const requestedLabel = String(parsed.data.label ?? parsed.data.name);
+    const sessionLabel = name === "sessions"
+      ? normalizeAcademicSession(requestedLabel)
+      : null;
+    if (name === "sessions" && !sessionLabel)
+      return NextResponse.json(
+        { error: "Use an academic session like 2026-27 or 2026-2027." },
+        { status: 400 },
+      );
+    const label = sessionLabel ?? requestedLabel;
     const id = String(
-      parsed.data.id ??
-        (name === "certificateTypes" ? certificateTypeSlug(label) : label),
+      (name === "sessions" ? sessionLabel : parsed.data.id) ??
+        (name === "certificateTypes" || name === "classes"
+          ? certificateTypeSlug(label)
+          : label),
     );
     await db
       .collection(name)
@@ -91,7 +103,7 @@ export async function DELETE(
   context: { params: Promise<{ kind: string }> },
 ) {
   try {
-    const admin = await requireRoles(request, ["superadmin"]);
+    const admin = await requireRoles(request, ["superadmin", "admin"]);
     await requireSensitiveReauth(request, admin);
     const { kind } = await context.params;
     const name = collection(kind);

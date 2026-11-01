@@ -11,6 +11,7 @@ import {
 } from "@/server/certificate-index";
 import { encryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
+import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import {
   uploadCertificate,
   softDeleteR2Object,
@@ -19,6 +20,7 @@ import {
 import { apiError, requireRoles, writeAuditLog } from "@/server/security";
 import { studentIdentifierHmac } from "@/server/student-pii";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
@@ -37,7 +39,7 @@ const mappingSchema = z
   .refine((x) => Boolean(x.studentId || x.admissionNo || x.admissionNumber));
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["uploader"]);
+    const admin = await requireRoles(request, ["uploader", "admin"]);
     const form = await request.formData();
     const file = form.get("file");
     let rawMapping: unknown = {};
@@ -96,6 +98,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Student not found or admission number is ambiguous." },
         { status: 404 },
+      );
+    if (
+      normalizeAcademicSession(String(student.get("session") ?? "")) !==
+      normalizeAcademicSession(map.session)
+    )
+      return NextResponse.json(
+        { error: "Certificate session must match the student's passing session." },
+        { status: 400 },
       );
     let typeSlug = "";
     try {
@@ -208,6 +218,16 @@ export async function POST(request: NextRequest) {
         );
       throw error;
     }
+    if (admin.role === "admin" || admin.role === "superadmin") {
+      await publishCertificateWithoutReview(ref.id, admin.uid);
+      await writeAuditLog(
+        request,
+        admin.uid,
+        "certificate.auto_published",
+        ref.id,
+        student.id,
+      );
+    }
     await writeAuditLog(
       request,
       admin.uid,
@@ -224,7 +244,14 @@ export async function POST(request: NextRequest) {
         student.id,
       );
     return NextResponse.json(
-      { ok: true, certificateId: ref.id, status: "pending" },
+      {
+        ok: true,
+        certificateId: ref.id,
+        status:
+          admin.role === "admin" || admin.role === "superadmin"
+            ? "published"
+            : "pending",
+      },
       { status: 201 },
     );
   } catch (error) {

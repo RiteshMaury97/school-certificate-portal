@@ -12,6 +12,7 @@ import {
 } from "@/server/certificate-index";
 import { encryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
+import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import {
   ensurePublicSessions,
   rebuildPublicSessions,
@@ -29,6 +30,7 @@ import {
 } from "@/server/security";
 import { canReplacePublishedCertificate } from "@/shared/certificate-lifecycle";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 import { certificateMetadataSchema } from "@/shared/validation";
 
 import type { NextRequest} from "next/server";
@@ -41,7 +43,7 @@ export async function PATCH(
   context: { params: Promise<{ certificateId: string }> },
 ) {
   try {
-    const admin = await requireRoles(request, ["approver"]);
+    const admin = await requireRoles(request, ["approver", "admin"]);
     const { certificateId } = await context.params;
     const parsed = certificateMetadataSchema.safeParse(await request.json());
     if (!parsed.success)
@@ -128,7 +130,7 @@ export async function PUT(
   context: { params: Promise<{ certificateId: string }> },
 ) {
   try {
-    const admin = await requireRoles(request, ["uploader"]);
+    const admin = await requireRoles(request, ["uploader", "admin"]);
     const { certificateId } = await context.params;
     const oldRef = db.collection("certificates").doc(certificateId);
     const current = await oldRef.get();
@@ -156,6 +158,19 @@ export async function PUT(
     if (!parsed.success)
       return NextResponse.json(
         { error: "Invalid replacement metadata." },
+        { status: 400 },
+      );
+    const linkedStudent = await db
+      .collection("students")
+      .doc(String(current.get("studentId") ?? ""))
+      .get();
+    if (
+      !linkedStudent.exists ||
+      normalizeAcademicSession(String(linkedStudent.get("session") ?? "")) !==
+        normalizeAcademicSession(parsed.data.session)
+    )
+      return NextResponse.json(
+        { error: "Replacement session must match the student's passing session." },
         { status: 400 },
       );
     const [sessionDoc, typeDoc] = await Promise.all([
@@ -263,6 +278,27 @@ export async function PUT(
         );
       throw error;
     }
+    const autoPublished = admin.role === "admin" || admin.role === "superadmin";
+    if (autoPublished) {
+      const publication = await publishCertificateWithoutReview(
+        replacementRef.id,
+        admin.uid,
+      );
+      await writeAuditLog(
+        request,
+        admin.uid,
+        "certificate.auto_published",
+        replacementRef.id,
+        publication.studentId,
+      );
+      await writeAuditLog(
+        request,
+        admin.uid,
+        "certificate.replaced",
+        certificateId,
+        publication.studentId,
+      );
+    }
     await writeAuditLog(
       request,
       admin.uid,
@@ -271,7 +307,11 @@ export async function PUT(
       String(current.get("studentId") ?? ""),
     );
     return NextResponse.json(
-      { ok: true, replacementId: replacementRef.id, status: "pending" },
+      {
+        ok: true,
+        replacementId: replacementRef.id,
+        status: autoPublished ? "published" : "pending",
+      },
       { status: 201, headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

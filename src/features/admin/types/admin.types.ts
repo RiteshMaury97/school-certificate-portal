@@ -1,4 +1,4 @@
-export type Role = "uploader" | "approver" | "superadmin";
+export type Role = "uploader" | "approver" | "admin" | "superadmin";
 export type Student = {
   id: string;
   admissionNo?: string;
@@ -6,6 +6,8 @@ export type Student = {
   studentName: string;
   fatherName: string;
   motherName: string;
+  className: string;
+  scholarNumber: string;
   session: string;
   certificateCount: number;
 };
@@ -45,4 +47,5 @@ export type Tab =
   | "announcement"
   | "faqs"
   | "retention"
-  | "contacts";
+  | "contacts"
+  | "profile";

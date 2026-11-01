@@ -10,12 +10,13 @@ type Api = <T extends Record<string, unknown> = Record<string, unknown>>(url: st
 type Props = {
   role: Role; visible: Student[]; filtered: Student[]; search: string; setSearch: Dispatch<SetStateAction<string>>;
   page: number; setPage: Dispatch<SetStateAction<number>>; setTimelineStudentId: Dispatch<SetStateAction<string>>;
-  setTab: Dispatch<SetStateAction<Tab>>; act: (fn: () => Promise<void>) => Promise<void>; api: Api;
+  setTab: (tab: Tab) => void; act: (fn: () => Promise<void>) => Promise<void>; api: Api;
   loadStudents: () => Promise<void>; removeStudent: (student: Student) => Promise<void>;
+  setSelectedStudent: Dispatch<SetStateAction<string>>;
 };
 
 export default function StudentsList(props: Props) {
-  const { role, visible, filtered, search, setSearch, page, setPage, setTimelineStudentId, setTab, act, api, loadStudents, removeStudent } = props;
+  const { role, visible, filtered, search, setSearch, page, setPage, setTimelineStudentId, setTab, setSelectedStudent, act, api, loadStudents, removeStudent } = props;
   const pageCount = Math.max(1, Math.ceil(filtered.length / 10));
 
   return (
@@ -29,9 +30,9 @@ export default function StudentsList(props: Props) {
           </div>
         </div>
         <label className="relative block w-full sm:max-w-xs">
-          <span className="sr-only">Search by name or admission number</span>
+          <span className="sr-only">Search by name, scholar number, class or admission number</span>
           <Search size={15} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-          <input translate="no" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} placeholder="Search by name or admission no." className="min-h-10 w-full rounded-lg border border-[var(--divider)] bg-[var(--surface)] pl-9 pr-3 text-xs text-[var(--text)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)]" />
+          <input translate="no" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} placeholder="Name, class, scholar no. or admission no." className="min-h-10 w-full rounded-lg border border-[var(--divider)] bg-[var(--surface)] pl-9 pr-3 text-xs text-[var(--text)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)]" />
         </label>
       </div>
 
@@ -55,11 +56,12 @@ export default function StudentsList(props: Props) {
           <article key={student.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--divider)] p-3 transition hover:bg-[var(--surface-2)]">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-[var(--text)]">{student.studentName}</p>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">Parents: {student.fatherName} / {student.motherName} <span className="px-1">·</span> {student.session}</p>
-              <p className="mt-1 text-[10px] text-[var(--text-muted)]">{student.admissionNo ? `Admission no. ${student.admissionNo} · ` : ""}{student.certificateCount} certificates</p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Parents: {student.fatherName} / {student.motherName} <span className="px-1">·</span> Class {student.className || "Needs update"} <span className="px-1">·</span> {student.session}</p>
+              <p className="mt-1 text-[10px] text-[var(--text-muted)]">Scholar no. {student.scholarNumber || "Needs update"} · {student.admissionNo ? `Admission no. ${student.admissionNo} · ` : ""}{student.certificateCount} certificates</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => { setTimelineStudentId(student.id); setTab("timeline"); }} className="min-h-9 rounded-lg border border-[var(--divider)] px-3 text-xs font-medium text-[var(--text)]">Timeline</button>
+              {role !== "approver" && <button type="button" onClick={() => { setSelectedStudent(student.id); setTab("certificates"); }} className="min-h-9 rounded-lg border border-[var(--divider)] px-3 text-xs font-medium text-[var(--text)]">Add certificate</button>}
               {role !== "approver" && <button type="button" onClick={() => { void editStudent(student, api, act, loadStudents); }} className="min-h-9 rounded-lg border border-[var(--divider)] px-3 text-xs font-medium text-[var(--text)]">Edit</button>}
               {role === "superadmin" && <button type="button" onClick={() => void removeStudent(student)} className="min-h-9 rounded-lg border border-[var(--border)] px-3 text-xs font-medium text-[var(--danger)]">Delete</button>}
             </div>
@@ -96,6 +98,10 @@ async function editStudent(
   if (!fatherName) return;
   const motherName = prompt("Mother name", student.motherName);
   if (!motherName) return;
+  const className = prompt("Class / section", student.className ?? "");
+  if (!className) return;
+  const scholarNumber = prompt("Scholar number", student.scholarNumber ?? "");
+  if (!scholarNumber) return;
   const session = prompt("Session (YYYY-YY)", student.session);
   if (!session) return;
   const admissionNumber = prompt("Admission number (leave blank if unavailable)", student.admissionNo ?? "") ?? "";
@@ -104,7 +110,7 @@ async function editStudent(
     await api(`/api/admin/students/${student.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentName, fatherName, motherName, session, admissionNumber, dateOfBirth }),
+      body: JSON.stringify({ studentName, fatherName, motherName, className, scholarNumber, session, admissionNumber, dateOfBirth }),
     });
     await loadStudents();
   });

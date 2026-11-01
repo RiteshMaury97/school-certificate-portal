@@ -2,6 +2,7 @@ import EmptyState from "@/components/feedback/EmptyState";
 
 import type { CertificatePreviewMap } from "../../types/admin-state.types";
 import type { Cert } from "../../types/admin.types";
+import type { Role } from "../../types/admin.types";
 import type { Dispatch, SetStateAction } from "react";
 
 type ApprovalsTabProps = {
@@ -14,6 +15,7 @@ type ApprovalsTabProps = {
   decideCertificate: (id: string, decision: "approve" | "reject") => void;
   busy: boolean;
   uid: string;
+  role: Role;
   loadPreview: (id: string) => void;
 };
 
@@ -27,13 +29,15 @@ export default function ApprovalsTab({
   decideCertificate,
   busy,
   uid,
+  role,
   loadPreview,
 }: ApprovalsTabProps) {
+  const canReviewOwnUpload = role === "admin" || role === "superadmin";
   return (
     <section className="rounded-xl border bg-[var(--surface)] p-5">
       <h2 className="text-lg font-bold">Pending certificate approvals</h2>
       <p className="mt-1 text-sm text-[var(--text-muted)]">
-        Review the original, unwatermarked upload in a private 60-second preview. The uploader cannot approve their own submission.
+        Review the original upload in a private preview. Uploader submissions need a different approver; admin and superadmin uploads can be published directly.
       </p>
       <div className="mt-4 space-y-4">
         {pending.map((c) => (
@@ -68,20 +72,31 @@ export default function ApprovalsTab({
                   <span>Details match the document</span>
                 </label>
                 <div className="mt-3 flex gap-2">
-                  <button onClick={() => { decideCertificate(c.id, "approve"); }} disabled={busy || c.uploadedBy === uid || !previewUrls[c.id] || !approvalChecks[c.id]} className="rounded bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-40">Approve & publish</button>
-                  <button onClick={() => { decideCertificate(c.id, "reject"); }} disabled={busy || c.uploadedBy === uid} className="rounded bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-40">Reject</button>
+                  <button onClick={() => { decideCertificate(c.id, "approve"); }} disabled={busy || (c.uploadedBy === uid && !canReviewOwnUpload) || !previewUrls[c.id] || !approvalChecks[c.id]} className="rounded bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-40">Approve & publish</button>
+                  <button onClick={() => { decideCertificate(c.id, "reject"); }} disabled={busy || (c.uploadedBy === uid && !canReviewOwnUpload)} className="rounded bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-40">Reject</button>
                 </div>
               </div>
               <div className="min-h-64 rounded-lg border bg-[var(--surface-2)] p-2">
                 <div className="mb-2 flex items-center justify-between">
                   <b className="text-sm">Document preview</b>
-                  {!previewUrls[c.id] && <button onClick={() => { loadPreview(c.id); }} className="rounded border bg-[var(--surface)] px-3 py-1.5 text-xs">Load 60-second preview</button>}
+                  {!previewUrls[c.id] ? (
+                    <button onClick={() => { loadPreview(c.id); }} className="rounded border bg-[var(--surface)] px-3 py-1.5 text-xs">Load 60-second preview</button>
+                  ) : (
+                    <a
+                      href={previewUrls[c.id]?.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded border bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold"
+                    >
+                      Open document in new tab
+                    </a>
+                  )}
                 </div>
                 {previewUrls[c.id] ? (() => {
                   const preview = previewUrls[c.id];
                   if (!preview) return null;
                   return preview.mimeType === "application/pdf" ? (
-                    <iframe title={`Preview ${c.fileName}`} src={preview.url} sandbox="allow-scripts allow-same-origin" referrerPolicy="no-referrer" className="h-[520px] w-full rounded" />
+                    <iframe title={`Preview ${c.fileName}`} src={preview.url} referrerPolicy="no-referrer" className="h-[520px] w-full rounded" />
                   ) : (
                     <img src={preview.url} alt={`Certificate preview for ${c.studentName ?? "student"}`} className="max-h-[520px] max-w-full object-contain" />
                   );

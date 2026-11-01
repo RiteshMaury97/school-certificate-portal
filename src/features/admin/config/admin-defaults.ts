@@ -49,6 +49,8 @@ export const createDefaultStudentForm = (): StudentFormState => ({
   studentName: "",
   fatherName: "",
   motherName: "",
+  className: "",
+  scholarNumber: "",
   session: "",
   certificateType: "",
   certificateNumber: "",

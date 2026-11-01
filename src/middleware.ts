@@ -4,7 +4,7 @@ import { isAllowedRequestOrigin } from "./shared/origin-policy";
 
 import type { NextRequest} from "next/server";
 const APP_ORIGIN = process.env.APP_ORIGIN;
-function buildCsp(nonce: string): string {
+function buildCsp(nonce: string, allowSameOriginFrame = false): string {
   const dev = process.env.NODE_ENV !== "production";
   const telemetryOrigins = [
     process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL,
@@ -28,11 +28,11 @@ function buildCsp(nonce: string): string {
     "img-src 'self' data: blob: https://translate.google.com https://translate.googleapis.com https://www.gstatic.com",
     "font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com",
     `connect-src 'self' ${dev ? "ws://localhost:* ws://127.0.0.1:*" : ""} https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://translate.google.com https://translate.googleapis.com https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
-    `frame-src https://challenges.cloudflare.com https://www.google.com https://www.recaptcha.net https://translate.google.com ${authOrigin}`,
+    `frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://www.recaptcha.net https://translate.google.com ${authOrigin}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'none'",
+    `frame-ancestors ${allowSameOriginFrame ? "'self'" : "'none'"}`,
     ...(dev ? [] : ["upgrade-insecure-requests"]),
   ].join("; ");
 }
@@ -40,9 +40,16 @@ function securityHeaders(
   response: NextResponse,
   nonce: string,
   production: boolean,
+  allowSameOriginFrame = false,
 ): void {
-  response.headers.set("Content-Security-Policy", buildCsp(nonce));
-  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set(
+    "Content-Security-Policy",
+    buildCsp(nonce, allowSameOriginFrame),
+  );
+  response.headers.set(
+    "X-Frame-Options",
+    allowSameOriginFrame ? "SAMEORIGIN" : "DENY",
+  );
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "no-referrer");
   response.headers.set(
@@ -84,11 +91,18 @@ export async function middleware(request: NextRequest) {
   const bytes = new Uint8Array(18);
   crypto.getRandomValues(bytes);
   const nonce = btoa(String.fromCharCode(...bytes));
+  const allowSameOriginFrame =
+    /^\/api\/admin\/certificates\/[^/]+\/preview-file$/.test(
+      request.nextUrl.pathname,
+    );
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("Content-Security-Policy", buildCsp(nonce));
+  requestHeaders.set(
+    "Content-Security-Policy",
+    buildCsp(nonce, allowSameOriginFrame),
+  );
   const response = NextResponse.next({ request: { headers: requestHeaders } });
-  securityHeaders(response, nonce, production);
+  securityHeaders(response, nonce, production, allowSameOriginFrame);
 
   const origin = request.headers.get("origin");
   const isMutation = !["GET", "HEAD", "OPTIONS"].includes(request.method);

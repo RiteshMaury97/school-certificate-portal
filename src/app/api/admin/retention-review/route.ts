@@ -13,15 +13,52 @@ import {
 
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
+
+/**
+ * Use the composite index when deployed. If it is not available yet, read the
+ * matching status documents and sort locally so retention review remains
+ * usable while the index is being provisioned.
+ */
+async function getOrderedByStatus(
+  collection: "retentionReview" | "erasureJobs",
+  status: string,
+  orderField: "flaggedAt" | "updatedAt",
+  limit: number,
+) {
+  const ref = db.collection(collection);
+  try {
+    return await ref
+      .where("status", "==", status)
+      .orderBy(orderField, "desc")
+      .limit(limit)
+      .get();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("FAILED_PRECONDITION") && !message.includes("requires an index")) {
+      throw error;
+    }
+
+    const snap = await ref.where("status", "==", status).get();
+    const timestamp = (value: unknown): number => {
+      if (value && typeof value === "object" && "toMillis" in value) {
+        const toMillis = (value as { toMillis?: () => number }).toMillis;
+        if (typeof toMillis === "function") return toMillis.call(value);
+      }
+      if (value instanceof Date) return value.getTime();
+      if (typeof value === "string") return Date.parse(value) || 0;
+      return 0;
+    };
+    const docs = snap.docs
+      .sort((a, b) => timestamp(b.get(orderField)) - timestamp(a.get(orderField)))
+      .slice(0, limit);
+    return { docs };
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     await requireRoles(request, ["superadmin"]);
-    const snap = await db
-      .collection("retentionReview")
-      .where("status", "==", "open")
-      .orderBy("flaggedAt", "desc")
-      .limit(300)
-      .get();
+    const snap = await getOrderedByStatus("retentionReview", "open", "flaggedAt", 300);
     const records = await Promise.all(
       snap.docs.map(async (d) => {
         const student = await db.collection("students").doc(d.id).get();
@@ -42,18 +79,8 @@ export async function GET(request: NextRequest) {
         };
       }),
     );
-    const retrySnap = await db
-      .collection("erasureJobs")
-      .where("status", "==", "retry_required")
-      .orderBy("updatedAt", "desc")
-      .limit(50)
-      .get();
-    const staleStarted = await db
-      .collection("erasureJobs")
-      .where("status", "==", "started")
-      .orderBy("updatedAt", "desc")
-      .limit(50)
-      .get();
+    const retrySnap = await getOrderedByStatus("erasureJobs", "retry_required", "updatedAt", 50);
+    const staleStarted = await getOrderedByStatus("erasureJobs", "started", "updatedAt", 50);
     const stale = staleStarted.docs.filter(
       (d) =>
         Date.now() -

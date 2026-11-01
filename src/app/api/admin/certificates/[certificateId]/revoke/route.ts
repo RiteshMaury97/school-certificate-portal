@@ -24,7 +24,7 @@ export async function POST(
   context: { params: Promise<{ certificateId: string }> },
 ) {
   try {
-    const admin = await requireRoles(request, ["approver"]);
+    const admin = await requireRoles(request, ["approver", "admin"]);
     await requireSensitiveReauth(request, admin);
     const { certificateId } = await context.params;
     const body: unknown = await request.json().catch(() => null);

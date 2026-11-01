@@ -16,6 +16,7 @@ import {
   History,
   LockKeyhole,
   Mail,
+  ContactRound,
 } from "lucide-react";
 
 import type { Tab } from "../types/admin.types";
@@ -38,6 +39,7 @@ export const tabIcons = {
   faqs: FileText,
   retention: Database,
   contacts: Mail,
+  profile: ContactRound,
 } satisfies Record<Tab, typeof HelpCircle>;
 export const tabs: Tab[] = [
   "help",
@@ -57,4 +59,47 @@ export const tabs: Tab[] = [
   "announcement",
   "faqs",
   "retention",
+  "profile",
 ];
+
+export const tabRoutes: Record<Tab, string> = {
+  help: "/admin/help",
+  dashboard: "/admin",
+  approvals: "/admin/approvals",
+  students: "/admin/students",
+  certificates: "/admin/certificates",
+  catalog: "/admin/sessions",
+  audit: "/admin/audit",
+  rights: "/admin/rights",
+  breaches: "/admin/breaches",
+  reports: "/admin/reports",
+  contacts: "/admin/contacts",
+  timeline: "/admin/timeline",
+  admins: "/admin/admins",
+  branding: "/admin/settings",
+  announcement: "/admin/announcements",
+  faqs: "/admin/faqs",
+  retention: "/admin/backup",
+  profile: "/admin/profile",
+};
+
+export const tabLabels: Record<Tab, string> = {
+  help: "Help & Policies",
+  dashboard: "Overview",
+  approvals: "Pending Approvals",
+  students: "Students",
+  certificates: "Certificates",
+  catalog: "School Catalog",
+  audit: "Audit",
+  rights: "Data Rights",
+  breaches: "Breach Log",
+  reports: "Record Reports",
+  contacts: "Contacts",
+  timeline: "Timeline",
+  admins: "Admin Users",
+  branding: "Site Branding",
+  announcement: "Announcements",
+  faqs: "FAQ Editor",
+  retention: "Retention Review",
+  profile: "My Profile",
+};

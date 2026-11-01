@@ -17,10 +17,12 @@ import {
 } from "@/server/security";
 import {
   encryptStudentIdentifier,
+  scholarLookupHmac,
   studentIdentifierHmac,
   studentIdentityMatches,
 } from "@/server/student-pii";
 import { retentionExpiryFromSession } from "@/shared/retention-policy";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 import { studentUpdateSchema } from "@/shared/validation";
 
 import type { NextRequest} from "next/server";
@@ -30,7 +32,7 @@ export async function PATCH(
   context: { params: Promise<{ studentId: string }> },
 ) {
   try {
-    const admin = await requireRoles(request, ["uploader"]);
+    const admin = await requireRoles(request, ["uploader", "admin"]);
     const { studentId } = await context.params;
     const parsed = studentUpdateSchema.safeParse(await request.json());
     if (!parsed.success)
@@ -46,7 +48,45 @@ export async function PATCH(
         { error: "Student not found." },
         { status: 404 },
       );
+    const currentSession = normalizeAcademicSession(
+      String(snapshot.get("session") ?? ""),
+    );
+    const linkedCertificates = await db
+      .collection("certificates")
+      .where("studentId", "==", studentId)
+      .get();
+    const requestedSession = normalizeAcademicSession(data.session);
+    if (
+      linkedCertificates.size > 0 &&
+      requestedSession !== currentSession &&
+      linkedCertificates.docs.some(
+        (certificate) =>
+          normalizeAcademicSession(String(certificate.get("session") ?? "")) !==
+          requestedSession,
+      )
+    )
+      return NextResponse.json(
+        {
+          error:
+            "This student has linked certificates in another session. Update the certificates to the same session before changing the student session.",
+        },
+        { status: 409 },
+      );
     const searchKey = createSearchKey(data);
+    const scholarLookupKey = scholarLookupHmac(
+      data.scholarNumber,
+      data.className,
+      data.session,
+    );
+    const scholarMatches = await db
+      .collection("students")
+      .where("scholarLookupKey", "==", scholarLookupKey)
+      .get();
+    if (scholarMatches.docs.some((document) => document.id !== studentId))
+      return NextResponse.json(
+        { error: "That scholar number is already assigned in this class and session." },
+        { status: 409 },
+      );
     const duplicates = await db
       .collection("students")
       .where("searchKey", "==", searchKey)
@@ -109,6 +149,9 @@ export async function PATCH(
       studentName: data.studentName,
       fatherName: data.fatherName,
       motherName: data.motherName,
+      className: data.className,
+      scholarNumber: encryptStudentIdentifier(data.scholarNumber),
+      scholarLookupKey,
       session: data.session,
       searchKey,
       retentionExpiresAt,

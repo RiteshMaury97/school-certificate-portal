@@ -52,6 +52,10 @@ export function useAdminApi() {
         headers.set("x-admin-reauth", grant);
         response = await fetch(url, { ...options, headers });
       }
+      if (response.status === 401 && typeof window !== "undefined") {
+        window.location.assign("/admin/login");
+        throw new Error("Your administrator session expired. Sign in again.");
+      }
       const data: unknown = await response.json().catch(() => ({}));
       if (!response.ok)
         throw new Error(

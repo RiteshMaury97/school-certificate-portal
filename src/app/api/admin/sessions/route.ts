@@ -3,7 +3,7 @@ import { createHmac } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
-import { db } from "@/server/firebase-admin";
+import { db, describeFirebaseError } from "@/server/firebase-admin";
 import {
   adminSessionCookieOptions,
   csrfCookieOptions,
@@ -14,22 +14,52 @@ import {
 import { isAdminSessionExpired } from "@/shared/session-policy";
 
 import type { NextRequest} from "next/server";
+import type { DocumentSnapshot, QueryDocumentSnapshot } from "firebase-admin/firestore";
 export const runtime = "nodejs";
+
+function timestampMillis(value: unknown): number {
+  if (value instanceof Date) return value.getTime();
+  if (value && typeof value === "object" && "toMillis" in value && typeof value.toMillis === "function")
+    return value.toMillis();
+  return 0;
+}
+
+async function listRecentByUid(
+  collection: "adminSessions" | "adminDevices",
+  uid: string,
+  timestampField: "createdAt" | "lastSeenAt",
+): Promise<QueryDocumentSnapshot[]> {
+  try {
+    const snapshot = await db
+      .collection(collection)
+      .where("uid", "==", uid)
+      .orderBy(timestampField, "desc")
+      .limit(30)
+      .get();
+    return snapshot.docs;
+  } catch (error) {
+    const code = (error as { code?: unknown } | null)?.code;
+    if (code !== 9 && code !== "9" && code !== "failed-precondition" && code !== "FAILED_PRECONDITION") throw error;
+
+    // The ordered query requires a deployed composite index. Keep the panel
+    // usable during index rollout by sorting this administrator's rows here.
+    console.warn(`[admin/sessions] Falling back to in-memory ${collection} sort: ${describeFirebaseError(error)}`);
+    const snapshot = await db.collection(collection).where("uid", "==", uid).get();
+    return snapshot.docs
+      .sort((left: DocumentSnapshot, right: DocumentSnapshot) =>
+        timestampMillis(right.get(timestampField)) - timestampMillis(left.get(timestampField)),
+      )
+      .slice(0, 30);
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const admin = await requireAdmin(request);
-    const snap = await db
-      .collection("adminSessions")
-      .where("uid", "==", admin.uid)
-      .orderBy("createdAt", "desc")
-      .limit(30)
-      .get();
-    const recent = await db
-      .collection("adminDevices")
-      .where("uid", "==", admin.uid)
-      .orderBy("lastSeenAt", "desc")
-      .limit(30)
-      .get();
+    const [sessions, devices] = await Promise.all([
+      listRecentByUid("adminSessions", admin.uid, "createdAt"),
+      listRecentByUid("adminDevices", admin.uid, "lastSeenAt"),
+    ]);
     const cookie = request.cookies.get("sis_admin_session")?.value ?? "";
     const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
     const currentHash =
@@ -38,7 +68,7 @@ export async function GET(request: NextRequest) {
         : "";
     return NextResponse.json(
       {
-        sessions: snap.docs.map((d) => ({
+        sessions: sessions.map((d) => ({
           sessionId: d.get("sessionId"),
           browser: d.get("browser"),
           city: d.get("city"),
@@ -54,7 +84,7 @@ export async function GET(request: NextRequest) {
               d.get("absoluteExpiresAt")?.toDate?.()?.getTime?.() ?? 0,
             ),
         })),
-        recentLogins: recent.docs.map((d) => ({
+        recentLogins: devices.map((d) => ({
           browser: d.get("browser"),
           city: d.get("city"),
           country: d.get("country"),
@@ -65,6 +95,7 @@ export async function GET(request: NextRequest) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (e) {
+    console.error("[admin/sessions GET]", describeFirebaseError(e));
     return apiError(e);
   }
 }

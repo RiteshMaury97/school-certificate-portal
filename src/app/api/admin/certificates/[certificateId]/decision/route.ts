@@ -22,7 +22,7 @@ export async function POST(
   context: { params: Promise<{ certificateId: string }> },
 ) {
   try {
-    const actor = await requireRoles(request, ["approver"]);
+    const actor = await requireRoles(request, ["approver", "admin"]);
     const { certificateId } = await context.params;
     const body: unknown = await request.json();
     if (!body || typeof body !== "object" || !("decision" in body))
@@ -62,7 +62,10 @@ export async function POST(
       if (snap.get("status") !== "pending") throw new Error("NOT_PENDING");
       const uploaderUid = String(snap.get("uploadedBy") ?? "");
       if (!uploaderUid) throw new Error("UPLOADER_UNKNOWN");
-      if (!canReviewUpload(actor.uid, uploaderUid))
+      const privilegedSelfReview =
+        actor.uid === uploaderUid &&
+        (actor.role === "admin" || actor.role === "superadmin");
+      if (!canReviewUpload(actor.uid, uploaderUid) && !privilegedSelfReview)
         throw new Error("SELF_APPROVAL");
       const now = FieldValue.serverTimestamp();
       let replacedCertificateId = "";

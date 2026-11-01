@@ -10,7 +10,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { adminAuth, adminAppCheck, db } from "./firebase-admin";
+import { adminAuth, adminAppCheck, db, describeFirebaseError } from "./firebase-admin";
 import {
   bindStudentId,
   createCertificateNumberHash as makeCertificateNumberHash,
@@ -58,6 +58,8 @@ export function createSearchKey(input: {
   studentName: string;
   fatherName: string;
   motherName: string;
+  className: string;
+  scholarNumber: string;
   session: string;
 }): string {
   return makeSearchKey(input, requiredSecret("SEARCH_HMAC_SECRET"));
@@ -92,6 +94,7 @@ export async function writeAuditLog(
     action === "certificate.search" &&
     [
       "no_match",
+      "no_certificates",
       "no_certificates",
       "invalid_request",
       "rate_limited",
@@ -463,7 +466,7 @@ export function studentAccessTokenOwnsStudent(
   return claims.sid === studentBinding(studentId);
 }
 
-export type AdminRole = "uploader" | "approver" | "superadmin";
+export type AdminRole = "uploader" | "approver" | "admin" | "superadmin";
 export type AdminIdentity = { uid: string; email: string; role: AdminRole };
 export function hasAnyRole(
   admin: AdminIdentity,
@@ -527,7 +530,7 @@ export async function requireAdmin(
     // A disabled or still-invited account must not keep working on an old cookie.
     admin.get("status") !== "active" ||
     admin.get("email")?.toLowerCase() !== email ||
-    (role !== "uploader" && role !== "approver" && role !== "superadmin") ||
+    (role !== "uploader" && role !== "approver" && role !== "admin" && role !== "superadmin") ||
     decoded.role !== role
   )
     throw new Error("FORBIDDEN");
@@ -626,11 +629,36 @@ export function csrfCookieOptions() {
 
 export function apiError(error: unknown): NextResponse {
   const message = error instanceof Error ? error.message : "Unexpected error";
-  if (message === "UNAUTHORIZED")
-    return NextResponse.json(
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String(error.code)
+      : "";
+  const invalidSessionCodes = new Set([
+    "auth/argument-error",
+    "auth/id-token-expired",
+    "auth/id-token-revoked",
+    "auth/invalid-id-token",
+    "auth/invalid-session-cookie",
+    "auth/session-cookie-expired",
+    "auth/session-cookie-revoked",
+    "auth/user-disabled",
+    "auth/user-not-found",
+  ]);
+  if (message === "UNAUTHORIZED" || invalidSessionCodes.has(code)) {
+    const response = NextResponse.json(
       { error: "Authentication required" },
       { status: 401 },
     );
+    response.cookies.set("sis_admin_session", "", {
+      ...adminSessionCookieOptions(),
+      maxAge: 0,
+    });
+    response.cookies.set("sis_admin_csrf", "", {
+      ...csrfCookieOptions(),
+      maxAge: 0,
+    });
+    return response;
+  }
   if (message === "REAUTH_REQUIRED")
     return NextResponse.json(
       { error: "Re-authentication with password and email code is required." },
@@ -677,9 +705,14 @@ export function apiError(error: unknown): NextResponse {
       },
       { status: 409 },
     );
-  console.error("Admin API request failed");
+  console.error("[Admin API request failed]", describeFirebaseError(error));
   return NextResponse.json(
-    { error: "The request could not be completed" },
+    {
+      error:
+        process.env.NODE_ENV === "development" && error instanceof Error
+          ? error.message
+          : "The request could not be completed",
+    },
     { status: 500 },
   );
 }

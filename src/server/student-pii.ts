@@ -40,6 +40,14 @@ export function studentIdentifierHmac(value: string): string {
     .digest("hex");
 }
 
+export function scholarLookupHmac(
+  scholarNumber: string,
+  className: string,
+  session: string,
+): string {
+  return studentIdentifierHmac(`${session}|${className}|${scholarNumber}`);
+}
+
 export function encryptStudentIdentifier(value: string): string {
   const normalized = normalizeStudentIdentifier(value);
   if (!normalized || normalized.length > 100)

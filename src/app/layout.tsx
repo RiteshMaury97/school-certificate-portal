@@ -1,4 +1,3 @@
-import { Inter } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
 import { Suspense } from "react";
@@ -10,12 +9,6 @@ import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 
 export const dynamic = "force-dynamic";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-});
 
 const FALLBACK_NAME = "Satyam International School";
 const FALLBACK_DESCRIPTION = "Secure school certificate retrieval and verification portal";
@@ -86,7 +79,11 @@ const themeInit = `(function(){var r=document.documentElement;try{var t=localSto
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>

@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       // "invited" accounts must be able to complete email verification on first sign-in.
       !["active", "invited"].includes(String(admin.get("status"))) ||
       admin.get("email")?.toLowerCase() !== email ||
-      !["uploader", "approver", "superadmin"].includes(
+      !["uploader", "approver", "admin", "superadmin"].includes(
         String(admin.get("role")),
       ) ||
       decoded.role !== admin.get("role")

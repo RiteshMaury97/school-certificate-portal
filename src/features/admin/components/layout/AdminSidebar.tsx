@@ -2,7 +2,7 @@ import { Database, HelpCircle, Settings } from "lucide-react";
 import Link from "next/link";
 
 
-import { tabIcons } from "../../config/admin-navigation";
+import { tabIcons, tabLabels } from "../../config/admin-navigation";
 import { getVisibleTabs } from "../../utils/admin-tab-access";
 
 import type { Role, Tab } from "../../types/admin.types";
@@ -47,32 +47,7 @@ export default function AdminSidebar({
       <nav className="sis-admin-sidebar-nav flex-1 px-3 py-2" aria-label="Admin sections">
         {getVisibleTabs(role).map((t) => {
           const Icon = tabIcons[t];
-          const label =
-            t === "help"
-              ? "Help & Policies"
-              : t === "dashboard"
-                ? "Overview"
-                : t === "approvals"
-                  ? "Pending Approvals"
-                  : t === "catalog"
-                    ? "Sessions & Types"
-                    : t === "rights"
-                      ? "Data Rights"
-                      : t === "admins"
-                        ? "Admin Users"
-                        : t === "breaches"
-                          ? "Breach Log"
-                          : t === "branding"
-                            ? "Site Branding"
-                            : t === "announcement"
-                              ? "Announcements"
-                              : t === "reports"
-                                ? "Record Reports"
-                                : t === "faqs"
-                                  ? "FAQ Editor"
-                                  : t === "retention"
-                                    ? "Retention Review"
-                                    : t.charAt(0).toUpperCase() + t.slice(1);
+          const label = tabLabels[t];
           return (
             <button
               key={t}
@@ -119,7 +94,7 @@ export default function AdminSidebar({
         </span>
         <span className="min-w-0 flex-1">
           <strong className="block truncate text-xs">{email || "Administrator"}</strong>
-          <small className="block text-[10px]">Super Administrator</small>
+          <small className="block text-[10px] capitalize">{role === "superadmin" ? "Super Administrator" : role}</small>
         </span>
         <button
           type="button"

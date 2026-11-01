@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
-import { createCertificatePreviewUrl } from "@/server/r2";
 import { apiError, requireRoles } from "@/server/security";
 
 import type { NextRequest} from "next/server";
@@ -12,7 +11,7 @@ export async function GET(
   context: { params: Promise<{ certificateId: string }> },
 ) {
   try {
-    await requireRoles(request, ["approver"]);
+    await requireRoles(request, ["approver", "admin"]);
     const { certificateId } = await context.params;
     const certificate = await db
       .collection("certificates")
@@ -29,11 +28,11 @@ export async function GET(
         { error: "Preview unavailable." },
         { status: 404 },
       );
-    const url = await createCertificatePreviewUrl(r2Key);
+    const mimeType = String(certificate.get("mimeType") ?? "");
     return NextResponse.json(
       {
-        url,
-        mimeType: String(certificate.get("mimeType") ?? ""),
+        url: `/api/admin/certificates/${encodeURIComponent(certificateId)}/preview-file`,
+        mimeType,
         expiresIn: 60,
       },
       {

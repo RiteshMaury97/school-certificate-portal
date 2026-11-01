@@ -7,48 +7,43 @@ import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const headers = [
+  "scholarNumber",
+  "className",
   "admissionNumber",
   "dateOfBirth",
   "studentName",
   "fatherName",
   "motherName",
   "session",
-  "certificateType",
-  "certificateNumber",
-  "issueDate",
-  "fileName",
 ];
 const sample = [
+  "SCH-2023-001",
+  "Class 10",
   "ADM-2023-001",
   "2010-04-15",
   "Rahul Kumar",
   "Amit Kumar",
   "Sunita Kumar",
   "2023-24",
-  "Transfer Certificate",
-  "TC-2024-001",
-  "2024-03-31",
-  "ADM-2023-001_transfer-certificate.pdf",
 ];
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["uploader"]);
+    await requireRoles(request, ["uploader", "admin"]);
     const format = request.nextUrl.searchParams.get("format") ?? "csv";
     if (format === "csv") {
       const csv =
         [
           headers.join(","),
           sample.map((v) => `"${v.replace(/"/g, '""')}"`).join(","),
-          "# Validation notes: studentName, fatherName, motherName and session are required.",
+          "# Required: scholarNumber, className, studentName, fatherName, motherName and session.",
           "# Use the exact spelling in school records; session format is YYYY-YY, e.g. 2023-24.",
-          "# certificateType must match a configured type; certificateNumber must be unique.",
-          "# issueDate must be YYYY-MM-DD. fileName must match the uploaded file name exactly.",
+          "# admissionNumber and dateOfBirth are optional; include them to distinguish duplicate names.",
         ].join("\r\n") + "\r\n";
       return new NextResponse(csv, {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition":
-            'attachment; filename="certificate-import-template.csv"',
+            'attachment; filename="student-import-template.csv"',
           "Cache-Control": "no-store",
         },
       });
@@ -71,34 +66,16 @@ export async function GET(request: NextRequest) {
     const notes = workbook.addWorksheet("Validation Notes");
     notes.addRows([
       ["Column", "Required", "Validation"],
-      [
-        "admissionNumber",
-        "Recommended / required for duplicate names",
-        "Stored encrypted; used only to distinguish identical name combinations.",
-      ],
-      [
-        "dateOfBirth",
-        "Recommended / required for duplicate names",
-        "YYYY-MM-DD; stored encrypted and used only to distinguish identical name combinations.",
-      ],
+      ["scholarNumber", "Required", "Unique within class and session."],
+      ["className", "Required", "Class and optional section, e.g. Class 10 A."],
+      ["admissionNumber", "Optional", "Stored encrypted; used to distinguish duplicate names."],
+      ["dateOfBirth", "Optional", "YYYY-MM-DD; stored encrypted and used to distinguish duplicate names."],
       [
         "studentName/fatherName/motherName",
         "Required for student matching",
         "Use the exact spelling in school records.",
       ],
       ["session", "Required", "YYYY-YY, e.g. 2023-24."],
-      [
-        "certificateType",
-        "Required",
-        "Must match a configured certificate type.",
-      ],
-      ["certificateNumber", "Required", "Unique certificate number."],
-      ["issueDate", "Required", "YYYY-MM-DD."],
-      [
-        "fileName",
-        "Required for file matching",
-        "Filename can follow admissionNumber_type.pdf.",
-      ],
     ]);
     notes.columns = [{ width: 28 }, { width: 24 }, { width: 90 }];
     const bytes = await workbook.xlsx.writeBuffer();
@@ -107,7 +84,7 @@ export async function GET(request: NextRequest) {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition":
-          'attachment; filename="certificate-import-template.xlsx"',
+          'attachment; filename="student-import-template.xlsx"',
         "Cache-Control": "no-store",
       },
     });

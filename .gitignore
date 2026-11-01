@@ -20,6 +20,8 @@ coverage
 playwright-report
 test-results
 reports
+!src/app/api/admin/reports/
+!src/app/api/admin/reports/route.ts
 .DS_Store
 .vercel
 .firebase

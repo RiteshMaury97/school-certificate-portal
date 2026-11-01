@@ -36,6 +36,8 @@ const formSchema = z.object({
     .min(2)
     .max(100)
     .regex(/^[\p{L}\p{M} .'-]+$/u),
+  className: z.string().trim().min(1).max(40),
+  scholarNumber: z.string().trim().min(1).max(40),
   session: z.string().regex(/^\d{4}-\d{2}$/),
   consent: z.literal(true),
 });
@@ -43,6 +45,8 @@ type FormValues = {
   studentName: string;
   fatherName: string;
   motherName: string;
+  className: string;
+  scholarNumber: string;
   session: string;
   consent: boolean;
 };
@@ -68,6 +72,8 @@ export default function FinderPage() {
     studentName: "",
     fatherName: "",
     motherName: "",
+    className: "",
+    scholarNumber: "",
     session: "",
     consent: false,
   });
@@ -112,6 +118,16 @@ export default function FinderPage() {
         : !/^[\p{L}\p{M} .'-]+$/u.test(form.motherName)
           ? "Use the name shown in school records."
           : undefined,
+    className: !form.className.trim()
+      ? "Enter the class shown in school records."
+      : form.className.length > 40 || !/^[\p{L}\p{M}\p{N} ./'-]+$/u.test(form.className)
+        ? "Use the class or section shown in school records."
+        : undefined,
+    scholarNumber: !form.scholarNumber.trim()
+      ? "Enter the scholar number shown in school records."
+      : form.scholarNumber.length > 40 || !/^[\p{L}\p{M}\p{N} /-]+$/u.test(form.scholarNumber)
+        ? "Use the scholar number shown in school records."
+        : undefined,
     session:
       form.session && !/^\d{4}-\d{2}$/.test(form.session)
         ? "Choose a valid passing session."
@@ -268,6 +284,8 @@ export default function FinderPage() {
         studentName: true,
         fatherName: true,
         motherName: true,
+        className: true,
+        scholarNumber: true,
         session: true,
       });
       setError("No record found. Check the details and try again.");
@@ -456,6 +474,8 @@ export default function FinderPage() {
                   ["studentName", "Student Name", "Enter student's full name"],
                   ["fatherName", "Father’s Name", "Enter father's full name"],
                   ["motherName", "Mother’s Name", "Enter mother's full name"],
+                  ["className", "Class", "e.g. Class 10"],
+                  ["scholarNumber", "Scholar Number", "Enter scholar number"],
                 ] as const
               ).map(([key, label, placeholder]) => (
                 <div key={key}>
@@ -475,7 +495,7 @@ export default function FinderPage() {
                     name={key}
                     autoComplete="off"
                     required
-                    maxLength={100}
+                    maxLength={key === "className" || key === "scholarNumber" ? 40 : 100}
                     value={form[key]}
                     aria-invalid={Boolean(touched[key] && fieldErrors[key])}
                     aria-describedby={`${formId}-${key}-help ${formId}-${key}-error`}
@@ -561,7 +581,7 @@ export default function FinderPage() {
                 </p>
                 {!sessionsLoading && sessions.length === 0 && !sessionsLoadError && (
                   <p className="mt-1.5 text-xs text-[var(--text-muted)]" role="status">
-                    No published sessions are currently available. Please contact the school office.
+                    No active academic sessions are available. Please contact the school office.
                   </p>
                 )}
                 {sessionsLoadError && (
@@ -580,7 +600,7 @@ export default function FinderPage() {
               </div>
             </div>
             <p id={`${formId}-help`} className="mt-4 text-xs leading-5 text-[var(--text-muted)]">
-              Use the name spelling and passing session shown in your school records.
+              Use the name spelling, class, scholar number and passing session shown in your school records.
             </p>
 
             <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
@@ -598,8 +618,8 @@ export default function FinderPage() {
                 </Link>
               </p>
               <p className="mb-3 text-sm leading-6 text-[var(--text-muted)]">
-                Privacy notice: We use the student's name, parents' names and passing session only
-                to verify and retrieve the matching school certificate. The matching certificate
+                Privacy notice: We use the student's name, parents' names, class, scholar number and
+                passing session only to verify and retrieve the matching school certificate. The matching certificate
                 file and limited certificate details are stored securely by the school. We do not
                 use these details for advertising or student profiling. You may withdraw consent or
                 request access, correction or erasure through the{" "}
@@ -774,7 +794,10 @@ export default function FinderPage() {
         )}
         {notFound && !loading && (
           <div className="mt-6">
-            <EmptyState title="No record found. Check the details and try again." />
+            <EmptyState
+              title="No matching certificate was found"
+              description="Check that the student’s name, both parent names, and passing session match the school record exactly. Only approved and published certificates appear here. If the details are correct, contact the school office to check the record or publication status."
+            />
           </div>
         )}
         {networkError && !loading && (

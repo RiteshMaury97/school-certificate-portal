@@ -7,18 +7,19 @@ type Api = <T extends Record<string, unknown> = Record<string, unknown>>(url:str
 type Props = {
  tab:Tab; api:Api; loadStudents:()=>Promise<void>; catalogKind:CatalogKind; auditAction:string; auditStart:string; auditEnd:string; role:Role; timelineStudentId:string;
  setStats:Dispatch<SetStateAction<Record<string,unknown>>>; setPending:Dispatch<SetStateAction<Cert[]>>;
- setSessionOptions:Dispatch<SetStateAction<CatalogOption[]>>; setTypeOptions:Dispatch<SetStateAction<CatalogOption[]>>; setCerts:Dispatch<SetStateAction<Cert[]>>;
+ setSessionOptions:Dispatch<SetStateAction<CatalogOption[]>>; setTypeOptions:Dispatch<SetStateAction<CatalogOption[]>>; setClassOptions:Dispatch<SetStateAction<CatalogOption[]>>; setCerts:Dispatch<SetStateAction<Cert[]>>;
  setCatalog:Dispatch<SetStateAction<CatalogOption[]>>; setLogs:Dispatch<SetStateAction<Record<string,unknown>[]>>; setRights:Dispatch<SetStateAction<Record<string,unknown>[]>>;
  setRetentionRecords:Dispatch<SetStateAction<Record<string,unknown>[]>>; setRetentionRetryJobs:Dispatch<SetStateAction<Record<string,unknown>[]>>;
  setBreaches:Dispatch<SetStateAction<Record<string,unknown>[]>>; setReports:Dispatch<SetStateAction<Record<string,unknown>[]>>; setTimeline:Dispatch<SetStateAction<Record<string,unknown>[]>>;
+ setReportsLoaded:Dispatch<SetStateAction<boolean>>; setRightsLoaded:Dispatch<SetStateAction<boolean>>; setBreachesLoaded:Dispatch<SetStateAction<boolean>>;
  setContactEnquiries:Dispatch<SetStateAction<Record<string,unknown>[]>>;
  setFaqs:Dispatch<SetStateAction<FaqItem[]>>; setAdmins:Dispatch<SetStateAction<Record<string,unknown>[]>>; setMaintenanceMode:Dispatch<SetStateAction<boolean>>;
  setRetentionYears:Dispatch<SetStateAction<string>>; setRetentionConfirmed:Dispatch<SetStateAction<boolean>>; setBackupRotationDays:Dispatch<SetStateAction<string>>;
  setBranding:Dispatch<SetStateAction<Record<string,string>>>; setAnnouncement:Dispatch<SetStateAction<AnnouncementState>>;
 };
 export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,auditStart,auditEnd,role,timelineStudentId,
- setStats,setPending,setSessionOptions,setTypeOptions,setCerts,setCatalog,setLogs,setRights,setRetentionRecords,setRetentionRetryJobs,
- setBreaches,setReports,setTimeline,setContactEnquiries,setFaqs,setAdmins,setMaintenanceMode,setRetentionYears,setRetentionConfirmed,setBackupRotationDays,setBranding,setAnnouncement}:Props) {
+ setStats,setPending,setSessionOptions,setTypeOptions,setClassOptions,setCerts,setCatalog,setLogs,setRights,setRetentionRecords,setRetentionRetryJobs,
+ setBreaches,setReports,setReportsLoaded,setRightsLoaded,setBreachesLoaded,setTimeline,setContactEnquiries,setFaqs,setAdmins,setMaintenanceMode,setRetentionYears,setRetentionConfirmed,setBackupRotationDays,setBranding,setAnnouncement}:Props) {
   const load = useCallback(async () => {
     if (tab === "dashboard") {
       const d = await api<{ stats: Record<string, unknown> }>("/api/admin/dashboard");
@@ -29,7 +30,7 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
       setPending((d.certificates ?? []).filter((x) => x.status === "pending"));
     }
     if (tab === "students") {
-      const [_, sessions, types] = await Promise.all([
+      const [_, sessions, types, classes] = await Promise.all([
         loadStudents(),
         api<{ items: { id: string; label?: string; name?: string }[] }>(
           "/api/admin/catalog/sessions",
@@ -37,9 +38,13 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
         api<{ items: { id: string; label?: string; name?: string }[] }>(
           "/api/admin/catalog/certificateTypes",
         ),
+        api<{ items: { id: string; label?: string; name?: string }[] }>(
+          "/api/admin/catalog/classes",
+        ),
       ]);
       setSessionOptions(sessions.items ?? []);
       setTypeOptions(types.items ?? []);
+      setClassOptions(classes.items ?? []);
     }
     if (tab === "certificates") {
       const [d, sessions, types] = await Promise.all([
@@ -73,8 +78,10 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
       setLogs(d.logs ?? []);
     }
     if (tab === "rights") {
+      setRightsLoaded(false);
       const d = await api<{ requests: Record<string, unknown>[] }>("/api/admin/rights?status=open");
       setRights(d.requests ?? []);
+      setRightsLoaded(true);
     }
     if (tab === "retention" && role === "superadmin") {
       const d = await api<{
@@ -85,12 +92,16 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
       setRetentionRetryJobs(d.retryJobs ?? []);
     }
     if (tab === "breaches") {
+      setBreachesLoaded(false);
       const d = await api<{ breaches: Record<string, unknown>[] }>("/api/admin/breaches");
       setBreaches(d.breaches ?? []);
+      setBreachesLoaded(true);
     }
     if (tab === "reports") {
+      setReportsLoaded(false);
       const d = await api<{ reports: Record<string, unknown>[] }>("/api/admin/reports");
       setReports(d.reports ?? []);
+      setReportsLoaded(true);
     }
     if (tab === "contacts") {
       const d = await api<{ enquiries: Record<string, unknown>[] }>("/api/admin/contact-enquiries");
@@ -138,7 +149,7 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
         ),
       }));
     }
-    if (tab === "announcement" && (role === "superadmin" || role === "approver")) {
+    if (tab === "announcement" && (role === "superadmin" || role === "approver" || role === "admin")) {
       const d = await api<{ announcement: Record<string, unknown> }>("/api/admin/announcements");
       const a = d.announcement ?? {};
       const local = (value: unknown) => {
@@ -169,6 +180,9 @@ export function useAdminData({tab,api,loadStudents,catalogKind,auditAction,audit
     role,
     timelineStudentId,
     setContactEnquiries,
+    setReportsLoaded,
+    setRightsLoaded,
+    setBreachesLoaded,
   ]);
   return load;
 }

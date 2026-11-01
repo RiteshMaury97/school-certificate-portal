@@ -12,7 +12,7 @@
 */
 @theme inline {
   --font-sans:
-    var(--font-inter), "Noto Sans Devanagari", ui-sans-serif, system-ui,
+    "Inter", "Noto Sans Devanagari", ui-sans-serif, system-ui,
     -apple-system, "Segoe UI", sans-serif;
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -683,13 +683,14 @@ body {
 
 /* SIS admin dashboard — forest green, warm gold and soft ivory */
 .sis-admin-shell { background: #f7f8f5; color: #17221d; }
-.sis-admin-sidebar { min-height: 100dvh; position: sticky; top: 0; height: 100dvh; background: #18241f; color: #f7faf7; }
+.sis-admin-sidebar { min-height: 0; position: sticky; top: 0; height: 100dvh; background: #18241f; color: #f7faf7; }
 .sis-admin-brand { min-height: 80px; color: #fff; text-decoration: none; }
 .sis-admin-brand small { color: #aebdb4; }
 .sis-admin-logo { display:grid; place-items:center; width:42px; height:42px; border-radius:12px; background:#d5ae67; color:#18241f; font-size:21px; font-weight:800; }
 .sis-admin-sidebar-divider { height:1px; background:#34463d; }
 .sis-admin-nav-label { color:#879b8e; font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-.sis-admin-sidebar-nav { overflow-y:auto; }
+.sis-admin-sidebar-nav { min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+.sis-admin-sidebar-nav::-webkit-scrollbar { display:none; }
 .sis-admin-nav-item { display:flex; width:100%; min-height:42px; align-items:center; gap:13px; margin:3px 0; padding:0 12px; border:0; border-radius:9px; background:transparent; color:#ced7d1; text-align:left; font-size:12px; font-weight:500; transition:background .16s ease,color .16s ease; }
 .sis-admin-nav-item svg { flex:none; color:#aebdb4; }
 .sis-admin-nav-item:hover { background:#24372e; color:#fff; }

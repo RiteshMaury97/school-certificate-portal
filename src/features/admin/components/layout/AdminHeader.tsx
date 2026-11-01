@@ -1,7 +1,10 @@
 import { Bell, Menu, Moon, Monitor, Sun, UserRound, X } from "lucide-react";
 
+import { tabLabels } from "../../config/admin-navigation";
+
 import type { Tab } from "../../types/admin.types";
 import type { Dispatch, SetStateAction } from "react";
+import type { MouseEventHandler } from "react";
 
 type AdminHeaderProps = {
   tab: Tab;
@@ -14,6 +17,7 @@ type AdminHeaderProps = {
   loadSessions: () => void;
   revokeAllSessions: () => void;
   logout: () => void;
+  onProfile: MouseEventHandler<HTMLButtonElement>;
 };
 
 export default function AdminHeader({
@@ -27,14 +31,15 @@ export default function AdminHeader({
   loadSessions,
   revokeAllSessions,
   logout,
+  onProfile,
 }: AdminHeaderProps) {
   return (
     <header className="sis-admin-header">
       <div className="mx-auto flex w-full items-center justify-between gap-4 px-6 py-4 lg:px-7">
         <div>
-          <p className="sis-admin-breadcrumb">Workspace <span>/</span> Administration <span>/</span> {tab === "dashboard" ? "Overview" : tab === "help" ? "Help & Policies" : tab.charAt(0).toUpperCase() + tab.slice(1)}</p>
+          <p className="sis-admin-breadcrumb">Workspace <span>/</span> Administration <span>/</span> {tabLabels[tab]}</p>
           <h1 className="text-lg font-semibold leading-tight text-[var(--text)]">
-            {tab === "dashboard" ? `Welcome back, ${email.split("@")[0] || "Administrator"}` : tab === "help" ? "Help & Policies" : tab === "catalog" ? "Sessions & Types" : tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === "dashboard" ? `Welcome back, ${email.split("@")[0] || "Administrator"}` : tabLabels[tab]}
           </h1>
           <p className="text-xs text-[var(--text-muted)]">Here’s what’s happening across your school portal today.</p>
         </div>
@@ -55,6 +60,7 @@ export default function AdminHeader({
               <span aria-hidden="true">▾</span>
             </summary>
             <div className="absolute right-0 z-50 mt-2 min-w-56 rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-2 text-[var(--text)] shadow-xl">
+              <button type="button" onClick={onProfile} className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]">My profile</button>
               <button onClick={() => { loadSessions(); }} className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]">Active sessions / recent logins</button>
               <button onClick={() => { revokeAllSessions(); }} className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-[var(--danger)] hover:bg-[var(--surface-2)]">Sign out of all devices</button>
               <button onClick={logout} className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]">Sign out</button>

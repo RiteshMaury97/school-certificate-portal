@@ -1,12 +1,15 @@
 import type { Role } from "../../types/admin.types";
 import type { Dispatch, SetStateAction } from "react";
 type Api = <T extends Record<string, unknown> = Record<string, unknown>>(url:string,init?:RequestInit)=>Promise<T>;
-type Props={role:Role;rights:Record<string,unknown>[];resolution:Record<string,string>;setResolution:Dispatch<SetStateAction<Record<string,string>>>;resolveRight:(id:string)=>Promise<void>;act:(fn:()=>Promise<void>)=>Promise<void>;api:Api;load:()=>Promise<void>;setToast:Dispatch<SetStateAction<string>>};
-export default function RightsTab({role,rights,resolution,setResolution,resolveRight,act,api,load,setToast}:Props){
+type Props={role:Role;rights:Record<string,unknown>[];loaded:boolean;resolution:Record<string,string>;setResolution:Dispatch<SetStateAction<Record<string,string>>>;resolveRight:(id:string)=>Promise<void>;act:(fn:()=>Promise<void>)=>Promise<void>;api:Api;load:()=>Promise<void>;setToast:Dispatch<SetStateAction<string>>};
+export default function RightsTab({role,rights,loaded,resolution,setResolution,resolveRight,act,api,load,setToast}:Props){
  return (
   <section className="rounded-xl border bg-[var(--surface)] p-5">
                 <h2 className="text-lg font-bold">Student / parent data-rights requests</h2>
                 <div className="mt-4 space-y-3">
+                  {loaded && rights.length === 0 && (
+                    <p className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-2)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">No data found. There are no open data-rights requests.</p>
+                  )}
                   {rights.map((r) => (
                     <article key={String(r.id)} className="rounded-lg border p-4">
                       <p className="font-semibold">

@@ -11,7 +11,9 @@ import {
 } from "@/server/certificate-index";
 import { encryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
+import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import { uploadCertificate, softDeleteR2Object } from "@/server/r2";
+import { findAcademicSessionDocument } from "@/server/academic-session";
 import {
   apiError,
   createSearchKey,
@@ -21,10 +23,12 @@ import {
 } from "@/server/security";
 import {
   encryptStudentIdentifier,
+  scholarLookupHmac,
   studentIdentifierHmac,
   studentIdentityMatches,
 } from "@/server/student-pii";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 import { retentionExpiryFromSession } from "@/shared/retention-policy";
 import { normalize, studentCreateSchema } from "@/shared/validation";
 
@@ -41,7 +45,7 @@ function slugify(value: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["uploader"]);
+    const admin = await requireRoles(request, ["uploader", "admin"]);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
     const contentLength = Number(request.headers.get("content-length") ?? 0);
@@ -60,21 +64,44 @@ export async function POST(request: NextRequest) {
       studentName: String(form.get("studentName") ?? ""),
       fatherName: String(form.get("fatherName") ?? ""),
       motherName: String(form.get("motherName") ?? ""),
-      session: String(form.get("session") ?? ""),
+      className: String(form.get("className") ?? ""),
+      scholarNumber: String(form.get("scholarNumber") ?? ""),
+      session: normalizeAcademicSession(String(form.get("session") ?? "")) ?? String(form.get("session") ?? ""),
       certificateType: String(form.get("certificateType") ?? ""),
       certificateNumber: String(form.get("certificateNumber") ?? ""),
       issuedAt: String(form.get("issuedAt") ?? ""),
     };
     const parsed = studentCreateSchema.safeParse(payload);
     const file = form.get("file");
-    if (!parsed.success || !(file instanceof File))
+    if (!parsed.success || !(file instanceof File)) {
+      const labels: Record<string, string> = {
+        studentName: "Student name",
+        fatherName: "Father name",
+        motherName: "Mother name",
+        className: "Class / section",
+        scholarNumber: "Scholar number",
+        session: "Academic session",
+        certificateType: "Certificate type",
+        certificateNumber: "Certificate number",
+        issuedAt: "Issue date",
+        dateOfBirth: "Date of birth",
+      };
+      const problems = parsed.success
+        ? []
+        : parsed.error.issues.map((issue) => {
+            const field = String(issue.path[0] ?? "Form");
+            return `${labels[field] ?? field}: ${issue.message}`;
+          });
+      if (!(file instanceof File)) problems.push("Certificate file: select a valid PDF, JPG or PNG.");
       return NextResponse.json(
         {
-          error:
-            "Complete every required field and attach a valid certificate.",
+          error: problems.length
+            ? `Please correct the following: ${problems.join("; ")}`
+            : "Complete every required field and attach a valid certificate.",
         },
         { status: 400 },
       );
+    }
     const data = parsed.data;
     const parentEmail = String(form.get("parentEmail") ?? "")
       .trim()
@@ -97,6 +124,22 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     const searchKey = createSearchKey(data);
+    const scholarLookupKey = scholarLookupHmac(
+      data.scholarNumber,
+      data.className,
+      data.session,
+    );
+    const scholarMatches = await db
+      .collection("students")
+      .where("scholarLookupKey", "==", scholarLookupKey)
+      .get();
+    if (
+      scholarMatches.docs.some((document) => document.get("searchKey") !== searchKey)
+    )
+      return NextResponse.json(
+        { error: "That scholar number is already assigned in this class and session." },
+        { status: 409 },
+      );
     const matching = await db
       .collection("students")
       .where("searchKey", "==", searchKey)
@@ -153,7 +196,7 @@ export async function POST(request: NextRequest) {
         { error: "Invalid certificate type." },
         { status: 400 },
       );
-    const sessionDoc = await db.collection("sessions").doc(data.session).get();
+    const sessionDoc = await findAcademicSessionDocument(data.session);
     const typeDoc = await db.collection("certificateTypes").doc(typeSlug).get();
     if (
       !sessionDoc.exists ||
@@ -235,6 +278,9 @@ export async function POST(request: NextRequest) {
           studentName: data.studentName,
           fatherName: data.fatherName,
           motherName: data.motherName,
+          className: data.className,
+          scholarNumber: encryptStudentIdentifier(data.scholarNumber),
+          scholarLookupKey,
           session: data.session,
           searchKey,
           retentionExpiresAt,
@@ -268,6 +314,9 @@ export async function POST(request: NextRequest) {
           studentName: data.studentName,
           fatherName: data.fatherName,
           motherName: data.motherName,
+          className: data.className,
+          scholarNumber: encryptStudentIdentifier(data.scholarNumber),
+          scholarLookupKey,
           ...(admissionNumber ? { admissionNo: FieldValue.delete() } : {}),
           updatedAt: now,
           ...(dateOfBirth
@@ -342,6 +391,16 @@ export async function POST(request: NextRequest) {
           );
         }
         throw error;
+      }
+      if (admin.role === "admin" || admin.role === "superadmin") {
+        await publishCertificateWithoutReview(certificateRef.id, admin.uid);
+        await writeAuditLog(
+          request,
+          admin.uid,
+          "certificate.auto_published",
+          certificateRef.id,
+          studentRef.id,
+        );
       }
       await writeAuditLog(
         request,

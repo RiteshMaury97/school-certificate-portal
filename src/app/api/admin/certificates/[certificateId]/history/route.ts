@@ -11,7 +11,7 @@ export async function GET(
   context: { params: Promise<{ certificateId: string }> },
 ) {
   try {
-    await requireRoles(request, ["approver"]);
+    await requireRoles(request, ["approver", "admin"]);
     const { certificateId } = await context.params;
     const snap = await db
       .collection("auditLogs")

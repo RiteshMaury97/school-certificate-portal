@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 
-export type AdminRole = "uploader" | "approver" | "superadmin";
+export type AdminRole = "uploader" | "approver" | "admin" | "superadmin";
 export type AdminIdentity = { uid: string; email: string; role: AdminRole };
 
 /**

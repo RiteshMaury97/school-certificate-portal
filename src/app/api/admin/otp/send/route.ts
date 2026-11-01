@@ -51,9 +51,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const storedEmail = adminOtpRecipient({ email: admin.get("email") });
     if (
       !decoded.email_verified || !email || !admin.exists ||
+      admin.get("mustChangePassword") === true || decoded.mustChangePassword === true ||
       !["active", "invited"].includes(String(admin.get("status"))) ||
       storedEmail !== email ||
-      !["uploader", "approver", "superadmin"].includes(String(role)) ||
+      !["uploader", "approver", "admin", "superadmin"].includes(String(role)) ||
       decoded.role !== role
     ) return NextResponse.json({ error: "Unable to send verification code." }, { status: 403 });
 

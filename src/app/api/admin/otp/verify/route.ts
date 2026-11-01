@@ -39,9 +39,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const role = admin.get("role");
     if (
       !decoded.email_verified || !email || !admin.exists ||
+      admin.get("mustChangePassword") === true || decoded.mustChangePassword === true ||
       !["active", "invited"].includes(String(admin.get("status"))) ||
       String(admin.get("email") ?? "").trim().toLowerCase() !== email ||
-      !["uploader", "approver", "superadmin"].includes(String(role)) ||
+      !["uploader", "approver", "admin", "superadmin"].includes(String(role)) ||
       decoded.role !== role
     ) return NextResponse.json({ error: "The code is invalid or expired." }, { status: 403 });
     if (await isAdminOtpLocked(email)) {

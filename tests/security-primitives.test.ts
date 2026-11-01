@@ -39,12 +39,16 @@ describe("student lookup normalization", () => {
       studentName: "José  Maurya",
       fatherName: "A. Maurya",
       motherName: "Sita",
+      className: "Class 10",
+      scholarNumber: "SCH-001",
       session: "2026-27",
     };
     const b = {
       studentName: " JOSE Maurya ",
       fatherName: "A.   Maurya",
       motherName: "Sita",
+      className: " class 10 ",
+      scholarNumber: "sch-001",
       session: "2026-27",
     };
     expect(createSearchKey(a, secret)).toBe(createSearchKey(b, secret));
@@ -55,6 +59,8 @@ describe("student lookup normalization", () => {
         studentName: "A Student",
         fatherName: "Parent",
         motherName: "Parent",
+        className: "Class 10",
+        scholarNumber: "SCH-001",
         session: "2026-27",
       },
       secret,

@@ -17,7 +17,7 @@ function serializeDate(value: unknown): string {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["approver"]);
+    await requireRoles(request, ["approver", "admin"]);
     const snapshot = await db.collection("contactEnquiries").orderBy("createdAt", "desc").limit(200).get();
     return NextResponse.json(
       { enquiries: snapshot.docs.map((doc) => {
@@ -44,7 +44,7 @@ const updateSchema = z.object({
 
 export async function PATCH(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["approver"]);
+    const admin = await requireRoles(request, ["approver", "admin"]);
     const parsed = updateSchema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json({ error: "Provide a valid enquiry, status and staff note." }, { status: 400 });

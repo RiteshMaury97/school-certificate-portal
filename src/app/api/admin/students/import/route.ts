@@ -10,6 +10,7 @@ import {
 } from "@/server/security";
 import {
   encryptStudentIdentifier,
+  scholarLookupHmac,
   studentIdentifierHmac,
   studentIdentityMatches,
 } from "@/server/student-pii";
@@ -46,7 +47,7 @@ function csvRows(text: string): string[][] {
 }
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["uploader"]);
+    const admin = await requireRoles(request, ["uploader", "admin"]);
     const form = await request.formData();
     const file = form.get("file");
     const action = String(form.get("action") ?? "preview");
@@ -62,11 +63,11 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     const headers = rows[0]!.map((v) => v.toLowerCase().replace(/\s+/g, ""));
-    const required = ["studentname", "fathername", "mothername", "session"];
+    const required = ["studentname", "fathername", "mothername", "classname", "scholarnumber", "session"];
     if (required.some((k) => !headers.includes(k)))
       return NextResponse.json(
         {
-          error: "Required columns: studentName,fatherName,motherName,session",
+          error: "Required columns: studentName,fatherName,motherName,className,scholarNumber,session",
         },
         { status: 400 },
       );
@@ -87,6 +88,8 @@ export async function POST(request: NextRequest) {
             studentName: item.studentname,
             fatherName: item.fathername,
             motherName: item.mothername,
+            className: item.classname,
+            scholarNumber: item.scholarnumber,
             session: item.session,
           });
         if (!parsed.success)
@@ -96,9 +99,18 @@ export async function POST(request: NextRequest) {
             error: parsed.error.issues.map((i) => i.message).join("; "),
           };
         const key = createSearchKey(parsed.data);
+        const scholarKey = scholarLookupHmac(
+          parsed.data.scholarNumber,
+          parsed.data.className,
+          parsed.data.session,
+        );
         const existing = await db
           .collection("students")
           .where("searchKey", "==", key)
+          .get();
+        const scholarMatches = await db
+          .collection("students")
+          .where("scholarLookupKey", "==", scholarKey)
           .get();
         const hasDisambiguator = Boolean(
           parsed.data.dateOfBirth ||
@@ -114,7 +126,9 @@ export async function POST(request: NextRequest) {
           row: index + 2,
           data: parsed.data,
           error:
-            !existing.empty && (!hasDisambiguator || existingNeedsIdentity)
+            scholarMatches.docs.some((doc) => doc.get("searchKey") !== key)
+              ? "Scholar number is already assigned to a different student in this class and session."
+              : !existing.empty && (!hasDisambiguator || existingNeedsIdentity)
               ? "Duplicate name combination detected: add a date of birth or admission number so students can be told apart."
               : null,
         };
@@ -140,6 +154,22 @@ export async function POST(request: NextRequest) {
             row.error =
               "Duplicate name combination detected: add a date of birth or admission number so students can be told apart.";
         }
+    const scholarGroups = new Map<string, typeof preview>();
+    for (const row of preview) {
+      if (!row.data) continue;
+      const key = scholarLookupHmac(
+        row.data.scholarNumber,
+        row.data.className,
+        row.data.session,
+      );
+      const group = scholarGroups.get(key) ?? [];
+      group.push(row);
+      scholarGroups.set(key, group);
+    }
+    for (const group of scholarGroups.values())
+      if (group.length > 1)
+        for (const row of group)
+          row.error = "Scholar number is repeated in this class and session.";
     const errors = preview.filter((r) => r.error);
     if (action !== "commit")
       return NextResponse.json(
@@ -176,10 +206,23 @@ export async function POST(request: NextRequest) {
       if (!item.data) continue;
       const data = item.data;
       const key = createSearchKey(data);
+      const scholarKey = scholarLookupHmac(
+        data.scholarNumber,
+        data.className,
+        data.session,
+      );
       const matches = await db
         .collection("students")
         .where("searchKey", "==", key)
         .get();
+      const scholarMatches = await db
+        .collection("students")
+        .where("scholarLookupKey", "==", scholarKey)
+        .get();
+      if (scholarMatches.docs.some((doc) => doc.get("searchKey") !== key))
+        throw new Error(
+          `Scholar number on CSV row ${item.row} is already assigned in this class and session.`,
+        );
       const dob = data.dateOfBirth || "";
       const admission = data.admissionNumber || data.admissionNo || "";
       const dobKey = dob ? studentIdentifierHmac(dob) : "";
@@ -213,6 +256,9 @@ export async function POST(request: NextRequest) {
         studentName: data.studentName,
         fatherName: data.fatherName,
         motherName: data.motherName,
+        className: data.className,
+        scholarNumber: encryptStudentIdentifier(data.scholarNumber),
+        scholarLookupKey: scholarKey,
         session: data.session,
         searchKey: key,
         retentionExpiresAt,

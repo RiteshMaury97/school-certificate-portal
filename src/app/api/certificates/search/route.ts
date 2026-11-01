@@ -94,6 +94,9 @@ async function audit(
     | "failed"
     | "success"
     | "no_match"
+    | "no_certificates"
+    | "turnstile_failed"
+    | "internal_error"
     | "invalid_request"
     | "rate_limited",
 ): Promise<void> {
@@ -117,22 +120,33 @@ async function retrieveStudent(
     process.env.PRIVACY_POLICY_VERSION ?? "2026-10",
     student.id,
   ).catch(() => {});
+  // Keep this to a single-field query. A multi-field filter plus orderBy
+  // requires a deployed composite index; if that index is missing Firestore
+  // throws and the public privacy-safe response looks like a false no-match.
   const certificateSnapshot = await db
     .collection("certificates")
     .where("studentId", "==", student.id)
-    .where("session", "==", session)
-    .where("status", "==", "published")
-    .orderBy("createdAt", "desc")
     .get();
-  const active = certificateSnapshot.docs.filter(
-    (document) =>
-      document.get("status") === "published" &&
-      document.get("published") !== false,
-  );
+  const active = certificateSnapshot.docs
+    .filter(
+      (document) =>
+        document.get("session") === session &&
+        document.get("status") === "published" &&
+        document.get("published") !== false,
+    )
+    .sort((left, right) => {
+      const leftCreated = left.get("createdAt");
+      const rightCreated = right.get("createdAt");
+      const leftTime =
+        typeof leftCreated?.toMillis === "function" ? leftCreated.toMillis() : 0;
+      const rightTime =
+        typeof rightCreated?.toMillis === "function" ? rightCreated.toMillis() : 0;
+      return rightTime - leftTime;
+    });
   if (active.length === 0) {
     await recordLookupMiss(request).catch(() => { console.error("Search miss counter failed"); },
     );
-    await audit(request, "no_match");
+    await audit(request, "no_certificates");
     await delayFailedLookup();
     return genericResponse();
   }
@@ -167,6 +181,7 @@ async function retrieveStudent(
   return noStoreJson({
     found: true,
     studentName: String(student.get("studentName")),
+    className: String(student.get("className") ?? ""),
     session,
     accessToken,
     tokenExpiresIn: 300,
@@ -284,7 +299,7 @@ export async function POST(request: NextRequest) {
     }
     const remoteIp = request.headers.get("cf-connecting-ip") ?? null;
     if (!(await verifyTurnstile(input.turnstileToken, remoteIp))) {
-      await audit(request, "failed");
+      await audit(request, "turnstile_failed");
       await delayFailedLookup();
       return genericResponse();
     }
@@ -329,9 +344,15 @@ export async function POST(request: NextRequest) {
       return genericResponse();
     }
     return retrieveStudent(request, studentSnapshot.docs[0]!, input.session);
-  } catch {
-    console.error("Certificate search request failed");
-    await audit(request, "failed");
+  } catch (error) {
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String(error.code)
+        : error instanceof Error
+          ? error.name
+          : "unknown";
+    console.error("[certificate.search] internal failure", { code });
+    await audit(request, "internal_error");
     await delayFailedLookup();
     return genericResponse();
   }

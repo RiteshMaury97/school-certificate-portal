@@ -18,6 +18,7 @@ export function useCertificateIntake({ api, act, setToast, tab, load }: Props) {
   const [students, setStudents] = useState<Student[]>([]);
   const [sessionOptions, setSessionOptions] = useState<CatalogOption[]>([]);
   const [typeOptions, setTypeOptions] = useState<CatalogOption[]>([]);
+  const [classOptions, setClassOptions] = useState<CatalogOption[]>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [form, setForm] = useState<StudentFormState>(createDefaultStudentForm());
@@ -28,17 +29,32 @@ export function useCertificateIntake({ api, act, setToast, tab, load }: Props) {
   const [duplicateHashWarning, setDuplicateHashWarning] = useState("");
   const [notify, setNotify] = useState<NotifyState>(createDefaultNotify());
   const loadStudents = useCallback(async () => {
-    const d = await api<{ students: Student[] }>("/api/admin/students/list");
-    setStudents(d.students ?? []);
+    const all: Student[] = [];
+    let cursor = "";
+    do {
+      const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+      const page = await api<{ students: Student[]; hasMore?: boolean; nextCursor?: string | null }>(`/api/admin/students/list${query}`);
+      all.push(...(page.students ?? []));
+      cursor = page.hasMore && page.nextCursor ? page.nextCursor : "";
+    } while (cursor);
+    setStudents(all);
   }, [api]);
   useEffect(() => {
     if (tab === "certificates" && !selectedStudent && students.length)
       setSelectedStudent(students[0]!.id);
   }, [tab, selectedStudent, students]);
+  useEffect(() => {
+    if (tab !== "certificates" || !selectedStudent) return;
+    const studentSession = students.find((student) => student.id === selectedStudent)?.session;
+    if (studentSession)
+      setForm((current) => current.session === studentSession
+        ? current
+        : { ...current, session: studentSession });
+  }, [tab, selectedStudent, students, setForm]);
   const filtered = useMemo(
     () =>
       students.filter((s) =>
-        [s.admissionNo, s.studentName, s.fatherName, s.motherName, s.session]
+        [s.admissionNo, s.scholarNumber, s.studentName, s.fatherName, s.motherName, s.className, s.session]
           .join(" ")
           .toLowerCase()
           .includes(search.toLowerCase()),
@@ -82,6 +98,8 @@ export function useCertificateIntake({ api, act, setToast, tab, load }: Props) {
         studentName: "",
         fatherName: "",
         motherName: "",
+        className: "",
+        scholarNumber: "",
         session: "",
         certificateType: "",
         certificateNumber: "",
@@ -144,7 +162,7 @@ export function useCertificateIntake({ api, act, setToast, tab, load }: Props) {
     });
   }
   return {
-    students, setStudents, sessionOptions, setSessionOptions, typeOptions, setTypeOptions,
+    students, setStudents, sessionOptions, setSessionOptions, typeOptions, setTypeOptions, classOptions, setClassOptions,
     search, setSearch, page, setPage, form, setForm, selectedStudent, setSelectedStudent, files, setFiles,
     duplicateHashAcknowledged, setDuplicateHashAcknowledged, duplicateHashReason, setDuplicateHashReason,
     duplicateHashWarning, setDuplicateHashWarning, notify, setNotify, loadStudents, filtered, visible,

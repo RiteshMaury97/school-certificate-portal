@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { appCheckHeaders, auth } from "@/lib/firebase-client";
 
 import { describeSignInError, errorCode, isBadCredentials, safeNextPath } from "./auth-errors";
-export type Step = "credentials" | "verify-email" | "email-code";
+export type Step = "credentials" | "verify-email" | "change-password" | "email-code";
 const LOCK_MESSAGE = "This account is temporarily locked after repeated failed sign-ins. Try again in 15 minutes.";
 function maskEmail(value: string): string { return value.replace(/^(.).+(@.+)$/, "$1***$2"); }
 function message(value: unknown): string | undefined { return typeof value === "object" && value !== null && "error" in value && typeof value.error === "string" ? value.error : undefined; }
@@ -44,6 +44,12 @@ export function useAdminSignIn() {
       return;
     }
     const idToken = await user.getIdToken();
+    const tokenResult = await user.getIdTokenResult();
+    if (tokenResult.claims.mustChangePassword === true) {
+      setStep("change-password");
+      setNotice("Choose a personal password to replace your temporary password.");
+      return;
+    }
     const preflight = await fetch("/api/admin/preflight", {
       method: "POST",
       headers: { Authorization: `Bearer ${idToken}`, ...(await appCheckHeaders()) },
@@ -112,7 +118,21 @@ export function useAdminSignIn() {
     if (!response.ok) throw new Error(message(sessionData) ?? "Administrator access denied.");
     await signOut(auth); router.replace(safeNextPath(params.get("next")));
   });
+  const changeTemporaryPassword = (newPassword: string) => run(async () => {
+    if (!pendingUser) throw new Error("Your sign-in session expired. Sign in again.");
+    const idToken = await pendingUser.getIdToken();
+    const response = await fetch("/api/admin/credentials/change-temporary-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}`, ...(await appCheckHeaders()) },
+      body: JSON.stringify({ newPassword }),
+      cache: "no-store",
+    });
+    const data: unknown = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(message(data) ?? "Unable to update your password.");
+    await signOut(auth);
+    reset("Your password has been changed. Sign in again with your new password to receive the verification code.");
+  });
   const requestPasswordReset = async (typedEmail: string) => { setResetBusy(true); try { await requestJson("/api/admin/password-reset", { email: typedEmail.trim() }); } catch { /* Keep account discovery impossible. */ } finally { setNotice("If the account is eligible, password reset instructions will be sent to the registered email address."); setResetBusy(false); } };
   const cancel = async () => { await signOut(auth).catch(() => {}); reset(); };
-  return { step, email, busy, resetBusy, error, notice, pendingEmail: pendingUser?.email ?? email, resendAfterSeconds, continueAfterEmailVerification, resendCode, submitCredentials, signInWithGoogle, verifyCode, cancel, requestPasswordReset };
+  return { step, email, busy, resetBusy, error, notice, pendingEmail: pendingUser?.email ?? email, resendAfterSeconds, continueAfterEmailVerification, resendCode, submitCredentials, signInWithGoogle, verifyCode, changeTemporaryPassword, cancel, requestPasswordReset };
 }

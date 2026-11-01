@@ -13,9 +13,12 @@ import {
   decryptCertificateNumber,
 } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
+import { publishCertificateWithoutReview } from "@/server/certificate-auto-publish";
 import { uploadCertificate, certificateTypeSlug } from "@/server/r2";
 import { softDeleteR2Object } from "@/server/r2";
+import { findAcademicSessionDocument } from "@/server/academic-session";
 import { requireRoles, writeAuditLog, apiError } from "@/server/security";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
 import { certificateUploadMetadataSchema } from "@/shared/validation";
 
@@ -26,7 +29,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["uploader", "approver"]);
+    await requireRoles(request, ["uploader", "approver", "admin"]);
     const studentId = request.nextUrl.searchParams.get("studentId");
     const status = request.nextUrl.searchParams.get("status");
     const collection = db.collection("certificates");
@@ -105,11 +108,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["uploader"]);
+    const admin = await requireRoles(request, ["uploader", "admin"]);
     const form = await request.formData();
     const parsed = certificateUploadMetadataSchema.safeParse({
       studentId: String(form.get("studentId") ?? ""),
-      session: String(form.get("session") ?? ""),
+      session:
+        normalizeAcademicSession(String(form.get("session") ?? "")) ??
+        String(form.get("session") ?? ""),
       type: String(form.get("certificateType") ?? ""),
       certificateNumber: String(form.get("certificateNumber") ?? ""),
       issueDate: String(form.get("issuedAt") ?? ""),
@@ -127,8 +132,16 @@ export async function POST(request: NextRequest) {
         { error: "Student not found." },
         { status: 404 },
       );
+    if (
+      normalizeAcademicSession(String(student.get("session") ?? "")) !==
+      normalizeAcademicSession(session)
+    )
+      return NextResponse.json(
+        { error: "Certificate session must match the student's passing session." },
+        { status: 400 },
+      );
     const [sessionDoc, typeDoc] = await Promise.all([
-      db.collection("sessions").doc(session).get(),
+      findAcademicSessionDocument(session),
       db.collection("certificateTypes").doc(certificateTypeSlug(type)).get(),
     ]);
     if (
@@ -233,6 +246,16 @@ export async function POST(request: NextRequest) {
       }
       console.error("Certificate metadata persistence failed");
       throw error;
+    }
+    if (admin.role === "admin" || admin.role === "superadmin") {
+      await publishCertificateWithoutReview(ref.id, admin.uid);
+      await writeAuditLog(
+        request,
+        admin.uid,
+        "certificate.auto_published",
+        ref.id,
+        studentId,
+      );
     }
     await writeAuditLog(
       request,

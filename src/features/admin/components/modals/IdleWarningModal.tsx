@@ -16,7 +16,7 @@ export default function IdleWarningModal({ onLogout, onStaySignedIn }: IdleWarni
           Session expiring soon
         </h2>
         <p className="mt-2 text-sm">
-          You have been inactive for 13 minutes. You will be signed out after 15 minutes of
+          You have been inactive for nearly 6 hours. You will be signed out after 6 hours of
           inactivity.
         </p>
         <div className="mt-5 flex justify-end gap-3">

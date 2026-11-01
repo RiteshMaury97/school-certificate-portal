@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowUpRight, Check, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
-import { EmailCodeStep, VerifyEmailStep } from "./CodeSteps";
+import { ChangeTemporaryPasswordStep, EmailCodeStep, VerifyEmailStep } from "./CodeSteps";
 import CredentialsStep from "./CredentialsStep";
 
 import type { useAdminSignIn } from "./useAdminSignIn";
@@ -39,9 +39,9 @@ export default function AdminAuthSignInPanel({ settings, flow }: Props) {
         </header>
 
         <div className="rounded-2xl border border-[#e1e8e3] bg-white p-5 shadow-[0_18px_50px_-35px_rgba(20,37,30,0.35)] sm:p-7">
-          <h2 className="text-base font-semibold">{flow.step === "credentials" ? "Administrator sign in" : "Verify your account"}</h2>
+          <h2 className="text-base font-semibold">{flow.step === "credentials" ? "Administrator sign in" : flow.step === "change-password" ? "Create your password" : "Verify your account"}</h2>
           <p className="mt-1 text-xs leading-5 text-[#87938c]">
-            {flow.step === "credentials" ? "Use your authorized school account credentials." : "Complete the secure verification step to continue."}
+            {flow.step === "credentials" ? "Use your authorized school account credentials." : flow.step === "change-password" ? "Replace your temporary password before account verification." : "Complete the secure verification step to continue."}
           </p>
           <div key={flow.step} className="page-enter">
             {flow.step === "credentials" && (
@@ -51,6 +51,13 @@ export default function AdminAuthSignInPanel({ settings, flow }: Props) {
                 onSubmit={(email, password) => void flow.submitCredentials(email, password)}
                 onGoogle={() => void flow.signInWithGoogle()}
                 onReset={(email) => void flow.requestPasswordReset(email)}
+              />
+            )}
+            {flow.step === "change-password" && (
+              <ChangeTemporaryPasswordStep
+                busy={flow.busy}
+                onSubmit={(password) => { void flow.changeTemporaryPassword(password); }}
+                onCancel={() => { void flow.cancel(); }}
               />
             )}
             {flow.step === "email-code" && (

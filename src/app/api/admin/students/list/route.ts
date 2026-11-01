@@ -9,12 +9,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["uploader", "approver"]);
-    const snapshot = await db
-      .collection("students")
-      .orderBy("createdAt", "desc")
-      .limit(100)
-      .get();
+    await requireRoles(request, ["uploader", "approver", "admin"]);
+    const collection = db.collection("students");
+    const cursorId = request.nextUrl.searchParams.get("cursor");
+    let query = collection.orderBy("createdAt", "desc").limit(100);
+    if (cursorId) {
+      const cursor = await collection.doc(cursorId).get();
+      if (!cursor.exists)
+        return NextResponse.json({ error: "Invalid student cursor." }, { status: 400 });
+      query = query.startAfter(cursor);
+    }
+    const snapshot = await query.get();
     const students = await Promise.all(
       snapshot.docs.map(async (doc) => {
         const certs = await db
@@ -23,8 +28,10 @@ export async function GET(request: NextRequest) {
           .get();
         let admissionNo = String(doc.get("admissionNo") ?? "");
         let dateOfBirth = "";
+        let scholarNumber = "";
         const encryptedAdmission = doc.get("admissionNumber");
         const encryptedDob = doc.get("dateOfBirth");
+        const encryptedScholarNumber = doc.get("scholarNumber");
         if (typeof encryptedAdmission === "string") {
           try {
             admissionNo = decryptStudentIdentifier(encryptedAdmission);
@@ -39,10 +46,19 @@ export async function GET(request: NextRequest) {
             dateOfBirth = "";
           }
         }
+        if (typeof encryptedScholarNumber === "string") {
+          try {
+            scholarNumber = decryptStudentIdentifier(encryptedScholarNumber);
+          } catch {
+            scholarNumber = "";
+          }
+        }
         return {
           id: doc.id,
           admissionNo,
           dateOfBirth,
+          scholarNumber,
+          className: String(doc.get("className") ?? ""),
           studentName: doc.get("studentName"),
           fatherName: doc.get("fatherName"),
           motherName: doc.get("motherName"),
@@ -52,7 +68,11 @@ export async function GET(request: NextRequest) {
       }),
     );
     return NextResponse.json(
-      { students, hasMore: snapshot.size === 100 },
+      {
+        students,
+        hasMore: snapshot.size === 100,
+        nextCursor: snapshot.size === 100 ? snapshot.docs.at(-1)?.id ?? null : null,
+      },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {

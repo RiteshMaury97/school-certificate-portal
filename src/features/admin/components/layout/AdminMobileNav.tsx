@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 
-import { tabIcons } from "../../config/admin-navigation";
+import { tabIcons, tabLabels } from "../../config/admin-navigation";
 import { getVisibleTabs } from "../../utils/admin-tab-access";
 
 import type { Role, Tab } from "../../types/admin.types";
@@ -9,8 +9,8 @@ import type { Dispatch, SetStateAction } from "react";
 type AdminMobileNavProps = {
   role: Role;
   tab: Tab;
-  setTab: Dispatch<SetStateAction<Tab>>;
-  setPage: Dispatch<SetStateAction<number>>;
+  setTab: (tab: Tab) => void;
+  setPage: (page: number) => void;
   mobileAdminNav: boolean;
   setMobileAdminNav: Dispatch<SetStateAction<boolean>>;
 };
@@ -34,40 +34,14 @@ export default function AdminMobileNav({
               setPage(0);
             }}
             className={`flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold capitalize focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] ${tab === t ? "bg-[var(--primary)] text-[var(--on-primary)]" : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"}`}
-            aria-label={t === "help" ? "Help and policies" : t}
-            title={t === "help" ? "Help and policies" : t}
+            aria-label={tabLabels[t]}
+            title={tabLabels[t]}
           >
             {(() => {
               const Icon = tabIcons[t];
               return <Icon aria-hidden="true" size={17} className="shrink-0" />;
             })()}
-            <span className="hidden text-sm capitalize lg:inline">
-              {t === "help"
-                ? "Help & policies"
-                : t === "dashboard"
-                  ? "Overview"
-                  : t === "approvals"
-                    ? "Pending approvals"
-                    : t === "catalog"
-                      ? "Sessions & Types"
-                      : t === "rights"
-                        ? "Data rights"
-                        : t === "admins"
-                          ? "Admin users"
-                          : t === "breaches"
-                            ? "Breach log"
-                            : t === "branding"
-                              ? "Site branding"
-                              : t === "announcement"
-                                ? "Announcement"
-                                : t === "reports"
-                                  ? "Record reports"
-                                  : t === "faqs"
-                                    ? "FAQ editor"
-                                    : t === "retention"
-                                      ? "Retention review"
-                                      : t}
-            </span>
+            <span className="hidden text-sm lg:inline">{tabLabels[t]}</span>
           </button>
         ))}
       </nav>
@@ -107,15 +81,7 @@ export default function AdminMobileNav({
                   className={`flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold capitalize ${tab === item ? "bg-[var(--primary)] text-[var(--on-primary)]" : "text-[var(--text)] hover:bg-[var(--surface-2)]"}`}
                 >
                   <Icon size={18} />
-                  {item === "help"
-                    ? "Help & policies"
-                    : item === "dashboard"
-                      ? "Overview"
-                      : item === "catalog"
-                        ? "Sessions & Types"
-                        : item === "rights"
-                          ? "Data rights"
-                          : item}
+                  {tabLabels[item]}
                 </button>
               );
             })}

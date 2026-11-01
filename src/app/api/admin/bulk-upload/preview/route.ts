@@ -8,6 +8,7 @@ import {
   createCertificateNumberHash,
 } from "@/server/security";
 import { studentIdentifierHmac } from "@/server/student-pii";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
@@ -47,7 +48,7 @@ function parseCsv(text: string): string[][] {
 }
 export async function POST(request: NextRequest) {
   try {
-    await requireRoles(request, ["uploader"]);
+    await requireRoles(request, ["uploader", "admin"]);
     const form = await request.formData();
     const csv = form.get("mappingCsv");
     if (!(csv instanceof File) || csv.size > 2 * 1024 * 1024)
@@ -164,6 +165,11 @@ export async function POST(request: NextRequest) {
           errors.push(
             "Student/admission number did not match exactly one student.",
           );
+        else if (
+          normalizeAcademicSession(String(student.get("session") ?? "")) !==
+          normalizeAcademicSession(session)
+        )
+          errors.push("Certificate session must match the student's passing session.");
         if (/^\d{4}-\d{2}$/.test(session)) {
           const sessionDoc = await db.collection("sessions").doc(session).get();
           if (!sessionDoc.exists || sessionDoc.get("isActive") === false)

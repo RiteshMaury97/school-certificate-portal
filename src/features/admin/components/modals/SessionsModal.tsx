@@ -1,7 +1,9 @@
 type SessionsModalProps = {
   sessions: Record<string, unknown>[];
   recentLogins: Record<string, unknown>[];
+  error: string;
   onClose: () => void;
+  onRetry: () => void;
   onRevokeSession: (sessionId: string) => void;
   onRevokeAll: () => void;
 };
@@ -9,7 +11,9 @@ type SessionsModalProps = {
 export default function SessionsModal({
   sessions,
   recentLogins,
+  error,
   onClose,
+  onRetry,
   onRevokeSession,
   onRevokeAll,
 }: SessionsModalProps) {
@@ -20,6 +24,12 @@ export default function SessionsModal({
           <h2 id="sessions-title" className="text-xl font-bold">Active sessions / recent logins</h2>
           <button onClick={onClose} aria-label="Close">✕</button>
         </div>
+        {error && (
+          <div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--danger)]/30 bg-[var(--surface-2)] p-3 text-sm">
+            <span className="text-[var(--danger)]">{error}</span>
+            <button type="button" onClick={onRetry} className="min-h-9 rounded-lg border border-[var(--border)] px-3 font-semibold text-[var(--text)]">Retry</button>
+          </div>
+        )}
         <div className="mt-4 space-y-3">
           {sessions.map((session, i) => (
             <div key={String(session.sessionId ?? i)} className="flex items-center justify-between gap-3 rounded-lg border p-3">

@@ -1,4 +1,4 @@
-export type AdminRole = "uploader" | "approver" | "superadmin";
+export type AdminRole = "uploader" | "approver" | "admin" | "superadmin";
 export function hasAnyRole(
   role: AdminRole,
   allowed: readonly AdminRole[],

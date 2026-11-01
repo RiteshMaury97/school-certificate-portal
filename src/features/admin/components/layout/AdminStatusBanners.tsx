@@ -26,7 +26,7 @@ export default function AdminStatusBanners({
       {error && (
         <div className="mb-4">
           <ErrorState
-            title="Admin data could not be loaded"
+            title="Admin request could not be completed"
             description={error}
             onRetry={onRetry}
           />

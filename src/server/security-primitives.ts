@@ -23,6 +23,8 @@ export function createSearchKey(
     studentName: string;
     fatherName: string;
     motherName: string;
+    className: string;
+    scholarNumber: string;
     session: string;
   },
   secret: string,
@@ -33,6 +35,8 @@ export function createSearchKey(
     normalizeForLookup(input.studentName),
     normalizeForLookup(input.fatherName),
     normalizeForLookup(input.motherName),
+    normalizeForLookup(input.className),
+    normalizeForLookup(input.scholarNumber),
     input.session.trim(),
   ].join("|");
   return createHmac("sha256", secret).update(canonical, "utf8").digest("hex");

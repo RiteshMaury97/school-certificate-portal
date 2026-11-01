@@ -1,40 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import AdminsTab from "./components/admins/AdminsTab";
-import ApprovalsTab from "./components/approvals/ApprovalsTab";
-import AuditTab from "./components/audit/AuditTab";
-import TimelineTab from "./components/audit/TimelineTab";
-import DashboardOverview from "./components/dashboard/DashboardOverview";
-import HelpPolicies from "./components/help/HelpPolicies";
-import AdminLayout from "./components/layout/AdminLayout";
-import AdminSidebar from "./components/layout/AdminSidebar";
-import AdminHeader from "./components/layout/AdminHeader";
-import AdminMobileNav from "./components/layout/AdminMobileNav";
-import AdminStatusBanners from "./components/layout/AdminStatusBanners";
-import CatalogTab from "./components/catalog/CatalogTab";
-import IdleWarningModal from "./components/modals/IdleWarningModal";
-import SessionsModal from "./components/modals/SessionsModal";
-import ReportsTab from "./components/compliance/ReportsTab";
-import ContactEnquiriesTab from "./components/compliance/ContactEnquiriesTab";
-import RightsTab from "./components/compliance/RightsTab";
-import BreachesTab from "./components/compliance/BreachesTab";
-import RetentionTab from "./components/compliance/RetentionTab";
-import AnnouncementTab from "./components/site/AnnouncementTab";
-import BrandingTab from "./components/site/BrandingTab";
-import FaqsTab from "./components/site/FaqsTab";
-import CertificatesTab from "./components/certificates/CertificatesTab";
-import StudentCreatePanel from "./components/students/StudentCreatePanel";
-import StudentsList from "./components/students/StudentsList";
-import { useAdminData } from "./hooks/useAdminData";
-import { useAdminSessionLifecycle } from "./hooks/useAdminSessionLifecycle";
-import { useApprovals } from "./hooks/useApprovals";
-import { useBulkImport } from "./hooks/useBulkImport";
-import { useCertificateIntake } from "./hooks/useCertificateIntake";
-import { useCertificateRecords } from "./hooks/useCertificateRecords";
-import { useSiteSettingsAdmin } from "./hooks/useSiteSettingsAdmin";
-import { useAdminUsers } from "./hooks/useAdminUsers";
-
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -43,8 +9,46 @@ import { useTheme } from "@/features/theme/ThemeProvider";
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
-import { useAdminFeedback } from "./hooks/useAdminFeedback";
+import AdminsTab from "./components/admins/AdminsTab";
+import ApprovalsTab from "./components/approvals/ApprovalsTab";
+import AuditTab from "./components/audit/AuditTab";
+import TimelineTab from "./components/audit/TimelineTab";
+import CatalogTab from "./components/catalog/CatalogTab";
+import BreachesTab from "./components/compliance/BreachesTab";
+import ContactEnquiriesTab from "./components/compliance/ContactEnquiriesTab";
+import ReportsTab from "./components/compliance/ReportsTab";
+import DashboardOverview from "./components/dashboard/DashboardOverview";
+import HelpPolicies from "./components/help/HelpPolicies";
+import AdminLayout from "./components/layout/AdminLayout";
+import AdminSidebar from "./components/layout/AdminSidebar";
+import AdminHeader from "./components/layout/AdminHeader";
+import AdminMobileNav from "./components/layout/AdminMobileNav";
+import AdminStatusBanners from "./components/layout/AdminStatusBanners";
+import ProfileTab from "./components/profile/ProfileTab";
+import IdleWarningModal from "./components/modals/IdleWarningModal";
+import SessionsModal from "./components/modals/SessionsModal";
+import RightsTab from "./components/compliance/RightsTab";
+import RetentionTab from "./components/compliance/RetentionTab";
+import AnnouncementTab from "./components/site/AnnouncementTab";
+import BrandingTab from "./components/site/BrandingTab";
+import FaqsTab from "./components/site/FaqsTab";
+import CertificatesTab from "./components/certificates/CertificatesTab";
+import StudentCreatePanel from "./components/students/StudentCreatePanel";
+import StudentsList from "./components/students/StudentsList";
+import { tabLabels, tabRoutes } from "./config/admin-navigation";
 import { useAdminApi } from "./hooks/useAdminApi";
+import { useAdminData } from "./hooks/useAdminData";
+import { useAdminFeedback } from "./hooks/useAdminFeedback";
+import { useAdminSessionLifecycle } from "./hooks/useAdminSessionLifecycle";
+import { useAdminUsers } from "./hooks/useAdminUsers";
+import { useApprovals } from "./hooks/useApprovals";
+import { useBulkImport } from "./hooks/useBulkImport";
+import { useCertificateIntake } from "./hooks/useCertificateIntake";
+import { useCertificateRecords } from "./hooks/useCertificateRecords";
+import { useSiteSettingsAdmin } from "./hooks/useSiteSettingsAdmin";
+
+
+
 import ReauthModal from "./ReauthModal";
 import { csrf } from "./utils/admin-helpers";
 
@@ -62,26 +66,18 @@ export default function AdminPage() {
   const pathname = usePathname();
   const { state: sessionState } = useAdminSession();
   const { theme: themeMode, toggleTheme } = useTheme();
-  const routeTab: Tab = pathname.includes("/students")
-    ? "students"
-    : pathname.includes("/certificates")
-      ? "certificates"
-      : pathname.includes("/approvals")
-        ? "approvals"
-        : pathname.includes("/sessions")
-          ? "catalog"
-          : pathname.includes("/tickets")
-            ? "contacts"
-            : pathname.includes("/audit")
-              ? "audit"
-              : pathname.includes("/settings")
-                ? "branding"
-                : pathname.includes("/admins")
-                  ? "admins"
-                  : pathname.includes("/backup")
-                    ? "retention"
-                    : "dashboard";
-  const [tab, setTab] = useState<Tab>(routeTab);
+  const routeTab = (pathname === "/admin/tickets"
+    ? "contacts"
+    : Object.entries(tabRoutes).find(([, route]) => route === pathname)?.[0] ??
+    Object.entries(tabRoutes).find(
+      ([tab, route]) => tab !== "dashboard" && pathname.startsWith(`${route}/`),
+    )?.[0] ?? "dashboard") as Tab;
+  const [tab, setTabState] = useState<Tab>(routeTab);
+  const setTab = useCallback((next: Tab) => {
+    setTabState(next);
+    const destination = tabRoutes[next];
+    if (destination !== pathname) router.push(destination);
+  }, [pathname, router]);
   const [catalog, setCatalog] = useState<CatalogOption[]>([]);
   const [logs, setLogs] = useState<Record<string, unknown>[]>([]);
   const [rights, setRights] = useState<Record<string, unknown>[]>([]);
@@ -89,6 +85,9 @@ export default function AdminPage() {
   const [retentionRetryJobs, setRetentionRetryJobs] = useState<Record<string, unknown>[]>([]);
   const [breaches, setBreaches] = useState<Record<string, unknown>[]>([]);
   const [reports, setReports] = useState<Record<string, unknown>[]>([]);
+  const [reportsLoaded, setReportsLoaded] = useState(false);
+  const [rightsLoaded, setRightsLoaded] = useState(false);
+  const [breachesLoaded, setBreachesLoaded] = useState(false);
   const [contactEnquiries, setContactEnquiries] = useState<Record<string, unknown>[]>([]);
   const [contactEnquiryNotes, setContactEnquiryNotes] = useState<Record<string, string>>({});
   const [admins, setAdmins] = useState<Record<string, unknown>[]>([]);
@@ -108,12 +107,12 @@ export default function AdminPage() {
   });
   const {
     uid, role, email, idleWarning, setIdleWarning, sessions, recentLogins, showSessions,
-    setShowSessions, logout, staySignedIn, loadSessions, revokeSession, revokeAllSessions,
+    setShowSessions, sessionsError, logout, staySignedIn, loadSessions, revokeSession, revokeAllSessions,
   } = lifecycle;
   const loadRef = useRef<() => Promise<void>>(async () => {});
   const intake = useCertificateIntake({ api, act, setToast, tab, load: () => loadRef.current() });
   const {
-    students, sessionOptions, setSessionOptions, typeOptions, setTypeOptions,
+    students, sessionOptions, setSessionOptions, typeOptions, setTypeOptions, classOptions, setClassOptions,
     search, setSearch, page, setPage, form, setForm, selectedStudent, setSelectedStudent, files, setFiles,
     duplicateHashAcknowledged, setDuplicateHashAcknowledged, duplicateHashReason, setDuplicateHashReason,
     duplicateHashWarning, setDuplicateHashWarning, notify, setNotify, loadStudents, filtered, visible,
@@ -135,7 +134,7 @@ export default function AdminPage() {
   const { certs, setCerts, certificateHistory, loadCertificateHistory } = certificateRecords;
   useEffect(() => {
     setTab(routeTab);
-  }, [routeTab]);
+  }, [routeTab, setTab]);
   const [catalogKind, setCatalogKind] = useState<CatalogKind>("sessions");
   const [catalogName, setCatalogName] = useState("");
   const [auditAction, setAuditAction] = useState("");
@@ -148,14 +147,15 @@ export default function AdminPage() {
   const [timelineStudentId, setTimelineStudentId] = useState("");
   const load = useAdminData({
     tab, api, loadStudents, catalogKind, auditAction, auditStart, auditEnd, role, timelineStudentId,
-    setStats, setPending, setSessionOptions, setTypeOptions, setCerts, setCatalog, setLogs, setRights,
-    setRetentionRecords, setRetentionRetryJobs, setBreaches, setReports, setTimeline, setContactEnquiries, setFaqs, setAdmins,
+    setStats, setPending, setSessionOptions, setTypeOptions, setClassOptions, setCerts, setCatalog, setLogs, setRights,
+    setRetentionRecords, setRetentionRetryJobs, setBreaches, setReports, setReportsLoaded, setRightsLoaded, setBreachesLoaded, setTimeline, setContactEnquiries, setFaqs, setAdmins,
     setMaintenanceMode, setRetentionYears, setRetentionConfirmed, setBackupRotationDays, setBranding, setAnnouncement,
   });
   loadRef.current = load;
   const adminUsers = useAdminUsers({ api, act, setToast, setError, load: () => loadRef.current() });
   const {
-    adminEmail, setAdminEmail, inviteRole, setInviteRole, createBackup, exportData, changeRole, invite,
+    adminEmail, setAdminEmail, inviteRole, setInviteRole, inviteProfile, setInviteProfile,
+    createBackup, exportData, changeRole, deleteUser, invite,
   } = adminUsers;
 
   useEffect(() => {
@@ -225,6 +225,8 @@ export default function AdminPage() {
         <SessionsModal
           sessions={sessions}
           recentLogins={recentLogins}
+          error={sessionsError}
+          onRetry={() => void loadSessions()}
           onClose={() => { setShowSessions(false); }}
           onRevokeSession={(sessionId) => void revokeSession(sessionId)}
           onRevokeAll={() => void revokeAllSessions()}
@@ -249,7 +251,8 @@ export default function AdminPage() {
           setMobileAdminNav={setMobileAdminNav}
           themeMode={themeMode}
           toggleTheme={toggleTheme}
-          onTickets={() => { router.push("/admin/tickets"); }}
+          onTickets={() => { router.push(tabRoutes.contacts); }}
+          onProfile={() => { router.push("/admin/profile"); }}
           loadSessions={() => void loadSessions()}
           revokeAllSessions={() => void revokeAllSessions()}
           logout={() => void logout()}
@@ -281,10 +284,11 @@ export default function AdminPage() {
             <DashboardOverview
               stats={stats}
               canManageStudents={role !== "approver"}
-              onAddStudent={() => setTab("students")}
-              onImportRecords={() => setTab("students")}
+              onAddStudent={() => { setTab("students"); }}
+              onImportRecords={() => { setTab("students"); }}
             />
           )}
+          {tab === "profile" && <ProfileTab api={api} act={act} email={email} role={role} loadSessions={loadSessions} />}
           {tab === "approvals" && (
             <ApprovalsTab
               pending={pending}
@@ -296,6 +300,7 @@ export default function AdminPage() {
               decideCertificate={decideCertificate}
               busy={busy}
               uid={uid}
+              role={role}
               loadPreview={loadPreview}
             />
           )}
@@ -303,7 +308,7 @@ export default function AdminPage() {
             <div className="grid gap-6 xl:grid-cols-[.9fr_1.1fr]">
               {role !== "approver" && (
                 <StudentCreatePanel
-                  form={form} setForm={setForm} sessionOptions={sessionOptions} typeOptions={typeOptions}
+                  form={form} setForm={setForm} sessionOptions={sessionOptions} typeOptions={typeOptions} classOptions={classOptions}
                   files={files} setFiles={setFiles} notify={notify} setNotify={setNotify}
                   duplicateHashWarning={duplicateHashWarning} duplicateHashAcknowledged={duplicateHashAcknowledged}
                   duplicateHashReason={duplicateHashReason} setDuplicateHashAcknowledged={setDuplicateHashAcknowledged}
@@ -317,7 +322,7 @@ export default function AdminPage() {
               <StudentsList
                 role={role} visible={visible} filtered={filtered} search={search} setSearch={setSearch}
                 page={page} setPage={setPage} setTimelineStudentId={setTimelineStudentId} setTab={setTab}
-                act={act} api={api} loadStudents={loadStudents} removeStudent={removeStudent}
+                setSelectedStudent={setSelectedStudent} act={act} api={api} loadStudents={loadStudents} removeStudent={removeStudent}
               />
             </div>
           )}
@@ -360,9 +365,9 @@ export default function AdminPage() {
             />
           )}
           {tab === "rights" && (
-            <RightsTab role={role} rights={rights} resolution={resolution} setResolution={setResolution} resolveRight={resolveRight} act={act} api={api} load={load} setToast={setToast} />
+            <RightsTab role={role} rights={rights} loaded={rightsLoaded} resolution={resolution} setResolution={setResolution} resolveRight={resolveRight} act={act} api={api} load={load} setToast={setToast} />
           )}
-          {tab === "breaches" && <BreachesTab breaches={breaches} act={act} api={api} load={load} />}
+          {tab === "breaches" && <BreachesTab breaches={breaches} loaded={breachesLoaded} act={act} api={api} load={load} />}
           {tab === "timeline" && (
             <TimelineTab
               timelineStudentId={timelineStudentId}
@@ -378,14 +383,14 @@ export default function AdminPage() {
               maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} busy={busy} saveBranding={saveBranding}
             />
           )}
-          {tab === "announcement" && (role === "superadmin" || role === "approver") && (
+          {tab === "announcement" && (role === "superadmin" || role === "approver" || role === "admin") && (
             <AnnouncementTab announcement={announcement} setAnnouncement={setAnnouncement} busy={busy} saveAnnouncement={saveAnnouncement} />
           )}
           {tab === "retention" && role === "superadmin" && (
             <RetentionTab retentionRecords={retentionRecords} retentionRetryJobs={retentionRetryJobs} act={act} api={api} load={load} />
           )}
           {tab === "reports" && (
-            <ReportsTab reports={reports} reportNotes={reportNotes} setReportNotes={setReportNotes} updateReport={updateReport} />
+            <ReportsTab reports={reports} loaded={reportsLoaded} reportNotes={reportNotes} setReportNotes={setReportNotes} updateReport={updateReport} />
           )}
           {tab === "contacts" && (
             <ContactEnquiriesTab enquiries={contactEnquiries} notes={contactEnquiryNotes} setNotes={setContactEnquiryNotes} update={updateContactEnquiry} />
@@ -400,10 +405,13 @@ export default function AdminPage() {
               setAdminEmail={setAdminEmail}
               inviteRole={inviteRole}
               setInviteRole={setInviteRole}
+              inviteProfile={inviteProfile}
+              setInviteProfile={setInviteProfile}
               invite={invite}
               exportData={exportData}
               createBackup={createBackup}
               changeRole={changeRole}
+              deleteUser={deleteUser}
               act={act}
               api={api}
               load={load}

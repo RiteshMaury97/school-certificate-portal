@@ -87,10 +87,11 @@ export async function POST(request: NextRequest) {
     const status = String(admin.get("status"));
     if (
       !admin.exists ||
+      admin.get("mustChangePassword") === true || decoded.mustChangePassword === true ||
       !["active", "invited"].includes(status) ||
       !email ||
       admin.get("email")?.toLowerCase() !== email ||
-      (role !== "uploader" && role !== "approver" && role !== "superadmin") ||
+      (role !== "uploader" && role !== "approver" && role !== "admin" && role !== "superadmin") ||
       decoded.role !== role
     )
       return NextResponse.json(
@@ -296,7 +297,7 @@ export async function GET(request: NextRequest) {
     if (
       !admin.exists ||
       admin.get("status") !== "active" ||
-      (role !== "uploader" && role !== "approver" && role !== "superadmin") ||
+      (role !== "uploader" && role !== "approver" && role !== "admin" && role !== "superadmin") ||
       admin.get("email")?.toLowerCase() !== decoded.email?.toLowerCase() ||
       decoded.role !== role
     )

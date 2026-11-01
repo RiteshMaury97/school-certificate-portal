@@ -1,5 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-for, jsx-a11y/control-has-associated-label, jsx-a11y/no-noninteractive-element-interactions, @typescript-eslint/restrict-template-expressions */
 import { Download, FileText, ShieldCheck, UploadCloud } from "lucide-react";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 
 import DuplicateHashWarning from "../shared/DuplicateHashWarning";
 
@@ -7,7 +8,7 @@ import type { BulkPreviewItem, CatalogOption, NotifyState, StudentFormState } fr
 import type { Dispatch, SetStateAction, SubmitEventHandler } from "react";
 
 type Props = {
-  form: StudentFormState; setForm: Dispatch<SetStateAction<StudentFormState>>; sessionOptions: CatalogOption[]; typeOptions: CatalogOption[];
+  form: StudentFormState; setForm: Dispatch<SetStateAction<StudentFormState>>; sessionOptions: CatalogOption[]; typeOptions: CatalogOption[]; classOptions: CatalogOption[];
   files: File[]; setFiles: Dispatch<SetStateAction<File[]>>; notify: NotifyState; setNotify: Dispatch<SetStateAction<NotifyState>>;
   duplicateHashWarning: string; duplicateHashAcknowledged: boolean; duplicateHashReason: string;
   setDuplicateHashAcknowledged: Dispatch<SetStateAction<boolean>>; setDuplicateHashReason: Dispatch<SetStateAction<string>>;
@@ -24,6 +25,7 @@ const studentFields = [
   ["studentName", "Student name"],
   ["fatherName", "Father name"],
   ["motherName", "Mother name"],
+  ["scholarNumber", "Scholar number"],
 ] as const;
 
 const certificateFields = [
@@ -42,7 +44,7 @@ function getRowErrors(value: unknown): RowError[] {
 }
 
 export default function StudentCreatePanel(props: Props) {
-  const { form, setForm, sessionOptions, typeOptions, files, setFiles, notify, setNotify,
+  const { form, setForm, sessionOptions, typeOptions, classOptions, files, setFiles, notify, setNotify,
     duplicateHashWarning, duplicateHashAcknowledged, duplicateHashReason, setDuplicateHashAcknowledged,
     setDuplicateHashReason, busy, addStudent, downloadTemplate, csv, setCsv, importCsv, preview,
     bulkFiles, setBulkFiles, bulkCsv, setBulkCsv, bulkPreview, bulkProgress, previewBulk, commitBulk } = props;
@@ -65,14 +67,40 @@ export default function StudentCreatePanel(props: Props) {
             {studentFields.map(([key, label]) => (
               <label key={key} className="text-xs font-medium text-[var(--text)]">
                 {label}
-                <input translate="no" type={key === "dateOfBirth" ? "date" : "text"} value={form[key]} onChange={(event) => { setForm((value) => ({ ...value, [key]: event.target.value })); }} className={fieldClass} />
+                <input
+                  translate="no"
+                  type={key === "dateOfBirth" ? "date" : "text"}
+                  required={["studentName", "fatherName", "motherName", "className", "scholarNumber"].includes(key)}
+                  minLength={["studentName", "fatherName", "motherName"].includes(key) ? 2 : undefined}
+                  maxLength={["studentName", "fatherName", "motherName"].includes(key) ? 100 : 40}
+                  value={form[key]}
+                  onChange={(event) => { setForm((value) => ({ ...value, [key]: event.target.value })); }}
+                  className={fieldClass}
+                />
               </label>
             ))}
+            <label className="text-xs font-medium text-[var(--text)]">
+              Class / section
+              <select translate="no" required value={form.className} onChange={(event) => { setForm((value) => ({ ...value, className: event.target.value })); }} className={fieldClass}>
+                <option value="">Choose class</option>
+                {classOptions.map((option) => <option key={option.id} value={option.label ?? option.name ?? option.id}>{option.label ?? option.name ?? option.id}</option>)}
+              </select>
+              {classOptions.length === 0 && <span className="mt-1 block text-[10px] text-[var(--danger)]">Add a class in the Classes catalog before entering students.</span>}
+            </label>
             <label className="text-xs font-medium text-[var(--text)]">
               Academic session
               <select translate="no" required value={form.session} onChange={(event) => { setForm((value) => ({ ...value, session: event.target.value })); }} className={fieldClass}>
                 <option value="">Select session</option>
-                {sessionOptions.map((option) => <option key={option.id} value={option.id}>{option.label ?? option.name ?? option.id}</option>)}
+                {sessionOptions.map((option) => {
+                  const value = normalizeAcademicSession(option.label ?? "")
+                    ?? normalizeAcademicSession(option.name ?? "")
+                    ?? normalizeAcademicSession(option.id);
+                  return value ? (
+                    <option key={option.id} value={value}>
+                      {option.label ?? option.name ?? option.id}
+                    </option>
+                  ) : null;
+                })}
               </select>
             </label>
           </div>
@@ -89,7 +117,15 @@ export default function StudentCreatePanel(props: Props) {
             {certificateFields.map(([key, label]) => (
               <label key={key} className="text-xs font-medium text-[var(--text)]">
                 {label}
-                <input translate="no" type={key === "issuedAt" ? "date" : "text"} value={form[key]} onChange={(event) => { setForm((value) => ({ ...value, [key]: event.target.value })); }} className={fieldClass} />
+                <input
+                  translate="no"
+                  type={key === "issuedAt" ? "date" : "text"}
+                  required
+                  maxLength={key === "certificateNumber" ? 80 : undefined}
+                  value={form[key]}
+                  onChange={(event) => { setForm((value) => ({ ...value, [key]: event.target.value })); }}
+                  className={fieldClass}
+                />
               </label>
             ))}
             <label className="text-xs font-medium text-[var(--text)] sm:col-span-2">
@@ -129,7 +165,7 @@ export default function StudentCreatePanel(props: Props) {
           <button type="button" onClick={() => void importCsv("preview")} disabled={!csv || busy} className="min-h-9 rounded-lg border border-[var(--divider)] px-3 text-xs font-medium disabled:opacity-50">Preview & validate</button>
           <button type="button" onClick={() => void importCsv("commit")} disabled={!csv || busy || !preview || Number(preview.valid) !== Number(preview.total)} className="min-h-9 rounded-lg bg-[var(--primary)] px-3 text-xs font-semibold text-[var(--on-primary)] disabled:opacity-50">Commit import</button>
         </div>
-        <p className="mt-2 text-[10px] text-[var(--text-muted)]">Required columns: studentName, fatherName, motherName and session.</p>
+        <p className="mt-2 text-[10px] text-[var(--text-muted)]">Required columns: studentName, fatherName, motherName, className, scholarNumber and session.</p>
         {preview && <div className="mt-3 rounded-lg bg-[var(--surface-2)] p-3 text-xs"><p>Rows: {String(preview.total)} · Valid: {String(preview.valid)} · Errors: {getRowErrors(preview.errors).length}</p>{getRowErrors(preview.errors).map((item, index) => <p key={index} className="mt-1 text-[var(--danger)]">Row {String(item.row)}: {String(item.error)}</p>)}</div>}
       </section>
 

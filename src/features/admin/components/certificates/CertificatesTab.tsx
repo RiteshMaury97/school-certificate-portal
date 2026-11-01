@@ -1,4 +1,5 @@
 import { appCheckHeaders } from "@/lib/firebase-client";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 
 import { csrf } from "../../utils/admin-helpers";
 import DuplicateHashWarning from "../shared/DuplicateHashWarning";
@@ -24,6 +25,8 @@ export default function CertificatesTab(props: Props) {
     duplicateHashAcknowledged, setDuplicateHashAcknowledged, duplicateHashReason, setDuplicateHashReason,
     setDuplicateHashWarning, busy, students, selectedStudent, setSelectedStudent, uploadMany, certs,
     certificateHistory, loadCertificateHistory, act, api, load, setError } = props;
+  const selectedStudentRecord = students.find((student) => student.id === selectedStudent);
+  const selectedStudentSession = normalizeAcademicSession(selectedStudentRecord?.session ?? "");
   return (
     <section className="rounded-xl border bg-[var(--surface)] p-5">
                   <h2 className="text-lg font-bold">Certificate management</h2>
@@ -51,16 +54,24 @@ export default function CertificatesTab(props: Props) {
                         <select
                           translate="no"
                           required
-                          value={form.session}
+                          value={selectedStudentSession ?? form.session}
+                          disabled={Boolean(selectedStudentSession)}
                           onChange={(e) => { setForm((v) => ({ ...v, session: e.target.value })); }}
                           className="mt-1 w-full rounded border p-2.5"
                         >
                           <option value="">Choose session</option>
-                          {sessionOptions.map((x) => (
-                            <option key={x.id} value={x.id}>
-                              {x.label ?? x.name ?? x.id}
-                            </option>
-                          ))}
+                          {selectedStudentSession ? (
+                            <option value={selectedStudentSession}>{selectedStudentRecord?.session}</option>
+                          ) : sessionOptions.map((option) => {
+                            const value = normalizeAcademicSession(option.label ?? "")
+                              ?? normalizeAcademicSession(option.name ?? "")
+                              ?? normalizeAcademicSession(option.id);
+                            return value ? (
+                              <option key={option.id} value={value}>
+                                {option.label ?? option.name ?? option.id}
+                              </option>
+                            ) : null;
+                          })}
                         </select>
                       </label>
                       <label className="text-sm">

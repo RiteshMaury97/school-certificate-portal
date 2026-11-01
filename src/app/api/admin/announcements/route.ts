@@ -60,7 +60,7 @@ function plainText(value: string): string {
 }
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["approver", "superadmin"]);
+    await requireRoles(request, ["approver", "admin", "superadmin"]);
     const snapshot = await db.collection("siteSettings").doc("main").get();
     const value = snapshot.get("announcement");
     return NextResponse.json(
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
 }
 export async function PATCH(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["approver", "superadmin"]);
+    const admin = await requireRoles(request, ["approver", "admin", "superadmin"]);
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json(
