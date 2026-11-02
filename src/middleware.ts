@@ -6,6 +6,12 @@ import { isAllowedRequestOrigin } from "./shared/origin-policy";
 import type { NextRequest } from "next/server";
 
 const APP_ORIGIN = process.env.APP_ORIGIN;
+let maintenanceCache: { enabled: boolean; expiresAt: number } | null = null;
+let maintenanceRead: Promise<boolean> | null = null;
+const locationDecisionCache = new Map<string, {
+  result: { allowed: boolean; reason?: string };
+  expiresAt: number;
+}>();
 
 function buildCsp(nonce: string, allowSameOriginFrame = false): string {
   const dev = process.env.NODE_ENV !== "production";
@@ -68,6 +74,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function maintenanceModeEnabled(request: NextRequest): Promise<boolean> {
+  if (maintenanceCache && maintenanceCache.expiresAt > Date.now()) return maintenanceCache.enabled;
+  maintenanceRead ??= readMaintenanceMode(request).finally(() => { maintenanceRead = null; });
+  const enabled = await maintenanceRead;
+  maintenanceCache = { enabled, expiresAt: Date.now() + 30_000 };
+  return enabled;
+}
+
+async function readMaintenanceMode(request: NextRequest): Promise<boolean> {
   try {
     const response = await fetch(new URL("/api/public/site-settings", request.url), {
       cache: "no-store",
@@ -138,7 +152,7 @@ async function adminLocationGate(
   const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
   if (secret.length < 32) return locationGateResponse(nonce, production, 503);
   try {
-    const decision = await checkLocationPolicy(request, secret);
+    const decision = await checkLocationPolicyCached(request, secret);
     if (decision.allowed) return null;
     if (isRevokedSessionReason(decision.reason)) {
       const isLoginPage = request.nextUrl.pathname === "/admin/login";
@@ -157,6 +171,28 @@ async function adminLocationGate(
   } catch {
     return locationGateResponse(nonce, production, 503);
   }
+}
+
+async function checkLocationPolicyCached(
+  request: NextRequest,
+  secret: string,
+): Promise<{ allowed: boolean; reason?: string }> {
+  const origin = getRequestOrigin(request);
+  const sessionCookie = request.cookies.get("sis_admin_session")?.value ?? "";
+  const rawKey = `${request.nextUrl.pathname}\u0000${origin.ip ?? ""}\u0000${origin.country ?? ""}\u0000${sessionCookie}`;
+  const keyBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
+  const key = Array.from(new Uint8Array(keyBytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const now = Date.now();
+  const cached = locationDecisionCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.result;
+  const result = await checkLocationPolicy(request, secret);
+  locationDecisionCache.set(key, { result, expiresAt: now + 5_000 });
+  if (locationDecisionCache.size > 5000) {
+    for (const [cacheKey, value] of locationDecisionCache) {
+      if (value.expiresAt <= now) locationDecisionCache.delete(cacheKey);
+    }
+  }
+  return result;
 }
 
 function locationGateResponse(nonce: string, production: boolean, status: 403 | 503): NextResponse {
@@ -289,7 +325,7 @@ function setResponsePolicyHeaders(
   if (isNoIndexPath(path) || (path === "/verify" && request.nextUrl.searchParams.size > 0)) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
   }
-  if (path.startsWith("/api/") || path === "/" || path.startsWith("/admin")) {
+  if (path.startsWith("/api/") || path.startsWith("/admin")) {
     response.headers.set("Cache-Control", "no-store, max-age=0, must-revalidate");
   }
 }

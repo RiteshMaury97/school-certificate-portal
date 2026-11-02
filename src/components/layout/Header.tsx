@@ -11,7 +11,6 @@ import LanguageButton from "@/features/translate/LanguageButton";
 
 type Props = {
   schoolName?: string | undefined;
-  includedLanguages?: string | undefined;
 };
 
 const links = [
@@ -26,10 +25,10 @@ function isActive(pathname: string, to: string): boolean {
   return to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
 }
 
-function Utilities({ includedLanguages }: { includedLanguages?: string | undefined }) {
+function Utilities() {
   return (
     <div className="flex items-center gap-1.5">
-      <LanguageButton {...(includedLanguages !== undefined ? { includedLanguages } : {})} />
+      <LanguageButton />
       <ThemeToggle />
       <Link
         href="/admin/login"
@@ -53,12 +52,10 @@ function Utilities({ includedLanguages }: { includedLanguages?: string | undefin
 function MobileNavigation({
   open,
   pathname,
-  includedLanguages,
   onClose,
 }: {
   open: boolean;
   pathname: string;
-  includedLanguages?: string | undefined;
   onClose: () => void;
 }) {
   if (!open) return null;
@@ -101,7 +98,7 @@ function MobileNavigation({
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
             Preferences
           </p>
-          <Utilities includedLanguages={includedLanguages} />
+          <Utilities />
         </div>
       </aside>
     </div>
@@ -110,7 +107,6 @@ function MobileNavigation({
 
 export default function Header({
   schoolName = "Satyam International School",
-  includedLanguages,
 }: Props) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -150,7 +146,7 @@ export default function Header({
             ))}
           </nav>
           <div className="ml-auto hidden lg:block">
-            <Utilities includedLanguages={includedLanguages} />
+            <Utilities />
           </div>
           <div className="ml-auto lg:hidden">
             <IconButton
@@ -169,7 +165,6 @@ export default function Header({
       <MobileNavigation
         open={open}
         pathname={pathname}
-        includedLanguages={includedLanguages}
         onClose={() => {
           setOpen(false);
         }}

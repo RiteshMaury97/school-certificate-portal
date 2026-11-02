@@ -237,7 +237,7 @@ export default function Footer({
   onReport,
 }: Props) {
   return (
-    <footer className="mt-10 border-t border-[var(--border)] bg-[var(--surface)] text-[var(--text)]">
+    <footer className="border-t border-[var(--border)] bg-[var(--surface)] text-[var(--text)]">
       <div className="mx-auto grid max-w-6xl gap-9 px-4 py-9 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.35fr_1fr_1.2fr_1fr] lg:gap-12 lg:px-8 lg:py-10">
         <SchoolIdentity
           schoolName={schoolName}

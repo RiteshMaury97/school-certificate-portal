@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { db } from "@/server/firebase-admin";
+import { getCachedSiteSettings } from "@/server/site-settings-cache";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET() {
   try {
-    const snapshot = await db.collection("siteSettings").doc("main").get();
-    const data = snapshot.exists ? (snapshot.data() ?? {}) : {};
+    const data = await getCachedSiteSettings();
     const safe = {
       maintenanceMode: data.maintenanceMode === true,
       retentionYears: Math.max(

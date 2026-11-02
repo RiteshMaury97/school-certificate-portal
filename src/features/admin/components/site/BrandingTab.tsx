@@ -172,7 +172,6 @@ export default function BrandingTab(props: Props) {
               ["grievanceOfficerEmail", "Officer email"],
               ["grievanceOfficerPhone", "Officer phone"],
               ["lastUpdated", "Last updated date (display text)"],
-              ["includedLanguages", "Google Translate language codes (comma-separated)"],
             ] as const
           ).map(([key, label]) => (
             <label key={key} className="text-sm font-semibold text-[var(--text)]">

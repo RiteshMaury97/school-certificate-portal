@@ -22,6 +22,22 @@ export const auth = getAuth(firebaseApp);
 
 const isProduction = process.env.NODE_ENV === "production";
 let appCheckInstance: AppCheck | null = null;
+let cachedAppCheckToken = "";
+let appCheckTokenExpiresAt = 0;
+let appCheckTokenRequest: Promise<string> | null = null;
+
+function tokenExpiry(token: string): number {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return Date.now() + 5 * 60_000;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const claims: unknown = JSON.parse(atob(normalized));
+    return typeof claims === "object" && claims !== null && "exp" in claims &&
+      typeof claims.exp === "number" ? claims.exp * 1000 : Date.now() + 5 * 60_000;
+  } catch {
+    return Date.now() + 5 * 60_000;
+  }
+}
 
 /** Local development: App Check can be skipped on both ends with APP_CHECK_ENFORCE=false. */
 function appCheckOptional(): boolean {
@@ -46,9 +62,30 @@ function appCheck(): AppCheck {
   return appCheckInstance;
 }
 
+async function readAppCheckToken(): Promise<string> {
+  if (cachedAppCheckToken && appCheckTokenExpiresAt > Date.now() + 60_000)
+    return cachedAppCheckToken;
+  appCheckTokenRequest ??= getToken(appCheck(), false)
+    .then((result) => {
+      if (!result.token) throw new Error("Could not verify this app installation.");
+      cachedAppCheckToken = result.token;
+      appCheckTokenExpiresAt = tokenExpiry(result.token);
+      return cachedAppCheckToken;
+    })
+    .finally(() => { appCheckTokenRequest = null; });
+  return appCheckTokenRequest;
+}
+
+export async function initializeAppCheckEarly(): Promise<void> {
+  if (appCheckOptional()) return;
+  try {
+    await readAppCheckToken();
+  } catch {
+    // The sign-in request shows the actionable App Check error if initialization fails.
+  }
+}
+
 export async function appCheckHeaders(): Promise<Record<string, string>> {
   if (appCheckOptional()) return {};
-  const result = await getToken(appCheck(), false);
-  if (!result.token) throw new Error("Could not verify this app installation.");
-  return { "X-Firebase-AppCheck": result.token };
+  return { "X-Firebase-AppCheck": await readAppCheckToken() };
 }

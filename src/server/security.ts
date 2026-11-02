@@ -432,10 +432,10 @@ function readTimestampMs(value: { get(key: string): unknown }, key: string): num
   const field = value.get(key);
   if (typeof field !== "object" || field === null) return 0;
   const toDate = readUnknownField(field, "toDate");
-  const date = callKnownMethod<unknown>(toDate, field);
+  const date = callKnownMethod(toDate, field);
   if (typeof date !== "object" || date === null) return 0;
   const getTime = readUnknownField(date, "getTime");
-  const timestamp = callKnownMethod<unknown>(getTime, date);
+  const timestamp = callKnownMethod(getTime, date);
   return typeof timestamp === "number" ? timestamp : 0;
 }
 function isAuthorizedAdmin(
@@ -475,7 +475,8 @@ export async function requireAdmin(request: NextRequest): Promise<AdminIdentity>
   const admin = await db.collection("admins").doc(decoded.uid).get();
   const role = readStringField(admin, "role");
   const decodedRole = typeof decoded.role === "string" ? decoded.role : "";
-  if (!isAuthorizedAdmin(admin, email, role, decodedRole)) throw new Error("FORBIDDEN");
+  if (!isAdminRole(role) || !isAuthorizedAdmin(admin, email, role, decodedRole))
+    throw new Error("FORBIDDEN");
   const sessionKey = createHmac("sha256", requiredSecret("AUDIT_LOG_HMAC_SECRET"))
     .update(session)
     .digest("hex");

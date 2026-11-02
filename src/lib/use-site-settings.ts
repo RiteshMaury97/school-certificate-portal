@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 
+import { SCHOOL_INFO } from "@/lib/school-info";
+
 export type PublicSiteSettings = {
   schoolName?: string;
   retentionYears?: number;
@@ -26,102 +28,130 @@ export type PublicSiteSettings = {
   grievanceOfficerEmail?: string;
   grievanceOfficerPhone?: string;
   lastUpdated?: string;
+  faqs?: { questionEn: string; answerEn: string }[];
 };
+
+const DEFAULT_SETTINGS: PublicSiteSettings = {
+  schoolName: SCHOOL_INFO.name,
+  address: SCHOOL_INFO.address,
+  phone: SCHOOL_INFO.phone,
+  email: SCHOOL_INFO.email,
+  includedLanguages: "en,hi,bn,mr,gu,pa,ta,te,ur",
+  announcement: null,
+  socialLinks: [],
+  faqs: [],
+};
+const stringKeys = [
+  "schoolName", "tagline", "boardName", "affiliationNumber", "schoolCode", "principalPhotoUrl",
+  "principalName", "principalMessage", "address", "phone", "officeHours", "mapUrl",
+  "statusPageUrl", "email", "jurisdiction", "includedLanguages", "grievanceOfficerName",
+  "grievanceOfficerEmail", "grievanceOfficerPhone", "lastUpdated",
+] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-const stringKeys = [
-  "schoolName",
-  "tagline",
-  "boardName",
-  "affiliationNumber",
-  "schoolCode",
-  "principalPhotoUrl",
-  "principalName",
-  "principalMessage",
-  "address",
-  "phone",
-  "officeHours",
-  "mapUrl",
-  "statusPageUrl",
-  "email",
-  "jurisdiction",
-  "includedLanguages",
-  "grievanceOfficerName",
-  "grievanceOfficerEmail",
-  "grievanceOfficerPhone",
-  "lastUpdated",
-];
-
-function hasExpectedStrings(settings: Record<string, unknown>): boolean {
-  return stringKeys.every((key) => settings[key] === undefined || typeof settings[key] === "string");
+function warnInvalid(field: string) {
+  if (process.env.NODE_ENV === "development")
+    console.warn(`[site-settings] Ignoring invalid ${field}; using its default value.`);
 }
 
-function hasExpectedNumbers(settings: Record<string, unknown>): boolean {
-  return (
-    (settings.retentionYears === undefined || typeof settings.retentionYears === "number") &&
-    (settings.backupRotationDays === undefined || typeof settings.backupRotationDays === "number")
-  );
+function parseStringSettings(source: Record<string, unknown>, result: PublicSiteSettings) {
+  for (const key of stringKeys) {
+    if (source[key] === undefined) continue;
+    if (typeof source[key] === "string") result[key] = source[key];
+    else warnInvalid(key);
+  }
 }
 
-function isSocialLinks(value: unknown): boolean {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (link: unknown) =>
-        isRecord(link) && typeof link.label === "string" && typeof link.url === "string",
-    )
-  );
+function parseNumberSettings(source: Record<string, unknown>, result: PublicSiteSettings) {
+  for (const key of ["retentionYears", "backupRotationDays"] as const) {
+    if (source[key] === undefined) continue;
+    if (typeof source[key] === "number" && Number.isFinite(source[key])) result[key] = source[key];
+    else warnInvalid(key);
+  }
 }
 
-function isAnnouncement(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    (value.type === "info" || value.type === "warning") &&
-    typeof value.textEn === "string" &&
-    typeof value.linkUrl === "string"
-  );
+function parseSocialLinks(value: unknown): { label: string; url: string }[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const links: { label: string; url: string }[] = [];
+  for (const item of value) {
+    if (isRecord(item) && typeof item.label === "string" && typeof item.url === "string")
+      links.push({ label: item.label, url: item.url });
+    else warnInvalid("socialLinks entry");
+  }
+  return links;
 }
 
-function hasValidOptionalSettings(settings: Record<string, unknown>): boolean {
-  return (
-    (settings.socialLinks === undefined || isSocialLinks(settings.socialLinks)) &&
-    (settings.announcement === undefined ||
-      settings.announcement === null ||
-      isAnnouncement(settings.announcement))
-  );
+function parseFaqs(value: unknown): { questionEn: string; answerEn: string }[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const faqs: { questionEn: string; answerEn: string }[] = [];
+  for (const item of value) {
+    if (isRecord(item) && typeof item.questionEn === "string" && typeof item.answerEn === "string")
+      faqs.push({ questionEn: item.questionEn, answerEn: item.answerEn });
+    else warnInvalid("faqs entry");
+  }
+  return faqs;
 }
 
-function isPublicSiteSettings(value: unknown): value is PublicSiteSettings {
-  return (
-    isRecord(value) &&
-    hasExpectedStrings(value) &&
-    hasExpectedNumbers(value) &&
-    hasValidOptionalSettings(value)
-  );
+function isAnnouncement(value: unknown): value is NonNullable<PublicSiteSettings["announcement"]> {
+  return isRecord(value) && (value.type === "info" || value.type === "warning") &&
+    typeof value.textEn === "string" && typeof value.linkUrl === "string";
 }
 
-function getSettings(data: unknown): PublicSiteSettings | null {
-  if (!isRecord(data) || !isPublicSiteSettings(data.settings)) return null;
-  return data.settings;
+function parseSettings(payload: unknown): PublicSiteSettings {
+  const source = isRecord(payload) && isRecord(payload.settings) ? payload.settings : {};
+  const result: PublicSiteSettings = { ...DEFAULT_SETTINGS };
+  parseStringSettings(source, result);
+  parseNumberSettings(source, result);
+  if (source.socialLinks !== undefined) {
+    const links = parseSocialLinks(source.socialLinks);
+    if (links) result.socialLinks = links;
+    else warnInvalid("socialLinks");
+  }
+  if (source.faqs !== undefined) {
+    const faqs = parseFaqs(source.faqs);
+    if (faqs) result.faqs = faqs;
+    else warnInvalid("faqs");
+  }
+  if (source.announcement !== undefined) {
+    const item = source.announcement;
+    if (item === null || isAnnouncement(item)) result.announcement = item;
+    else warnInvalid("announcement");
+  }
+  return result;
 }
 
-export function usePublicSiteSettings() {
-  const [settings, setSettings] = useState<PublicSiteSettings>({});
+let cachedSettings: PublicSiteSettings = DEFAULT_SETTINGS;
+let cacheExpiresAt = 0;
+let settingsRequest: Promise<PublicSiteSettings> | null = null;
+
+function fetchPublicSettings(): Promise<PublicSiteSettings> {
+  if (cacheExpiresAt > Date.now()) return Promise.resolve(cachedSettings);
+  settingsRequest ??= fetch("/api/public/site-settings", { cache: "no-store" })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Site settings returned ${String(response.status)}`);
+      cachedSettings = parseSettings(await response.json());
+      cacheExpiresAt = Date.now() + 60_000;
+      return cachedSettings;
+    })
+    .catch((error: unknown) => {
+      if (process.env.NODE_ENV === "development")
+        console.warn("[site-settings] Could not load public settings; using defaults.", error);
+      cacheExpiresAt = Date.now() + 10_000;
+      return cachedSettings;
+    })
+    .finally(() => { settingsRequest = null; });
+  return settingsRequest;
+}
+
+export function usePublicSiteSettings(): PublicSiteSettings {
+  const [settings, setSettings] = useState<PublicSiteSettings>(cachedSettings);
   useEffect(() => {
     let active = true;
-    fetch("/api/public/site-settings", { cache: "no-store" })
-      .then((response) => response.json())
-      .then((data: unknown) => {
-        const nextSettings = getSettings(data);
-        if (active && nextSettings) setSettings(nextSettings);
-      })
-      .catch(() => null);
-    return () => {
-      active = false;
-    };
+    void fetchPublicSettings().then((next) => { if (active) setSettings(next); });
+    return () => { active = false; };
   }, []);
   return settings;
 }

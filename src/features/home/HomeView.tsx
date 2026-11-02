@@ -71,7 +71,6 @@ export default function HomePage() {
 
   return (
     <SiteShell>
-      <div className="mx-auto max-w-6xl">
         <Breadcrumb className="mb-4">
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -266,7 +265,6 @@ export default function HomePage() {
             </Link>
           </aside>
         </section>
-      </div>
     </SiteShell>
   );
 }

@@ -117,14 +117,6 @@ export default function InformationPage({ kind }: { kind: Kind }) {
             Contact the school
           </Link>
         )}
-        {kind === "rights" && (
-          <Link
-            href="/contact"
-            className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--on-primary)]"
-          >
-            Submit a request
-          </Link>
-        )}
         <div className="mt-8 flex flex-wrap gap-4">
           {page.links.map((link) => (
             <Link

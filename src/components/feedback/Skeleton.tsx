@@ -6,7 +6,7 @@ export default function Skeleton({ children }: { children?: ReactNode }) {
     <main
       aria-busy="true"
       aria-live="polite"
-      className="mx-auto min-h-[55dvh] w-full max-w-6xl px-4 py-8 sm:px-8"
+      className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12 lg:px-8"
     >
       <span className="sr-only">Loading…</span>
       <div className="space-y-5">

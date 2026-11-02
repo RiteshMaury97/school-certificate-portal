@@ -77,6 +77,7 @@ export function useAdminSignIn() {
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState("");
   const [resetBusy, setResetBusy] = useState(false);
   const signedOut = params.get("security") === "signed-out";
   const [pendingUser, setPendingUser] = useState<User | null>(null);
@@ -91,8 +92,9 @@ export function useAdminSignIn() {
     setChallengeId("");
     if (noticeText) toast.add({ type: "success", title: noticeText });
   }, []);
-  const run = useCallback(async (action: () => Promise<void>, failureTitle = "Sign in failed") => {
+  const run = useCallback(async (action: () => Promise<void>, failureTitle = "Sign in failed", initialProgress = "Working...") => {
     setBusy(true);
+    setProgress(initialProgress);
     try {
       await action();
     } catch (cause) {
@@ -103,6 +105,7 @@ export function useAdminSignIn() {
       });
     } finally {
       setBusy(false);
+      setProgress("");
     }
   }, []);
   const checkLock = async (typedEmail: string) => {
@@ -115,6 +118,7 @@ export function useAdminSignIn() {
   };
   // eslint-disable-next-line complexity -- reason: this preserves the ordered authentication, authorization, and OTP steps.
   const begin = useCallback(async (user: User, lockAlreadyChecked = false) => {
+    setProgress("Verifying your account...");
     setPendingUser(user);
     setEmail(user.email ?? "");
     if (user.email && !lockAlreadyChecked) {
@@ -127,6 +131,7 @@ export function useAdminSignIn() {
         throw new Error(message(lock.data) ?? "Unable to verify sign-in status.");
     }
     if (!user.emailVerified) {
+      setProgress("Sending the verification email...");
       await sendEmailVerification(user);
       setStep("verify-email");
       toast.add({
@@ -147,15 +152,7 @@ export function useAdminSignIn() {
       });
       return;
     }
-    const preflight = await fetch("/api/admin/preflight", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${idToken}`, ...(await appCheckHeaders()) },
-      cache: "no-store",
-    });
-    if (!preflight.ok) {
-      await signOut(auth);
-      throw new Error("This account is not authorized.");
-    }
+    setProgress("Sending your one-time sign-in code...");
     const { response, data } = await requestJson("/api/admin/otp/send", { idToken });
     if (!response.ok) {
       await signOut(auth);
@@ -205,14 +202,18 @@ export function useAdminSignIn() {
   const submitCredentials = (typedEmail: string, password: string) =>
     run(async () => {
       setEmail(typedEmail);
-      await checkLock(typedEmail);
-      try {
-        const credential = await signInWithEmailAndPassword(auth, typedEmail, password);
-        await begin(credential.user, true);
-      } catch (cause) {
-        await handleError(cause, typedEmail);
+      setProgress("Checking your credentials and account status...");
+      const [lockResult, authResult] = await Promise.allSettled([
+        checkLock(typedEmail),
+        signInWithEmailAndPassword(auth, typedEmail, password),
+      ]);
+      if (lockResult.status === "rejected") {
+        if (authResult.status === "fulfilled") await signOut(auth);
+        throw lockResult.reason;
       }
-    });
+      if (authResult.status === "rejected") await handleError(authResult.reason, typedEmail);
+      if (authResult.status === "fulfilled") await begin(authResult.value.user, true);
+    }, "Sign in failed", "Checking your credentials and account status...");
   const signInWithGoogle = () =>
     run(async () => {
       const provider = new GoogleAuthProvider();
@@ -257,6 +258,7 @@ export function useAdminSignIn() {
     });
   const verifyCode = (code: string) =>
     run(async () => {
+      setProgress("Verifying your sign-in code...");
       if (!pendingUser) throw new Error("Your sign-in session expired. Sign in again.");
       const idToken = await pendingUser.getIdToken();
       const { response: verified, data } = await requestJson("/api/admin/otp/verify", {
@@ -285,6 +287,7 @@ export function useAdminSignIn() {
         idToken,
         challengeId,
       });
+      setProgress("Creating your secure administrator session...");
       if (!response.ok) throw new Error(message(sessionData) ?? "Administrator access denied.");
       await signOut(auth);
       router.replace(safeNextPath(params.get("next")));
@@ -339,6 +342,7 @@ export function useAdminSignIn() {
     step,
     email,
     busy,
+    progress,
     resetBusy,
     pendingEmail: pendingUser?.email ?? email,
     resendAfterSeconds,

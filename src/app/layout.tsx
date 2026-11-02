@@ -5,12 +5,10 @@ import { Suspense } from "react";
 import AppProviders from "@/components/providers/AppProviders";
 import { Toaster } from "@/components/ui/toast";
 import { SCHOOL_INFO } from "@/lib/school-info";
-import { db } from "@/server/firebase-admin";
+import { getCachedSiteSettings } from "@/server/site-settings-cache";
 
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
-
-export const dynamic = "force-dynamic";
 
 const FALLBACK_NAME = SCHOOL_INFO.name;
 const FALLBACK_DESCRIPTION = "Secure school certificate retrieval and verification portal";
@@ -29,10 +27,12 @@ export const viewport: Viewport = {
 
 async function readSiteIdentity(): Promise<{ name: string; description: string }> {
   try {
-    const settings = await db.collection("siteSettings").doc("main").get();
+    const settings = await getCachedSiteSettings();
+    const schoolName = typeof settings.schoolName === "string" ? settings.schoolName : "";
+    const tagline = typeof settings.tagline === "string" ? settings.tagline : "";
     return {
-      name: String(settings.get("schoolName") ?? "").trim() || FALLBACK_NAME,
-      description: String(settings.get("tagline") ?? "").trim() || FALLBACK_DESCRIPTION,
+      name: schoolName.trim() || FALLBACK_NAME,
+      description: tagline.trim() || FALLBACK_DESCRIPTION,
     };
   } catch {
     // The page must still render when Firestore is unreachable.

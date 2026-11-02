@@ -163,7 +163,13 @@ async function resolveErasureContext(input: ErasureInput): Promise<ErasureContex
     validateRetryJob(erasureJob, input.studentId);
   }
   if (!erasureJob.jobRef || !erasureJob.job) throw new Error("ERASURE_JOB_UNAVAILABLE");
-  return { studentRef, student, ...erasureJob };
+  return {
+    studentRef,
+    student,
+    erasureId: erasureJob.erasureId,
+    jobRef: erasureJob.jobRef,
+    job: erasureJob.job,
+  };
 }
 
 async function loadCertificates(studentId: string, jobRef: DocumentReference) {

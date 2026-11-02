@@ -168,7 +168,6 @@ export default function SiteShell({ children }: { children: ReactNode }) {
     <div className="site-frame flex min-h-dvh flex-col bg-[var(--bg)] text-[var(--text)] transition-colors duration-200">
       <Header
         schoolName={schoolName}
-        includedLanguages={settings.includedLanguages}
       />
       {pathname === "/" && announcement && !announcementDismissed && announcementText && (
         <AnnouncementBanner

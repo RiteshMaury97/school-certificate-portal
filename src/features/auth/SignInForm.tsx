@@ -86,6 +86,11 @@ export default function SignInForm({ flow }: Props) {
               />
             )}
           </div>
+          {flow.busy && flow.progress && (
+            <p role="status" aria-live="polite" className="mt-4 text-sm text-[var(--text-muted)]">
+              {flow.progress}
+            </p>
+          )}
 
           <p className="mt-6 flex items-center gap-2 border-t border-[var(--divider)] pt-4 text-xs leading-5 text-[var(--text-muted)]">
             <ShieldCheck aria-hidden="true" className="size-4 shrink-0 text-[var(--primary)]" />

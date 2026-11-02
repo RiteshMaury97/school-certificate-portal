@@ -1,8 +1,10 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
+import { PUBLIC_SITE_SETTINGS_TAG } from "@/server/site-settings-cache";
 import { isValidCidr, normalizeAdminLocationPolicy } from "@/server/admin-location";
 import { apiError, requireAdmin, writeAuditLog } from "@/server/security";
 
@@ -160,6 +162,7 @@ export async function PATCH(request: NextRequest) {
       },
       { merge: true },
     );
+    revalidateTag(PUBLIC_SITE_SETTINGS_TAG, { expire: 0 });
     await writeAuditLog(request, admin.uid, "site_settings.update", "main");
     if (parsed.data.maintenanceMode !== wasLockedDown)
       await writeAuditLog(
