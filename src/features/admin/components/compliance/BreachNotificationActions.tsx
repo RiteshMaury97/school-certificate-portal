@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { DatePicker } from "@/components/ui/DatePicker";
 import { formatIst, toIso, type Api, type Incident } from "./breach-types";
 import { inputClass, warning } from "./BreachFields";
 
@@ -48,15 +49,14 @@ export default function BreachNotificationActions({ incident, api, act, load, re
           <div key={field} className="rounded-xl border border-[var(--border)] p-3">
             <label htmlFor={`notification-${field}`} className="text-sm font-medium">
               {label}
-              <input
+              <DatePicker
                 id={`notification-${field}`}
-                aria-label={label}
-                type="datetime-local"
+                label={label}
                 value={dates[field] ?? ""}
-                className={inputClass}
-                onChange={(e) => {
-                  setDates((current) => ({ ...current, [field]: e.target.value }));
+                onChange={(value) => {
+                  setDates((current) => ({ ...current, [field]: value }));
                 }}
+                includeTime
               />
             </label>
             <p className={warning}>Recorded: {formatIst(incident[field])} IST</p>

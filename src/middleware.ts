@@ -234,7 +234,6 @@ function isMaintenanceExempt(path: string): boolean {
     path.startsWith("/api/cron/") ||
     path === "/api/public/site-settings" ||
     path.startsWith("/_next/") ||
-    path === "/favicon.svg" ||
     path.startsWith("/icons/") ||
     path === "/manifest.webmanifest" ||
     path === "/sw.js"

@@ -20,9 +20,14 @@ export function EmailCodeStep({ busy, email, onVerify, onCancel, onResend, resen
   const submit = (event: SubmitEvent<HTMLFormElement>) => { event.preventDefault(); onVerify(code); };
   const masked = email.replace(/^(.).+(@.+)$/, "$1***$2");
   return <form onSubmit={submit} className="mt-6 space-y-4">
-    <p className="text-sm text-[var(--text-muted)]">We sent a six-digit code to <strong className="text-[var(--text)]">{masked}</strong>. It is valid for 10 minutes. Never share this code.</p>
+    <p className="text-sm text-[var(--text-muted)]">For additional security, we sent a six-digit verification code to <strong className="text-[var(--text)]">{masked}</strong>. Your code expires in 5 minutes. Do not share your OTP with anyone.</p>
     <CodeField label="Email verification code" value={code} onChange={(value) => { setCode(value.replace(/\\D/g, "").slice(0, 6)); }} />
-    <button disabled={busy || code.length !== 6} aria-busy={busy} className={primary}>{busy ? "Verifying…" : "Verify and sign in"}</button>
+    <ul className="space-y-1 text-xs leading-5 text-[var(--text-muted)]">
+      <li>Your verification code expires in 5 minutes.</li>
+      <li>Request a new code if your previous code expires.</li>
+      <li>Contact IT support if you cannot access your registered email address.</li>
+    </ul>
+    <button disabled={busy || code.length !== 6} aria-busy={busy} className={primary}>{busy ? "Verifying…" : "Verify & Continue"}</button>
     <button type="button" disabled={busy || remaining > 0} onClick={() => { setCode(""); onResend(); }} className={secondary}>
       {remaining > 0 ? `Resend code in ${remaining}s` : "Resend code"}
     </button>

@@ -54,7 +54,7 @@ export async function GET(
     return new NextResponse(upstream.body, {
       headers: {
         "Content-Type": mimeType,
-        "Content-Disposition": "inline",
+        "Content-Disposition": "attachment",
         "Cache-Control": "no-store, private",
         Pragma: "no-cache",
         "X-Content-Type-Options": "nosniff",

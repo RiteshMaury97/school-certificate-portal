@@ -3,6 +3,7 @@
 import { Camera, Check, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useState, type ChangeEvent, type SubmitEvent, type ReactNode } from "react";
 
+import { DatePicker } from "@/components/ui/DatePicker";
 import type { Role } from "../../types/admin.types";
 
 type Profile = {
@@ -443,11 +444,11 @@ export default function ProfileTab({
                       </select>
                     </Field>
                     <Field label="Date of birth">
-                      <input
-                        type="date"
+                      <DatePicker
+                        id="profile-date-of-birth"
+                        label="Date of birth"
                         value={profile.dateOfBirth}
-                        onChange={(event) => { update("dateOfBirth", event.target.value); }}
-                        className={inputClass}
+                        onChange={(value) => { update("dateOfBirth", value); }}
                       />
                     </Field>
                   </div>
@@ -494,11 +495,11 @@ export default function ProfileTab({
                       />
                     </Field>
                     <Field label="Joining date">
-                      <input
-                        type="date"
+                      <DatePicker
+                        id="profile-joining-date"
+                        label="Joining date"
                         value={profile.joiningDate}
-                        onChange={(event) => { update("joiningDate", event.target.value); }}
-                        className={inputClass}
+                        onChange={(value) => { update("joiningDate", value); }}
                       />
                     </Field>
                     <Field label="Reporting manager">

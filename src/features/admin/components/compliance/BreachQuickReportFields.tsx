@@ -1,5 +1,6 @@
 import { useId } from "react";
 
+import { DatePicker } from "@/components/ui/DatePicker";
 import { inputClass, warning } from "./BreachFields";
 
 export type QuickReportDraft = {
@@ -79,30 +80,24 @@ function IncidentFields({ form, set, ids }: Props & { ids: string }) {
       </label>
       <label htmlFor={`${ids}-occurred`} className="text-sm font-medium">
         Occurred at (optional)
-        <input
-          aria-label="Occurred at"
+        <DatePicker
+          label="Occurred at"
           id={`${ids}-occurred`}
-          type="datetime-local"
-          className={inputClass}
           value={form.occurredAt}
-          onChange={(e) => {
-            set("occurredAt", e.target.value);
-          }}
+          onChange={(value) => set("occurredAt", value)}
+          includeTime
         />
         <span className={warning}>Leave empty if the time is unknown.</span>
       </label>
       <label htmlFor={`${ids}-discovered`} className="text-sm font-medium">
         Discovered at *
-        <input
-          aria-label="Discovered at"
+        <DatePicker
+          label="Discovered at"
           id={`${ids}-discovered`}
           required
-          type="datetime-local"
-          className={inputClass}
           value={form.discoveredAt}
-          onChange={(e) => {
-            set("discoveredAt", e.target.value);
-          }}
+          onChange={(value) => set("discoveredAt", value)}
+          includeTime
         />
         <span className={warning}>Defaults to now; edit if needed.</span>
       </label>

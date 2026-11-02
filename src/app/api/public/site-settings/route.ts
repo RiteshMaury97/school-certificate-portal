@@ -28,7 +28,6 @@ export async function GET() {
               .join(",")
           : "en,hi,bn,mr,gu,pa,ta,te,ur",
       tagline: String(data.tagline ?? ""),
-      logoUrl: String(data.logoUrl ?? ""),
       statusPageUrl:
         typeof data.statusPageUrl === "string" &&
         /^https:\/\//i.test(data.statusPageUrl)

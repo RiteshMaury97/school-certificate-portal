@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "src/app/api/admin/certificates/route.ts": { "maxDuration": 10 },
+    "src/app/api/admin/certificates/[certificateId]/route.ts": { "maxDuration": 10 },
+    "src/app/api/admin/students/route.ts": { "maxDuration": 10 },
+    "src/app/api/admin/bulk-upload/route.ts": { "maxDuration": 10 }
+  },
   "crons": [
     {
       "path": "/api/admin/backup",

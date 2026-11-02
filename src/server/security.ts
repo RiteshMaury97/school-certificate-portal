@@ -571,6 +571,7 @@ export function apiError(error: unknown): NextResponse {
     return response;
   }
   const responses = new Map<string, { error: string; status: number }>([
+    ["File failed security checks", { error: "File failed security checks", status: 422 }],
     [
       "REAUTH_REQUIRED",
       { error: "Re-authentication with password and email code is required.", status: 428 },

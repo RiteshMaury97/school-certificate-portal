@@ -205,7 +205,6 @@ export default function SiteShell({ children }: { children: ReactNode }) {
     <div className="site-frame flex min-h-dvh flex-col bg-[var(--bg)] text-[var(--text)] transition-colors duration-200">
       <Header
         schoolName={schoolName}
-        logoUrl={settings.logoUrl}
         includedLanguages={settings.includedLanguages}
       />
       {pathname === "/" && announcement && !announcementDismissed && announcementText && (
@@ -234,7 +233,6 @@ export default function SiteShell({ children }: { children: ReactNode }) {
       <Footer
         schoolName={schoolName}
         tagline={settings.tagline}
-        logoUrl={settings.logoUrl}
         address={settings.address}
         affiliation={settings.affiliationNumber}
         boardName={settings.boardName}

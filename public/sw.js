@@ -1,6 +1,6 @@
 /* Only the offline fallback document is cached for navigations. API responses,
    certificate files, search results and all other navigations are never cached. */
-const CACHE_NAME = "sis-static-v4";
+const CACHE_NAME = "sis-static-v5";
 /* Local development must never be served from a cache: stale CSS/JS made new layouts look broken. */
 const IS_DEV = ["localhost", "127.0.0.1", "[::1]"].includes(self.location.hostname);
 const OFFLINE_URL = "/offline";
@@ -25,7 +25,7 @@ self.addEventListener("install", event => {
   event.waitUntil((async () => {
     if (IS_DEV) { await self.skipWaiting(); return; }
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll([OFFLINE_URL, "/offline.css", "/icons/icon-192.png"]).catch(() => {});
+    await cache.addAll([OFFLINE_URL, "/offline.css", "/icons/icon-192.png?v=2", "/sis-logo.png"]).catch(() => {});
     await self.skipWaiting();
   })());
 });

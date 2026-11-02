@@ -5,17 +5,16 @@ import { useEffect } from "react";
 
 import ErrorState from "@/components/feedback/ErrorState";
 import PageLoader from "@/components/feedback/PageLoader";
-import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import { AdminSessionProvider, useAdminSession } from "./admin-session";
-import AdminAuthBrandPanel from "./AdminAuthBrandPanel";
-import AdminAuthSignInPanel from "./AdminAuthSignInPanel";
+import BrandPanel from "./BrandPanel";
+import PageFooter from "./PageFooter";
+import SignInForm from "./SignInForm";
 import { useAdminSignIn } from "./useAdminSignIn";
 
 function AdminAuthContent() {
   const { state, retry } = useAdminSession();
   const router = useRouter();
-  const settings = usePublicSiteSettings();
   const flow = useAdminSignIn();
 
   useEffect(() => {
@@ -38,9 +37,15 @@ function AdminAuthContent() {
   }
 
   return (
-    <main id="main-content" tabIndex={-1} className="min-h-dvh bg-[#f5f7f4] text-[#17251f] lg:grid lg:min-h-dvh lg:grid-cols-[0.92fr_1.08fr]">
-      <AdminAuthBrandPanel settings={settings} />
-      <AdminAuthSignInPanel settings={settings} flow={flow} />
+    <main
+      id="main-content"
+      className="flex min-h-dvh flex-col lg:h-dvh lg:min-h-0 lg:grid-cols-[45%_55%] lg:overflow-hidden lg:grid"
+    >
+      <BrandPanel />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <SignInForm flow={flow} />
+        <PageFooter />
+      </div>
     </main>
   );
 }

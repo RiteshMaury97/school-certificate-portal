@@ -26,6 +26,7 @@ import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 10;
 
 function safeDocumentValue(document: { get(field: string): unknown }, field: string): unknown {
   const value: unknown = document.get(field);
@@ -109,7 +110,7 @@ async function storeCertificateRecord(
   duplicateReason: string,
 ) {
   const { studentId, session, type, certificateNumber, issueDate } = details;
-  const stored = await uploadCertificate(file, session, type, studentId);
+  const stored = await uploadCertificate(file, session, type, studentId, admin.uid);
   const ref = db.collection("certificates").doc(randomUUID());
   try {
     await createCertificateNumberIndex(certificateNumber, ref.id, session);

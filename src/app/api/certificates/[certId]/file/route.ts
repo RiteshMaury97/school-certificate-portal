@@ -79,20 +79,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cer
       String(settings.get("schoolName") ?? "").trim() || "Satyam International School";
     const watermarked = await watermarkCertificate(original, mimeType, schoolName);
     const originalName = String(certificate.fileName ?? `certificate${extension}`);
-    const mode = request.nextUrl.searchParams.get("mode");
-    const inline = mode === "view" || mode === "print";
-    const disposition = safeDispositionName(originalName, extension).replace(
-      /^attachment/,
-      inline ? "inline" : "attachment",
-    );
+    const disposition = safeDispositionName(originalName, extension);
 
     // Count only the explicit file-download endpoint. Do not persist requester,
     // IP address, user-agent, token or device information with download metrics.
-    if (!inline) {
-      await recordCertificateDownloads([
-        { ref: certificateDoc.ref, session: String(certificate.session) },
-      ]);
-    }
+    await recordCertificateDownloads([
+      { ref: certificateDoc.ref, session: String(certificate.session) },
+    ]);
 
     const body = new ReadableStream<Uint8Array>({
       start(controller) {

@@ -1,5 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 
+import { DatePicker } from "@/components/ui/DatePicker";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 
 import DuplicateHashWarning from "../shared/DuplicateHashWarning";
@@ -97,10 +98,18 @@ export default function StudentCreatePanel(props: Props) {
               className="text-xs font-medium text-[var(--text)]"
             >
               {label}
-              <input
+              {key === "dateOfBirth" ? (
+                <DatePicker
+                  id={`student-${key}`}
+                  label={label}
+                  value={form[key]}
+                  onChange={(value) => setForm((current) => ({ ...current, [key]: value }))}
+                  className="mt-1.5"
+                />
+              ) : <input
                 id={`student-${key}`}
                 translate="no"
-                type={key === "dateOfBirth" ? "date" : "text"}
+                type="text"
                 required={[
                   "studentName",
                   "fatherName",
@@ -122,7 +131,7 @@ export default function StudentCreatePanel(props: Props) {
                   setForm((value) => ({ ...value, [key]: event.target.value }));
                 }}
                 className={fieldClass}
-              />
+              />}
             </label>
           ))}
           <label
@@ -248,16 +257,15 @@ export default function StudentCreatePanel(props: Props) {
             className="text-xs font-medium text-[var(--text)]"
           >
             Issue date
-            <input
+            <DatePicker
               id="certificate-issued-at"
-              translate="no"
-              type="date"
+              label="Issue date"
               required
               value={form.issuedAt}
-              onChange={(event) => {
-                setForm((value) => ({ ...value, issuedAt: event.target.value }));
+              onChange={(value) => {
+                setForm((current) => ({ ...current, issuedAt: value }));
               }}
-              className={fieldClass}
+              className="mt-1.5"
             />
           </label>
           <label

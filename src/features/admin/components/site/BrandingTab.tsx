@@ -156,7 +156,6 @@ export default function BrandingTab(props: Props) {
             [
               ["schoolName", "School name"],
               ["tagline", "Tagline"],
-              ["logoUrl", "School logo HTTPS URL"],
               ["boardName", "Board / affiliation name"],
               ["affiliationNumber", "Affiliation number"],
               ["schoolCode", "School code"],

@@ -121,7 +121,7 @@ async function deleteStudent(api: Api, loadStudents: () => Promise<void>, studen
   await loadStudents();
 }
 
-type CertificateSubmission = Pick<Props, "act" | "load"> & {
+type CertificateSubmission = Pick<Props, "act" | "load" | "setToast"> & {
   selectedStudent: string;
   form: StudentFormState;
   files: File[];
@@ -136,6 +136,13 @@ type CertificateSubmission = Pick<Props, "act" | "load"> & {
 async function submitCertificates(e: SubmitEvent<HTMLFormElement>, input: CertificateSubmission) {
   e.preventDefault();
   if (!input.selectedStudent || !input.files.length) return;
+  const firstFile = input.files[0];
+  if (!(firstFile instanceof File)) throw new Error("Select a certificate file.");
+  if (!/\.(pdf|png|jpe?g)$/i.test(firstFile.name))
+    throw new Error("Choose a PDF, JPG or PNG file.");
+  if (firstFile.size === 0 || firstFile.size > 4 * 1024 * 1024)
+    throw new Error("Choose a file between 1 byte and 4 MB.");
+  let uploaded = false;
   await input.act(async () => {
     const body = new FormData();
     body.append("studentId", input.selectedStudent);
@@ -145,22 +152,24 @@ async function submitCertificates(e: SubmitEvent<HTMLFormElement>, input: Certif
     body.append("issuedAt", input.form.issuedAt);
     body.append("confirmDuplicateHash", String(input.duplicateHashAcknowledged));
     body.append("duplicateHashReason", input.duplicateHashReason);
-    const firstFile = input.files[0];
-    if (!(firstFile instanceof File)) throw new Error("Select a certificate file.");
     body.append("file", firstFile);
+    input.setToast("Scanning...");
     const response = await fetch("/api/admin/certificates", {
       method: "POST",
       body,
       headers: { "x-csrf-token": decodeURIComponent(csrf()), ...(await appCheckHeaders()) },
     });
     const data = await readResponse(response);
+    if (response.status === 422) input.setToast("Blocked");
     checkResponse(response, data, "Certificate upload failed.", input.setDuplicateHashWarning);
     input.setFiles([]);
     input.setDuplicateHashAcknowledged(false);
     input.setDuplicateHashReason("");
     input.setDuplicateHashWarning("");
     await input.load();
+    uploaded = true;
   });
+  if (uploaded) input.setToast("Uploaded");
 }
 
 export function useCertificateIntake({ api, act, setToast, tab, load }: Props) {
@@ -213,6 +222,7 @@ export function useCertificateIntake({ api, act, setToast, tab, load }: Props) {
     submitCertificates(e, {
       act,
       load,
+      setToast,
       selectedStudent,
       form,
       files,

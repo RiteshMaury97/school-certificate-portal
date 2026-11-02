@@ -3,6 +3,8 @@ import Script from "next/script";
 import { Suspense } from "react";
 
 import AppProviders from "@/components/providers/AppProviders";
+import { Toaster } from "@/components/ui/toast";
+import { SCHOOL_INFO } from "@/lib/school-info";
 import { db } from "@/server/firebase-admin";
 
 import type { Metadata, Viewport } from "next";
@@ -10,14 +12,11 @@ import "@/styles/globals.css";
 
 export const dynamic = "force-dynamic";
 
-const FALLBACK_NAME = "Satyam International School";
+const FALLBACK_NAME = SCHOOL_INFO.name;
 const FALLBACK_DESCRIPTION = "Secure school certificate retrieval and verification portal";
 const siteUrl = (
   [process.env.SITE_URL, process.env.APP_ORIGIN].find(Boolean) ?? "https://example.org"
-).replace(
-  /\/$/,
-  "",
-);
+).replace(/\/$/, "");
 
 export const viewport: Viewport = {
   themeColor: [
@@ -50,11 +49,11 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: { canonical: "/" },
     icons: {
       icon: [
-        { url: "/favicon.ico", sizes: "any" },
-        { url: "/favicon.svg", type: "image/svg+xml" },
-        { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+        { url: "/favicon.ico?v=2", sizes: "16x16 32x32 48x48" },
+        { url: "/icons/icon-192.png?v=2", type: "image/png", sizes: "192x192" },
+        { url: "/icons/icon-512.png?v=2", type: "image/png", sizes: "512x512" },
       ],
-      apple: "/icons/icon-192.png",
+      apple: "/apple-touch-icon.png?v=2",
     },
     manifest: "/manifest.webmanifest",
     openGraph: {
@@ -63,7 +62,9 @@ export async function generateMetadata(): Promise<Metadata> {
       title: name,
       description,
       url: siteUrl,
-      images: [{ url: "/og-image.png", width: 1200, height: 630, alt: `${name} official school records` }],
+      images: [
+        { url: "/og-image.png", width: 1200, height: 630, alt: `${name} official school records` },
+      ],
     },
     twitter: {
       card: "summary_large_image",
@@ -81,11 +82,7 @@ const themeInit = `(function(){var r=document.documentElement;try{var t=localSto
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html
-      lang="en"
-      data-scroll-behavior="smooth"
-      suppressHydrationWarning
-    >
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <Script id="theme-init" nonce={nonce} strategy="beforeInteractive">
           {themeInit}
@@ -98,7 +95,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <AppProviders>
           <Suspense>{children}</Suspense>
         </AppProviders>
-        {process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN && process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL ? (
+        <Toaster />
+        {process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN &&
+        process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL ? (
           <Script
             defer
             data-domain={process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN}

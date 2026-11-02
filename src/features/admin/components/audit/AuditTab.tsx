@@ -1,8 +1,9 @@
 "use client";
 
-import { Activity, CalendarDays, Download, Filter, Search, ShieldCheck } from "lucide-react";
+import { Activity, Download, Filter, Search, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
+import { DatePicker } from "@/components/ui/DatePicker";
 import PaginationControls from "../shared/PaginationControls";
 
 import type { Dispatch, SetStateAction } from "react";
@@ -64,16 +65,8 @@ function AuditFilters({
           <span className="sr-only">Filter by action</span>
           <input id="audit-action-filter" aria-label="Filter by action" value={auditAction} onChange={(event) => { setAuditAction(event.target.value); }} placeholder="Filter by action" className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)]" />
         </label>
-        <label htmlFor="audit-start-date" className="relative block">
-          <CalendarDays size={15} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-          <span className="sr-only">Start date</span>
-          <input id="audit-start-date" aria-label="Start date" type="date" value={auditStart} onChange={(event) => { setAuditStart(event.target.value); }} className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)]" />
-        </label>
-        <label htmlFor="audit-end-date" className="relative block">
-          <CalendarDays size={15} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-          <span className="sr-only">End date</span>
-          <input id="audit-end-date" aria-label="End date" type="date" value={auditEnd} onChange={(event) => { setAuditEnd(event.target.value); }} className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-sm text-[var(--text)]" />
-        </label>
+        <DatePicker id="audit-start-date" label="Start date" value={auditStart} onChange={setAuditStart} className="[&_button]:min-h-10 [&_button]:rounded-lg [&_button]:bg-[var(--bg)]" />
+        <DatePicker id="audit-end-date" label="End date" value={auditEnd} onChange={setAuditEnd} className="[&_button]:min-h-10 [&_button]:rounded-lg [&_button]:bg-[var(--bg)]" />
         <button type="button" onClick={onApply} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--on-primary)] hover:opacity-90">
           <Filter size={15} aria-hidden="true" /> Apply filters
         </button>

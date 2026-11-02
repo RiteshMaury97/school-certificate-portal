@@ -36,6 +36,7 @@ import { normalize, studentCreateSchema } from "@/shared/validation";
 import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
+export const maxDuration = 10;
 export const dynamic = "force-dynamic";
 function slugify(value: string): string {
   return normalize(value)
@@ -222,7 +223,7 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     const certificateNumberEncrypted = encryptCertificateNumber(data.certificateNumber);
-    const stored = await uploadCertificate(file, data.session, data.certificateType, studentRef.id);
+    const stored = await uploadCertificate(file, data.session, data.certificateType, studentRef.id, admin.uid);
     const now = FieldValue.serverTimestamp();
     try {
       if (!reuseExisting) {

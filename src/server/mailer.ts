@@ -150,8 +150,8 @@ export async function sendAdminOtpEmail(input: {
   const message: MailInput = {
     to: input.to,
     subject: `${cleanHeader(name)}: administrator verification code`,
-    text: `${name}\n\nYour administrator verification code is ${input.code}.\nThis code is valid for 10 minutes. Never share this code. If this wasn't you, reset your password.`,
-    html: `<main style="font-family:Arial,sans-serif;max-width:560px;margin:auto"><h2>${safeName}</h2><p>Your administrator verification code is:</p><p style="font-size:36px;font-weight:700;letter-spacing:10px">${safeCode}</p><p>This code is valid for 10 minutes.</p><p><strong>Never share this code.</strong></p><p>If this wasn't you, reset your password.</p></main>`,
+    text: `${name}\n\nYour administrator verification code is ${input.code}.\nThis code is valid for 5 minutes. Never share this code. If this wasn't you, reset your password.`,
+    html: `<main style="font-family:Arial,sans-serif;max-width:560px;margin:auto"><h2>${safeName}</h2><p>Your administrator verification code is:</p><p style="font-size:36px;font-weight:700;letter-spacing:10px">${safeCode}</p><p>This code is valid for 5 minutes.</p><p><strong>Never share this code.</strong></p><p>If this wasn't you, reset your password.</p></main>`,
   };
 
   try {

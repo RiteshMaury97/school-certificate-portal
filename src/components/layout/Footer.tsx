@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+
+import Logo from "@/components/ui/Logo";
 
 type Props = {
   schoolName?: string | undefined;
   tagline?: string | undefined;
-  logoUrl?: string | undefined;
   address?: string | undefined;
   affiliation?: string | undefined;
   boardName?: string | undefined;
@@ -24,27 +24,8 @@ type Props = {
 const linkClass =
   "transition-colors hover:text-[var(--primary)] hover:underline hover:underline-offset-4";
 
-function SchoolLogo({ logoUrl, schoolName }: Pick<Props, "logoUrl" | "schoolName">) {
-  if (logoUrl) {
-    return (
-      <Image
-        src={logoUrl}
-        alt=""
-        width={36}
-        height={36}
-        unoptimized
-        className="h-9 w-9 rounded-full object-contain"
-      />
-    );
-  }
-  return (
-    <span
-      aria-hidden="true"
-      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--primary)] text-sm font-bold text-[var(--on-primary)]"
-    >
-      {schoolName?.trim().charAt(0)}
-    </span>
-  );
+function SchoolLogo() {
+  return <Logo size={40} className="h-10 w-10 rounded-full bg-white object-contain p-0.5" />;
 }
 
 function SchoolStatus({
@@ -73,7 +54,6 @@ function SchoolStatus({
 function SchoolIdentity({
   schoolName,
   tagline,
-  logoUrl,
   address,
   affiliation,
   boardName,
@@ -83,7 +63,6 @@ function SchoolIdentity({
   Props,
   | "schoolName"
   | "tagline"
-  | "logoUrl"
   | "address"
   | "affiliation"
   | "boardName"
@@ -93,7 +72,7 @@ function SchoolIdentity({
   return (
     <section className="min-w-0">
       <div className="flex items-center gap-2.5">
-        <SchoolLogo logoUrl={logoUrl} schoolName={schoolName} />
+        <SchoolLogo />
         <div className="min-w-0">
           <h2 translate="no" className="truncate text-sm font-bold uppercase tracking-wide">
             {schoolName}
@@ -252,7 +231,6 @@ function FooterAttribution({
 export default function Footer({
   schoolName = "Satyam International School",
   tagline = "Educate. Elevate. Empower.",
-  logoUrl,
   address,
   affiliation,
   boardName,
@@ -272,7 +250,6 @@ export default function Footer({
         <SchoolIdentity
           schoolName={schoolName}
           tagline={tagline}
-          logoUrl={logoUrl}
           address={address}
           affiliation={affiliation}
           boardName={boardName}

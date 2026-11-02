@@ -15,6 +15,7 @@ import { PDFDocument, PDFArray, PDFDict, PDFName, PDFRef } from "pdf-lib";
 import sharp from "sharp";
 
 import { MAX_IMAGE_PIXELS, MAX_PDF_PAGES, UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
+import { scanFile } from "@/lib/scanner";
 
 const MAX_FILE_BYTES = UPLOAD_MAX_BYTES;
 type SupportedMimeType = "application/pdf" | "image/jpeg" | "image/png";
@@ -185,25 +186,6 @@ export async function inspectCertificateContent(
   else await validateImage(buffer);
   return detected;
 }
-async function scanForMalware(buffer: Buffer, mimeType: string): Promise<void> {
-  const endpoint = process.env.ANTIVIRUS_SCAN_URL;
-  if (!endpoint) return;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": mimeType,
-      Authorization: `Bearer ${process.env.ANTIVIRUS_SCAN_TOKEN ?? ""}`,
-    },
-    body: new Uint8Array(buffer),
-    cache: "no-store",
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!response.ok) throw new Error("Antivirus scanning is unavailable; upload was not accepted.");
-  const result: unknown = await response.json().catch(() => null);
-  if (!result || typeof result !== "object" || !("clean" in result) || result.clean !== true) {
-    throw new Error("The uploaded file did not pass the antivirus scan.");
-  }
-}
 export async function createCertificatePreviewUrl(r2Key: string): Promise<string> {
   validateCertificateKey(r2Key);
   return getSignedUrl(
@@ -230,6 +212,7 @@ export async function uploadCertificate(
   session: string,
   certificateType: string,
   studentId?: string,
+  uploaderUid?: string,
 ): Promise<R2Upload> {
   if (file.size <= 0 || file.size > MAX_FILE_BYTES)
     throw new Error("Certificate must be between 1 byte and 4 MB");
@@ -237,7 +220,15 @@ export async function uploadCertificate(
   const buffer = Buffer.from(await file.arrayBuffer());
   if (buffer.byteLength !== file.size) throw new Error("File size validation failed");
   const detected = await inspectCertificateContent(buffer, file.name, file.type);
-  await scanForMalware(buffer, detected.mimeType);
+  const scan = scanFile(buffer, file.name, file.type);
+  if (!scan.safe) {
+    console.error("Certificate security scan blocked upload", {
+      reasons: scan.reasons,
+      sha256: scan.sha256,
+      userId: uploaderUid ?? "unknown",
+    });
+    throw new Error("File failed security checks");
+  }
   const slug = certificateTypeSlug(certificateType);
   const r2Key = `certificates/${session}/${slug}/${randomUUID()}${detected.extension}`;
   const sha256 = createHash("sha256").update(buffer).digest("hex");
@@ -256,7 +247,7 @@ export async function uploadCertificate(
     size: buffer.byteLength,
     mimeType: detected.mimeType,
     sha256,
-    fileName: file.name.slice(0, 255),
+    fileName: file.name.replace(/[\\/\0\u202a-\u202e\u2066-\u2069\x00-\x1f\x7f]/g, "").slice(0, 255),
   };
 }
 export async function readR2Object(r2Key: string): Promise<Buffer> {

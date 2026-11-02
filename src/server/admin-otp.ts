@@ -247,7 +247,7 @@ export function createAdminOtpChallengeRecord(input: {
     uid: input.uid,
     codeHash: hashAdminOtp(input.challengeId, input.uid, input.code),
     createdAt: FieldValue.serverTimestamp(),
-    expiresAt: new Date(input.now + 10 * MINUTE),
+    expiresAt: new Date(input.now + 5 * MINUTE),
     attempts: 0,
     maxAttempts: 5,
     consumedAt: null,

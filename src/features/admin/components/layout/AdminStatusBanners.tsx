@@ -2,21 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import ErrorState from "@/components/feedback/ErrorState";
+import { toast as uiToast } from "@/components/ui/toast";
 
-type AdminStatusBannersProps = {
-  toast: string;
-  error: string;
-  busy: boolean;
-  onRetry: () => void;
-};
-
-export default function AdminStatusBanners({
-  toast,
-  error,
-  busy,
-  onRetry,
-}: AdminStatusBannersProps) {
+export default function AdminStatusBanners() {
   const [emergencyLockdown, setEmergencyLockdown] = useState(false);
   const refreshLockdown = useCallback(async () => {
     try {
@@ -36,6 +24,9 @@ export default function AdminStatusBanners({
     }
   }, []);
   useEffect(() => {
+    if (emergencyLockdown) uiToast.add({ type: "warning", title: "Emergency lockdown is active", description: "Public lookup, verification and downloads are in maintenance mode." });
+  }, [emergencyLockdown]);
+  useEffect(() => {
     const timeout = window.setTimeout(() => {
       void refreshLockdown();
     }, 0);
@@ -48,39 +39,5 @@ export default function AdminStatusBanners({
       window.removeEventListener("site-settings-updated", handleSettingsUpdated);
     };
   }, [refreshLockdown]);
-  return (
-    <>
-      {emergencyLockdown && (
-        <p
-          role="alert"
-          className="mb-4 rounded-lg border border-amber-500 bg-amber-50 p-3 text-sm font-semibold text-amber-950"
-        >
-          Emergency lockdown is active. Public lookup, verification and downloads are returning a
-          maintenance response; admin sign-in remains available.
-        </p>
-      )}
-      {toast && (
-        <p
-          role="status"
-          className="mb-4 rounded-lg bg-[var(--surface-2)] p-3 text-sm text-[var(--text)]"
-        >
-          {toast}
-        </p>
-      )}
-      {error && (
-        <div className="mb-4">
-          <ErrorState
-            title="Admin request could not be completed"
-            description={error}
-            onRetry={onRetry}
-          />
-        </div>
-      )}
-      {busy && (
-        <p role="status" aria-live="polite" className="mb-5 text-sm text-[var(--text-muted)]">
-          Loading admin data…
-        </p>
-      )}
-    </>
-  );
+  return null;
 }

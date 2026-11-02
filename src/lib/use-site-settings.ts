@@ -6,7 +6,6 @@ export type PublicSiteSettings = {
   retentionYears?: number;
   backupRotationDays?: number;
   tagline?: string;
-  logoUrl?: string;
   boardName?: string;
   affiliationNumber?: string;
   schoolCode?: string;
@@ -36,7 +35,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 const stringKeys = [
   "schoolName",
   "tagline",
-  "logoUrl",
   "boardName",
   "affiliationNumber",
   "schoolCode",

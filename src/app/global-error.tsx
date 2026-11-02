@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+
+import Logo from "@/components/ui/Logo";
 import "@/styles/globals.css";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -47,6 +49,7 @@ export default function GlobalError({
     <html lang="en">
       <body>
         <main id="main-content" tabIndex={-1} className="error-page">
+          <Logo size={72} className="rounded-xl bg-white p-1 object-contain" />
           <p className="error-code">500</p>
           <h1>Something went wrong</h1>
           <p>We could not complete that request. Please try again.</p>

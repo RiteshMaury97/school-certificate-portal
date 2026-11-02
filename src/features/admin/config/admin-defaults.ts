@@ -75,7 +75,6 @@ export const createDefaultAnnouncement = (): AnnouncementState => ({
 export const createDefaultBranding = (): BrandingState => ({
   schoolName: "",
   tagline: "",
-  logoUrl: "",
   boardName: "",
   affiliationNumber: "",
   schoolCode: "",

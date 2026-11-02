@@ -1,6 +1,8 @@
 import { Settings } from "lucide-react";
 import Link from "next/link";
 
+import Logo from "@/components/ui/Logo";
+
 
 import { tabIcons, tabLabels } from "../../config/admin-navigation";
 import { getVisibleTabs } from "../../utils/admin-tab-access";
@@ -24,7 +26,7 @@ export default function AdminSidebar({
   onSettings,
   onLoadSessions,
 }: AdminSidebarProps) {
-  const username = email.split("@")[0];
+  const username = email.split("@")[0] ?? "";
   const avatarName = username.length > 0 ? username : "RM";
   return (
     <aside
@@ -32,9 +34,7 @@ export default function AdminSidebar({
       aria-label="Admin sidebar"
     >
       <Link href="/admin" className="sis-admin-brand flex items-center gap-3 px-5 py-6">
-        <span className="sis-admin-logo" aria-hidden="true">
-          S
-        </span>
+        <Logo size={44} className="sis-admin-logo bg-white object-contain p-1" />
         <span className="min-w-0">
           <strong className="block truncate text-sm">Satyam International</strong>
           <small className="block text-[9px] uppercase tracking-wide">School management</small>

@@ -1,6 +1,7 @@
 import { BadgeCheck, Clock3, FileText, ShieldCheck, Upload, UserRound } from "lucide-react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { confirmAction, requestInput } from "@/shared/admin-dialogs";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import {
@@ -256,17 +257,15 @@ export default function CertificatesTab(props: Props) {
                 className="text-sm font-semibold text-[var(--text)]"
               >
                 Issue date
-                <input
+                <DatePicker
                   id="certificate-issue-date"
-                  aria-label="Issue date"
-                  translate="no"
-                  type="date"
+                  label="Issue date"
                   required
                   value={form.issuedAt}
-                  onChange={(e) => {
-                    setForm((v) => ({ ...v, issuedAt: e.target.value }));
+                  onChange={(value) => {
+                    setForm((v) => ({ ...v, issuedAt: value }));
                   }}
-                  className="mt-2 min-h-11 w-full rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-sm"
+                  className="mt-2"
                 />
               </label>
               <label

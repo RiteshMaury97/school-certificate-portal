@@ -1,0 +1,37 @@
+import Link from "next/link";
+
+import { SCHOOL_INFO } from "@/lib/school-info";
+
+export default function PageFooter() {
+  return (
+    <footer className="mx-auto w-full max-w-[440px] px-5 pb-5 pt-4 text-center text-xs text-[var(--text-muted)] sm:px-8 lg:px-0">
+      <p>
+        Need help? Contact{" "}
+        <a
+          className="font-medium text-[var(--primary)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+          href={`mailto:${SCHOOL_INFO.email}`}
+        >
+          {SCHOOL_INFO.email}
+        </a>
+      </p>
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-t border-[var(--divider)] pt-3 text-[11px]">
+        <span>© 2026 {SCHOOL_INFO.name}. All rights reserved.</span>
+        <span aria-hidden="true">·</span>
+        <nav aria-label="Legal links" className="flex gap-3">
+          <Link
+            className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+            href="/privacy"
+          >
+            Privacy Policy
+          </Link>
+          <Link
+            className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+            href="/terms"
+          >
+            Terms &amp; Conditions
+          </Link>
+        </nav>
+      </div>
+    </footer>
+  );
+}

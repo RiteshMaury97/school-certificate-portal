@@ -1,17 +1,16 @@
 "use client";
 import { Menu, X, ShieldCheck } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import IconButton from "@/components/ui/IconButton";
+import Logo from "@/components/ui/Logo";
 import ThemeToggle from "@/features/theme/ThemeToggle";
 import LanguageButton from "@/features/translate/LanguageButton";
 
 type Props = {
   schoolName?: string | undefined;
-  logoUrl?: string | undefined;
   includedLanguages?: string | undefined;
 };
 
@@ -111,7 +110,6 @@ function MobileNavigation({
 
 export default function Header({
   schoolName = "Satyam International School",
-  logoUrl,
   includedLanguages,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -125,23 +123,7 @@ export default function Header({
             href="/"
             className="flex min-w-0 shrink items-center gap-2.5 rounded-lg text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
           >
-            {logoUrl ? (
-              <Image
-                src={logoUrl}
-                alt=""
-                width={40}
-                height={40}
-                unoptimized
-                className="h-10 w-10 shrink-0 rounded-lg bg-[var(--surface-2)] object-contain"
-              />
-            ) : (
-              <span
-                aria-hidden="true"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--primary)] text-xs font-bold text-[var(--on-primary)]"
-              >
-                SIS
-              </span>
-            )}
+            <Logo size={40} priority className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-0.5 sm:h-10 sm:w-10" />
             <span
               className="notranslate hidden truncate text-[15px] font-bold tracking-tight min-[481px]:inline"
               translate="no"

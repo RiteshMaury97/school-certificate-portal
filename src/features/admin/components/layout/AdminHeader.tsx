@@ -2,6 +2,14 @@ import { Bell, Menu, Moon, Monitor, Sun, UserRound, X } from "lucide-react";
 
 import IncidentSummaryBadge from "./IncidentSummaryBadge";
 import { tabLabels } from "../../config/admin-navigation";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 import type { Tab } from "../../types/admin.types";
 import type { Role } from "../../types/admin.types";
@@ -44,9 +52,21 @@ export default function AdminHeader({
     <header className="sis-admin-header">
       <div className="mx-auto flex w-full items-center justify-between gap-4 px-6 py-4 lg:px-7">
         <div>
-          <p className="sis-admin-breadcrumb">
-            Workspace <span>/</span> Administration <span>/</span> {tabLabels[tab]}
-          </p>
+          <Breadcrumb className="mb-1.5">
+            <BreadcrumbList className="text-[10px] font-semibold tracking-wide">
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/admin">Workspace</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/admin">Administration</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{tabLabels[tab]}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <h1 className="text-lg font-semibold leading-tight text-[var(--text)]">
             {tab === "dashboard" ? `Welcome back, ${username ?? "Administrator"}` : tabLabels[tab]}
           </h1>

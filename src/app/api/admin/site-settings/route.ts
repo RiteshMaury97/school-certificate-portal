@@ -17,7 +17,6 @@ const url = z
 const schema = z.object({
   schoolName: z.string().trim().min(1).max(160),
   tagline: z.string().trim().max(240),
-  logoUrl: url,
   statusPageUrl: url.optional().default(""),
   includedLanguages: z
     .string()

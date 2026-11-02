@@ -4,6 +4,7 @@ import { FilePlus2, Search, ShieldCheck, UsersRound, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 
 import EmptyState from "@/components/feedback/EmptyState";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { UPLOAD_LIMITS_HELP } from "@/shared/upload-limits";
 
@@ -709,18 +710,18 @@ export default function StudentsList({
                 className="grid gap-1.5 text-sm font-medium"
               >
                 Issue date
-                <input
+                <DatePicker
                   id="student-certificate-issued-at"
-                  type="date"
+                  label="Issue date"
                   required
                   value={certificate.issuedAt}
-                  onChange={(event) => {
+                  onChange={(value) => {
                     setCertificate((current) => ({
                       ...current,
-                      issuedAt: event.target.value,
+                      issuedAt: value,
                     }));
                   }}
-                  className={controlClass}
+                  className="mt-1.5"
                 />
               </label>
               <label

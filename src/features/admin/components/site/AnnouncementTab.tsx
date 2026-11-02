@@ -1,5 +1,6 @@
 import { Bell, CalendarClock, ExternalLink, Eye, Info, Save, TriangleAlert } from "lucide-react";
 
+import { DatePicker } from "@/components/ui/DatePicker";
 import type { AnnouncementState } from "../../types/admin-state.types";
 import type { Dispatch, ReactNode, SubmitEventHandler, SetStateAction } from "react";
 
@@ -201,31 +202,27 @@ function AnnouncementSchedule({
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <AnnouncementField id="announcement-start" label="Starts">
-          <input
+          <DatePicker
             id="announcement-start"
-            aria-labelledby="announcement-start-label"
-            translate="no"
-            type="datetime-local"
+            label="Starts"
             required
             value={announcement.startAt}
-            onChange={(event) => {
-              updateAnnouncement(setAnnouncement, "startAt", event.target.value);
+            onChange={(value) => {
+              updateAnnouncement(setAnnouncement, "startAt", value);
             }}
-            className="min-h-11 w-full rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-sm"
+            includeTime
           />
         </AnnouncementField>
         <AnnouncementField id="announcement-end" label="Ends">
-          <input
+          <DatePicker
             id="announcement-end"
-            aria-labelledby="announcement-end-label"
-            translate="no"
-            type="datetime-local"
+            label="Ends"
             required
             value={announcement.endAt}
-            onChange={(event) => {
-              updateAnnouncement(setAnnouncement, "endAt", event.target.value);
+            onChange={(value) => {
+              updateAnnouncement(setAnnouncement, "endAt", value);
             }}
-            className="min-h-11 w-full rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-sm"
+            includeTime
           />
         </AnnouncementField>
       </div>

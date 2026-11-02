@@ -101,7 +101,7 @@ export default function AdminPage() {
   const [admins, setAdmins] = useState<Record<string, unknown>[]>([]);
   const [reportNotes, setReportNotes] = useState<Record<string, string>>({});
   const [reportReplies, setReportReplies] = useState<Record<string, string>>({});
-  const { busy, setBusy, toast, setToast, error, setError, act } = useAdminFeedback();
+  const { busy, setBusy, setToast, setError, act } = useAdminFeedback();
   const { api, reauthOpen, completeReauth, cancelReauth } = useAdminApi();
   const siteAdmin = useSiteSettingsAdmin(api, act, setToast);
   const {
@@ -418,24 +418,7 @@ export default function AdminPage() {
               mobileAdminNav={mobileAdminNav}
               setMobileAdminNav={setMobileAdminNav}
             />
-            <AdminStatusBanners
-              toast={toast}
-              error={error}
-              busy={busy}
-              onRetry={() => {
-                setError("");
-                setBusy(true);
-                void load()
-                  .catch((cause: unknown) => {
-                    setError(
-                      cause instanceof Error ? cause.message : "Unable to reload admin data.",
-                    );
-                  })
-                  .finally(() => {
-                    setBusy(false);
-                  });
-              }}
-            />
+            <AdminStatusBanners />
             {tab === "dashboard" && (
               <DashboardOverview
                 stats={stats}

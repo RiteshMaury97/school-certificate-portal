@@ -9,6 +9,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
+import { DatePicker } from "@/components/ui/DatePicker";
 import { formatIst, statusOptions, type Filters, type Incident } from "./breach-types";
 import { inputClass, warning } from "./BreachFields";
 
@@ -121,32 +122,8 @@ function FilterBar({ props }: { props: Props }) {
             <option key={s}>{s}</option>
           ))}
         </select>
-        <label htmlFor="incident-from" className="text-xs text-[var(--text-muted)]">
-          From
-          <input
-            id="incident-from"
-            aria-label="From date"
-            type="date"
-            className={inputClass}
-            value={props.filters.start}
-            onChange={(e) => {
-              change("start", e.target.value);
-            }}
-          />
-        </label>
-        <label htmlFor="incident-to" className="text-xs text-[var(--text-muted)]">
-          To
-          <input
-            id="incident-to"
-            aria-label="To date"
-            type="date"
-            className={inputClass}
-            value={props.filters.end}
-            onChange={(e) => {
-              change("end", e.target.value);
-            }}
-          />
-        </label>
+        <label className="text-xs text-[var(--text-muted)]">From<DatePicker id="incident-from" label="From date" value={props.filters.start} onChange={(value) => change("start", value)} className="mt-1.5" /></label>
+        <label className="text-xs text-[var(--text-muted)]">To<DatePicker id="incident-to" label="To date" value={props.filters.end} onChange={(value) => change("end", value)} className="mt-1.5" /></label>
       </div>
     </div>
   );
