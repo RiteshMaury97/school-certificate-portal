@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import Logo from "@/components/ui/Logo";
+import { SCHOOL_INFO } from "@/lib/school-info";
 
 type Props = {
   schoolName?: string | undefined;
@@ -17,7 +18,6 @@ type Props = {
   lastUpdated?: string | undefined;
   statusPageUrl?: string | undefined;
   socialLinks?: { label: string; url: string }[] | undefined;
-  translationCookieUsed?: boolean | undefined;
   onReport?: (() => void) | undefined;
 };
 
@@ -74,7 +74,7 @@ function SchoolIdentity({
       <div className="flex items-center gap-2.5">
         <SchoolLogo />
         <div className="min-w-0">
-          <h2 translate="no" className="truncate text-sm font-bold uppercase tracking-wide">
+          <h2 translate="no" className="whitespace-normal break-words text-sm font-bold uppercase tracking-wide">
             {schoolName}
           </h2>
           <p className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--text-muted)]">
@@ -86,9 +86,9 @@ function SchoolIdentity({
       <p className="mt-2 max-w-xs text-xs leading-5 text-[var(--text-muted)]">
         A place to learn, grow and shape a brighter future.
       </p>
-      {address?.trim() && (
+      {(address?.trim() || SCHOOL_INFO.address) && (
         <p className="mt-4 whitespace-pre-line text-xs leading-5 text-[var(--text-muted)]">
-          {address}
+          {address?.trim() || SCHOOL_INFO.address}
         </p>
       )}
       <SchoolStatus schoolCode={schoolCode} statusPageUrl={statusPageUrl} />
@@ -207,8 +207,7 @@ function SocialLinks({ links }: { links: Props["socialLinks"] }) {
 function FooterAttribution({
   schoolName,
   lastUpdated,
-  translationCookieUsed,
-}: Pick<Props, "schoolName" | "lastUpdated" | "translationCookieUsed">) {
+}: Pick<Props, "schoolName" | "lastUpdated">) {
   return (
     <div className="border-t border-[var(--border)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-[10px] text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
@@ -216,12 +215,6 @@ function FooterAttribution({
           © {new Date().getFullYear()} {schoolName}. All rights reserved.
         </span>
         {lastUpdated?.trim() && <span>Last updated: {lastUpdated}</span>}
-        {translationCookieUsed && (
-          <span>
-            The Google Translate functional cookie (googtrans) is set only after you choose a
-            language.
-          </span>
-        )}
         <span className="font-medium text-[var(--text)]">Official student services</span>
       </div>
     </div>
@@ -241,7 +234,6 @@ export default function Footer({
   lastUpdated,
   statusPageUrl,
   socialLinks,
-  translationCookieUsed = false,
   onReport,
 }: Props) {
   return (
@@ -264,7 +256,6 @@ export default function Footer({
       <FooterAttribution
         schoolName={schoolName}
         lastUpdated={lastUpdated}
-        translationCookieUsed={translationCookieUsed}
       />
     </footer>
   );

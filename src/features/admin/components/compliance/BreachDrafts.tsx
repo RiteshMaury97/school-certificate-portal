@@ -130,7 +130,7 @@ export default function BreachDrafts({ incident }: { incident: Incident }) {
           }}
         >
           <option value="en">English</option>
-          <option value="hi">हिन्दी</option>
+          <option value="hi">Hindi</option>
         </select>
       </div>
       <label className="block text-sm font-medium" htmlFor={draftId}>

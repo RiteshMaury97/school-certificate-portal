@@ -84,7 +84,6 @@
 @layer base {
   html {
     scroll-padding-top: 1rem;
-    /* Google Translate can leave a document offset after hiding its banner. */
     margin-top: 0 !important;
     overscroll-behavior-y: none;
   }
@@ -604,30 +603,6 @@
 .recharts-legend-item-text,
 .recharts-text {
   fill: var(--text-muted) !important;
-}
-
-/* Google Translate UI is invoked only from the language control. */
-body {
-  top: 0 !important;
-}
-.goog-te-banner-frame,
-.goog-te-banner-frame.skiptranslate,
-#goog-gt-tt,
-.goog-tooltip,
-.goog-tooltip:hover,
-.goog-text-highlight {
-  display: none !important;
-  visibility: hidden !important;
-}
-.google-translate-hidden {
-  position: fixed !important;
-  left: -10000px !important;
-  top: 0 !important;
-  width: 1px !important;
-  height: 1px !important;
-  overflow: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
 }
 
 /* Paper output is always black on white so it prints legibly. */

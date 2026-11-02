@@ -25,12 +25,12 @@ function buildCsp(nonce: string, allowSameOriginFrame = false): string {
   const authOrigin = authDomain ? `https://${authDomain}` : "";
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""} https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com https://apis.google.com https://translate.google.com https://translate.googleapis.com`,
-    `style-src 'self' ${dev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://translate.google.com https://translate.googleapis.com https://fonts.googleapis.com`,
-    "img-src 'self' data: blob: https://translate.google.com https://translate.googleapis.com https://www.gstatic.com",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""} https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com https://apis.google.com`,
+    `style-src 'self' ${dev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com`,
+    "img-src 'self' data: blob: https://www.gstatic.com",
     "font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com",
-    `connect-src 'self' ${dev ? "ws://localhost:* ws://127.0.0.1:*" : ""} https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://translate.google.com https://translate.googleapis.com https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
-    `frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://www.recaptcha.net https://translate.google.com ${authOrigin}`,
+    `connect-src 'self' ${dev ? "ws://localhost:* ws://127.0.0.1:*" : ""} https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
+    `frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://www.recaptcha.net ${authOrigin}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

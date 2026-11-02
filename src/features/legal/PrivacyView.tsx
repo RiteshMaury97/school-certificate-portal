@@ -200,28 +200,10 @@ export default function PrivacyPage() {
             providers on the School’s behalf, subject to the applicable service terms and configured
             security controls. Cloudflare R2 stores finished certificate files in a private,
             access-restricted bucket. Cloudflare Turnstile is used for abuse prevention and may
-            process technical request information. When a visitor actively chooses a language using
-            the optional Google Translate control, the page text may be sent to Google Translate for
-            machine translation. This can include text displayed on the current page. Visitors
-            should avoid using translation on pages containing personal certificate results; result
-            and print views are excluded from translation by the portal. Google may process the text
-            and related technical data under its own service terms and privacy policy. The
-            translation feature is not loaded until the visitor opens the language menu.
+            process technical request information. When a visitor actively chooses a language using the optional Google Cloud Translation control, visible page text is sent to Google for machine translation through the School's server. This can include text displayed on the current page. Visitors should avoid using translation on pages containing personal certificate results; result and print views are excluded from translation by the portal. Google may process the text and related technical data under its own service terms and privacy policy. The service contacts Google only after the visitor requests translation.
           </p>
           <p>
-            Google Translate is an external service provider used only after the visitor requests
-            translation. The School does not control Google’s translation processing, retention or
-            any cross-border handling; visitors can continue using the portal in English without
-            activating the service. See Google’s{" "}
-            <a
-              href="https://policies.google.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold underline"
-            >
-              Privacy Policy
-            </a>{" "}
-            for its own data practices.
+            Google Cloud Translation is an external service used only after the visitor requests translation. The School does not control Google's translation processing, retention or any cross-border handling; visitors can continue using the portal in English without activating the service. See Google's Privacy Policy for more information.
           </p>
           <p>
             The original uploaded certificate is retained unchanged in private storage. When a
@@ -374,11 +356,7 @@ export default function PrivacyPage() {
             administrator authentication and session integrity. It does not use marketing or
             advertising cookies, and does not sell personal data or run child-profiling analytics.
             Cloudflare Turnstile may use technical mechanisms necessary to distinguish legitimate
-            requests from automated abuse. If you choose a language other than English, Google
-            Translate sets the functional “googtrans” cookie to remember and apply your language
-            choice. This cookie is not set merely by visiting the portal or opening the language
-            menu; it is set only after you select a language. Choosing English resets the
-            translation cookie.
+            requests from automated abuse. If you choose a language other than English, the portal stores your language choice in browser local storage so it can be restored on your next visit. The choice is not sent in a cookie.
           </p>
         </>
       ),

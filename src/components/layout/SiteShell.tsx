@@ -10,27 +10,9 @@ import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import type { PublicSiteSettings } from "@/lib/use-site-settings";
 
-function hasTranslationCookie(): boolean {
-  return document.cookie
-    .split("; ")
-    .some((cookie) => cookie.startsWith("googtrans=") && cookie.split("=")[1] !== "");
-}
-
 function displaySchoolName(name: string | undefined): string {
   if (name?.trim()) return name.trim();
   return "Satyam International School";
-}
-
-function cookieUsedFromEvent(event: Event): boolean {
-  if (!(event instanceof CustomEvent)) return false;
-  const detail: unknown = event.detail;
-  return (
-    typeof detail === "object" &&
-    detail !== null &&
-    "cookieUsed" in detail &&
-    typeof detail.cookieUsed === "boolean" &&
-    detail.cookieUsed
-  );
 }
 
 function useAnnouncementDismissal() {
@@ -51,24 +33,6 @@ function useAnnouncementDismissal() {
     };
   }, []);
   return [dismissed, setDismissed] as const;
-}
-
-function useTranslationCookie() {
-  const [used, setUsed] = useState(false);
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setUsed(hasTranslationCookie());
-    }, 0);
-    const onTranslationChoice = (event: Event) => {
-      setUsed(cookieUsedFromEvent(event) && hasTranslationCookie());
-    };
-    window.addEventListener("sis-google-translate-choice", onTranslationChoice);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("sis-google-translate-choice", onTranslationChoice);
-    };
-  }, []);
-  return used;
 }
 
 function useServiceWorkerMaintenance() {
@@ -193,7 +157,6 @@ export default function SiteShell({ children }: { children: ReactNode }) {
   const settings = usePublicSiteSettings();
   const [announcementDismissed, setAnnouncementDismissed] = useAnnouncementDismissal();
   const [reportOpen, setReportOpen] = useState(false);
-  const translationCookieUsed = useTranslationCookie();
   const pathname = usePathname();
   useServiceWorkerMaintenance();
 
@@ -243,7 +206,6 @@ export default function SiteShell({ children }: { children: ReactNode }) {
         lastUpdated={settings.lastUpdated}
         statusPageUrl={settings.statusPageUrl}
         socialLinks={settings.socialLinks}
-        translationCookieUsed={translationCookieUsed}
         onReport={() => {
           setReportOpen(true);
         }}

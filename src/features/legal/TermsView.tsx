@@ -147,11 +147,7 @@ export default function TermsPage() {
             Data Protection Act, 2023, to the extent in force and applicable.
           </p>
           <p>
-            If you choose a language other than English, the optional Google Translate feature may
-            send visible page text to Google for machine translation. The feature is loaded only
-            after you open the language menu and choose a language. Google may set the functional
-            “googtrans” cookie after that choice. Review the Privacy Policy and Google’s privacy
-            information before using this optional service.
+            If you choose a language other than English, the optional Google Cloud Translation feature sends visible page text to Google for machine translation through the School's server. Review the Privacy Policy and Google's privacy information before using this optional service.
           </p>
         </>
       ),

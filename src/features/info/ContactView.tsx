@@ -209,9 +209,6 @@ export default function ContactView() {
         </div>
 
         <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 px-1 text-[10px] text-[var(--text-muted)]">
-          <span>
-            © {new Date().getFullYear()} {schoolName} · Zamania, Ghazipur
-          </span>
           <nav aria-label="Related links" className="flex gap-4">
             <Link href="/privacy" className="hover:text-[var(--primary)]">
               Privacy policy
