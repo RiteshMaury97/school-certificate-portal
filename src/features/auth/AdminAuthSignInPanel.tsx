@@ -20,7 +20,7 @@ function settingOr(value: string | undefined, fallback: string): string {
 export default function AdminAuthSignInPanel({ settings, flow }: Props) {
   const supportEmail = settingOr(settings.email, "sischoolzam@gmail.com");
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-y-auto px-5 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-10 lg:px-12 xl:px-20">
+    <section className="relative flex min-h-dvh flex-col overflow-y-auto bg-[#f7f8f5] px-5 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-10 sm:py-7 lg:px-12 xl:px-20">
       <div className="mx-auto flex w-full max-w-xl items-center justify-between">
         <Link href="/" className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-[#315d4c] hover:text-[#183c2e]">
           <ArrowLeft size={16} aria-hidden="true" /> Back to public portal
@@ -28,17 +28,17 @@ export default function AdminAuthSignInPanel({ settings, flow }: Props) {
         <span className="hidden text-[10px] uppercase tracking-[0.12em] text-[#718078] sm:inline">SIS <span className="px-1 text-[#b6c0b9]">/</span> Admin portal</span>
       </div>
 
-      <div className="mx-auto my-auto w-full max-w-xl py-5 sm:py-7">
+      <div className="mx-auto my-auto w-full max-w-xl py-8 sm:py-10">
         <header className="mb-7">
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#e4efe9] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#315d4c]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#d8e6dd] bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#315d4c] shadow-sm">
             <ShieldCheck size={13} aria-hidden="true" /> Administrator access
           </span>
-          <h1 className="mt-5 text-3xl font-medium tracking-tight sm:text-4xl">Welcome back</h1>
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">Welcome back</h1>
           <p className="mt-2 text-sm leading-6 text-[#718078]">Sign in to your school administration account to continue.</p>
           <p className="mt-2 text-xs leading-5 text-[#89958e]">A six-digit verification code will be sent to your registered email after sign-in.</p>
         </header>
 
-        <div className="rounded-2xl border border-[#e1e8e3] bg-white p-5 shadow-[0_18px_50px_-35px_rgba(20,37,30,0.35)] sm:p-7">
+        <div className="rounded-2xl border border-[#e1e8e3] bg-white p-5 shadow-[0_22px_60px_-38px_rgba(20,37,30,0.3)] sm:p-7">
           <h2 className="text-base font-semibold">{flow.step === "credentials" ? "Administrator sign in" : flow.step === "change-password" ? "Create your password" : "Verify your account"}</h2>
           <p className="mt-1 text-xs leading-5 text-[#87938c]">
             {flow.step === "credentials" ? "Use your authorized school account credentials." : flow.step === "change-password" ? "Replace your temporary password before account verification." : "Complete the secure verification step to continue."}

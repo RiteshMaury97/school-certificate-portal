@@ -1,149 +1,123 @@
-import { Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
-import { db } from "@/server/firebase-admin";
+import { createBreach, listBreaches, updateBreach } from "@/server/breaches";
 import { apiError, requireRoles, writeAuditLog } from "@/server/security";
+import { breachCreateSchema } from "@/shared/breach-schema";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
+
 export const runtime = "nodejs";
-const schema = z.object({
-  summary: z.string().trim().min(10).max(2000),
-  discoveredAt: z.iso.datetime({ offset: true }),
-  affectedData: z.string().trim().min(3).max(500),
-  affectedPrincipalsEstimate: z.number().int().min(0).max(1000000),
-  boardNotifiedAt: z.iso.datetime({ offset: true }).optional(),
-  boardDetailedReportAt: z.iso.datetime({ offset: true }).optional(),
-  principalsNotifiedAt: z.iso.datetime({ offset: true }).optional(),
-  status: z.enum(["investigating", "contained", "notified", "closed"]),
-});
+export const dynamic = "force-dynamic";
+
+function filterError(
+  status: string | null,
+  severity: string | null,
+  start: string | null,
+  end: string | null,
+): string | null {
+  const validStatuses = ["reported", "investigating", "contained", "notified", "closed"];
+  const validSeverities = ["low", "medium", "high", "critical"];
+  if (status && !validStatuses.includes(status)) return "Invalid status filter.";
+  if (severity && !validSeverities.includes(severity)) return "Invalid severity filter.";
+  if ((start && !Number.isFinite(Date.parse(start))) || (end && !Number.isFinite(Date.parse(end))))
+    return "Invalid date range.";
+  return null;
+}
+
+function parseListFilters(request: NextRequest) {
+  const params = request.nextUrl.searchParams;
+  const status = params.get("status");
+  const severity = params.get("severity");
+  const start = params.get("start");
+  const end = params.get("end");
+  const search = (params.get("search") ?? "").trim().slice(0, 160);
+  const error = filterError(status, severity, start, end);
+  if (error) return { error };
+  const page = Math.max(1, Number(params.get("page") ?? 1) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number(params.get("pageSize") ?? 25) || 25));
+  return { status, severity, start, end, search, page, pageSize };
+}
+
 export async function GET(request: NextRequest) {
   try {
     await requireRoles(request, ["superadmin"]);
-    const snap = await db
-      .collection("breachLogs")
-      .orderBy("createdAt", "desc")
-      .limit(100)
-      .get();
-    const iso = (value: unknown) => {
-      if (value instanceof Timestamp) return value.toDate().toISOString();
-      if (value instanceof Date) return value.toISOString();
-      return value ?? null;
-    };
+    const filters = parseListFilters(request);
+    if ("error" in filters) return NextResponse.json({ error: filters.error }, { status: 400 });
+    const { breaches, total } = await listBreaches(filters);
+    const pageSize = filters.pageSize;
     return NextResponse.json(
       {
-        breaches: snap.docs.map((d) => {
-          const value: unknown = d.data();
-          const x =
-            typeof value === "object" && value !== null && !Array.isArray(value)
-              ? value
-              : {};
-          return {
-            id: d.id,
-            ...x,
-            discoveredAt: iso(x.discoveredAt),
-            boardNotifiedAt: iso(x.boardNotifiedAt),
-            boardDetailedReportAt: iso(x.boardDetailedReportAt),
-            principalsNotifiedAt: iso(x.principalsNotifiedAt),
-            createdAt: iso(x.createdAt),
-          };
-        }),
+        breaches,
+        page: filters.page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
       { headers: { "Cache-Control": "no-store" } },
     );
-  } catch (e) {
-    return apiError(e);
-  }
-}
-export async function POST(request: NextRequest) {
-  try {
-    const admin = await requireRoles(request, ["superadmin"]);
-    const parsed = schema.safeParse(await request.json());
-    if (!parsed.success)
-      return NextResponse.json(
-        { error: "Invalid incident details." },
-        { status: 400 },
-      );
-    const data = parsed.data;
-    const ref = await db
-      .collection("breachLogs")
-      .add({
-        ...data,
-        discoveredAt: new Date(data.discoveredAt),
-        boardNotifiedAt: data.boardNotifiedAt
-          ? new Date(data.boardNotifiedAt)
-          : null,
-        boardDetailedReportAt: data.boardDetailedReportAt
-          ? new Date(data.boardDetailedReportAt)
-          : null,
-        principalsNotifiedAt: data.principalsNotifiedAt
-          ? new Date(data.principalsNotifiedAt)
-          : null,
-        createdBy: admin.uid,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-    await writeAuditLog(request, admin.uid, "breach.created", ref.id);
-    return NextResponse.json({ id: ref.id }, { status: 201 });
-  } catch (e) {
-    return apiError(e);
+  } catch (error) {
+    return apiError(error);
   }
 }
 
-const updateSchema = z
-  .object({
-    id: z.string().trim().min(1).max(160),
-    status: z
-      .enum(["investigating", "contained", "notified", "closed"])
-      .optional(),
-    boardNotifiedAt: z
-      .pipe(z.iso.datetime({ offset: true }))
-      .nullable()
-      .optional(),
-    boardDetailedReportAt: z
-      .pipe(z.iso.datetime({ offset: true }))
-      .nullable()
-      .optional(),
-    principalsNotifiedAt: z
-      .pipe(z.iso.datetime({ offset: true }))
-      .nullable()
-      .optional(),
-  })
-  .refine(
-    (v) =>
-      v.status !== undefined ||
-      v.boardNotifiedAt !== undefined ||
-      v.boardDetailedReportAt !== undefined ||
-      v.principalsNotifiedAt !== undefined,
-  );
+export async function POST(request: NextRequest) {
+  try {
+    const admin = await requireRoles(request, ["superadmin"]);
+    const body: unknown = await request.json();
+    const valid = breachCreateSchema.safeParse(body);
+    if (!valid.success)
+      return NextResponse.json(
+        { error: "Provide all required incident details and start at reported status." },
+        { status: 400 },
+      );
+    const result = await createBreach(valid.data, admin.uid);
+    if (result.error)
+      return NextResponse.json({ error: result.error }, { status: result.status ?? 400 });
+    const id = result.id ?? "";
+    await writeAuditLog(
+      request,
+      admin.uid,
+      "breach.created",
+      id,
+      undefined,
+      result.fields
+        ? {
+            changedFields: result.fields,
+          }
+        : undefined,
+    );
+    return NextResponse.json({ id }, { status: 201 });
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
 export async function PATCH(request: NextRequest) {
   try {
     const admin = await requireRoles(request, ["superadmin"]);
-    const parsed = updateSchema.safeParse(await request.json());
-    if (!parsed.success)
-      return NextResponse.json(
-        { error: "Invalid incident update." },
-        { status: 400 },
-      );
-    const { id, ...values } = parsed.data;
-    const patch: Record<string, unknown> = { updatedAt: new Date() };
-    if (values.status) patch.status = values.status;
-    if (values.boardNotifiedAt !== undefined)
-      patch.boardNotifiedAt = values.boardNotifiedAt
-        ? new Date(values.boardNotifiedAt)
-        : null;
-    if (values.boardDetailedReportAt !== undefined)
-      patch.boardDetailedReportAt = values.boardDetailedReportAt
-        ? new Date(values.boardDetailedReportAt)
-        : null;
-    if (values.principalsNotifiedAt !== undefined)
-      patch.principalsNotifiedAt = values.principalsNotifiedAt
-        ? new Date(values.principalsNotifiedAt)
-        : null;
-    await db.collection("breachLogs").doc(id).update(patch);
-    await writeAuditLog(request, admin.uid, "breach.updated", id);
+    const body: unknown = await request.json();
+    const id =
+      typeof body === "object" && body !== null && "id" in body && typeof body.id === "string"
+        ? body.id
+        : "";
+    if (!id) return NextResponse.json({ error: "Incident ID is required." }, { status: 400 });
+    const result = await updateBreach(id, body, admin.uid);
+    if (result.error)
+      return NextResponse.json({ error: result.error }, { status: result.status ?? 400 });
+    await writeAuditLog(
+      request,
+      admin.uid,
+      "breach.updated",
+      id,
+      undefined,
+      result.fields
+        ? {
+            changedFields: result.fields,
+          }
+        : undefined,
+    );
     return NextResponse.json({ ok: true });
-  } catch (e) {
-    return apiError(e);
+  } catch (error) {
+    return apiError(error);
   }
 }

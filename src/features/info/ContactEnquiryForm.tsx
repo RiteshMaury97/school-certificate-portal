@@ -42,19 +42,17 @@ type TurnstileApi = {
 
 function getTurnstile(): TurnstileApi | null {
   const candidate: unknown = Reflect.get(window, "turnstile");
-  if (
-    typeof candidate !== "object" ||
-    candidate === null ||
-    !("render" in candidate) ||
-    typeof candidate.render !== "function" ||
-    !("remove" in candidate) ||
-    typeof candidate.remove !== "function" ||
-    !("reset" in candidate) ||
-    typeof candidate.reset !== "function"
-  ) {
-    return null;
-  }
-  return candidate;
+  return isTurnstileApi(candidate) ? candidate : null;
+}
+
+function isTurnstileApi(candidate: unknown): candidate is TurnstileApi {
+  return (
+    typeof candidate === "object" &&
+    candidate !== null &&
+    typeof Reflect.get(candidate, "render") === "function" &&
+    typeof Reflect.get(candidate, "remove") === "function" &&
+    typeof Reflect.get(candidate, "reset") === "function"
+  );
 }
 
 function useContactTurnstile(
@@ -135,6 +133,7 @@ export default function ContactEnquiryForm() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [reference, setReference] = useState("");
+  const [emailCopySent, setEmailCopySent] = useState(false);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const { captcha, widget } = useContactTurnstile(siteKey, setToken, setCaptchaError);
 
@@ -147,7 +146,7 @@ export default function ContactEnquiryForm() {
     }
     setBusy(true);
     try {
-      const referenceId = await sendContactEnquiry({
+      const result = await sendContactEnquiry({
         fullName,
         mobile,
         email,
@@ -159,7 +158,8 @@ export default function ContactEnquiryForm() {
         consent,
         turnstileToken: token,
       });
-      setReference(referenceId);
+      setReference(result.referenceId);
+      setEmailCopySent(result.emailCopySent);
       setToken("");
       resetTurnstile(widget.current);
     } catch (cause) {
@@ -176,8 +176,10 @@ export default function ContactEnquiryForm() {
     return (
       <EnquirySent
         reference={reference}
+        emailCopySent={emailCopySent}
         onReset={() => {
           setReference("");
+          setEmailCopySent(false);
           setFullName("");
           setMobile("");
           setEmail("");
@@ -287,7 +289,7 @@ function ContactFormView({
       <form onSubmit={onSubmit} className="mt-5 space-y-3.5">
         <div className="grid gap-3 sm:grid-cols-2">
           <label htmlFor="contact-name" className="text-xs font-semibold text-[var(--text)]">Full name *<input aria-label="Full name" id="contact-name" required minLength={2} maxLength={100} autoComplete="name" value={fullName} onChange={(event) => { setFullName(event.target.value); }} className={inputClass} placeholder="Enter your full name" /></label>
-          <label htmlFor="contact-mobile" className="text-xs font-semibold text-[var(--text)]">Mobile number *<input aria-label="Mobile number" id="contact-mobile" required minLength={7} maxLength={30} autoComplete="tel" value={mobile} onChange={(event) => { setMobile(event.target.value); }} className={inputClass} placeholder="+91 XXXXX XXXXX" /></label>
+          <label htmlFor="contact-mobile" className="text-xs font-semibold text-[var(--text)]">Mobile number *<input aria-label="Mobile number" id="contact-mobile" required minLength={7} maxLength={30} pattern="[+0-9() .-]+" title="Enter a phone number with 8 to 15 digits." autoComplete="tel" inputMode="tel" value={mobile} onChange={(event) => { setMobile(event.target.value); }} className={inputClass} placeholder="+91 XXXXX XXXXX" /></label>
           <label htmlFor="contact-email" className="text-xs font-semibold text-[var(--text)]">Email address *<input aria-label="Email address" id="contact-email" required type="email" maxLength={254} autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); }} className={inputClass} placeholder="you@example.com" /></label>
           <label htmlFor="contact-type" className="text-xs font-semibold text-[var(--text)]">Enquiry type *<select aria-label="Enquiry type" id="contact-type" required value={enquiryType} onChange={(event) => { setEnquiryType(event.target.value); }} className={inputClass}><option value="">Select a topic</option>{enquiryTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label htmlFor="contact-student" className="text-xs font-semibold text-[var(--text)]">Student name *<input aria-label="Student name" id="contact-student" required minLength={2} maxLength={100} value={studentName} onChange={(event) => { setStudentName(event.target.value); }} className={inputClass} placeholder="Enter student’s name" /></label>
@@ -295,7 +297,7 @@ function ContactFormView({
         </div>
         <label htmlFor="contact-subject" className="block text-xs font-semibold text-[var(--text)]">Subject *<input aria-label="Subject" id="contact-subject" required minLength={3} maxLength={160} value={subject} onChange={(event) => { setSubject(event.target.value); }} className={inputClass} placeholder="Briefly describe your enquiry" /></label>
         <label htmlFor="contact-message" className="block text-xs font-semibold text-[var(--text)]">Message *<textarea aria-label="Message" id="contact-message" required minLength={10} maxLength={3000} rows={4} value={message} onChange={(event) => { setMessage(event.target.value); }} className={`${inputClass} resize-y`} placeholder="Write your message here. Please do not include passwords or sensitive identity details." /></label>
-        <div className="flex items-start gap-2 text-[10px] leading-4 text-[var(--text-muted)]"><label htmlFor="contact-consent" className="flex items-start gap-2"><input aria-label="I agree that the school may contact me about this enquiry" id="contact-consent" type="checkbox" checked={consent} onChange={(event) => { setConsent(event.target.checked); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]" />I agree that the school may contact me about this enquiry.</label><a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-[var(--primary)] underline">Privacy Policy</a></div>
+        <div className="flex items-start gap-2 text-[10px] leading-4 text-[var(--text-muted)]"><label htmlFor="contact-consent" className="flex items-start gap-2"><input aria-label="I agree that the school may contact me and email me a copy of this enquiry" id="contact-consent" type="checkbox" required checked={consent} onChange={(event) => { setConsent(event.target.checked); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]" />I agree that the school may contact me about this enquiry and email me a copy.</label><a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-[var(--primary)] underline">Privacy Policy</a></div>
         <div>
           <p className="mb-2 text-xs font-semibold text-[var(--text)]">Security check *</p>
           <div ref={captcha} aria-label="Cloudflare security verification" className="min-h-[66px]" />
@@ -308,7 +310,7 @@ function ContactFormView({
   );
 }
 
-async function sendContactEnquiry(submission: ContactSubmission): Promise<string> {
+async function sendContactEnquiry(submission: ContactSubmission): Promise<{ referenceId: string; emailCopySent: boolean }> {
   const response = await fetch("/api/public/contact", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await appCheckHeaders()) },
@@ -322,8 +324,11 @@ async function sendContactEnquiry(submission: ContactSubmission): Promise<string
       : "Unable to send your enquiry.";
   if (!response.ok) throw new Error(errorText);
   return typeof result === "object" && result !== null && "referenceId" in result
-    ? String(result.referenceId)
-    : "Received";
+    ? {
+        referenceId: String(result.referenceId),
+        emailCopySent: "emailCopySent" in result && result.emailCopySent === true,
+      }
+    : { referenceId: "Received", emailCopySent: false };
 }
 
 function resetTurnstile(widgetId: string | null): void {
@@ -335,7 +340,7 @@ function contactErrorMessage(cause: unknown): string {
   return cause instanceof Error ? cause.message : "Unable to send your enquiry.";
 }
 
-function EnquirySent({ reference, onReset }: { reference: string; onReset: () => void }) {
+function EnquirySent({ reference, emailCopySent, onReset }: { reference: string; emailCopySent: boolean; onReset: () => void }) {
   return (
     <section
       role="status"
@@ -348,6 +353,11 @@ function EnquirySent({ reference, onReset }: { reference: string; onReset: () =>
       <p className="mt-2 text-sm text-[var(--text-muted)]">
         The school office will review your message. Keep this reference for follow-up:{" "}
         <strong className="text-[var(--text)]">{reference}</strong>
+      </p>
+      <p className="mt-2 text-sm text-[var(--text-muted)]">
+        {emailCopySent
+          ? "A copy of your message was emailed to you."
+          : "Your enquiry is saved, but the email copy could not be sent. Contact the school if you need the message details."}
       </p>
       <button
         type="button"

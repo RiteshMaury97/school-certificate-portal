@@ -34,16 +34,16 @@ const schema = z.object({
   consent: z.literal(true),
   turnstileToken: z.string().min(10).max(4096),
 }).superRefine((value, context) => {
-  if (value.contactMethod === "email" && !z.string().email().safeParse(value.contact).success)
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["contact"], message: "Enter a valid email address." });
+  if (value.contactMethod === "email" && !z.email().safeParse(value.contact).success)
+    context.addIssue({ code: "custom", path: ["contact"], message: "Enter a valid email address." });
   if (value.contactMethod === "phone" && !isValidPhone(value.contact))
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["contact"], message: "Enter a valid phone number." });
+    context.addIssue({ code: "custom", path: ["contact"], message: "Enter a valid phone number." });
   if (value.phoneOptIn && !isValidPhone(value.phoneNumber ?? ""))
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["phoneNumber"], message: "Enter a valid phone number when opting in." });
+    context.addIssue({ code: "custom", path: ["phoneNumber"], message: "Enter a valid phone number when opting in." });
   if (value.contactMethod === "phone" && value.phoneOptIn)
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["phoneOptIn"], message: "Optional phone follow-up is only available with email contact." });
+    context.addIssue({ code: "custom", path: ["phoneOptIn"], message: "Optional phone follow-up is only available with email contact." });
   if (!value.phoneOptIn && value.phoneNumber)
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ["phoneNumber"], message: "Phone number requires explicit opt-in." });
+    context.addIssue({ code: "custom", path: ["phoneNumber"], message: "Phone number requires explicit opt-in." });
 });
 async function verifyTurnstile(token: string, ip: string) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
@@ -92,8 +92,9 @@ export async function POST(request: NextRequest) {
         { error: "Security verification failed." },
         { status: 400 },
       );
-    const referenceId = `SIS-${new Date().getFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`;
-    const { turnstileToken: _turnstileToken, ...report } = parsed.data;
+    const referenceId = `SIS-${new Date().getFullYear().toString()}-${randomBytes(4).toString("hex").toUpperCase()}`;
+    const report = { ...parsed.data };
+    Reflect.deleteProperty(report, "turnstileToken");
     await db
       .collection("recordReports")
       .doc(referenceId)
@@ -109,14 +110,17 @@ export async function POST(request: NextRequest) {
       "record_report.created",
       referenceId,
     ).catch(() => null);
-    const schoolName = process.env.GMAIL_FROM_NAME?.trim() || "Satyam International School";
-    await sendMail({
+    const schoolName = process.env.GMAIL_FROM_NAME?.trim() ?? "Satyam International School";
+    const emailCopySent = await sendMail({
       to: parsed.data.email,
       subject: `${schoolName}: copy of wrong-record report ${referenceId}`,
       text: `${schoolName} has received your wrong-record report.\n\nReference: ${referenceId}\nStudent: ${parsed.data.name}\nPassing session: ${parsed.data.session}\n\nYour reported issue:\n${parsed.data.issue}\n\nPreferred contact: ${parsed.data.contactMethod} (${parsed.data.contact})\n\nKeep this reference to check your report status.`,
-    }).catch((error: unknown) => console.error("[public/report] confirmation email failed", error));
+    }).then(() => true).catch((error: unknown) => {
+      console.error("[public/report] confirmation email failed", error);
+      return false;
+    });
     return NextResponse.json(
-      { ok: true, referenceId },
+      { ok: true, referenceId, emailCopySent },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {

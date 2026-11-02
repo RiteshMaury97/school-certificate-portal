@@ -62,7 +62,7 @@ export async function PATCH(request: NextRequest) {
     if (parsed.data.reply) {
       const email = String(existing.get("email") ?? "").trim();
       if (!email) return NextResponse.json({ error: "This enquiry has no valid email address." }, { status: 400 });
-      const schoolName = process.env.GMAIL_FROM_NAME?.trim() || "Satyam International School";
+      const schoolName = process.env.GMAIL_FROM_NAME?.trim() ?? "Satyam International School";
       await sendMail({
         to: email,
         replyTo: admin.email,

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
+import { sendMail } from "@/server/mailer";
 import {
   hashRequesterIp,
   verifyRequestAppCheck,
@@ -17,7 +18,7 @@ export const dynamic = "force-dynamic";
 const requestSchema = z.object({
   requestType: z.enum(["access", "correction", "erasure", "withdraw_consent"]),
   requesterName: z.string().trim().min(2).max(100),
-  contactEmail: z.string().trim().email().max(254),
+  contactEmail: z.email().trim().max(254),
   studentName: z.string().trim().min(2).max(100),
   description: z.string().trim().min(10).max(1500),
   guardianConfirmation: z.literal(true),
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
         { error: "Please check the request details." },
         { status: 400 },
       );
-    const id = `SIS-${new Date().getUTCFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`;
+    const id = `SIS-${new Date().getUTCFullYear().toString()}-${randomUUID().slice(0, 8).toUpperCase()}`;
     await db
       .collection("dataRightsRequests")
       .doc(id)
@@ -56,8 +57,17 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date(),
       });
     await writeAuditLog(request, "public", "data_rights.request", id);
+    const schoolName = process.env.GMAIL_FROM_NAME?.trim() ?? "Satyam International School";
+    const emailConfirmationSent = await sendMail({
+      to: parsed.data.contactEmail,
+      subject: `${schoolName}: privacy request received (${id})`,
+      text: `${schoolName} has received your ${parsed.data.requestType} data rights request.\n\nAcknowledgment: ${id}\n\nYour request details:\n${parsed.data.description}\n\nKeep this acknowledgment for follow-up. We will contact you if we need to verify your identity or clarify the request.`,
+    }).then(() => true).catch((error: unknown) => {
+      console.error("[public/data-rights] confirmation email failed", error);
+      return false;
+    });
     return NextResponse.json(
-      { ok: true, acknowledgmentId: id },
+      { ok: true, acknowledgmentId: id, emailConfirmationSent },
       { status: 201, headers: { "Cache-Control": "no-store" } },
     );
   } catch {

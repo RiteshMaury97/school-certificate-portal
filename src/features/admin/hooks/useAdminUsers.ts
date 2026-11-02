@@ -1,19 +1,46 @@
 import { useState, type SubmitEvent, type Dispatch, type SetStateAction } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
+import { requestInput } from "@/shared/admin-dialogs";
 
 import { csrf } from "../utils/admin-helpers";
 
 import type { AdminInviteProfile, AdminInviteRole } from "../types/admin-state.types";
-type Api=<T extends Record<string,unknown>=Record<string,unknown>>(url:string,init?:RequestInit)=>Promise<T>;
-type Props={api:Api;act:(fn:()=>Promise<void>)=>Promise<void>;setToast:Dispatch<SetStateAction<string>>;setError:Dispatch<SetStateAction<string>>;load:()=>Promise<void>};
-export function useAdminUsers({api,act,setToast,setError,load}:Props){
- const [adminEmail,setAdminEmail]=useState("");
- const [inviteRole,setInviteRole]=useState<AdminInviteRole>("uploader");
- const [inviteProfile,setInviteProfile]=useState<AdminInviteProfile>({
-  name:"",preferredName:"",staffId:"",gender:"",dateOfBirth:"",position:"",department:"",designation:"",campus:"",joiningDate:"",reportingManager:"",officeLocation:"",alternateEmail:"",primaryPhone:"",secondaryPhone:"",address:"",emergencyContactName:"",emergencyContactPhone:"",
- });
- async function createBackup() {
+type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
+  url: string,
+  init?: RequestInit,
+) => Promise<T>;
+type Props = {
+  api: Api;
+  act: (fn: () => Promise<void>) => Promise<void>;
+  setToast: Dispatch<SetStateAction<string>>;
+  setError: Dispatch<SetStateAction<string>>;
+  load: () => Promise<void>;
+};
+export function useAdminUsers({ api, act, setToast, setError, load }: Props) {
+  const [adminEmail, setAdminEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<AdminInviteRole>("uploader");
+  const [inviteProfile, setInviteProfile] = useState<AdminInviteProfile>({
+    name: "",
+    preferredName: "",
+    staffId: "",
+    gender: "",
+    dateOfBirth: "",
+    position: "",
+    department: "",
+    designation: "",
+    campus: "",
+    joiningDate: "",
+    reportingManager: "",
+    officeLocation: "",
+    alternateEmail: "",
+    primaryPhone: "",
+    secondaryPhone: "",
+    address: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
+  });
+  async function createBackup() {
     await act(async () => {
       const d = await api<{ objectKey: string; size: number }>("/api/admin/backup", {
         method: "POST",
@@ -23,9 +50,14 @@ export function useAdminUsers({api,act,setToast,setError,load}:Props){
   }
   async function exportData(format: "json" | "csv") {
     const passphrase =
-      prompt(
-        "Optional export passphrase (minimum 12 characters). Leave blank to use the server encryption key.",
-      ) ?? "";
+      (await requestInput({
+        title: "Protect export file",
+        description:
+          "Choose an optional passphrase. Leave this field empty to use the server encryption key.",
+        label: "Export passphrase",
+        minLength: 12,
+        placeholder: "At least 12 characters",
+      })) ?? "";
     if (passphrase && passphrase.length < 12) {
       setError("Passphrase must be at least 12 characters.");
       return;
@@ -80,10 +112,43 @@ export function useAdminUsers({api,act,setToast,setError,load}:Props){
         body: JSON.stringify({ email: adminEmail, role: inviteRole, profile: inviteProfile }),
       });
       setAdminEmail("");
-      setInviteProfile({name:"",preferredName:"",staffId:"",gender:"",dateOfBirth:"",position:"",department:"",designation:"",campus:"",joiningDate:"",reportingManager:"",officeLocation:"",alternateEmail:"",primaryPhone:"",secondaryPhone:"",address:"",emergencyContactName:"",emergencyContactPhone:""});
-      setToast(`Invitation sent to ${adminEmail}. The email contains a temporary password and email verification link. They must change the password before receiving administrator access.`);
+      setInviteProfile({
+        name: "",
+        preferredName: "",
+        staffId: "",
+        gender: "",
+        dateOfBirth: "",
+        position: "",
+        department: "",
+        designation: "",
+        campus: "",
+        joiningDate: "",
+        reportingManager: "",
+        officeLocation: "",
+        alternateEmail: "",
+        primaryPhone: "",
+        secondaryPhone: "",
+        address: "",
+        emergencyContactName: "",
+        emergencyContactPhone: "",
+      });
+      setToast(
+        `Invitation sent to ${adminEmail}. The email contains a temporary password and email verification link. They must change the password before receiving administrator access.`,
+      );
       await load();
     });
   }
- return {adminEmail,setAdminEmail,inviteRole,setInviteRole,inviteProfile,setInviteProfile,createBackup,exportData,changeRole,deleteUser,invite};
+  return {
+    adminEmail,
+    setAdminEmail,
+    inviteRole,
+    setInviteRole,
+    inviteProfile,
+    setInviteProfile,
+    createBackup,
+    exportData,
+    changeRole,
+    deleteUser,
+    invite,
+  };
 }

@@ -15,6 +15,7 @@ import TimelineTab from "./components/audit/TimelineTab";
 import CatalogTab from "./components/catalog/CatalogTab";
 import CertificatesTab from "./components/certificates/CertificatesTab";
 import BreachesTab from "./components/compliance/BreachesTab";
+import BreachQuickReportForm from "./components/compliance/BreachQuickReportForm";
 import ContactEnquiriesTab from "./components/compliance/ContactEnquiriesTab";
 import ReportsTab from "./components/compliance/ReportsTab";
 import RightsTab from "./components/compliance/RightsTab";
@@ -90,6 +91,7 @@ export default function AdminPage() {
   const [logs, setLogs] = useState<Record<string, unknown>[]>([]);
   const [rights, setRights] = useState<Record<string, unknown>[]>([]);
   const [breaches, setBreaches] = useState<Record<string, unknown>[]>([]);
+  const [incidentReportOpen, setIncidentReportOpen] = useState(false);
   const [reports, setReports] = useState<Record<string, unknown>[]>([]);
   const [reportsLoaded, setReportsLoaded] = useState(false);
   const [rightsLoaded, setRightsLoaded] = useState(false);
@@ -338,7 +340,12 @@ export default function AdminPage() {
       await api("/api/admin/contact-enquiries", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status, adminNote: contactEnquiryNotes[id] ?? "", ...(reply ? { reply } : {}) }),
+        body: JSON.stringify({
+          id,
+          status,
+          adminNote: contactEnquiryNotes[id] ?? "",
+          ...(reply ? { reply } : {}),
+        }),
       });
       await load();
     });
@@ -366,11 +373,14 @@ export default function AdminPage() {
           onSettings={() => {
             router.push("/admin/settings");
           }}
-          onLoadSessions={() => { router.push("/admin/account-sessions"); }}
+          onLoadSessions={() => {
+            router.push("/admin/account-sessions");
+          }}
         />
         <div className="min-w-0 flex-1">
           <AdminHeader
             tab={tab}
+            role={role}
             email={email}
             mobileAdminNav={mobileAdminNav}
             setMobileAdminNav={setMobileAdminNav}
@@ -379,12 +389,26 @@ export default function AdminPage() {
             onTickets={() => {
               router.push(tabRoutes.contacts);
             }}
+            onReportIncident={() => {
+              setIncidentReportOpen(true);
+            }}
             onProfile={() => {
               router.push("/admin/profile");
             }}
-            onSessions={() => { router.push("/admin/account-sessions"); }}
+            onSessions={() => {
+              router.push("/admin/account-sessions");
+            }}
             revokeAllSessions={() => void revokeAllSessions()}
             logout={() => void logout()}
+          />
+          <BreachQuickReportForm
+            open={incidentReportOpen}
+            onClose={() => {
+              setIncidentReportOpen(false);
+            }}
+            api={api}
+            act={act}
+            load={loadLatest}
           />
           <div className="mx-auto w-full max-w-[1440px] px-6 py-7 lg:px-7">
             <AdminMobileNav
@@ -430,7 +454,10 @@ export default function AdminPage() {
                 act={act}
                 email={email}
                 role={role}
-                loadSessions={() => { router.push("/admin/account-sessions"); return Promise.resolve(); }}
+                loadSessions={() => {
+                  router.push("/admin/account-sessions");
+                  return Promise.resolve();
+                }}
               />
             )}
             {tab === "sessions" && (
@@ -479,10 +506,22 @@ export default function AdminPage() {
             {tab === "studentAdd" && role !== "approver" && (
               <section className="mx-auto max-w-5xl space-y-5">
                 <div className="rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-5 sm:p-6">
-                  <Link href="/admin/students" className="text-xs font-semibold text-[var(--primary)] hover:underline">← Back to students</Link>
-                  <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">Student register</p>
-                  <h2 className="mt-1 text-2xl font-bold text-[var(--text)]">Add a student manually</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">Create one student record and attach the first certificate. To add a whole class, use the separate Excel import page.</p>
+                  <Link
+                    href="/admin/students"
+                    className="text-xs font-semibold text-[var(--primary)] hover:underline"
+                  >
+                    ← Back to students
+                  </Link>
+                  <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
+                    Student register
+                  </p>
+                  <h2 className="mt-1 text-2xl font-bold text-[var(--text)]">
+                    Add a student manually
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
+                    Create one student record and attach the first certificate. To add a whole
+                    class, use the separate Excel import page.
+                  </p>
                 </div>
                 <StudentCreatePanel
                   form={form}
@@ -605,6 +644,7 @@ export default function AdminPage() {
             )}
             {tab === "breaches" && (
               <BreachesTab
+                role={role}
                 breaches={breaches}
                 loaded={breachesLoaded}
                 act={act}
@@ -663,7 +703,9 @@ export default function AdminPage() {
                 setReportNotes={setReportNotes}
                 reportReplies={reportReplies}
                 setReportReplies={setReportReplies}
-                sendReportReply={(id, reply) => { void sendReportReply(id, reply); }}
+                sendReportReply={(id, reply) => {
+                  void sendReportReply(id, reply);
+                }}
                 updateReport={(id, status) => {
                   void updateReport(id, status);
                 }}
@@ -674,8 +716,8 @@ export default function AdminPage() {
                 enquiries={contactEnquiries}
                 notes={contactEnquiryNotes}
                 setNotes={setContactEnquiryNotes}
-                update={(id, status) => {
-                  void updateContactEnquiry(id, status);
+                update={(id, status, reply) => {
+                  void updateContactEnquiry(id, status, reply);
                 }}
               />
             )}

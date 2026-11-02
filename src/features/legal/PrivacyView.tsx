@@ -25,13 +25,14 @@ export default function PrivacyPage() {
     settings.retentionYears ?? Number(process.env.NEXT_PUBLIC_RETENTION_YEARS || 7);
   const retentionText = `${retentionYears} years`;
   const backupRotationDays = settings.backupRotationDays ?? 30;
-  const [requestType, setRequestType] = useState("access");
+  const [requestType, setRequestType] = useState("");
   const [requesterName, setRequesterName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [studentName, setStudentName] = useState("");
   const [description, setDescription] = useState("");
   const [guardianConfirmation, setGuardianConfirmation] = useState(false);
   const [acknowledgment, setAcknowledgment] = useState("");
+  const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -57,9 +58,15 @@ export default function PrivacyPage() {
         }),
         cache: "no-store",
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Unable to submit request.");
-      setAcknowledgment(String(data.acknowledgmentId));
+      const data: unknown = await response.json();
+      if (typeof data !== "object" || data === null) throw new Error("Unable to submit request.");
+      const errorValue = "error" in data ? data.error : undefined;
+      const acknowledgmentId = "acknowledgmentId" in data ? data.acknowledgmentId : undefined;
+      const confirmationSent = "emailConfirmationSent" in data ? data.emailConfirmationSent : false;
+      if (!response.ok)
+        throw new Error(typeof errorValue === "string" ? errorValue : "Unable to submit request.");
+      setAcknowledgment(typeof acknowledgmentId === "string" ? acknowledgmentId : "");
+      setEmailConfirmationSent(confirmationSent === true);
       setDescription("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to submit request.");
@@ -349,6 +356,11 @@ export default function PrivacyPage() {
             The School maintains a restricted breach register and will not publish details that
             could increase risk to affected individuals.
           </p>
+          <p>
+            The register is used to document suspected incidents, response steps and notification
+            decisions. Its existence does not promise a particular legal outcome or replace advice
+            from the School’s legal and privacy advisers.
+          </p>
         </>
       ),
     },
@@ -421,12 +433,16 @@ export default function PrivacyPage() {
             Request type
             <select
               translate="no"
+              required
               value={requestType}
               onChange={(e) => {
                 setRequestType(e.target.value);
               }}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
             >
+              <option value="" disabled>
+                Select a request type
+              </option>
               <option value="access">Access</option>
               <option value="correction">Correction</option>
               <option value="erasure">Erasure</option>
@@ -437,6 +453,7 @@ export default function PrivacyPage() {
             <input
               translate="no"
               required
+              minLength={2}
               maxLength={100}
               value={requesterName}
               onChange={(e) => {
@@ -451,6 +468,7 @@ export default function PrivacyPage() {
               translate="no"
               type="email"
               required
+              minLength={5}
               maxLength={254}
               value={contactEmail}
               onChange={(e) => {
@@ -464,6 +482,7 @@ export default function PrivacyPage() {
             <input
               translate="no"
               required
+              minLength={2}
               maxLength={100}
               value={studentName}
               onChange={(e) => {
@@ -524,6 +543,9 @@ export default function PrivacyPage() {
             >
               Request received. Your acknowledgment ID is{" "}
               <span className="font-mono">{acknowledgment}</span>. Keep it for follow-up.
+              {emailConfirmationSent
+                ? " A copy of your request was emailed to you."
+                : " The request is saved, but the confirmation email could not be sent."}
             </p>
           )}
         </form>

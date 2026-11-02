@@ -29,6 +29,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [reference, setReference] = useState("");
+  const [emailCopySent, setEmailCopySent] = useState(false);
   const [captchaError, setCaptchaError] = useState(false);
   const captcha = useRef<HTMLDivElement>(null);
   const widget = useRef<string | null>(null);
@@ -184,11 +185,13 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       });
       const data = (await response.json()) as {
         referenceId?: string;
+        emailCopySent?: boolean;
         error?: string;
       };
       if (!response.ok || !data.referenceId)
         throw new Error(data.error ?? "Unable to submit your report.");
       setReference(data.referenceId);
+      setEmailCopySent(data.emailCopySent === true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to submit your report.");
     } finally {
@@ -234,6 +237,11 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             <p className="mt-1 text-xl font-bold tracking-wide text-[var(--text)]">{reference}</p>
             <p className="mt-2 text-xs text-[var(--text)]">
               {"Keep this ID for future communication with the school."}
+            </p>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
+              {emailCopySent
+                ? "A copy of your report was emailed to the address you provided."
+                : "Your report is saved, but the email copy could not be sent. Keep your reference ID for follow-up."}
             </p>
             <Link
               href={`/report-status?reference=${encodeURIComponent(reference)}`}
@@ -333,6 +341,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                   <input
                     type="radio"
                     name="contact-method"
+                    required
                     checked={contactMethod === "email"}
                     onChange={() => {
                       setContactMethod("email");
@@ -347,6 +356,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                   <input
                     type="radio"
                     name="contact-method"
+                    required
                     checked={contactMethod === "phone"}
                     onChange={() => {
                       setContactMethod("phone");

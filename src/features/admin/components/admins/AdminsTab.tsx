@@ -1,8 +1,4 @@
-import {
-  MoreHorizontal,
-  Pencil,
-  ShieldCheck,
-} from "lucide-react";
+import { MoreHorizontal, Pencil, ShieldCheck } from "lucide-react";
 import {
   useMemo,
   useState,
@@ -10,6 +6,7 @@ import {
   type SetStateAction,
   type SubmitEventHandler,
 } from "react";
+import { confirmAction } from "@/shared/admin-dialogs";
 
 import {
   AdminTools,
@@ -89,7 +86,9 @@ function AdminFilters({
     <div className="flex flex-wrap items-center gap-3 border-b border-[var(--divider)] p-4">
       <div className="mr-auto">
         <h3 className="font-bold text-[var(--text)]">Staff accounts</h3>
-        <p className="mt-1 text-xs text-[var(--text-muted)]">Review account status, update permissions, or manage staff access.</p>
+        <p className="mt-1 text-xs text-[var(--text-muted)]">
+          Review account status, update permissions, or manage staff access.
+        </p>
       </div>
       <label htmlFor="admin-search" className="min-h-10 w-56">
         <span className="sr-only">Search staff accounts</span>
@@ -216,15 +215,20 @@ function AdminRow({
                 type="button"
                 onClick={() => {
                   const disabled = status !== "disabled";
-                  if (confirm(`${disabled ? "Disable" : "Enable"} this administrator?`))
-                    void act(async () => {
-                      await api("/api/admin/users", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ uid, disabled }),
+                  void confirmAction(
+                    `${disabled ? "Disable" : "Enable"} administrator`,
+                    `This will ${disabled ? "disable" : "enable"} ${email}.`,
+                  ).then((accepted) => {
+                    if (accepted)
+                      void act(async () => {
+                        await api("/api/admin/users", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ uid, disabled }),
+                        });
+                        await load();
                       });
-                      await load();
-                    });
+                  });
                 }}
                 className="w-full rounded px-3 py-2 text-left text-xs hover:bg-[var(--surface-2)]"
               >
@@ -233,12 +237,13 @@ function AdminRow({
               <button
                 type="button"
                 onClick={() => {
-                  if (
-                    confirm(
-                      `Permanently delete ${email} and revoke their account access? This cannot be undone.`,
-                    )
-                  )
-                    void deleteUser(uid);
+                  void confirmAction(
+                    "Delete administrator",
+                    `Permanently delete ${email} and revoke their account access? This cannot be undone.`,
+                    "Delete administrator",
+                  ).then((accepted) => {
+                    if (accepted) void deleteUser(uid);
+                  });
                 }}
                 className="w-full rounded px-3 py-2 text-left text-xs text-[var(--danger)] hover:bg-[var(--surface-2)]"
               >
@@ -264,7 +269,12 @@ function AdminTable(
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="bg-[var(--surface-2)] text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
             <tr>
-              <th className="px-4 py-3">User</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Campus</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Last activity</th><th className="px-4 py-3 text-right">Actions</th>
+              <th className="px-4 py-3">User</th>
+              <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Campus</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Last activity</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--divider)]">
@@ -273,7 +283,9 @@ function AdminTable(
             ))}
             {props.visibleAdmins.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--text-muted)]">No staff accounts match these filters.</td>
+                <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--text-muted)]">
+                  No staff accounts match these filters.
+                </td>
               </tr>
             )}
           </tbody>

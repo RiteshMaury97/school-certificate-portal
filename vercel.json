@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/security-summary",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/breach-reminders",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

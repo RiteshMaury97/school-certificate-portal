@@ -76,13 +76,16 @@ export async function POST(request: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     });
     await writeAuditLog(request, "public", "contact_enquiry.created", record.id).catch(() => false);
-    const schoolName = process.env.GMAIL_FROM_NAME?.trim() || "Satyam International School";
-    await sendMail({
+    const schoolName = process.env.GMAIL_FROM_NAME?.trim() ?? "Satyam International School";
+    const emailCopySent = await sendMail({
       to: enquiry.email,
       subject: `${schoolName}: copy of your enquiry (${record.id})`,
       text: `${schoolName} has received your enquiry.\n\nReference: ${record.id}\nSubject: ${enquiry.subject}\nType: ${enquiry.enquiryType}\n\nYour message:\n${enquiry.message}\n\nWe will respond to this email address.`,
-    }).catch((error: unknown) => console.error("[public/contact] confirmation email failed", error));
-    return NextResponse.json({ ok: true, referenceId: record.id }, { headers: { "Cache-Control": "no-store" } });
+    }).then(() => true).catch((error: unknown) => {
+      console.error("[public/contact] confirmation email failed", error);
+      return false;
+    });
+    return NextResponse.json({ ok: true, referenceId: record.id, emailCopySent }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Unable to submit your enquiry right now. Please contact the school office." }, { status: 503 });
   }

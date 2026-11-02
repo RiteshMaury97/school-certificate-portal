@@ -1,6 +1,7 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
+import { confirmAction } from "@/shared/admin-dialogs";
 
 import { csrf } from "../utils/admin-helpers";
 
@@ -20,18 +21,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isStringRecord(value: unknown): value is Record<string, string> {
-  return (
-    isRecord(value) &&
-    Object.values(value).every((item) => typeof item === "string")
-  );
+  return isRecord(value) && Object.values(value).every((item) => typeof item === "string");
 }
 
 function isCellError(value: unknown): value is StudentImportCellError {
-  return (
-    isRecord(value) &&
-    typeof value.column === "string" &&
-    typeof value.message === "string"
-  );
+  return isRecord(value) && typeof value.column === "string" && typeof value.message === "string";
 }
 
 function isImportRow(value: unknown): value is StudentImportRow {
@@ -77,7 +71,11 @@ export function useBulkImport({ act, loadStudents }: Props) {
     if (!file) return;
     if (
       action === "commit" &&
-      !confirm("Import all validated student rows now?")
+      !(await confirmAction(
+        "Import validated students",
+        "Import all validated student rows now?",
+        "Import students",
+      ))
     )
       return;
 
@@ -95,19 +93,15 @@ export function useBulkImport({ act, loadStudents }: Props) {
       });
       const result = await responseData(response);
       if (!response.ok)
-        throw new Error(
-          typeof result.error === "string" ? result.error : "Student import failed.",
-        );
+        throw new Error(typeof result.error === "string" ? result.error : "Student import failed.");
 
       if (action === "preview") {
-        if (!isImportPreview(result))
-          throw new Error("The import preview response is incomplete.");
+        if (!isImportPreview(result)) throw new Error("The import preview response is incomplete.");
         setPreview(result);
         return;
       }
 
-      if (result.ok !== true)
-        throw new Error("The import service did not confirm the import.");
+      if (result.ok !== true) throw new Error("The import service did not confirm the import.");
       setPreview(null);
       setFileState(null);
       await loadStudents();

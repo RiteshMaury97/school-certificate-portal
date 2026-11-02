@@ -38,7 +38,9 @@ function StatusBadge({ status }: { status: ReportStatus }) {
     rejected: "bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface))] text-[var(--danger)]",
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold capitalize ${styles[status]}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold capitalize ${styles[status]}`}
+    >
       <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
       {status}
     </span>
@@ -58,9 +60,12 @@ function QueueHeader({ reports }: { reports: Record<string, unknown>[] }) {
             <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[var(--accent)]">
               Student support
             </p>
-            <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Report review queue</h2>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+              Report review queue
+            </h2>
             <p className="mt-2 text-sm leading-6 opacity-85">
-              Review record corrections submitted through the public portal and keep each case moving.
+              Review record corrections submitted through the public portal and keep each case
+              moving.
             </p>
           </div>
           <span className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-semibold">
@@ -104,16 +109,10 @@ function StatusActions({
   id,
   status,
   updateReport,
-  reportReplies,
-  setReportReplies,
-  sendReportReply,
 }: {
   id: string;
   status: ReportStatus;
   updateReport: ReportsTabProps["updateReport"];
-  reportReply: string;
-  setReportReply: (value: string) => void;
-  sendReportReply: (id: string, reply: string) => void;
 }) {
   const options: { value: ReportStatus; label: string; icon: typeof ClipboardCheck }[] = [
     { value: "open", label: "Reopen", icon: Inbox },
@@ -183,21 +182,25 @@ function ReportCard({
               <UserRound size={18} aria-hidden="true" />
             </span>
             <div>
-              <p className="font-semibold text-[var(--text)]">{displayValue(report.name, "Name not provided")}</p>
+              <p className="font-semibold text-[var(--text)]">
+                {displayValue(report.name, "Name not provided")}
+              </p>
               <p className="mt-0.5 text-xs text-[var(--text-muted)]">
                 Academic session · {displayValue(report.session)}
               </p>
             </div>
           </div>
           <div className="rounded-xl border border-[var(--divider)] bg-[var(--surface-2)]/45 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Reported issue</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+              Reported issue
+            </p>
             <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-[var(--text)]">
               {displayValue(report.issue, "No details were added.")}
             </p>
           </div>
           <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--text-muted)]">
             <p>Submitted {displayValue(report.createdAt, "date unavailable")}</p>
-            {optedInPhone && typeof optedInPhone === "string" && (
+            {typeof optedInPhone === "string" && optedInPhone.length > 0 && (
               <p>Phone follow-up: {optedInPhone}</p>
             )}
           </div>
@@ -212,7 +215,10 @@ function ReportCard({
               {displayValue(report.contact, "Not provided")}
             </p>
           </div>
-          <label htmlFor={`report-note-${id}`} className="block text-xs font-semibold text-[var(--text)]">
+          <label
+            htmlFor={`report-note-${id}`}
+            className="block text-xs font-semibold text-[var(--text)]"
+          >
             Internal handling note
             <textarea
               id={`report-note-${id}`}
@@ -230,10 +236,35 @@ function ReportCard({
           </label>
           <StatusActions id={id} status={status} updateReport={updateReport} />
           <div className="border-t border-[var(--divider)] pt-3">
-            <p id={`report-reply-label-${id}`} className="text-xs font-semibold text-[var(--text-muted)]">Email response to {displayValue(report.contact, "reporter")}</p>
-            <textarea id={`report-reply-${id}`} aria-labelledby={`report-reply-label-${id}`} value={reportReply} onChange={(event) => { setReportReply(event.target.value); }} rows={3} maxLength={3000} placeholder="Write a response for the reporter…" className="mt-2 min-h-20 w-full resize-y rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-3 text-sm" />
-            <button type="button" disabled={!reportReply.trim() || report.contactMethod === "phone"} onClick={() => { sendReportReply(id, reportReply); }} className="mt-2 min-h-10 rounded-lg bg-[var(--primary)] px-4 text-xs font-semibold text-[var(--on-primary)] disabled:opacity-50">Send email response</button>
-            {report.contactMethod === "phone" && <p className="mt-1 text-xs text-[var(--text-muted)]">This reporter selected phone contact, so email reply is unavailable.</p>}
+            <p
+              id={`report-reply-label-${id}`}
+              className="text-xs font-semibold text-[var(--text-muted)]"
+            >
+              Email response to{" "}
+              {displayValue(report.email, displayValue(report.contact, "reporter"))}
+            </p>
+            <textarea
+              id={`report-reply-${id}`}
+              aria-labelledby={`report-reply-label-${id}`}
+              value={reportReply}
+              onChange={(event) => {
+                setReportReply(event.target.value);
+              }}
+              rows={3}
+              maxLength={3000}
+              placeholder="Write a response for the reporter…"
+              className="mt-2 min-h-20 w-full resize-y rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-3 text-sm"
+            />
+            <button
+              type="button"
+              disabled={!reportReply.trim() || (!report.email && report.contactMethod !== "email")}
+              onClick={() => {
+                sendReportReply(id, reportReply);
+              }}
+              className="mt-2 min-h-10 rounded-lg bg-[var(--primary)] px-4 text-xs font-semibold text-[var(--on-primary)] disabled:opacity-50"
+            >
+              Send email response
+            </button>
           </div>
         </div>
       </div>
@@ -292,7 +323,9 @@ export default function ReportsTab({
                 setReportNotes((current) => ({ ...current, [reportId]: value }));
               }}
               reportReply={reportReplies[id] ?? ""}
-              setReportReply={(value) => { setReportReplies((current) => ({ ...current, [id]: value })); }}
+              setReportReply={(value) => {
+                setReportReplies((current) => ({ ...current, [id]: value }));
+              }}
               sendReportReply={sendReportReply}
               updateReport={updateReport}
             />

@@ -1,6 +1,7 @@
 import { useCallback, useState, type Dispatch, type SetStateAction, type SubmitEvent } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
+import { confirmAction } from "@/shared/admin-dialogs";
 
 import { createDefaultNotify, createDefaultStudentForm } from "../config/admin-defaults";
 import { csrf } from "../utils/admin-helpers";
@@ -8,10 +9,16 @@ import { csrf } from "../utils/admin-helpers";
 import type { CatalogOption, NotifyState, StudentFormState } from "../types/admin-state.types";
 import type { Student, Tab } from "../types/admin.types";
 
-type Api = <T extends Record<string, unknown> = Record<string, unknown>>(url: string, init?: RequestInit) => Promise<T>;
+type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
+  url: string,
+  init?: RequestInit,
+) => Promise<T>;
 type Props = {
-  api: Api; act: (fn: () => Promise<void>) => Promise<void>; setToast: Dispatch<SetStateAction<string>>;
-  tab: Tab; load: () => Promise<void>;
+  api: Api;
+  act: (fn: () => Promise<void>) => Promise<void>;
+  setToast: Dispatch<SetStateAction<string>>;
+  tab: Tab;
+  load: () => Promise<void>;
 };
 
 type ApiResponse = Record<string, unknown>;
@@ -42,9 +49,11 @@ async function fetchStudents(api: Api): Promise<Student[]> {
   let cursor = "";
   do {
     const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
-    const result = await api<{ students: Student[]; hasMore?: boolean; nextCursor?: string | null }>(
-      `/api/admin/students/list${query}`,
-    );
+    const result = await api<{
+      students: Student[];
+      hasMore?: boolean;
+      nextCursor?: string | null;
+    }>(`/api/admin/students/list${query}`);
     all.push(...result.students);
     cursor = result.hasMore && result.nextCursor ? result.nextCursor : "";
   } while (cursor);
@@ -84,7 +93,12 @@ async function submitStudent(e: SubmitEvent<HTMLFormElement>, input: StudentSubm
       headers: { "x-csrf-token": decodeURIComponent(csrf()), ...(await appCheckHeaders()) },
     });
     const result = await readResponse(response);
-    checkResponse(response, result, "Student/certificate save failed.", input.setDuplicateHashWarning);
+    checkResponse(
+      response,
+      result,
+      "Student/certificate save failed.",
+      input.setDuplicateHashWarning,
+    );
     duplicateWarning = typeof result.warning === "string" ? result.warning : "";
     input.setForm(createDefaultStudentForm());
     input.setNotify(createDefaultNotify());
@@ -97,8 +111,12 @@ async function submitStudent(e: SubmitEvent<HTMLFormElement>, input: StudentSubm
 }
 
 async function deleteStudent(api: Api, loadStudents: () => Promise<void>, student: Student) {
-  if (!confirm(`Delete ${student.studentName} and all ${String(student.certificateCount)} linked certificate files? This cannot be undone.`))
-    return;
+  const accepted = await confirmAction(
+    "Delete student record",
+    `Delete ${student.studentName} and all ${String(student.certificateCount)} linked certificate files? This cannot be undone.`,
+    "Delete record",
+  );
+  if (!accepted) return;
   await api(`/api/admin/students/${student.id}`, { method: "DELETE" });
   await loadStudents();
 }
@@ -158,33 +176,79 @@ export function useCertificateIntake({ api, act, setToast, tab, load }: Props) {
   const [duplicateHashWarning, setDuplicateHashWarning] = useState("");
   const [notify, setNotify] = useState<NotifyState>(createDefaultNotify());
   const [selectedStudent, setSelectedStudentStateValue] = [
-    selectedStudentState || (tab === "certificates" ? students[0]?.id ?? "" : ""),
+    selectedStudentState || (tab === "certificates" ? (students[0]?.id ?? "") : ""),
     setSelectedStudentState,
   ] as const;
-  const setSelectedStudent: Dispatch<SetStateAction<string>> = useCallback((value) => {
-    setSelectedStudentStateValue(value);
-    if (typeof value === "string") {
-      const session = students.find((student) => student.id === value)?.session;
-      if (session) setForm((current) => ({ ...current, session }));
-    }
-  }, [students, setSelectedStudentStateValue]);
+  const setSelectedStudent: Dispatch<SetStateAction<string>> = useCallback(
+    (value) => {
+      setSelectedStudentStateValue(value);
+      if (typeof value === "string") {
+        const session = students.find((student) => student.id === value)?.session;
+        if (session) setForm((current) => ({ ...current, session }));
+      }
+    },
+    [students, setSelectedStudentStateValue],
+  );
   const loadStudents = useCallback(async () => {
     setStudents(await fetchStudents(api));
   }, [api]);
-  const addStudent = (e: SubmitEvent<HTMLFormElement>) => submitStudent(e, {
-    act, setToast, form, files, notify, duplicateHashAcknowledged, duplicateHashReason,
-    setForm, setNotify, setDuplicateHashAcknowledged, setDuplicateHashReason, setDuplicateHashWarning, loadStudents,
-  });
+  const addStudent = (e: SubmitEvent<HTMLFormElement>) =>
+    submitStudent(e, {
+      act,
+      setToast,
+      form,
+      files,
+      notify,
+      duplicateHashAcknowledged,
+      duplicateHashReason,
+      setForm,
+      setNotify,
+      setDuplicateHashAcknowledged,
+      setDuplicateHashReason,
+      setDuplicateHashWarning,
+      loadStudents,
+    });
   const removeStudent = (student: Student) => act(() => deleteStudent(api, loadStudents, student));
-  const uploadMany = (e: SubmitEvent<HTMLFormElement>) => submitCertificates(e, {
-    act, load, selectedStudent, form, files, duplicateHashAcknowledged, duplicateHashReason,
-    setFiles, setDuplicateHashAcknowledged, setDuplicateHashReason, setDuplicateHashWarning,
-  });
+  const uploadMany = (e: SubmitEvent<HTMLFormElement>) =>
+    submitCertificates(e, {
+      act,
+      load,
+      selectedStudent,
+      form,
+      files,
+      duplicateHashAcknowledged,
+      duplicateHashReason,
+      setFiles,
+      setDuplicateHashAcknowledged,
+      setDuplicateHashReason,
+      setDuplicateHashWarning,
+    });
   return {
-    students, setStudents, sessionOptions, setSessionOptions, typeOptions, setTypeOptions, classOptions, setClassOptions,
-    form, setForm, selectedStudent, setSelectedStudent, files, setFiles,
-    duplicateHashAcknowledged, setDuplicateHashAcknowledged, duplicateHashReason, setDuplicateHashReason,
-    duplicateHashWarning, setDuplicateHashWarning, notify, setNotify, loadStudents,
-    addStudent, removeStudent, uploadMany,
+    students,
+    setStudents,
+    sessionOptions,
+    setSessionOptions,
+    typeOptions,
+    setTypeOptions,
+    classOptions,
+    setClassOptions,
+    form,
+    setForm,
+    selectedStudent,
+    setSelectedStudent,
+    files,
+    setFiles,
+    duplicateHashAcknowledged,
+    setDuplicateHashAcknowledged,
+    duplicateHashReason,
+    setDuplicateHashReason,
+    duplicateHashWarning,
+    setDuplicateHashWarning,
+    notify,
+    setNotify,
+    loadStudents,
+    addStudent,
+    removeStudent,
+    uploadMany,
   };
 }
