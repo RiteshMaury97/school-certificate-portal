@@ -185,6 +185,20 @@ function AnnouncementControls({
         </span>
       </AnnouncementField>
 
+      <fieldset className="rounded-xl border border-[var(--divider)] p-4">
+        <legend className="px-2 text-xs font-semibold text-[var(--text-muted)]">Optional translations</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const).map((locale) => (
+            <label key={locale} className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+              {locale}
+              <textarea rows={2} maxLength={240} value={announcement.text_i18n?.[locale] ?? ""} onChange={(event) => {
+                setAnnouncement((current) => ({ ...current, text_i18n: { ...current.text_i18n, [locale]: event.target.value } }));
+              }} className="mt-1 w-full rounded-lg border border-[var(--divider)] bg-[var(--surface)] p-2 text-sm font-normal normal-case text-[var(--text)]" />
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
       <AnnouncementSchedule announcement={announcement} setAnnouncement={setAnnouncement} />
     </div>
   );

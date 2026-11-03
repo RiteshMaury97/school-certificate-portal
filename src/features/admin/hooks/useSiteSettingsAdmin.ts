@@ -50,11 +50,17 @@ export function useSiteSettingsAdmin(
           const [label, ...rest] = line.split("|");
           return { label: (label ?? "").trim(), url: rest.join("|").trim() };
         });
+      const localizedFields = (name: "tagline" | "principalMessage") =>
+        Object.fromEntries(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"]
+          .map((locale) => [locale, branding[`${name}_i18n_${locale}`]?.trim() ?? ""])
+          .filter(([, value]) => value));
       await api("/api/admin/site-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...branding,
+          tagline_i18n: localizedFields("tagline"),
+          principalMessage_i18n: localizedFields("principalMessage"),
           socialLinks,
           maintenanceMode,
           retentionYears: Number(retentionYears),

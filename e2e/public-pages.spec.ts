@@ -40,7 +40,10 @@ test("language and dark mode preferences persist", async ({
 }) => {
   await page.goto("/");
   await page.locator("#language-toggle").selectOption("hi");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("sis-locale"))).toBe("hi");
   await expect(page.locator("html")).toHaveAttribute("lang", "hi");
+  await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
+  await expect(page.locator("header nav").getByRole("link", { name: "होम" })).toBeVisible();
   const theme = page.getByRole("button", { name: /theme/i });
   await theme.click(); // system -> light
   await theme.click(); // light -> dark

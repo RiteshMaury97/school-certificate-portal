@@ -82,7 +82,7 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            {school} (“School”) is the Data Fiduciary for personal data processed through this
+            {school} (â€œSchoolâ€) is the Data Fiduciary for personal data processed through this
             portal. The School decides the purposes and means of processing and is responsible for
             handling requests and grievances.
           </p>
@@ -102,8 +102,8 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            For certificate retrieval, the portal collects the student’s name, father’s name,
-            mother’s name, academic/passing session and the certificate file. Limited certificate
+            For certificate retrieval, the portal collects the studentâ€™s name, fatherâ€™s name,
+            motherâ€™s name, academic/passing session and the certificate file. Limited certificate
             metadata (such as certificate type, number and issue date) is used to identify and
             deliver the requested document.
           </p>
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
             identifier for abuse prevention and audit purposes.
           </p>
           <p>
-            If you use the optional “Was this helpful?” widget, the portal stores only your
+            If you use the optional â€œWas this helpful?â€ widget, the portal stores only your
             helpful/not-helpful choice, an optional comment of up to 200 characters, the submission
             timestamp and the page path. Do not enter personal details in the comment. A separate
             short-lived abuse counter uses a hashed network identifier to rate-limit submissions;
@@ -155,7 +155,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             Where applicable under the DPDP Act, 2023, the School may process personal data for a
-            “certain legitimate use” recognised by the Act (including applicable school-related or
+            â€œcertain legitimate useâ€ recognised by the Act (including applicable school-related or
             legal purposes under section 7), or to comply with a legal obligation. This is not a
             broad commercial legitimate-interest basis. The School will identify the applicable
             basis for the specific processing activity and will not use this statement to bypass
@@ -176,7 +176,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             Student records may relate to children. A parent or legal guardian must be involved in
-            the portal process and should submit or confirm the request on the student’s behalf
+            the portal process and should submit or confirm the request on the studentâ€™s behalf
             where required. The School relies on its verified school records and approved
             parent/guardian verification procedures; ticking a checkbox alone is not proof of
             identity or parental authority.
@@ -197,13 +197,10 @@ export default function PrivacyPage() {
           <p>
             The School uses Firebase / Google Cloud Firestore for application data and Cloudflare R2
             for private certificate-file storage. These providers act as processors/service
-            providers on the School’s behalf, subject to the applicable service terms and configured
+            providers on the Schoolâ€™s behalf, subject to the applicable service terms and configured
             security controls. Cloudflare R2 stores finished certificate files in a private,
             access-restricted bucket. Cloudflare Turnstile is used for abuse prevention and may
-            process technical request information. When a visitor actively chooses a language using the optional Google Cloud Translation control, visible page text is sent to Google for machine translation through the School's server. This can include text displayed on the current page. Visitors should avoid using translation on pages containing personal certificate results; result and print views are excluded from translation by the portal. Google may process the text and related technical data under its own service terms and privacy policy. The service contacts Google only after the visitor requests translation.
-          </p>
-          <p>
-            Google Cloud Translation is an external service used only after the visitor requests translation. The School does not control Google's translation processing, retention or any cross-border handling; visitors can continue using the portal in English without activating the service. See Google's Privacy Policy for more information.
+            process technical request information. Selecting a language uses translation files hosted with the portal and does not send page text to a translation provider.
           </p>
           <p>
             The original uploaded certificate is retained unchanged in private storage. When a
@@ -230,7 +227,7 @@ export default function PrivacyPage() {
         <>
           <p>
             Authorized School administrators can correct inaccurate student details and certificate
-            metadata. Wrong-record reports are retained under the School’s approved support-ticket
+            metadata. Wrong-record reports are retained under the Schoolâ€™s approved support-ticket
             and recordkeeping schedule; the School should publish and configure that schedule before
             launch. The student-record retention period is {retentionText} after the end of the
             passing session. Records are deleted on request or after manual review, unless a legal
@@ -293,7 +290,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             Please include your acknowledgment ID, if you have one, and avoid sending unnecessary
-            sensitive documents by email. If you are not satisfied with the School’s response, you
+            sensitive documents by email. If you are not satisfied with the Schoolâ€™s response, you
             may use the escalation mechanism available under applicable law, including the Data
             Protection Board of India when legally constituted and the relevant provisions are in
             force.
@@ -341,7 +338,7 @@ export default function PrivacyPage() {
           <p>
             The register is used to document suspected incidents, response steps and notification
             decisions. Its existence does not promise a particular legal outcome or replace advice
-            from the School’s legal and privacy advisers.
+            from the Schoolâ€™s legal and privacy advisers.
           </p>
         </>
       ),
@@ -507,7 +504,7 @@ export default function PrivacyPage() {
             aria-busy={busy}
             className="rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50 sm:col-span-2"
           >
-            {busy ? "Submitting…" : "Submit privacy request"}
+            {busy ? "Submittingâ€¦" : "Submit privacy request"}
           </button>
           {error && (
             <p role="alert" className="text-sm font-medium text-[var(--danger)] sm:col-span-2">

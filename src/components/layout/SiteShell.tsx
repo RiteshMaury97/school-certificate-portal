@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import ReportWrongRecordModal from "@/features/report/ReportWrongRecordModal";
+import { useLocale } from "@/i18n/locale-provider";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import type { PublicSiteSettings } from "@/lib/use-site-settings";
@@ -122,7 +123,9 @@ function SchoolMetadata({ settings }: { settings: PublicSiteSettings }) {
 }
 
 function PrincipalMessage({ settings }: { settings: PublicSiteSettings }) {
-  if (!settings.principalMessage?.trim()) return null;
+  const { locale } = useLocale();
+  const message = settings.principalMessage_i18n?.[locale]?.trim() || settings.principalMessage?.trim();
+  if (!message) return null;
 
   return (
     <section className="border-t border-[var(--border)] bg-[var(--surface)]">
@@ -142,7 +145,7 @@ function PrincipalMessage({ settings }: { settings: PublicSiteSettings }) {
         <div>
           <h2 className="text-xl font-bold">{"Principal’s Message"}</h2>
           <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[var(--text-muted)]">
-            {settings.principalMessage}
+            {message}
           </p>
           {settings.principalName && (
             <p className="mt-3 font-semibold">{settings.principalName}</p>
@@ -155,13 +158,14 @@ function PrincipalMessage({ settings }: { settings: PublicSiteSettings }) {
 
 export default function SiteShell({ children }: { children: ReactNode }) {
   const settings = usePublicSiteSettings();
+  const { locale } = useLocale();
   const [announcementDismissed, setAnnouncementDismissed] = useAnnouncementDismissal();
   const [reportOpen, setReportOpen] = useState(false);
   const pathname = usePathname();
   useServiceWorkerMaintenance();
 
   const announcement = settings.announcement;
-  const announcementText = announcement?.textEn.trim();
+  const announcementText = announcement?.text_i18n?.[locale]?.trim() || announcement?.textEn.trim();
   const schoolName = displaySchoolName(settings.schoolName);
 
   return (
@@ -194,7 +198,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
       {pathname === "/" && <PrincipalMessage settings={settings} />}
       <Footer
         schoolName={schoolName}
-        tagline={settings.tagline}
+        tagline={settings.tagline_i18n?.[locale]?.trim() || settings.tagline}
         address={settings.address}
         affiliation={settings.affiliationNumber}
         boardName={settings.boardName}

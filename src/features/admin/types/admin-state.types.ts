@@ -6,7 +6,7 @@ export type CatalogOption = {
   name?: string;
   isActive?: boolean;
 };
-export type FaqItem = { questionEn: string; answerEn: string };
+export type FaqItem = { questionEn: string; answerEn: string; question_i18n?: Record<string, string>; answer_i18n?: Record<string, string> };
 export type StudentFormState = {
   admissionNumber: string;
   dateOfBirth: string;
@@ -59,6 +59,7 @@ export type AnnouncementState = {
   enabled: boolean;
   type: "info" | "warning";
   textEn: string;
+  text_i18n?: Record<string, string>;
   linkUrl: string;
   startAt: string;
   endAt: string;

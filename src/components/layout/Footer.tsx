@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import Logo from "@/components/ui/Logo";
 import { SCHOOL_INFO } from "@/lib/school-info";
+import { useT } from "@/i18n/locale-provider";
 
 type Props = {
   schoolName?: string | undefined;
@@ -32,11 +33,12 @@ function SchoolStatus({
   schoolCode,
   statusPageUrl,
 }: Pick<Props, "schoolCode" | "statusPageUrl">) {
+  const t = useT();
   if (!schoolCode?.trim() && !statusPageUrl?.trim()) return null;
 
   return (
     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
-      {schoolCode?.trim() && <span>School code: {schoolCode}</span>}
+      {schoolCode?.trim() && <span>{t("footer.schoolCode")}: {schoolCode}</span>}
       {statusPageUrl?.trim() && (
         <a
           href={statusPageUrl}
@@ -44,7 +46,7 @@ function SchoolStatus({
           rel="noopener noreferrer"
           className={linkClass}
         >
-          System status ↗
+          {t("footer.systemStatus")} ↗
         </a>
       )}
     </div>
@@ -69,6 +71,7 @@ function SchoolIdentity({
   | "schoolCode"
   | "statusPageUrl"
 >) {
+  const t = useT();
   return (
     <section className="min-w-0">
       <div className="flex items-center gap-2.5">
@@ -78,14 +81,11 @@ function SchoolIdentity({
             {schoolName}
           </h2>
           <p className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--text-muted)]">
-            {[affiliation, boardName].filter(Boolean).join(" · ").replace(/^$/, "School management")}
+            {[affiliation, boardName].filter(Boolean).join("\u00b7").replace(/^$/, t("footer.schoolManagement"))}
           </p>
         </div>
       </div>
       <p className="mt-4 text-xs font-semibold text-[var(--text)]">{tagline}</p>
-      <p className="mt-2 max-w-xs text-xs leading-5 text-[var(--text-muted)]">
-        A place to learn, grow and shape a brighter future.
-      </p>
       {(address?.trim() || SCHOOL_INFO.address) && (
         <p className="mt-4 whitespace-pre-line text-xs leading-5 text-[var(--text-muted)]">
           {address?.trim() || SCHOOL_INFO.address}
@@ -97,17 +97,18 @@ function SchoolIdentity({
 }
 
 function QuickLinks() {
+  const t = useT();
   const links = [
-    { href: "/", label: "Home" },
-    { href: "/certificates", label: "Find my certificates" },
-    { href: "/verify", label: "Verify a certificate" },
-    { href: "/faq", label: "Frequently asked questions" },
-    { href: "/contact", label: "Contact the school" },
+    { href: "/", label: t("nav.home") },
+    { href: "/certificates", label: t("footer.findCertificates") },
+    { href: "/verify", label: t("footer.verifyCertificate") },
+    { href: "/faq", label: t("footer.faq") },
+    { href: "/contact", label: t("footer.contactSchool") },
   ];
 
   return (
     <nav aria-label="Quick links">
-      <h2 className="text-sm font-bold">Quick links</h2>
+      <h2 className="text-sm font-bold">{t("footer.quickLinks")}</h2>
       <ul className="mt-3 space-y-2 text-xs text-[var(--text-muted)]">
         {links.map(({ href, label }) => (
           <li key={href}>
@@ -122,20 +123,21 @@ function QuickLinks() {
 }
 
 function SupportLinks({ onReport, phone, officeHours, email }: Pick<Props, "onReport" | "phone" | "officeHours" | "email">) {
+  const t = useT();
   return (
     <section>
-      <h2 className="text-sm font-bold">Support</h2>
+      <h2 className="text-sm font-bold">{t("footer.support")}</h2>
       {onReport && (
         <button
           type="button"
           onClick={onReport}
           className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--divider)] bg-[var(--surface-2)] px-3 text-xs font-semibold text-[var(--text)] transition hover:border-[var(--primary)]"
         >
-          Report a wrong record <span aria-hidden="true">→</span>
+          {t("footer.reportWrongRecord")} <span aria-hidden="true">→</span>
         </button>
       )}
       <div className="mt-3 space-y-2 text-xs text-[var(--text-muted)]">
-        <p>Need help with a certificate?</p>
+        <p>{t("footer.needHelp")}</p>
         {phone?.trim() && (
           <p>
             <a className="font-semibold text-[var(--text)] hover:underline" href={`tel:${phone}`}>
@@ -157,15 +159,16 @@ function SupportLinks({ onReport, phone, officeHours, email }: Pick<Props, "onRe
 }
 
 function LegalLinks() {
+  const t = useT();
   const links = [
-    { href: "/terms", label: "Terms and Conditions" },
-    { href: "/privacy", label: "Privacy Policy" },
-    { href: "/data-rights", label: "Data rights" },
+    { href: "/terms", label: t("footer.terms") },
+    { href: "/privacy", label: t("footer.privacy") },
+    { href: "/data-rights", label: t("footer.dataRights") },
   ];
 
   return (
     <nav aria-label="Legal links">
-      <h2 className="text-sm font-bold">Legal</h2>
+      <h2 className="text-sm font-bold">{t("footer.legal")}</h2>
       <ul className="mt-3 space-y-2 text-xs text-[var(--text-muted)]">
         {links.map(({ href, label }) => (
           <li key={href}>
@@ -180,12 +183,13 @@ function LegalLinks() {
 }
 
 function SocialLinks({ links }: { links: Props["socialLinks"] }) {
+  const t = useT();
   const visibleLinks = links?.filter((item) => item.label.trim() && item.url.trim()) ?? [];
   if (!visibleLinks.length) return null;
 
   return (
     <nav aria-label="Social links" className="sm:col-span-2 lg:col-span-4">
-      <h2 className="text-sm font-bold">Connect</h2>
+      <h2 className="text-sm font-bold">{t("footer.connect")}</h2>
       <ul className="mt-2 flex flex-wrap gap-4 text-xs text-[var(--text-muted)]">
         {visibleLinks.map((item, index) => (
           <li key={`${item.label}-${String(index)}`}>
@@ -208,14 +212,15 @@ function FooterAttribution({
   schoolName,
   lastUpdated,
 }: Pick<Props, "schoolName" | "lastUpdated">) {
+  const t = useT();
   return (
     <div className="border-t border-[var(--border)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-[10px] text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <span>
-          © {new Date().getFullYear()} {schoolName}. All rights reserved.
+          © {new Date().getFullYear()} {schoolName}. {t("footer.allRightsReserved")}
         </span>
-        {lastUpdated?.trim() && <span>Last updated: {lastUpdated}</span>}
-        <span className="font-medium text-[var(--text)]">Official student services</span>
+        {lastUpdated?.trim() && <span>{t("footer.lastUpdated")} {lastUpdated}</span>}
+        <span className="font-medium text-[var(--text)]">{t("footer.officialServices")}</span>
       </div>
     </div>
   );

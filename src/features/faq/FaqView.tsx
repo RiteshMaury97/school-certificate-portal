@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
 import SiteShell from "@/components/layout/SiteShell";
+import { useLocale, useT } from "@/i18n/locale-provider";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,6 +18,8 @@ import {
 type Faq = {
   questionEn: string;
   answerEn: string;
+  question_i18n?: Record<string, string>;
+  answer_i18n?: Record<string, string>;
 };
 
 const categories = [
@@ -60,6 +63,8 @@ function categoryFor(item: Faq): Exclude<Category, "All questions"> {
 }
 
 export default function FaqPage() {
+  const { locale } = useLocale();
+  const t = useT();
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -114,7 +119,7 @@ export default function FaqPage() {
         <Breadcrumb className="mb-4">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">Home</BreadcrumbLink>
+              <BreadcrumbLink href="/">{t("nav.home")}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
@@ -122,7 +127,7 @@ export default function FaqPage() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Student services</BreadcrumbPage>
+              <BreadcrumbPage>{t("home.studentServices")}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -131,7 +136,7 @@ export default function FaqPage() {
             Help centre / Student services
           </p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--text)] sm:text-4xl">
-            Frequently asked questions
+            {t("faq.title")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
             Clear answers about finding, verifying and requesting support for school certificates.
@@ -214,7 +219,7 @@ export default function FaqPage() {
                     className="group py-4 first:pt-5 last:pb-1"
                   >
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus)]">
-                      <span>{item.questionEn}</span>
+                      <span>{item.question_i18n?.[locale] || item.questionEn}</span>
                       <span
                         aria-hidden="true"
                         className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--surface-2)] text-base font-normal text-[var(--primary)] transition-transform group-open:rotate-45"
@@ -223,7 +228,7 @@ export default function FaqPage() {
                       </span>
                     </summary>
                     <p className="mt-3 max-w-3xl text-xs leading-6 text-[var(--text-muted)]">
-                      {item.answerEn}
+                      {item.answer_i18n?.[locale] || item.answerEn}
                     </p>
                   </details>
                 ))}

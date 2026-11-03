@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import Script from "next/script";
 import { Suspense } from "react";
 
@@ -76,15 +75,18 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-/** Runs before paint so the saved theme is applied without a light/dark flash. */
+/** Apply the saved theme before the browser paints, without reading request headers. */
 const themeInit = `(function(){var r=document.documentElement;try{var t=localStorage.getItem("sis-theme")||"system";var d=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);r.dataset.theme=d?"dark":"light";r.style.colorScheme=d?"dark":"light";}catch(e){var p=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)").matches:false;r.dataset.theme=p?"dark":"light";r.style.colorScheme=p?"dark":"light";}})();`;
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
-        <Script id="theme-init" nonce={nonce} strategy="beforeInteractive">
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          suppressHydrationWarning
+        >
           {themeInit}
         </Script>
       </head>
@@ -103,7 +105,6 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             data-domain={process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN}
             src={process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL}
             strategy="afterInteractive"
-            nonce={nonce}
           />
         ) : null}
       </body>

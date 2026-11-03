@@ -156,6 +156,7 @@ export default function BrandingTab(props: Props) {
             [
               ["schoolName", "School name"],
               ["tagline", "Tagline"],
+              ["includedLanguages", "Languages shown (comma-separated codes)"],
               ["boardName", "Board / affiliation name"],
               ["affiliationNumber", "Affiliation number"],
               ["schoolCode", "School code"],
@@ -186,6 +187,17 @@ export default function BrandingTab(props: Props) {
               />
             </label>
           ))}
+          <fieldset className="rounded-lg border border-[var(--border)] p-4 sm:col-span-2">
+            <legend className="px-2 text-sm font-semibold">Optional tagline translations</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const).map((locale) => (
+                <label key={locale} className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                  {locale}
+                  <input value={branding[`tagline_i18n_${locale}`] ?? ""} onChange={(event) => setBranding((value) => ({ ...value, [`tagline_i18n_${locale}`]: event.target.value }))} className="mt-1 w-full rounded border p-2.5 text-sm font-normal normal-case text-[var(--text)]" />
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <label className="text-sm font-semibold text-[var(--text)] sm:col-span-2">
             Principal&apos;s message
             <textarea
@@ -202,6 +214,17 @@ export default function BrandingTab(props: Props) {
               className="mt-1 w-full rounded border p-2.5"
             />
           </label>
+          <fieldset className="rounded-lg border border-[var(--border)] p-4 sm:col-span-2">
+            <legend className="px-2 text-sm font-semibold">Optional principal message translations</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const).map((locale) => (
+                <label key={locale} className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                  {locale}
+                  <textarea rows={3} value={branding[`principalMessage_i18n_${locale}`] ?? ""} onChange={(event) => setBranding((value) => ({ ...value, [`principalMessage_i18n_${locale}`]: event.target.value }))} className="mt-1 w-full rounded border p-2.5 text-sm font-normal normal-case text-[var(--text)]" />
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <label className="text-sm font-semibold text-[var(--text)] sm:col-span-2">
             Social links (one per line: Label|https://... )
             <textarea

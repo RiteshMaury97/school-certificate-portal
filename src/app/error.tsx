@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 
 import Logo from "@/components/ui/Logo";
+import { useT } from "@/i18n/locale-provider";
 
 export default function RouteError({
   error,
@@ -11,6 +12,7 @@ export default function RouteError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useT();
   useEffect(() => {
     console.error("Route rendering failed", error.digest ?? "");
   }, [error]);
@@ -18,12 +20,12 @@ export default function RouteError({
     <main id="main-content" tabIndex={-1} className="error-page">
       <Logo size={72} className="rounded-xl bg-white p-1 object-contain" />
       <p className="error-code">500</p>
-      <h1>This page could not be loaded</h1>
-      <p>Something went wrong while preparing this page. Please try again.</p>
+      <h1>{t("errors.notFoundTitle")}</h1>
+      <p>{t("errors.unexpected")}</p>
       <button type="button" onClick={() => { reset(); }}>
-        Try again
+        {t("errors.tryAgain")}
       </button>
-      <Link href="/">Return to home</Link>
+      <Link href="/">{t("errors.goHome")}</Link>
     </main>
   );
 }

@@ -5,8 +5,9 @@ import { describe, expect, it } from "vitest";
 describe("school site header and theme", () => {
   it("provides responsive nav and icon-only utility controls", async () => {
     const header = await readFile("src/components/layout/Header.tsx", "utf8");
-    for (const label of ["Home", "Certificates", "Verify", "FAQ", "Contact"])
+    for (const label of ["nav.home", "nav.certificates", "nav.verify", "nav.faq", "nav.contact"])
       expect(header).toContain(label);
+    expect(header).toContain("t(link.key)");
     for (const icon of ["Menu", "ShieldCheck"]) expect(header).toContain(icon);
     expect(header).toContain("min-h-11");
     expect(header).toContain("aria-expanded");
@@ -25,7 +26,7 @@ describe("school site header and theme", () => {
     const layout = await readFile("src/app/layout.tsx", "utf8");
     const css = await readFile("src/styles/globals.css", "utf8");
     expect(layout).toContain("themeInit");
-    expect(layout).toContain("dangerouslySetInnerHTML");
+    expect(layout).toContain('strategy="beforeInteractive"');
     for (const token of [
       "--bg",
       "--surface",
@@ -49,7 +50,7 @@ describe("school site header and theme", () => {
   it("only displays footer details when present", async () => {
     const footer = await readFile("src/components/layout/Footer.tsx", "utf8");
     expect(footer).toContain("{lastUpdated?.trim() &&");
-    expect(footer).toContain("{address?.trim() &&");
+    expect(footer).toContain("address?.trim() || SCHOOL_INFO.address");
     expect(footer).toContain("{email?.trim() &&");
     expect(footer).toContain("{phone?.trim() &&");
   });

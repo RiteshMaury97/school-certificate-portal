@@ -58,6 +58,7 @@ type FormValues = {
   consent: boolean;
 };
 type SessionResponse = { sessions: string[] };
+type ClassResponse = { classes: string[] };
 
 export default function FinderPage() {
   const router = useRouter();
@@ -73,6 +74,8 @@ export default function FinderPage() {
     consent: false,
   });
   const [sessions, setSessions] = useState<string[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [classesLoading, setClassesLoading] = useState(true);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [sessionsLoadError, setSessionsLoadError] = useState(false);
   const [sessionsRetry, setSessionsRetry] = useState(0);
@@ -154,6 +157,27 @@ export default function FinderPage() {
       cancelled = true;
     };
   }, [sessionsRetry]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/classes", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load classes");
+        return response.json() as Promise<ClassResponse>;
+      })
+      .then((data) => {
+        if (!cancelled) setClasses(data.classes);
+      })
+      .catch(() => {
+        if (!cancelled) setClasses([]);
+      })
+      .finally(() => {
+        if (!cancelled) setClassesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!effectiveSiteKey || !captchaRef.current) {
@@ -466,7 +490,7 @@ export default function FinderPage() {
                     ["studentName", "Student Name", "Enter student's full name"],
                     ["fatherName", "Father’s Name", "Enter father's full name"],
                     ["motherName", "Mother’s Name", "Enter mother's full name"],
-                    ["className", "Class", "e.g. Class 10"],
+                    ["className", "Class", ""],
                     ["scholarNumber", "Scholar Number", "Enter scholar number"],
                   ] as const
                 ).map(([key, label, placeholder]) => (
@@ -481,30 +505,61 @@ export default function FinderPage() {
                         *
                       </span>
                     </label>
-                    <input
-                      translate="no"
-                      id={`${formId}-${key}`}
-                      name={key}
-                      autoComplete="off"
-                      required
-                      maxLength={key === "className" || key === "scholarNumber" ? 40 : 100}
-                      value={form[key]}
-                      aria-invalid={Boolean(touched[key] && fieldErrors[key])}
-                      aria-describedby={`${formId}-${key}-help ${formId}-${key}-error`}
-                      onBlur={() => {
-                        setTouched((v) => ({ ...v, [key]: true }));
-                      }}
-                      onChange={(event) => {
-                        update(key, event.target.value);
-                      }}
-                      placeholder={placeholder}
-                      className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
-                    />
+                    {key === "className" ? (
+                      <select
+                        translate="no"
+                        id={`${formId}-${key}`}
+                        name={key}
+                        required
+                        value={form.className}
+                        aria-invalid={Boolean(touched.className && fieldErrors.className)}
+                        aria-describedby={`${formId}-${key}-help ${formId}-${key}-error`}
+                        onBlur={() => setTouched((v) => ({ ...v, className: true }))}
+                        onChange={(event) => update("className", event.target.value)}
+                        disabled={classesLoading || classes.length === 0}
+                        className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--text)] outline-none transition focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        <option value="">
+                          {classesLoading
+                            ? "Loading classes…"
+                            : classes.length
+                              ? "Select a class"
+                              : "No classes available"}
+                        </option>
+                        {classes.map((className) => (
+                          <option key={className} value={className}>
+                            {className}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        translate="no"
+                        id={`${formId}-${key}`}
+                        name={key}
+                        autoComplete="off"
+                        required
+                        maxLength={key === "className" || key === "scholarNumber" ? 40 : 100}
+                        value={form[key]}
+                        aria-invalid={Boolean(touched[key] && fieldErrors[key])}
+                        aria-describedby={`${formId}-${key}-help ${formId}-${key}-error`}
+                        onBlur={() => {
+                          setTouched((v) => ({ ...v, [key]: true }));
+                        }}
+                        onChange={(event) => {
+                          update(key, event.target.value);
+                        }}
+                        placeholder={placeholder}
+                        className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+                      />
+                    )}
                     <p
                       id={`${formId}-${key}-help`}
                       className="mt-1.5 text-xs text-[var(--text-muted)]"
                     >
-                      {"Enter the name exactly as in school records. Example: Rahul Kumar."}
+                      {key === "className"
+                        ? "Choose the class exactly as shown in school records."
+                        : "Enter the name exactly as in school records. Example: Rahul Kumar."}
                     </p>
                     <p
                       id={`${formId}-${key}-error`}

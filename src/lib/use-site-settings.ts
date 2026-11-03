@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { SCHOOL_INFO } from "@/lib/school-info";
 
 export type PublicSiteSettings = {
+  tagline_i18n?: Record<string, string> | undefined;
+  principalMessage_i18n?: Record<string, string> | undefined;
   schoolName?: string;
   retentionYears?: number;
   backupRotationDays?: number;
@@ -23,12 +25,12 @@ export type PublicSiteSettings = {
   jurisdiction?: string;
   socialLinks?: { label: string; url: string }[];
   includedLanguages?: string;
-  announcement?: { type: "info" | "warning"; textEn: string; linkUrl: string } | null;
+  announcement?: { type: "info" | "warning"; textEn: string; text_i18n?: Record<string, string> | undefined; linkUrl: string } | null | undefined;
   grievanceOfficerName?: string;
   grievanceOfficerEmail?: string;
   grievanceOfficerPhone?: string;
   lastUpdated?: string;
-  faqs?: { questionEn: string; answerEn: string }[];
+  faqs?: { questionEn: string; answerEn: string; question_i18n?: Record<string, string> | undefined; answer_i18n?: Record<string, string> | undefined }[] | undefined;
 };
 
 const DEFAULT_SETTINGS: PublicSiteSettings = {
@@ -84,12 +86,30 @@ function parseSocialLinks(value: unknown): { label: string; url: string }[] | un
   return links;
 }
 
+function parseLocalizedStrings(value: unknown, field: string): Record<string, string> | undefined {
+  if (!isRecord(value)) return undefined;
+  const result: Record<string, string> = {};
+  for (const locale of ["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"]) {
+    const text = value[locale];
+    if (text === undefined) continue;
+    if (typeof text === "string") result[locale] = text;
+    else warnInvalid(`${field}.${locale}`);
+  }
+  return result;
+}
+
 function parseFaqs(value: unknown): { questionEn: string; answerEn: string }[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  const faqs: { questionEn: string; answerEn: string }[] = [];
+  const faqs: NonNullable<PublicSiteSettings["faqs"]> = [];
   for (const item of value) {
-    if (isRecord(item) && typeof item.questionEn === "string" && typeof item.answerEn === "string")
-      faqs.push({ questionEn: item.questionEn, answerEn: item.answerEn });
+    if (isRecord(item) && typeof item.questionEn === "string" && typeof item.answerEn === "string") {
+      faqs.push({
+        questionEn: item.questionEn,
+        answerEn: item.answerEn,
+        question_i18n: parseLocalizedStrings(item.question_i18n, "faqs.question_i18n"),
+        answer_i18n: parseLocalizedStrings(item.answer_i18n, "faqs.answer_i18n"),
+      });
+    }
     else warnInvalid("faqs entry");
   }
   return faqs;
@@ -104,6 +124,8 @@ function parseSettings(payload: unknown): PublicSiteSettings {
   const source = isRecord(payload) && isRecord(payload.settings) ? payload.settings : {};
   const result: PublicSiteSettings = { ...DEFAULT_SETTINGS };
   parseStringSettings(source, result);
+  result.tagline_i18n = parseLocalizedStrings(source.tagline_i18n, "tagline_i18n");
+  result.principalMessage_i18n = parseLocalizedStrings(source.principalMessage_i18n, "principalMessage_i18n");
   parseNumberSettings(source, result);
   if (source.socialLinks !== undefined) {
     const links = parseSocialLinks(source.socialLinks);
@@ -117,7 +139,9 @@ function parseSettings(payload: unknown): PublicSiteSettings {
   }
   if (source.announcement !== undefined) {
     const item = source.announcement;
-    if (item === null || isAnnouncement(item)) result.announcement = item;
+    if (item === null) result.announcement = null;
+    else if (isAnnouncement(item))
+      result.announcement = { ...item, text_i18n: parseLocalizedStrings(item.text_i18n, "announcement.text_i18n") };
     else warnInvalid("announcement");
   }
   return result;

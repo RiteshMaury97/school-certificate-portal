@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Check, ShieldCheck } from "lucide-react";
 
 import SiteShell from "@/components/layout/SiteShell";
+import { useT } from "@/i18n/locale-provider";
 type Kind = "contact" | "report" | "rights" | "offline" | "maintenance";
 const content: Record<
   Kind,
@@ -45,7 +46,11 @@ const content: Record<
   },
 };
 export default function InformationPage({ kind }: { kind: Kind }) {
+  const t = useT();
   const page = content[kind];
+  const localizedTitle = kind === "rights" ? t("legal.dataRights")
+    : kind === "report" ? t("legal.reportWrongRecord")
+      : kind === "contact" ? t("contact.title") : page.title;
   if (kind === "rights") {
     return (
       <SiteShell>
@@ -60,7 +65,7 @@ export default function InformationPage({ kind }: { kind: Kind }) {
                 Satyam International School
               </p>
               <h1 className="mt-4 max-w-2xl text-3xl font-bold leading-tight tracking-tight text-[var(--text)] sm:text-4xl lg:text-5xl">
-                Your data. Your rights.
+                {localizedTitle}
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--text-muted)] sm:text-lg sm:leading-8">
                 You may request access to your personal data, correction of inaccurate information,
@@ -107,7 +112,7 @@ export default function InformationPage({ kind }: { kind: Kind }) {
         <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--text-muted)]">
           Satyam International School
         </p>
-        <h1 className="mt-3 text-3xl font-bold text-[var(--text)]">{page.title}</h1>
+        <h1 className="mt-3 text-3xl font-bold text-[var(--text)]">{localizedTitle}</h1>
         <p className="mt-4 text-sm leading-7 text-[var(--text-muted)]">{page.description}</p>
         {kind === "report" && (
           <Link

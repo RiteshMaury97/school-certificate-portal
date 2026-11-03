@@ -3,6 +3,14 @@ import { NextResponse } from "next/server";
 import { getCachedSiteSettings } from "@/server/site-settings-cache";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+const localizedText = (value: unknown, maxLength: number) => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key, item]) => /^[a-z]{2}$/.test(key) && typeof item === "string")
+      .map(([key, item]) => [key, String(item).replace(/<[^>]*>/g, "").replace(/[<>\u0000-\u001f\u007f]/g, " ").slice(0, maxLength)]),
+  );
+};
 export async function GET() {
   try {
     const data = await getCachedSiteSettings();
@@ -27,6 +35,7 @@ export async function GET() {
               .join(",")
           : "en,hi,bn,mr,gu,pa,ta,te,ur",
       tagline: String(data.tagline ?? ""),
+      tagline_i18n: localizedText(data.tagline_i18n, 240),
       statusPageUrl:
         typeof data.statusPageUrl === "string" &&
         /^https:\/\//i.test(data.statusPageUrl)
@@ -38,6 +47,7 @@ export async function GET() {
       principalPhotoUrl: String(data.principalPhotoUrl ?? ""),
       principalName: String(data.principalName ?? ""),
       principalMessage: String(data.principalMessage ?? ""),
+      principalMessage_i18n: localizedText(data.principalMessage_i18n, 1800),
       address: String(data.address ?? ""),
       phone: String(data.phone ?? ""),
       email: String(data.email ?? ""),
@@ -53,6 +63,8 @@ export async function GET() {
             .map((item: Record<string, unknown>) => ({
               questionEn: String(item.questionEn ?? "").slice(0, 180),
               answerEn: String(item.answerEn ?? "").slice(0, 1500),
+              question_i18n: localizedText(item.question_i18n, 180),
+              answer_i18n: localizedText(item.answer_i18n, 1500),
             }))
         : [],
       socialLinks: Array.isArray(data.socialLinks)
@@ -107,6 +119,7 @@ export async function GET() {
         return {
           type: a.type,
           textEn,
+          text_i18n: localizedText(a.text_i18n, 240),
           linkUrl:
             typeof a.linkUrl === "string" && /^https:\/\//i.test(a.linkUrl)
               ? a.linkUrl

@@ -12,6 +12,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import SiteShell from "@/components/layout/SiteShell";
+import { useT } from "@/i18n/locale-provider";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import ContactEnquiryForm from "./ContactEnquiryForm";
@@ -22,6 +23,7 @@ function settingOr(value: string | undefined, fallback: string): string {
 }
 
 export default function ContactView() {
+  const t = useT();
   const settings = usePublicSiteSettings();
   const schoolName = settingOr(settings.schoolName, "Satyam International School");
   const address = settingOr(settings.address, "Lodipur, Zamania, Ghazipur, Uttar Pradesh 232329");
@@ -42,7 +44,7 @@ export default function ContactView() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Contact &amp; support</BreadcrumbPage>
+              <BreadcrumbPage>{t("contact.supportHeading")}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -71,7 +73,7 @@ export default function ContactView() {
           </div>
         </header>
 
-        <section aria-label="Contact options" className="mt-5 grid gap-3 md:grid-cols-3">
+        <section aria-label={t("contact.contactOptions")} className="mt-5 grid gap-3 md:grid-cols-3">
           <a
             href={`tel:${phone}`}
             className="group flex min-h-24 items-center gap-3 rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm transition hover:border-[var(--primary)]"
@@ -138,7 +140,7 @@ export default function ContactView() {
               <h2 className="text-sm font-bold text-[var(--text)]">Need another service?</h2>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-[var(--primary)]">
                 <Link href="/certificates" className="inline-flex items-center gap-1">
-                  Find certificates <ArrowRight size={12} aria-hidden="true" />
+                  {t("footer.findCertificates")} <ArrowRight size={12} aria-hidden="true" />
                 </Link>
                 <Link href="/report-wrong-record" className="inline-flex items-center gap-1">
                   Report a record issue <ArrowRight size={12} aria-hidden="true" />

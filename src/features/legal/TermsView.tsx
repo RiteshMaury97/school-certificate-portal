@@ -146,9 +146,6 @@ export default function TermsPage() {
             recordkeeping purposes in accordance with applicable law, including the Digital Personal
             Data Protection Act, 2023, to the extent in force and applicable.
           </p>
-          <p>
-            If you choose a language other than English, the optional Google Cloud Translation feature sends visible page text to Google for machine translation through the School's server. Review the Privacy Policy and Google's privacy information before using this optional service.
-          </p>
         </>
       ),
     },

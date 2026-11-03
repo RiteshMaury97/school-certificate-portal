@@ -13,6 +13,12 @@ const schema = z
     enabled: z.boolean(),
     type: z.enum(["info", "warning"]),
     textEn: z.string().trim().min(1).max(240),
+    text_i18n: z.object({
+      hi: z.string().max(240).optional(), bn: z.string().max(240).optional(),
+      mr: z.string().max(240).optional(), gu: z.string().max(240).optional(),
+      pa: z.string().max(240).optional(), ta: z.string().max(240).optional(),
+      te: z.string().max(240).optional(), ur: z.string().max(240).optional(),
+    }).optional().default({}),
     linkUrl: z
       .string()
       .trim()

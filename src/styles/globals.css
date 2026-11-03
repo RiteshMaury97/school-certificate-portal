@@ -183,6 +183,10 @@
   font-weight: 400;
   font-display: swap;
 }
+
+html[data-locale="hi"] {
+  --font-sans: "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+}
 @font-face {
   font-family: "Noto Sans Devanagari";
   src: url("/fonts/NotoSansDevanagari-Bold.ttf") format("truetype");

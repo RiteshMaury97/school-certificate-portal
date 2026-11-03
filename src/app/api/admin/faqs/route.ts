@@ -13,6 +13,18 @@ const schema = z
     z.object({
       questionEn: z.string().trim().min(3).max(180),
       answerEn: z.string().trim().min(5).max(1500),
+      question_i18n: z.object({
+        hi: z.string().max(180).optional(), bn: z.string().max(180).optional(),
+        mr: z.string().max(180).optional(), gu: z.string().max(180).optional(),
+        pa: z.string().max(180).optional(), ta: z.string().max(180).optional(),
+        te: z.string().max(180).optional(), ur: z.string().max(180).optional(),
+      }).optional().default({}),
+      answer_i18n: z.object({
+        hi: z.string().max(1500).optional(), bn: z.string().max(1500).optional(),
+        mr: z.string().max(1500).optional(), gu: z.string().max(1500).optional(),
+        pa: z.string().max(1500).optional(), ta: z.string().max(1500).optional(),
+        te: z.string().max(1500).optional(), ur: z.string().max(1500).optional(),
+      }).optional().default({}),
     }),
   )
   .max(30);
@@ -31,6 +43,8 @@ export async function GET(request: NextRequest) {
           ? (s.get("faqs") as Record<string, unknown>[]).slice(0, 30).map((item) => ({
               questionEn: String(item.questionEn ?? "").slice(0, 180),
               answerEn: String(item.answerEn ?? "").slice(0, 1500),
+              question_i18n: item.question_i18n ?? {},
+              answer_i18n: item.answer_i18n ?? {},
             }))
           : [],
       },

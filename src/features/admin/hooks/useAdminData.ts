@@ -213,7 +213,9 @@ export function useAdminData({
         ...Object.fromEntries(
           Object.keys(v).map((k) => [
             k,
-            k === "socialLinks"
+            k.includes("_i18n_")
+              ? String((x[k.startsWith("tagline_") ? "tagline_i18n" : "principalMessage_i18n"] as Record<string, unknown> | undefined)?.[k.slice(k.lastIndexOf("_") + 1)] ?? "")
+              : k === "socialLinks"
               ? Array.isArray(x[k])
                 ? (x[k] as { label: string; url: string }[])
                     .map((a) => `${a.label}|${a.url}`)
@@ -242,6 +244,7 @@ export function useAdminData({
         enabled: a.enabled === true,
         type: a.type === "warning" ? "warning" : "info",
         textEn: String(a.textEn ?? ""),
+        text_i18n: typeof a.text_i18n === "object" && a.text_i18n !== null ? a.text_i18n as Record<string, string> : {},
         linkUrl: String(a.linkUrl ?? ""),
         startAt: local(a.startAt),
         endAt: local(a.endAt),

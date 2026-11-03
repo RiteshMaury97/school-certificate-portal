@@ -16,9 +16,16 @@ const url = z
   .trim()
   .max(1000)
   .refine((value) => !value || /^https:\/\//i.test(value), "Use an HTTPS URL");
+const localeText = z.object({
+  hi: z.string().max(1800).optional(), bn: z.string().max(1800).optional(),
+  mr: z.string().max(1800).optional(), gu: z.string().max(1800).optional(),
+  pa: z.string().max(1800).optional(), ta: z.string().max(1800).optional(),
+  te: z.string().max(1800).optional(), ur: z.string().max(1800).optional(),
+}).optional().default({});
 const schema = z.object({
   schoolName: z.string().trim().min(1).max(160),
   tagline: z.string().trim().max(240),
+  tagline_i18n: localeText,
   statusPageUrl: url.optional().default(""),
   includedLanguages: z
     .string()
@@ -36,6 +43,7 @@ const schema = z.object({
   principalPhotoUrl: url,
   principalName: z.string().trim().max(120),
   principalMessage: z.string().trim().max(1800),
+  principalMessage_i18n: localeText,
   address: z.string().trim().max(500),
   phone: z.string().trim().max(80),
   officeHours: z.string().trim().max(160).optional().default(""),

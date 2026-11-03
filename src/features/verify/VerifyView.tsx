@@ -9,6 +9,7 @@ import { appCheckHeaders } from "@/lib/firebase-client";
 import type { SubmitEvent} from "react";
 
 import SiteShell from "@/components/layout/SiteShell";
+import { useT } from "@/i18n/locale-provider";
 
 type Verification =
   | {
@@ -42,8 +43,13 @@ function displayDate(value: string): string {
       }).format(date);
 }
 export default function VerifyPage() {
+  const t = useT();
   const [certificateNumber, setCertificateNumber] = useState("");
   const [session, setSession] = useState("");
+  const [sessions, setSessions] = useState<string[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsLoadError, setSessionsLoadError] = useState(false);
+  const [sessionsRetry, setSessionsRetry] = useState(0);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaReady, setCaptchaReady] = useState(false);
   const [captchaError, setCaptchaError] = useState(false);
@@ -60,6 +66,38 @@ export default function VerifyPage() {
   const formRef = useRef<HTMLFormElement>(null);
   const widgetId = useRef<string | null>(null);
   const formId = useId();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/sessions", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load sessions");
+        const data: unknown = await response.json();
+        if (
+          typeof data !== "object" ||
+          data === null ||
+          !("sessions" in data) ||
+          !Array.isArray(data.sessions)
+        ) throw new Error("Invalid sessions response");
+        return data.sessions.filter(
+          (value): value is string => typeof value === "string" && /^\d{4}-\d{2}$/.test(value),
+        );
+      })
+      .then((values) => {
+        if (!cancelled) {
+          setSessions(values);
+          setSessionsLoadError(false);
+          setSession((current) => values.includes(current) ? current : "");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSessionsLoadError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setSessionsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [sessionsRetry]);
 
   useEffect(() => {
     if (!effectiveSiteKey || !captchaRef.current) {
@@ -179,7 +217,7 @@ export default function VerifyPage() {
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-2xl">
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-white/70"><ShieldCheck size={15} /> Public certificate service</p>
-              <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Verify a certificate</h1>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{t("verify.title")}</h1>
               <p className="mt-3 text-sm leading-6 text-white/80 sm:text-base">Confirm that a certificate was issued by the school using its number and academic session.</p>
             </div>
             <div className="grid h-16 w-16 shrink-0 place-items-center self-start rounded-2xl border border-white/15 bg-white/10 sm:self-center"><FileCheck2 size={30} aria-hidden="true" /></div>
@@ -216,19 +254,34 @@ export default function VerifyPage() {
                 className="text-sm font-semibold text-[var(--text)]"
               >
                 Academic session <span className="text-[var(--danger)]" aria-hidden="true">*</span>
-                <input
+                <select
                   translate="no"
                   id={`${formId}-session`}
                   required
-                  maxLength={7}
-                  pattern="\d{4}-\d{2}"
                   value={session}
-                  onChange={(event) => { setSession(event.target.value); }}
-                  placeholder="e.g. 2023-24"
-                  aria-label="Academic session (required, format YYYY-YY)"
+                  onChange={(event) => setSession(event.target.value)}
+                  disabled={sessionsLoading || sessionsLoadError || sessions.length === 0}
+                  aria-label="Academic session (required)"
                   className="mt-2 min-h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3 text-base font-normal outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
-                />
-                <span className="mt-1 block text-xs font-normal text-[var(--text-muted)]">Required format: YYYY-YY, for example 2023-24.</span>
+                >
+                  <option value="">
+                    {sessionsLoading ? "Loading sessions…" : sessionsLoadError ? "Sessions unavailable" : sessions.length ? "Select academic session" : "No sessions available"}
+                  </option>
+                  {sessions.map((value) => <option key={value} value={value}>{value}</option>)}
+                </select>
+                <span className="mt-1 block text-xs font-normal text-[var(--text-muted)]">Select the academic session shown on the certificate.</span>
+                {sessionsLoadError && (
+                  <div className="mt-2">
+                    <ErrorState
+                      title="Sessions could not be loaded"
+                      description="Check your connection and retry."
+                      onRetry={() => { setSessionsLoadError(false); setSessionsLoading(true); setSessionsRetry((value) => value + 1); }}
+                    />
+                  </div>
+                )}
+                {!sessionsLoading && !sessionsLoadError && sessions.length === 0 && (
+                  <span className="mt-1 block text-xs font-normal text-[var(--text-muted)]" role="status">No academic sessions are available. Please contact the school office.</span>
+                )}
               </label>
             </div>
             <div className="mt-6 rounded-2xl bg-[var(--surface-2)] p-4 sm:p-5">

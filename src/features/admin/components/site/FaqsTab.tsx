@@ -95,6 +95,18 @@ export default function FaqsTab({ faqs, setFaqs, saveFaqs, busy }: FaqsTabProps)
                   <span className="mt-1 block text-right text-[10px] font-normal normal-case tracking-normal">{String(faq.answerEn.length)} / 1800 characters</span>
                 </label></div>
               </div>
+              <details className="mt-3 rounded-lg border border-[var(--border)] p-3">
+                <summary className="cursor-pointer text-xs font-semibold text-[var(--text-muted)]">Optional translations</summary>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const).map((locale) => (
+                    <div key={locale} className="rounded-lg bg-[var(--surface-2)] p-3">
+                      <p className="mb-2 text-[10px] font-bold uppercase text-[var(--text-muted)]">{locale}</p>
+                      <input aria-label={`${locale} FAQ question`} value={faq.question_i18n?.[locale] ?? ""} onChange={(event) => setFaqs((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, question_i18n: { ...item.question_i18n, [locale]: event.target.value } } : item))} className="mb-2 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm" />
+                      <textarea aria-label={`${locale} FAQ answer`} rows={2} value={faq.answer_i18n?.[locale] ?? ""} onChange={(event) => setFaqs((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, answer_i18n: { ...item.answer_i18n, [locale]: event.target.value } } : item))} className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm" />
+                    </div>
+                  ))}
+                </div>
+              </details>
             </article>
           ))}
           {visibleFaqs.length === 0 && <div className="rounded-xl border border-dashed border-[var(--border)] px-4 py-10 text-center"><p className="font-semibold">{faqs.length ? "No FAQs match your search" : "Your FAQ library is empty"}</p><p className="mt-1 text-sm text-[var(--text-muted)]">Add a question and answer to help visitors find information.</p></div>}

@@ -1,4 +1,7 @@
+"use client";
+
 import SiteShell from "@/components/layout/SiteShell";
+import { useT } from "@/i18n/locale-provider";
 
 import type { ReactNode } from "react";
 
@@ -20,13 +23,15 @@ function LegalHeader({
   version,
   updated,
 }: Pick<Props, "title" | "subtitle" | "version" | "updated">) {
+  const t = useT();
+  const localizedTitle = title === "Privacy Policy" ? t("legal.privacy") : title === "Terms & Conditions" ? t("legal.terms") : title;
   return (
     <header className="mb-8 rounded-3xl border border-[var(--divider)] bg-[var(--surface)] px-6 py-8 shadow-sm sm:px-10 sm:py-10">
       <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--text-muted)]">
         &quot;Satyam International School · Legal information&quot;
       </p>
       <h1 className="mt-3 text-3xl font-bold tracking-tight text-[var(--text)] sm:text-4xl">
-        {title}
+        {localizedTitle}
       </h1>
       <p className="mt-3 max-w-3xl text-base leading-7 text-[var(--text-muted)]">{subtitle}</p>
       <div className="mt-6 flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
