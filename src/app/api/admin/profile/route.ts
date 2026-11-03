@@ -3,12 +3,13 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { adminAuth, db } from "@/server/firebase-admin";
 import { apiError, requireAdmin, writeAuditLog } from "@/server/security";
+import { isValidPhoneNumber } from "@/shared/validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const TEXT_LIMITS = {
-  name: 100,
+  name: 80,
   preferredName: 80,
   staffId: 50,
   gender: 30,
@@ -21,11 +22,11 @@ const TEXT_LIMITS = {
   reportingManager: 100,
   officeLocation: 160,
   alternateEmail: 254,
-  primaryPhone: 30,
-  secondaryPhone: 30,
+  primaryPhone: 16,
+  secondaryPhone: 16,
   address: 500,
   emergencyContactName: 100,
-  emergencyContactPhone: 30,
+  emergencyContactPhone: 16,
   bio: 500,
   preferredLanguage: 10,
   timeZone: 80,
@@ -71,6 +72,10 @@ function validDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function validPersonName(value: string) {
+  return value.length >= 2 && value.length <= 80 && /^[\p{L}\p{M} .'-]+$/u.test(value);
 }
 
 function readProfile(value: unknown): Profile {
@@ -148,11 +153,15 @@ export async function PATCH(request: NextRequest) {
       profile[field] = value;
     }
 
-    if (profile.name.length < 2)
+    if (!validPersonName(profile.name))
       return NextResponse.json(
-        { error: "Full name must contain at least 2 characters." },
+        { error: "Enter a name using 2 to 80 letters, spaces, periods, apostrophes or hyphens." },
         { status: 400 },
       );
+    for (const [field, label] of [["preferredName", "Preferred name"], ["reportingManager", "Reporting manager"], ["emergencyContactName", "Emergency contact name"]] as const) {
+      if (profile[field] && !validPersonName(profile[field]))
+        return NextResponse.json({ error: `${label} must use 2 to 80 letters, spaces, periods, apostrophes or hyphens.` }, { status: 400 });
+    }
     if (
       profile.gender &&
       !["female", "male", "nonbinary", "prefer-not-to-say", "self-described"].includes(
@@ -167,6 +176,10 @@ export async function PATCH(request: NextRequest) {
         { error: "Enter a valid alternate email address." },
         { status: 400 },
       );
+    for (const [field, label] of [["primaryPhone", "Primary phone"], ["secondaryPhone", "Secondary phone"], ["emergencyContactPhone", "Emergency contact phone"]] as const) {
+      if (profile[field] && !isValidPhoneNumber(profile[field]))
+        return NextResponse.json({ error: `${label} must be a 10-digit Indian mobile number or an international number in E.164 format.` }, { status: 400 });
+    }
     if (
       profile.photoDataUrl &&
       !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(profile.photoDataUrl)

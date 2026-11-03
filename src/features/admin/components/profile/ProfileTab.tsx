@@ -404,9 +404,10 @@ export default function ProfileTab({
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Full name *">
                       <input
-                        required
+                        required aria-required="true"
                         minLength={2}
-                        maxLength={100}
+                        maxLength={80}
+                        pattern="[\\p{L}\\p{M} .'-]+"
                         value={profile.name}
                         onChange={(event) => { update("name", event.target.value); }}
                         className={inputClass}
@@ -549,7 +550,11 @@ export default function ProfileTab({
                     <Field label="Primary phone number">
                       <input
                         type="tel"
-                        maxLength={30}
+                        inputMode="tel"
+                        autoComplete="tel"
+                        minLength={10}
+                        maxLength={16}
+                        pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"
                         value={profile.primaryPhone}
                         onChange={(event) => { update("primaryPhone", event.target.value); }}
                         className={inputClass}
@@ -558,7 +563,11 @@ export default function ProfileTab({
                     <Field label="Secondary phone number">
                       <input
                         type="tel"
-                        maxLength={30}
+                        inputMode="tel"
+                        autoComplete="tel"
+                        minLength={10}
+                        maxLength={16}
+                        pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"
                         value={profile.secondaryPhone}
                         onChange={(event) => { update("secondaryPhone", event.target.value); }}
                         className={inputClass}
@@ -666,7 +675,9 @@ export default function ProfileTab({
                   <div className="mt-3 space-y-3">
                     <Field label="Contact name">
                       <input
-                        maxLength={100}
+                        minLength={2}
+                        maxLength={80}
+                        pattern="[\\p{L}\\p{M} .'-]+"
                         value={profile.emergencyContactName}
                         onChange={(event) => { update("emergencyContactName", event.target.value); }}
                         className={inputClass}
@@ -675,7 +686,11 @@ export default function ProfileTab({
                     <Field label="Contact phone">
                       <input
                         type="tel"
-                        maxLength={30}
+                        inputMode="tel"
+                        autoComplete="tel"
+                        minLength={10}
+                        maxLength={16}
+                        pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"
                         value={profile.emergencyContactPhone}
                         onChange={(event) => { update("emergencyContactPhone", event.target.value); }}
                         className={inputClass}

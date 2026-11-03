@@ -10,6 +10,14 @@ export default defineConfig({
     trace: "retain-on-failure",
     ...devices["Desktop Chrome"],
   },
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "webkit-responsive",
+      testMatch: "responsive.spec.ts",
+      use: { ...devices["Desktop Safari"] },
+    },
+  ],
   ...(process.env.PLAYWRIGHT_BASE_URL
     ? {}
     : {

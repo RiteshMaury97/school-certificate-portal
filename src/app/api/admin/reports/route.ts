@@ -20,7 +20,7 @@ function serializeDate(value: unknown): string {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["approver", "admin", "superadmin"]);
+    await requireRoles(request, ["approver", "superadmin"]);
     const snapshot = await db.collection("recordReports").orderBy("createdAt", "desc").limit(200).get();
     return NextResponse.json(
       {
@@ -97,7 +97,7 @@ async function applyReportUpdate(
 
 export async function PATCH(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["approver", "admin", "superadmin"]);
+    const admin = await requireRoles(request, ["approver", "superadmin"]);
     const parsed = updateSchema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json({ error: "Provide a valid report status and staff note." }, { status: 400 });

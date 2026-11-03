@@ -51,7 +51,7 @@ export default function BreachUpdateForm({ incident, api, act, load, refresh }: 
           <textarea
             aria-label="Update note"
             id="incident-update-note"
-            required
+            required aria-required="true"
             minLength={1}
             maxLength={1000}
             className={`${inputClass} min-h-20`}
@@ -64,11 +64,13 @@ export default function BreachUpdateForm({ incident, api, act, load, refresh }: 
         </label>
         <div className="flex items-end gap-2">
           <label htmlFor="incident-next-status" className="text-sm">
-            Next status
+              Next status *
             <select
               aria-label="Next status"
               id="incident-next-status"
               className={inputClass}
+              required
+              aria-required="true"
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value);

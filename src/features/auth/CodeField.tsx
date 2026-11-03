@@ -17,7 +17,7 @@ export default function CodeField({ label, value, onChange }: Props) {
         autoComplete="one-time-code"
         pattern="[0-9]{6}"
         maxLength={6}
-        required
+        required aria-required="true"
         value={value}
         onChange={(event) => { onChange(event.target.value.replace(/\D/g, "")); }}
         className="mt-2 min-h-12 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-center text-xl tracking-[.4em] text-[var(--text)]"

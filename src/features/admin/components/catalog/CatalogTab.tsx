@@ -169,7 +169,7 @@ export default function CatalogTab({
             <input
               id="catalog-item-name"
               translate="no"
-              required
+              required aria-required="true"
               maxLength={80}
               value={catalogName}
               onChange={(event) => {

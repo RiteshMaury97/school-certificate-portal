@@ -3,7 +3,11 @@
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 
+import { FormErrorSummary } from "@/components/forms/FormErrorSummary";
+import { FormField } from "@/components/forms/FormField";
+import { useFormValidation } from "@/components/forms/useFormValidation";
 import { appCheckHeaders } from "@/lib/firebase-client";
+import { contactEnquirySchema } from "@/shared/validation";
 
 const enquiryTypes = [
   ["certificate", "Certificate access"],
@@ -136,14 +140,15 @@ export default function ContactEnquiryForm() {
   const [emailCopySent, setEmailCopySent] = useState(false);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const { captcha, widget } = useContactTurnstile(siteKey, setToken, setCaptchaError);
+  const validation = useFormValidation(contactEnquirySchema, {
+    fullName, mobile, email, enquiryType, studentName, classSession, subject, message, consent, turnstileToken: token,
+  });
 
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy) return;
     setError("");
-    if (!consent || !token) {
-      setError("Please agree to the contact notice and complete the security check.");
-      return;
-    }
+    if (!validation.validate(true)) return;
     setBusy(true);
     try {
       const result = await sendContactEnquiry({
@@ -220,6 +225,8 @@ export default function ContactEnquiryForm() {
       busy={busy}
       token={token}
       inputClass={inputClass}
+      fieldErrors={validation.errors}
+      onFieldBlur={validation.onBlur}
       onSubmit={(event) => {
         void submit(event);
       }}
@@ -253,6 +260,8 @@ type ContactFormViewProps = {
   token: string;
   inputClass: string;
   onSubmit: (event: React.SubmitEvent<HTMLFormElement>) => void;
+  fieldErrors: Record<string, string>;
+  onFieldBlur: (name: string) => (event: React.FocusEvent<HTMLElement>) => void;
 };
 
 function ContactFormView({
@@ -280,31 +289,52 @@ function ContactFormView({
   busy,
   token,
   inputClass,
+  fieldErrors,
+  onFieldBlur,
   onSubmit,
 }: ContactFormViewProps) {
   return (
     <section className="rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-5 shadow-sm sm:p-7">
       <h2 className="text-lg font-semibold text-[var(--text)]">Send us a message</h2>
       <p className="mt-1 text-xs text-[var(--text-muted)]">Share a few details and the school office can direct your enquiry to the right team.</p>
-      <form onSubmit={onSubmit} className="mt-5 space-y-3.5">
+      <form noValidate onSubmit={onSubmit} className="mt-5 space-y-3.5">
+        <FormErrorSummary errors={fieldErrors} />
         <div className="grid gap-3 sm:grid-cols-2">
-          <label htmlFor="contact-name" className="text-xs font-semibold text-[var(--text)]">Full name *<input aria-label="Full name" id="contact-name" required minLength={2} maxLength={100} autoComplete="name" value={fullName} onChange={(event) => { setFullName(event.target.value); }} className={inputClass} placeholder="Enter your full name" /></label>
-          <label htmlFor="contact-mobile" className="text-xs font-semibold text-[var(--text)]">Mobile number *<input aria-label="Mobile number" id="contact-mobile" required minLength={7} maxLength={30} pattern="[+0-9() .-]+" title="Enter a phone number with 8 to 15 digits." autoComplete="tel" inputMode="tel" value={mobile} onChange={(event) => { setMobile(event.target.value); }} className={inputClass} placeholder="+91 XXXXX XXXXX" /></label>
-          <label htmlFor="contact-email" className="text-xs font-semibold text-[var(--text)]">Email address *<input aria-label="Email address" id="contact-email" required type="email" maxLength={254} autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); }} className={inputClass} placeholder="you@example.com" /></label>
-          <label htmlFor="contact-type" className="text-xs font-semibold text-[var(--text)]">Enquiry type *<select aria-label="Enquiry type" id="contact-type" required value={enquiryType} onChange={(event) => { setEnquiryType(event.target.value); }} className={inputClass}><option value="">Select a topic</option>{enquiryTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label htmlFor="contact-student" className="text-xs font-semibold text-[var(--text)]">Student name *<input aria-label="Student name" id="contact-student" required minLength={2} maxLength={100} value={studentName} onChange={(event) => { setStudentName(event.target.value); }} className={inputClass} placeholder="Enter student’s name" /></label>
-          <label htmlFor="contact-session" className="text-xs font-semibold text-[var(--text)]">Class / session *<input aria-label="Class or session" id="contact-session" required minLength={2} maxLength={80} value={classSession} onChange={(event) => { setClassSession(event.target.value); }} className={inputClass} placeholder="e.g. Class 10 · 2025–26" /></label>
+          <FormField id="contact-name" label="Full name" required helperText="Use the name shown in school records." error={fieldErrors.fullName}>
+            <input name="fullName" aria-label="Full name" translate="no" type="text" minLength={2} maxLength={80} pattern="[\\p{L}\\p{M} .'-]+" autoComplete="name" value={fullName} onBlur={onFieldBlur("fullName")} onChange={(event) => { setFullName(event.target.value); }} className={inputClass} placeholder="Enter your full name" />
+          </FormField>
+          <FormField id="contact-mobile" label="Mobile number" required helperText="Enter a 10-digit Indian mobile or international number in E.164 format." error={fieldErrors.mobile}>
+            <input name="mobile" aria-label="Mobile number" translate="no" type="tel" minLength={10} maxLength={16} pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})" autoComplete="tel" inputMode="tel" value={mobile} onBlur={onFieldBlur("mobile")} onChange={(event) => { setMobile(event.target.value); }} className={inputClass} placeholder="98765 43210 or +14155552671" />
+          </FormField>
+          <FormField id="contact-email" label="Email address" required error={fieldErrors.email}>
+            <input name="email" aria-label="Email address" translate="no" type="email" maxLength={254} autoComplete="email" inputMode="email" value={email} onBlur={onFieldBlur("email")} onChange={(event) => { setEmail(event.target.value); }} className={inputClass} placeholder="you@example.com" />
+          </FormField>
+          <FormField id="contact-type" label="Enquiry type" required error={fieldErrors.enquiryType}>
+            <select name="enquiryType" aria-label="Enquiry type" value={enquiryType} onBlur={onFieldBlur("enquiryType")} onChange={(event) => { setEnquiryType(event.target.value); }} className={inputClass}><option value="">Select a topic</option>{enquiryTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          </FormField>
+          <FormField id="contact-student" label="Student name" required error={fieldErrors.studentName}>
+            <input name="studentName" aria-label="Student name" translate="no" type="text" minLength={2} maxLength={80} pattern="[\\p{L}\\p{M} .'-]+" autoComplete="off" value={studentName} onBlur={onFieldBlur("studentName")} onChange={(event) => { setStudentName(event.target.value); }} className={inputClass} placeholder="Enter student’s name" />
+          </FormField>
+          <FormField id="contact-session" label="Class / session" required error={fieldErrors.classSession}>
+            <input name="classSession" aria-label="Class or session" minLength={2} maxLength={80} value={classSession} onBlur={onFieldBlur("classSession")} onChange={(event) => { setClassSession(event.target.value); }} className={inputClass} placeholder="e.g. Class 10 · 2025–26" />
+          </FormField>
         </div>
-        <label htmlFor="contact-subject" className="block text-xs font-semibold text-[var(--text)]">Subject *<input aria-label="Subject" id="contact-subject" required minLength={3} maxLength={160} value={subject} onChange={(event) => { setSubject(event.target.value); }} className={inputClass} placeholder="Briefly describe your enquiry" /></label>
-        <label htmlFor="contact-message" className="block text-xs font-semibold text-[var(--text)]">Message *<textarea aria-label="Message" id="contact-message" required minLength={10} maxLength={3000} rows={4} value={message} onChange={(event) => { setMessage(event.target.value); }} className={`${inputClass} resize-y`} placeholder="Write your message here. Please do not include passwords or sensitive identity details." /></label>
-        <div className="flex items-start gap-2 text-[10px] leading-4 text-[var(--text-muted)]"><label htmlFor="contact-consent" className="flex items-start gap-2"><input aria-label="I agree that the school may contact me and email me a copy of this enquiry" id="contact-consent" type="checkbox" required checked={consent} onChange={(event) => { setConsent(event.target.checked); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]" />I agree that the school may contact me about this enquiry and email me a copy.</label><a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-[var(--primary)] underline">Privacy Policy</a></div>
+        <FormField id="contact-subject" label="Subject" required error={fieldErrors.subject}>
+          <input name="subject" aria-label="Subject" minLength={3} maxLength={160} value={subject} onBlur={onFieldBlur("subject")} onChange={(event) => { setSubject(event.target.value); }} className={inputClass} placeholder="Briefly describe your enquiry" />
+        </FormField>
+        <FormField id="contact-message" label="Message" required helperText="Please do not include passwords or sensitive identity details." error={fieldErrors.message}>
+          <textarea name="message" aria-label="Message" minLength={10} maxLength={3000} rows={4} value={message} onBlur={onFieldBlur("message")} onChange={(event) => { setMessage(event.target.value); }} className={`${inputClass} resize-y`} placeholder="Write your message here." />
+        </FormField>
+        <div className="flex items-start gap-2 text-[10px] leading-4 text-[var(--text-muted)]"><label htmlFor="contact-consent" className="flex items-start gap-2"><input aria-label="I agree that the school may contact me and email me a copy of this enquiry" id="contact-consent" type="checkbox" required aria-required="true" aria-invalid={Boolean(fieldErrors.consent)} aria-describedby="contact-consent-error" checked={consent} onBlur={onFieldBlur("consent")} onChange={(event) => { setConsent(event.target.checked); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]" />I agree that the school may contact me about this enquiry and email me a copy. *</label><a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-[var(--primary)] underline">Privacy Policy</a></div>
+        {fieldErrors.consent && <p id="contact-consent-error" className="flex items-center gap-1.5 text-sm font-medium text-[var(--danger)]" role="alert"><ShieldCheck size={15} aria-hidden="true" />{fieldErrors.consent}</p>}
         <div>
           <p className="mb-2 text-xs font-semibold text-[var(--text)]">Security check *</p>
           <div ref={captcha} aria-label="Cloudflare security verification" className="min-h-[66px]" />
+          {fieldErrors.turnstileToken && <p role="alert" className="mt-1 text-sm font-medium text-[var(--danger)]">{fieldErrors.turnstileToken}</p>}
           {captchaError && <p role="alert" className="mt-1 text-xs text-[var(--danger)]">{captchaError}</p>}
         </div>
         {error && <p role="alert" className="rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--danger)]">{error}</p>}
-        <button type="submit" disabled={busy || !token || !consent} aria-busy={busy} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-xs font-semibold text-[var(--on-primary)] hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Sending enquiry…" : "Send enquiry"} <ArrowRight size={14} aria-hidden="true" /></button>
+        <button type="submit" aria-busy={busy} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-xs font-semibold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]">{busy ? "Sending enquiry…" : "Send enquiry"} <ArrowRight size={14} aria-hidden="true" /></button>
       </form>
     </section>
   );

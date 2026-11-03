@@ -4,10 +4,10 @@ import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { z } from "zod";
 
 import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
+import { FormErrorSummary } from "@/components/forms/FormErrorSummary";
 import SiteShell from "@/components/layout/SiteShell";
 import {
   Breadcrumb,
@@ -24,30 +24,6 @@ import { studentLookupSchema } from "@/shared/validation";
 import type { SubmitEvent } from "react";
 import type { StudentResult } from "@/types";
 
-const formSchema = z.object({
-  studentName: z
-    .string()
-    .trim()
-    .min(2)
-    .max(100)
-    .regex(/^[\p{L}\p{M} .'-]+$/u),
-  fatherName: z
-    .string()
-    .trim()
-    .min(2)
-    .max(100)
-    .regex(/^[\p{L}\p{M} .'-]+$/u),
-  motherName: z
-    .string()
-    .trim()
-    .min(2)
-    .max(100)
-    .regex(/^[\p{L}\p{M} .'-]+$/u),
-  className: z.string().trim().min(1).max(40),
-  scholarNumber: z.string().trim().min(1).max(40),
-  session: z.string().regex(/^\d{4}-\d{2}$/),
-  consent: z.literal(true),
-});
 type FormValues = {
   studentName: string;
   fatherName: string;
@@ -96,40 +72,23 @@ export default function FinderPage() {
   const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<keyof FormValues, boolean>>>({});
-  const fieldErrors: Partial<Record<keyof FormValues, string | undefined>> = {
-    studentName:
-      form.studentName.trim().length < 2
-        ? "Enter at least 2 characters."
-        : !/^[\p{L}\p{M} .'-]+$/u.test(form.studentName)
-          ? "Use the name shown in school records."
-          : undefined,
-    fatherName:
-      form.fatherName.trim().length < 2
-        ? "Enter at least 2 characters."
-        : !/^[\p{L}\p{M} .'-]+$/u.test(form.fatherName)
-          ? "Use the name shown in school records."
-          : undefined,
-    motherName:
-      form.motherName.trim().length < 2
-        ? "Enter at least 2 characters."
-        : !/^[\p{L}\p{M} .'-]+$/u.test(form.motherName)
-          ? "Use the name shown in school records."
-          : undefined,
-    className: !form.className.trim()
-      ? "Enter the class shown in school records."
-      : form.className.length > 40 || !/^[\p{L}\p{M}\p{N} ./'-]+$/u.test(form.className)
-        ? "Use the class or section shown in school records."
-        : undefined,
-    scholarNumber: !form.scholarNumber.trim()
-      ? "Enter the scholar number shown in school records."
-      : form.scholarNumber.length > 40 || !/^[\p{L}\p{M}\p{N} /-]+$/u.test(form.scholarNumber)
-        ? "Use the scholar number shown in school records."
-        : undefined,
-    session:
-      form.session && !/^\d{4}-\d{2}$/.test(form.session)
-        ? "Choose a valid passing session."
-        : undefined,
-  };
+  const lookupValidation = studentLookupSchema.safeParse({
+    ...form,
+    turnstileToken: captchaToken || (challengeToken ? "challenge" : ""),
+  });
+  const fieldErrors: Partial<Record<keyof FormValues, string | undefined>> = {};
+  if (!lookupValidation.success) {
+    for (const issue of lookupValidation.error.issues) {
+      const key = issue.path[0];
+      if (typeof key === "string" && key in form) {
+        fieldErrors[key as keyof FormValues] ??= issue.message;
+      }
+    }
+  }
+  const visibleFieldErrors: Record<string, string> = {};
+  for (const [key, message] of Object.entries(fieldErrors)) {
+    if (touched[key as keyof FormValues] && message) visibleFieldErrors[key] = message;
+  }
   const captchaRef = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
   const formId = useId();
@@ -261,7 +220,10 @@ export default function FinderPage() {
     setNetworkError(false);
     setResult(null);
     setNotFound(false);
-    const parsed = formSchema.safeParse(form);
+    const parsed = studentLookupSchema.safeParse({
+      ...form,
+      turnstileToken: captchaToken || (challengeToken ? "challenge" : ""),
+    });
     if (
       !parsed.success ||
       (!challengeToken && !captchaToken) ||
@@ -274,7 +236,9 @@ export default function FinderPage() {
         className: true,
         scholarNumber: true,
         session: true,
+        consent: true,
       });
+      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>("[aria-invalid='true']")?.focus());
       setError("No record found. Check the details and try again.");
       return;
     }
@@ -484,6 +448,7 @@ export default function FinderPage() {
               </p>
             </div>
             <form ref={formRef} onSubmit={submit} noValidate aria-describedby={`${formId}-help`}>
+              <FormErrorSummary errors={visibleFieldErrors} />
               <div className="grid gap-5 sm:grid-cols-2">
                 {(
                   [
@@ -510,7 +475,7 @@ export default function FinderPage() {
                         translate="no"
                         id={`${formId}-${key}`}
                         name={key}
-                        required
+                        required aria-required="true"
                         value={form.className}
                         aria-invalid={Boolean(touched.className && fieldErrors.className)}
                         aria-describedby={`${formId}-${key}-help ${formId}-${key}-error`}
@@ -538,8 +503,8 @@ export default function FinderPage() {
                         id={`${formId}-${key}`}
                         name={key}
                         autoComplete="off"
-                        required
-                        maxLength={key === "className" || key === "scholarNumber" ? 40 : 100}
+                        required aria-required="true"
+                        maxLength={key === "scholarNumber" ? 40 : 80}
                         value={form[key]}
                         aria-invalid={Boolean(touched[key] && fieldErrors[key])}
                         aria-describedby={`${formId}-${key}-help ${formId}-${key}-error`}
@@ -557,7 +522,7 @@ export default function FinderPage() {
                       id={`${formId}-${key}-help`}
                       className="mt-1.5 text-xs text-[var(--text-muted)]"
                     >
-                      {key === "className"
+                      {label === "Class"
                         ? "Choose the class exactly as shown in school records."
                         : "Enter the name exactly as in school records. Example: Rahul Kumar."}
                     </p>
@@ -592,7 +557,7 @@ export default function FinderPage() {
                       translate="no"
                       id={`${formId}-session`}
                       name="session"
-                      required
+                      required aria-required="true"
                       value={form.session}
                       aria-invalid={Boolean(
                         sessions.length > 0 && touched.session && !form.session,
@@ -705,6 +670,10 @@ export default function FinderPage() {
                       update("consent", event.target.checked);
                     }}
                     required
+                    aria-required="true"
+                    aria-invalid={Boolean(touched.consent && fieldErrors.consent)}
+                    aria-describedby={`${formId}-consent-error`}
+                    onBlur={() => setTouched((value) => ({ ...value, consent: true }))}
                     className="mt-1 h-4 w-4 shrink-0 accent-[var(--primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
                   />
                   <span>
@@ -723,6 +692,9 @@ export default function FinderPage() {
                     .
                   </span>
                 </label>
+                <p id={`${formId}-consent-error`} className="mt-1 text-sm font-medium text-[var(--danger)]" aria-live="polite">
+                  {touched.consent ? fieldErrors.consent ?? "" : ""}
+                </p>
               </div>
 
               {challengeToken && (
@@ -796,13 +768,6 @@ export default function FinderPage() {
               </div>
               <button
                 type="submit"
-                disabled={
-                  loading ||
-                  sessionsLoading ||
-                  sessions.length === 0 ||
-                  !form.consent ||
-                  (challengeToken ? !disambiguationValue.trim() : !captchaToken || !captchaReady)
-                }
                 aria-busy={loading}
                 className="mt-6 min-h-12 w-full rounded-lg bg-[var(--primary)] px-5 py-3 text-sm font-bold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-50"
               >

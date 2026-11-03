@@ -44,17 +44,15 @@ const schema = z
     endAt: z
       .string()
       .trim()
-      .min(20)
       .max(40)
       .refine(
-        (value) =>
-          Number.isFinite(Date.parse(value)) &&
-          /(?:Z|[+-]\d{2}:\d{2})$/.test(value),
-      ),
+        (value) => !value || (Number.isFinite(Date.parse(value)) && /(?:Z|[+-]\d{2}:\d{2})$/.test(value)),
+        "Enter a valid end date.",
+      )
+      .default(""),
   })
   .refine(
-    (value) =>
-      new Date(value.endAt).getTime() > new Date(value.startAt).getTime(),
+    (value) => !value.endAt || new Date(value.endAt).getTime() > new Date(value.startAt).getTime(),
     { message: "End date must be after start date." },
   );
 function plainText(value: string): string {
@@ -66,7 +64,7 @@ function plainText(value: string): string {
 }
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["approver", "admin", "superadmin"]);
+    await requireRoles(request, ["approver", "superadmin"]);
     const snapshot = await db.collection("siteSettings").doc("main").get();
     const value: unknown = snapshot.get("announcement");
     return NextResponse.json(
@@ -91,7 +89,7 @@ export async function GET(request: NextRequest) {
 }
 export async function PATCH(request: NextRequest) {
   try {
-    const admin = await requireRoles(request, ["approver", "admin", "superadmin"]);
+    const admin = await requireRoles(request, ["approver", "superadmin"]);
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json(

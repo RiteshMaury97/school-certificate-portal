@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
@@ -11,18 +10,11 @@ import {
   writeAuditLog,
 } from "@/server/security";
 import { isAllowedRequestOrigin } from "@/shared/origin-policy";
+import { dataRightsRequestSchema } from "@/shared/validation";
 
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const requestSchema = z.object({
-  requestType: z.enum(["access", "correction", "erasure", "withdraw_consent"]),
-  requesterName: z.string().trim().min(2).max(100),
-  contactEmail: z.email().trim().max(254),
-  studentName: z.string().trim().min(2).max(100),
-  description: z.string().trim().min(10).max(1500),
-  guardianConfirmation: z.literal(true),
-});
 export async function POST(request: NextRequest) {
   try {
     await verifyRequestAppCheck(request);
@@ -37,7 +29,7 @@ export async function POST(request: NextRequest) {
         { error: "Request could not be submitted." },
         { status: 403 },
       );
-    const parsed = requestSchema.safeParse(await request.json());
+    const parsed = dataRightsRequestSchema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json(
         { error: "Please check the request details." },

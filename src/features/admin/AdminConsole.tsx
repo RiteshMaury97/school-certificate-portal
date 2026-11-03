@@ -45,6 +45,7 @@ import { useBulkImport } from "./hooks/useBulkImport";
 import { useCertificateIntake } from "./hooks/useCertificateIntake";
 import { useCertificateRecords } from "./hooks/useCertificateRecords";
 import { useSiteSettingsAdmin } from "./hooks/useSiteSettingsAdmin";
+import { getVisibleTabs } from "./utils/admin-tab-access";
 import ReauthModal from "./ReauthModal";
 
 import type { CatalogKind, CatalogOption } from "./types/admin-state.types";
@@ -72,6 +73,7 @@ function errorMessage(error: unknown): string {
 // eslint-disable-next-line max-lines-per-function, complexity -- reason: the shared console coordinates section state and routing across the admin workspace.
 export default function AdminPage() {
   const [mobileAdminNav, setMobileAdminNav] = useState(false);
+  const [profileName, setProfileName] = useState("");
   const router = useRouter();
   const onAdminLogin = useCallback(() => {
     router.push("/admin/login");
@@ -151,6 +153,23 @@ export default function AdminPage() {
     revokeSession,
     revokeAllSessions,
   } = lifecycle;
+  useEffect(() => {
+    if (email && !getVisibleTabs(role).includes(tab)) router.replace("/admin");
+  }, [email, role, router, tab]);
+  useEffect(() => {
+    if (!email || tab !== "dashboard") return;
+    let current = true;
+    void api<{ profile?: { name?: string } }>("/api/admin/profile")
+      .then((result) => {
+        if (current) setProfileName(result.profile?.name?.trim() ?? "");
+      })
+      .catch(() => {
+        if (current) setProfileName("");
+      });
+    return () => {
+      current = false;
+    };
+  }, [api, email, tab]);
   const loadRef = useRef<(() => Promise<void>) | null>(null);
   const loadLatest = useCallback(() => loadRef.current?.() ?? Promise.resolve(), []);
   const intake = useCertificateIntake({ api, act, setToast, tab, load: loadLatest });
@@ -356,6 +375,12 @@ export default function AdminPage() {
         Checking secure administrator session…
       </main>
     );
+  if (!getVisibleTabs(role).includes(tab))
+    return (
+      <main id="main-content" tabIndex={-1} className="grid min-h-screen place-items-center">
+        Returning to your overview…
+      </main>
+    );
   return (
     <>
       {idleWarning && (
@@ -382,6 +407,7 @@ export default function AdminPage() {
             tab={tab}
             role={role}
             email={email}
+            profileName={profileName}
             mobileAdminNav={mobileAdminNav}
             setMobileAdminNav={setMobileAdminNav}
             themeMode={themeMode}
@@ -668,7 +694,7 @@ export default function AdminPage() {
               />
             )}
             {tab === "announcement" &&
-              (role === "superadmin" || role === "approver" || role === "admin") && (
+              (role === "superadmin" || role === "approver") && (
                 <AnnouncementTab
                   announcement={announcement}
                   setAnnouncement={setAnnouncement}

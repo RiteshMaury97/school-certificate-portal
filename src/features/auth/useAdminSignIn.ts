@@ -241,6 +241,9 @@ export function useAdminSignIn() {
         throw new Error(
           "Your email is not verified yet. Open the verification link and try again.",
         );
+      // Email verification updates the Firebase user first; refresh the token so
+      // the server sees the new email_verified claim before onboarding continues.
+      await pendingUser.getIdToken(true);
       await begin(pendingUser);
     });
   const resendCode = () =>
@@ -295,7 +298,7 @@ export function useAdminSignIn() {
   const changeTemporaryPassword = (newPassword: string) =>
     run(async () => {
       if (!pendingUser) throw new Error("Your sign-in session expired. Sign in again.");
-      const idToken = await pendingUser.getIdToken();
+      const idToken = await pendingUser.getIdToken(true);
       const response = await fetch("/api/admin/credentials/change-temporary-password", {
         method: "POST",
         headers: {

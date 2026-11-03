@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 
 import { adminAuth, db } from "@/server/firebase-admin";
-import { escapeHtml, sendMail } from "@/server/mailer";
+import { sendAdminInvitationEmail } from "@/server/mailer";
 import {
   requireAdmin,
   requireSensitiveReauth,
@@ -74,14 +74,27 @@ export async function POST(request: NextRequest) {
         createdBy: actor.uid,
       });
     try {
+      const origin = new URL(process.env.APP_ORIGIN ?? request.nextUrl.origin).origin;
       const verificationLink = await adminAuth.generateEmailVerificationLink(email, {
-        url: `${process.env.APP_ORIGIN ?? request.nextUrl.origin}/admin/login`,
+        url: `${origin}/admin/login`,
       });
-      await sendMail({
+      const site = await db.collection("siteSettings").doc("main").get();
+      const schoolName = String(site.get("schoolName") ?? "").trim() || "Satyam International School";
+      await sendAdminInvitationEmail({
         to: email,
-        subject: "School Portal: administrator invitation",
-        text: `You have been invited as a ${role}. Temporary password: ${temporaryPassword}\nSign in at ${process.env.APP_ORIGIN ?? request.nextUrl.origin}/admin/login, verify your email, then choose a new password. This temporary password must be changed before administrator access is granted.\nVerify your email: ${verificationLink}`,
-        html: `<p>You have been invited as a ${escapeHtml(role)}.</p><p><strong>Temporary password:</strong> ${escapeHtml(temporaryPassword)}</p><p><a href="${escapeHtml(process.env.APP_ORIGIN ?? request.nextUrl.origin)}/admin/login">Sign in</a>, verify your email, then choose a new password. Administrator access is unavailable until you change this password.</p><p><a href="${escapeHtml(verificationLink)}">Verify your email</a></p>`,
+        role,
+        temporaryPassword,
+        verificationLink,
+        origin,
+        schoolName,
+        recipientName: parsed.data.profile.preferredName || parsed.data.profile.name,
+        tagline: String(site.get("tagline") ?? ""),
+        boardName: String(site.get("boardName") ?? ""),
+        affiliationNumber: String(site.get("affiliationNumber") ?? ""),
+        schoolCode: String(site.get("schoolCode") ?? ""),
+        address: String(site.get("address") ?? ""),
+        phone: String(site.get("phone") ?? ""),
+        email: String(site.get("email") ?? ""),
       });
     } catch (error) {
       await Promise.all([

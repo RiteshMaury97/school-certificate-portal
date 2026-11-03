@@ -155,7 +155,7 @@ export default function CertificatesTab(props: Props) {
                   id="certificate-student"
                   aria-label="Student"
                   translate="no"
-                  required
+                  required aria-required="true"
                   value={selectedStudent}
                   onChange={(e) => {
                     setSelectedStudent(e.target.value);
@@ -179,7 +179,7 @@ export default function CertificatesTab(props: Props) {
                   id="certificate-session"
                   aria-label="Session"
                   translate="no"
-                  required
+                  required aria-required="true"
                   value={selectedStudentSession ?? form.session}
                   disabled={Boolean(selectedStudentSession)}
                   onChange={(e) => {
@@ -214,7 +214,7 @@ export default function CertificatesTab(props: Props) {
                   id="certificate-type"
                   aria-label="Certificate type"
                   translate="no"
-                  required
+                  required aria-required="true"
                   value={form.certificateType}
                   onChange={(e) => {
                     setForm((v) => ({
@@ -241,7 +241,7 @@ export default function CertificatesTab(props: Props) {
                   id="certificate-number"
                   aria-label="Certificate number"
                   translate="no"
-                  required
+                  required aria-required="true"
                   value={form.certificateNumber}
                   onChange={(e) => {
                     setForm((v) => ({
@@ -278,7 +278,7 @@ export default function CertificatesTab(props: Props) {
                   aria-label="Finished certificate file"
                   translate="no"
                   type="file"
-                  required
+                  required aria-required="true"
                   accept=".pdf,.jpg,.jpeg,.png"
                   onChange={(e) => {
                     setFiles(e.target.files ? Array.from(e.target.files) : []);

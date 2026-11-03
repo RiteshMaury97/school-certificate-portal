@@ -76,9 +76,9 @@ function MobileNavigation({
         role="dialog"
         aria-modal="true"
         aria-label={t("nav.mobileLabel")}
-        className="relative ml-auto flex h-dvh w-[min(88vw,22rem)] flex-col overflow-y-auto border-l border-[var(--border)] bg-[var(--surface)] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl"
+        className="relative ml-auto flex h-dvh w-full flex-col overflow-y-auto border-t-[3px] border-t-[var(--primary)] bg-[var(--surface)] px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5 shadow-2xl sm:w-[min(88vw,22rem)] sm:border-l sm:border-t-0 sm:px-5 sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]"
       >
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-5 flex min-h-11 items-center justify-between">
           <span className="font-bold text-[var(--text)]">{t("nav.menu")}</span>
           <IconButton label={t("nav.closeMenu")} onClick={onClose}>
             <X size={20} />
@@ -91,7 +91,7 @@ function MobileNavigation({
               href={link.to}
               onClick={onClose}
               aria-current={isActive(pathname, link.to) ? "page" : undefined}
-              className={`flex min-h-12 items-center rounded-xl px-3 text-base font-semibold ${isActive(pathname, link.to) ? "bg-[var(--surface-2)] text-[var(--text)]" : "text-[var(--text)] hover:bg-[var(--surface-2)]"}`}
+              className={`flex min-h-12 items-center rounded-[14px] px-3 text-[15px] font-semibold ${isActive(pathname, link.to) ? "bg-[var(--surface-2)] text-[var(--text)]" : "text-[var(--text)] hover:bg-[var(--surface-2)]"}`}
             >
               {t(link.key)}
             </Link>

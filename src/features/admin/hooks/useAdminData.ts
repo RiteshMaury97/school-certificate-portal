@@ -228,7 +228,7 @@ export function useAdminData({
     }
     if (
       tab === "announcement" &&
-      (role === "superadmin" || role === "approver" || role === "admin")
+      (role === "superadmin" || role === "approver")
     ) {
       const d = await api<{ announcement: Record<string, unknown> }>("/api/admin/announcements");
       const a = d.announcement ?? {};

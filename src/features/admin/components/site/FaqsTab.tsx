@@ -76,6 +76,7 @@ export default function FaqsTab({ faqs, setFaqs, saveFaqs, busy }: FaqsTabProps)
         </div>
 
         <div className="space-y-3 p-4">
+          <p className="text-xs text-[var(--text-muted)]">* required</p>
           {visibleFaqs.map(({ faq, index }) => (
             <article key={`${String(index)}-${faq.questionEn}`} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -87,11 +88,11 @@ export default function FaqsTab({ faqs, setFaqs, saveFaqs, busy }: FaqsTabProps)
                 </div>
               </div>
               <div className="grid gap-3 lg:grid-cols-[minmax(240px,0.8fr)_minmax(0,1.7fr)]">
-                <div><label htmlFor={`faq-question-${String(index)}`} className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Question / English
-                  <input id={`faq-question-${String(index)}`} aria-label="Question in English" translate="no" value={faq.questionEn} onChange={(event) => { setFaqs((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, questionEn: event.target.value } : item)); }} placeholder="Enter a frequently asked question" maxLength={240} className="mt-1.5 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm font-normal normal-case tracking-normal text-[var(--text)]" />
+                <div><label htmlFor={`faq-question-${String(index)}`} className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Question / English *
+                  <input id={`faq-question-${String(index)}`} aria-label="Question in English" translate="no" required aria-required="true" minLength={3} maxLength={180} value={faq.questionEn} onChange={(event) => { setFaqs((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, questionEn: event.target.value } : item)); }} placeholder="Enter a frequently asked question" className="mt-1.5 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm font-normal normal-case tracking-normal text-[var(--text)]" />
                 </label></div>
-                <div><label htmlFor={`faq-answer-${String(index)}`} className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Answer / English
-                  <textarea id={`faq-answer-${String(index)}`} aria-label="Answer in English" translate="no" rows={2} value={faq.answerEn} onChange={(event) => { setFaqs((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, answerEn: event.target.value } : item)); }} placeholder="Write a helpful answer for families" maxLength={1800} className="mt-1.5 w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm font-normal normal-case tracking-normal text-[var(--text)]" />
+                <div><label htmlFor={`faq-answer-${String(index)}`} className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Answer / English *
+                  <textarea id={`faq-answer-${String(index)}`} aria-label="Answer in English" translate="no" required aria-required="true" minLength={5} maxLength={1500} rows={2} value={faq.answerEn} onChange={(event) => { setFaqs((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, answerEn: event.target.value } : item)); }} placeholder="Write a helpful answer for families" className="mt-1.5 w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm font-normal normal-case tracking-normal text-[var(--text)]" />
                   <span className="mt-1 block text-right text-[10px] font-normal normal-case tracking-normal">{String(faq.answerEn.length)} / 1800 characters</span>
                 </label></div>
               </div>

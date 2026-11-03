@@ -20,6 +20,7 @@ type AdminHeaderProps = {
   tab: Tab;
   role: Role;
   email: string;
+  profileName: string;
   mobileAdminNav: boolean;
   setMobileAdminNav: Dispatch<SetStateAction<boolean>>;
   themeMode: string;
@@ -36,6 +37,7 @@ export default function AdminHeader({
   tab,
   role,
   email,
+  profileName,
   mobileAdminNav,
   setMobileAdminNav,
   themeMode,
@@ -47,7 +49,16 @@ export default function AdminHeader({
   logout,
   onProfile,
 }: AdminHeaderProps) {
-  const username = email.split("@")[0];
+  const username = email.split("@")[0] ?? "";
+  const nameToFormat = profileName.trim() || username;
+  const displayName = nameToFormat
+    ? nameToFormat
+        .toLowerCase()
+        .replace(
+          /(^|[\s'-])([\p{L}])/gu,
+          (_match, separator: string, letter: string) => separator + letter.toUpperCase(),
+        )
+    : "Administrator";
   return (
     <header className="sis-admin-header">
       <div className="mx-auto flex w-full items-center justify-between gap-4 px-6 py-4 lg:px-7">
@@ -68,7 +79,7 @@ export default function AdminHeader({
             </BreadcrumbList>
           </Breadcrumb>
           <h1 className="text-lg font-semibold leading-tight text-[var(--text)]">
-            {tab === "dashboard" ? `Welcome back, ${username ?? "Administrator"}` : tabLabels[tab]}
+            {tab === "dashboard" ? `Welcome back, ${displayName}` : tabLabels[tab]}
           </h1>
           <p className="text-xs text-[var(--text-muted)]">
             Here’s what’s happening across your school portal today.

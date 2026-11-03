@@ -276,7 +276,7 @@ export default function BrandingTab(props: Props) {
             <label className="text-sm font-semibold">
               Country code
               <input
-                required
+                required aria-required="true"
                 maxLength={2}
                 pattern="[A-Za-z]{2}"
                 value={exceptionCountry}
@@ -289,7 +289,7 @@ export default function BrandingTab(props: Props) {
             <label className="text-sm font-semibold">
               Administrator UID
               <input
-                required
+                required aria-required="true"
                 value={exceptionAdminUid}
                 onChange={(e) => setExceptionAdminUid(e.target.value)}
                 className="mt-1 w-full rounded border p-2.5"
@@ -299,7 +299,7 @@ export default function BrandingTab(props: Props) {
           <label className="text-sm font-semibold">
             Expires in (hours)
             <input
-              required
+              required aria-required="true"
               type="number"
               min="1"
               max="168"
@@ -311,7 +311,7 @@ export default function BrandingTab(props: Props) {
           <label className="text-sm font-semibold">
             Reason
             <input
-              required
+              required aria-required="true"
               minLength={5}
               maxLength={500}
               value={exceptionReason}

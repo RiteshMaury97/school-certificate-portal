@@ -202,9 +202,10 @@ export function StaffProfileFields({
         <input
           id={`${idPrefix}-name`}
           aria-label="Full name"
-          required
+          required aria-required="true"
           minLength={2}
-          maxLength={100}
+          maxLength={80}
+          pattern="[\\p{L}\\p{M} .'-]+"
           value={profile.name}
           onChange={(event) => {
             setProfile((current) => ({ ...current, name: event.target.value }));
@@ -222,7 +223,10 @@ export function StaffProfileFields({
               aria-label={label}
               translate="no"
               type={type}
-              maxLength={key === "alternateEmail" ? 254 : key === "officeLocation" ? 160 : 120}
+              inputMode={type === "email" ? "email" : type === "tel" ? "tel" : undefined}
+              autoComplete={key === "alternateEmail" ? "email" : type === "tel" ? "tel" : key === "dateOfBirth" ? "bday" : undefined}
+              pattern={type === "tel" ? "(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})" : undefined}
+              maxLength={key === "alternateEmail" ? 254 : ["primaryPhone", "secondaryPhone", "emergencyContactPhone"].includes(key) ? 16 : key === "officeLocation" ? 160 : key === "preferredName" || key === "emergencyContactName" ? 80 : 120}
               value={profile[key]}
               onChange={(event) => {
                 setProfile((current) => ({ ...current, [key]: event.target.value }));
@@ -307,7 +311,7 @@ export function InviteForm(
             aria-label="Official email"
             translate="no"
             type="email"
-            required
+            required aria-required="true"
             value={props.adminEmail}
             onChange={(event) => {
               props.setAdminEmail(event.target.value);
@@ -324,6 +328,8 @@ export function InviteForm(
           <select
             id="admin-invite-role"
             translate="no"
+          required
+          aria-required="true"
             value={props.inviteRole}
             onChange={(event) => {
               if (isAdminInviteRole(event.target.value)) props.setInviteRole(event.target.value);

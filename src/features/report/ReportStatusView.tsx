@@ -130,7 +130,7 @@ export default function ReportStatusView({ initialReference = "" }: { initialRef
             Report reference ID
             <input
               id="report-reference"
-              required
+              required aria-required="true"
               value={referenceId}
               onChange={(event) => {
                 setReferenceId(event.target.value.toUpperCase());

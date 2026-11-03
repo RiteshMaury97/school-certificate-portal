@@ -1058,3 +1058,11 @@ input[type="file"]::file-selector-button {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent);
 }
+
+form:has([required])::before {
+  content: "* required";
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}

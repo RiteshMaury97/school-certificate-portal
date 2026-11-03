@@ -2,9 +2,9 @@ import { randomBytes } from "node:crypto";
 
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
+import { wrongRecordReportSchema } from "@/shared/validation";
 import { sendMail } from "@/server/mailer";
 import { requesterIp } from "@/server/request-origin";
 import {
@@ -17,34 +17,6 @@ import {
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-function isValidPhone(value: string): boolean {
-  const normalized = value.trim();
-  const digits = normalized.replace(/\D/g, "");
-  return /^[+\d().\s-]+$/.test(normalized) && digits.length >= 8 && digits.length <= 15;
-}
-const schema = z.object({
-  name: z.string().trim().min(2).max(100),
-  session: z.string().regex(/^\d{4}-\d{2}$/),
-  issue: z.string().trim().min(10).max(2000),
-  email: z.email().trim().max(254),
-  contact: z.string().trim().min(5).max(254),
-  contactMethod: z.enum(["email", "phone"]),
-  phoneOptIn: z.boolean(),
-  phoneNumber: z.string().trim().max(24).optional(),
-  consent: z.literal(true),
-  turnstileToken: z.string().min(10).max(4096),
-}).superRefine((value, context) => {
-  if (value.contactMethod === "email" && !z.email().safeParse(value.contact).success)
-    context.addIssue({ code: "custom", path: ["contact"], message: "Enter a valid email address." });
-  if (value.contactMethod === "phone" && !isValidPhone(value.contact))
-    context.addIssue({ code: "custom", path: ["contact"], message: "Enter a valid phone number." });
-  if (value.phoneOptIn && !isValidPhone(value.phoneNumber ?? ""))
-    context.addIssue({ code: "custom", path: ["phoneNumber"], message: "Enter a valid phone number when opting in." });
-  if (value.contactMethod === "phone" && value.phoneOptIn)
-    context.addIssue({ code: "custom", path: ["phoneOptIn"], message: "Optional phone follow-up is only available with email contact." });
-  if (!value.phoneOptIn && value.phoneNumber)
-    context.addIssue({ code: "custom", path: ["phoneNumber"], message: "Phone number requires explicit opt-in." });
-});
 async function verifyTurnstile(token: string, ip: string) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) return false;
@@ -80,7 +52,7 @@ export async function POST(request: NextRequest) {
         { error: "Please try again later." },
         { status: 429 },
       );
-    const parsed = schema.safeParse(await request.json());
+    const parsed = wrongRecordReportSchema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json(
         { error: "Please check the report details." },

@@ -31,7 +31,7 @@ export function BreadcrumbLink({ href, className, children }: BreadcrumbLinkProp
   return (
     <Link
       href={href}
-      className={`transition-colors hover:text-[var(--primary)] hover:underline ${className ?? ""}`}
+      className={`no-underline transition-colors hover:text-[var(--primary)] hover:no-underline ${className ?? ""}`}
     >
       {children}
     </Link>

@@ -65,10 +65,10 @@ export default function ApprovalsTab({
                 )}
                 <label className="mt-4 block text-sm">
                   Rejection reason
-                  <textarea translate="no" value={rejectReason[c.id] ?? ""} onChange={(e) => { setRejectReason((v) => ({ ...v, [c.id]: e.target.value })); }} rows={2} className="mt-1 w-full rounded border p-2" placeholder="Required only when rejecting" />
+                  <textarea translate="no" aria-label="Reason for rejection" minLength={10} maxLength={1000} value={rejectReason[c.id] ?? ""} onChange={(e) => { setRejectReason((v) => ({ ...v, [c.id]: e.target.value })); }} rows={2} className="mt-1 w-full rounded border p-2" placeholder="Required only when rejecting" />
                 </label>
                 <label className="mt-3 flex items-start gap-2 text-sm">
-                  <input translate="no" type="checkbox" checked={approvalChecks[c.id] === true} disabled={!previewUrls[c.id]} onChange={(e) => { setApprovalChecks((v) => ({ ...v, [c.id]: e.target.checked })); }} className="mt-0.5 h-4 w-4" />
+                  <input translate="no" type="checkbox" required={Boolean(previewUrls[c.id])} aria-required={Boolean(previewUrls[c.id])} checked={approvalChecks[c.id] === true} disabled={!previewUrls[c.id]} onChange={(e) => { setApprovalChecks((v) => ({ ...v, [c.id]: e.target.checked })); }} className="mt-0.5 h-4 w-4" />
                   <span>Details match the document</span>
                 </label>
                 <div className="mt-3 flex gap-2">

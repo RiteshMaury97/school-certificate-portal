@@ -1,32 +1,16 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
 import { requesterIp } from "@/server/request-origin";
+import { contactEnquirySchema as schema } from "@/shared/validation";
 import { consumeSearchBudget, hashRequesterIp, verifyRequestAppCheck, writeAuditLog } from "@/server/security";
 
 import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const schema = z.object({
-  fullName: z.string().trim().min(2).max(100),
-  mobile: z.string().trim().min(7).max(30).regex(/^[+\d() .-]+$/).refine((value) => {
-    const digits = value.replace(/\D/g, "").length;
-    return digits >= 8 && digits <= 15;
-  }),
-  email: z.email().trim().max(254),
-  enquiryType: z.enum(["certificate", "student-record", "admission", "general", "other"]),
-  studentName: z.string().trim().min(2).max(100),
-  classSession: z.string().trim().min(2).max(80),
-  subject: z.string().trim().min(3).max(160),
-  message: z.string().trim().min(10).max(3000),
-  consent: z.literal(true),
-  turnstileToken: z.string().min(10).max(4096),
-});
 
 async function verifyTurnstile(token: string, ip: string | null): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;

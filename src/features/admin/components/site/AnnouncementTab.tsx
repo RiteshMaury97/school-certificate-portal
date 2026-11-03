@@ -133,11 +133,13 @@ function AnnouncementControls({
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <AnnouncementField id="announcement-type" label="Notice style">
+        <AnnouncementField id="announcement-type" label="Notice style *">
           <select
             id="announcement-type"
             aria-labelledby="announcement-type-label"
             translate="no"
+            required
+            aria-required="true"
             value={announcement.type}
             onChange={(event) => {
               if (isAnnouncementType(event.target.value))
@@ -165,19 +167,21 @@ function AnnouncementControls({
         </AnnouncementField>
       </div>
 
-      <AnnouncementField id="announcement-text" label="Notice text (English)">
+      <AnnouncementField id="announcement-text" label="Notice text (English) *">
         <textarea
           id="announcement-text"
           aria-labelledby="announcement-text-label"
           translate="no"
           required
+          aria-required="true"
+          minLength={1}
           maxLength={240}
           rows={5}
           value={announcement.textEn}
           onChange={(event) => {
             updateAnnouncement(setAnnouncement, "textEn", event.target.value);
           }}
-          placeholder="Write a short update for students and families…"
+          placeholder="Write a short update for students and families�"
           className="min-h-32 w-full resize-y rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-3 text-sm leading-6"
         />
         <span className="block text-right text-[11px] font-normal text-[var(--text-muted)]">
@@ -215,7 +219,7 @@ function AnnouncementSchedule({
         Publication schedule
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <AnnouncementField id="announcement-start" label="Starts">
+        <AnnouncementField id="announcement-start" label="Starts *">
           <DatePicker
             id="announcement-start"
             label="Starts"
@@ -231,7 +235,6 @@ function AnnouncementSchedule({
           <DatePicker
             id="announcement-end"
             label="Ends"
-            required
             value={announcement.endAt}
             onChange={(value) => {
               updateAnnouncement(setAnnouncement, "endAt", value);
@@ -310,7 +313,7 @@ export default function AnnouncementTab({
               className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-5 text-sm font-bold text-[var(--on-primary)] shadow-md transition hover:brightness-105 disabled:opacity-60"
             >
               <Save size={17} aria-hidden="true" />
-              {busy ? "Saving announcement…" : "Save announcement"}
+              {busy ? "Saving announcement�" : "Save announcement"}
             </button>
           </div>
         </form>

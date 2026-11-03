@@ -58,7 +58,7 @@ async function getRequestsByStatus(status: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["approver", "admin"]);
+    await requireRoles(request, ["approver", "superadmin"]);
     const status = request.nextUrl.searchParams.get("status") ?? "open";
     if (!["open", "resolved", "rejected"].includes(status))
       return NextResponse.json(
@@ -133,7 +133,7 @@ export async function PATCH(request: NextRequest) {
         { headers: { "Cache-Control": "no-store" } },
       );
     }
-    const admin = await requireRoles(request, ["approver", "admin"]);
+    const admin = await requireRoles(request, ["approver", "superadmin"]);
     if (
       typeof body.id !== "string" ||
       typeof body.resolution !== "string" ||

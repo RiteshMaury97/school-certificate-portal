@@ -138,7 +138,7 @@ export default function StudentImportPanel({
           >
             <Upload size={19} aria-hidden="true" className="text-[var(--primary)]" />
             <span className="mt-2 text-sm font-semibold text-[var(--text)]">
-              {file ? file.name : "Choose an Excel workbook"}
+              {file ? file.name : "Choose an Excel workbook *"}
             </span>
             <span className="mt-1 text-[10px] text-[var(--text-muted)]">
               .xlsx or .csv · up to 2 MB · maximum {MAX_CSV_ROWS} student rows
@@ -146,6 +146,8 @@ export default function StudentImportPanel({
             <input
               id="student-excel-file"
               type="file"
+              required
+              aria-required="true"
               accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
               disabled={busy}
               onChange={(event) => { setFile(event.target.files?.[0] ?? null); }}

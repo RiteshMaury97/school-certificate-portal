@@ -513,7 +513,7 @@ export default function StudentsList({
 
       {editing && editForm && (
         <div
-          className="fixed inset-0 z-[120] grid place-items-center overflow-y-auto bg-black/60 p-3 sm:p-6"
+          className="fixed inset-0 z-[120] grid place-items-center overflow-y-auto bg-[var(--scrim)] p-3 sm:p-6"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setEditing(null);
@@ -557,7 +557,7 @@ export default function StudentsList({
                   <input
                     id={`edit-student-${key}`}
                     type={type ?? "text"}
-                    required={required}
+                    required={required} aria-required={required}
                     value={editForm[key]}
                     onChange={(event) => {
                       setEditForm((current) =>
@@ -624,7 +624,7 @@ export default function StudentsList({
 
       {certificateStudent && (
         <div
-          className="fixed inset-0 z-[130] grid place-items-center overflow-y-auto bg-black/60 p-3 sm:p-6"
+          className="fixed inset-0 z-[130] grid place-items-center overflow-y-auto bg-[var(--scrim)] p-3 sm:p-6"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeCertificateDialog();
@@ -666,7 +666,7 @@ export default function StudentsList({
                 Certificate type
                 <select
                   id="student-certificate-type"
-                  required
+                  required aria-required="true"
                   value={certificate.certificateType}
                   onChange={(event) => {
                     setCertificate((current) => ({
@@ -693,7 +693,7 @@ export default function StudentsList({
                 Certificate number
                 <input
                   id="student-certificate-number"
-                  required
+                  required aria-required="true"
                   maxLength={80}
                   value={certificate.certificateNumber}
                   onChange={(event) => {
@@ -732,7 +732,7 @@ export default function StudentsList({
                 <input
                   id="student-certificate-file"
                   type="file"
-                  required
+                  required aria-required="true"
                   accept=".pdf,.jpg,.jpeg,.png"
                   onChange={(event) => { setCertificateFile(event.target.files?.[0] ?? null); }}
                   className={controlClass}

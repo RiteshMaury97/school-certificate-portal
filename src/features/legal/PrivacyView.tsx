@@ -3,6 +3,9 @@ import { useState } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
+import { FormErrorSummary } from "@/components/forms/FormErrorSummary";
+import { useFormValidation } from "@/components/forms/useFormValidation";
+import { dataRightsRequestSchema } from "@/shared/validation";
 
 import type { LegalSection } from "@/components/layout/LegalPageLayout";
 import type { SubmitEvent } from "react";
@@ -35,9 +38,13 @@ export default function PrivacyPage() {
   const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const validation = useFormValidation(dataRightsRequestSchema, {
+    requestType, requesterName, contactEmail, studentName, description, guardianConfirmation,
+  });
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!validation.validate(true)) return;
     setError("");
     setAcknowledgment("");
     setBusy(true);
@@ -402,13 +409,14 @@ export default function PrivacyPage() {
         </p>
         <form
           onSubmit={submit}
+          noValidate
           className="mt-5 grid gap-4 rounded-2xl border border-[var(--divider)] bg-[var(--surface-2)] p-5 sm:grid-cols-2"
         >
           <label className="text-sm font-semibold text-[var(--text)]">
             Request type
             <select
               translate="no"
-              required
+              required aria-required="true"
               value={requestType}
               onChange={(e) => {
                 setRequestType(e.target.value);
@@ -427,9 +435,10 @@ export default function PrivacyPage() {
             Your name
             <input
               translate="no"
-              required
+              required aria-required="true"
               minLength={2}
-              maxLength={100}
+              maxLength={80}
+              pattern="[\\p{L}\\p{M} .'-]+"
               value={requesterName}
               onChange={(e) => {
                 setRequesterName(e.target.value);
@@ -442,9 +451,11 @@ export default function PrivacyPage() {
             <input
               translate="no"
               type="email"
-              required
+              required aria-required="true"
               minLength={5}
               maxLength={254}
+              autoComplete="email"
+              inputMode="email"
               value={contactEmail}
               onChange={(e) => {
                 setContactEmail(e.target.value);
@@ -456,9 +467,10 @@ export default function PrivacyPage() {
             Student name
             <input
               translate="no"
-              required
+              required aria-required="true"
               minLength={2}
-              maxLength={100}
+              maxLength={80}
+              pattern="[\\p{L}\\p{M} .'-]+"
               value={studentName}
               onChange={(e) => {
                 setStudentName(e.target.value);
@@ -470,7 +482,7 @@ export default function PrivacyPage() {
             Request details
             <textarea
               translate="no"
-              required
+              required aria-required="true"
               minLength={10}
               maxLength={1500}
               rows={4}
@@ -486,7 +498,7 @@ export default function PrivacyPage() {
             <input
               translate="no"
               type="checkbox"
-              required
+              required aria-required="true"
               checked={guardianConfirmation}
               onChange={(e) => {
                 setGuardianConfirmation(e.target.checked);
@@ -500,9 +512,8 @@ export default function PrivacyPage() {
             </span>
           </label>
           <button
-            disabled={busy}
             aria-busy={busy}
-            className="rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50 sm:col-span-2"
+            className="rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--on-primary)] transition hover:bg-[var(--primary-hover)] sm:col-span-2"
           >
             {busy ? "Submittingâ€¦" : "Submit privacy request"}
           </button>
@@ -511,6 +522,7 @@ export default function PrivacyPage() {
               {error}
             </p>
           )}
+          <FormErrorSummary errors={validation.errors} />
           {acknowledgment && (
             <p
               role="status"

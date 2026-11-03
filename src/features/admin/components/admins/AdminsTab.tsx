@@ -165,6 +165,8 @@ function AdminRow({
         <select
           translate="no"
           aria-label={`Role for ${email}`}
+          required
+          aria-required="true"
           value={isAdminInviteRole(role) ? role : "uploader"}
           onChange={(event) => {
             if (isAdminInviteRole(event.target.value)) void changeRole(uid, event.target.value);

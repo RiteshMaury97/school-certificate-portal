@@ -82,7 +82,7 @@ export default function ContactEnquiriesTab({ enquiries, notes, setNotes, update
   return (
     <main className="mx-auto max-w-6xl space-y-6 text-[var(--text)]">
       <section className="overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--surface)]">
-        <div className="flex flex-wrap items-end justify-between gap-5 bg-[linear-gradient(115deg,var(--primary),color-mix(in_srgb,var(--primary)_76%,#14252d))] px-6 py-7 text-[var(--on-primary)] sm:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-5 bg-[var(--primary)] px-6 py-7 text-[var(--on-primary)] sm:px-8">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] opacity-80">
               <MessageSquareText size={15} aria-hidden="true" /> Public inbox
@@ -337,6 +337,8 @@ export default function ContactEnquiriesTab({ enquiries, notes, setNotes, update
                         <select
                           aria-labelledby={`contact-enquiry-status-label-${id}`}
                           id={`contact-enquiry-status-${id}`}
+                          required
+                          aria-required="true"
                           value={status}
                           onChange={(event) => {
                             update(id, parseStatus(event.target.value));

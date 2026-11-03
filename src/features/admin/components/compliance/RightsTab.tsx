@@ -44,7 +44,7 @@ export default function RightsTab({
   return (
     <main className="mx-auto max-w-6xl space-y-6 text-[var(--text)]">
       <section className="overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--surface)]">
-        <div className="flex flex-wrap items-end justify-between gap-5 bg-[linear-gradient(115deg,var(--primary),color-mix(in_srgb,var(--primary)_78%,#14252d))] px-6 py-7 text-[var(--on-primary)] sm:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-5 bg-[var(--primary)] px-6 py-7 text-[var(--on-primary)] sm:px-8">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] opacity-80">
               <FileKey2 size={15} aria-hidden="true" /> Privacy operations
@@ -189,6 +189,10 @@ export default function RightsTab({
                         id={`resolution-${id}`}
                         aria-labelledby={`resolution-label-${id}`}
                         translate="no"
+                        required
+                        aria-required="true"
+                        minLength={1}
+                        maxLength={2000}
                         rows={2}
                         value={resolution[id] ?? ""}
                         onChange={(event) => {

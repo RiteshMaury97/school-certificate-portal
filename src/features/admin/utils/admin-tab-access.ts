@@ -9,7 +9,7 @@ export function getVisibleTabs(role: Role): Tab[] {
       : role === "uploader"
         ? ["dashboard", "students", "studentImport", "studentAdd", "certificates", "catalog", "profile", "sessions"].includes(tab)
         : role === "admin"
-          ? ["dashboard", "approvals", "students", "studentImport", "studentAdd", "certificates", "catalog", "audit", "rights", "reports", "timeline", "announcement", "contacts", "profile", "sessions"].includes(tab)
+          ? ["dashboard", "approvals", "students", "studentImport", "studentAdd", "certificates", "catalog", "contacts", "profile", "sessions"].includes(tab)
           : [
             "dashboard",
             "approvals",

@@ -18,12 +18,14 @@ function SelectField({
   const id = useId();
   return (
     <label htmlFor={id} className="block text-sm font-medium">
-      {label}
+      {label} *
       <select
         id={id}
         aria-label={label}
         className={inputClass}
         value={value}
+        required
+        aria-required="true"
         onChange={(event) => {
           onChange(event.target.value);
         }}

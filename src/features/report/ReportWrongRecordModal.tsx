@@ -272,12 +272,13 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               </Link>
             </p>
             <label className="block text-sm font-semibold">
-              {"Student name"}
+              {"Student name *"}
               <input
                 translate="no"
-                required
+                required aria-required="true"
                 minLength={2}
-                maxLength={100}
+                maxLength={80}
+                pattern="[\\p{L}\\p{M} .'-]+"
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
@@ -287,10 +288,10 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               />
             </label>
             <label className="block text-sm font-semibold">
-              {"Passing session"}
+              {"Passing session *"}
               <select
                 translate="no"
-                required
+                required aria-required="true"
                 value={session}
                 disabled={sessionsLoading || sessionsError || sessions.length === 0}
                 onChange={(e) => {
@@ -319,10 +320,10 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               )}
             </label>
             <label className="block text-sm font-semibold">
-              {"What is wrong?"}
+              {"What is wrong? *"}
               <textarea
                 translate="no"
-                required
+                required aria-required="true"
                 minLength={10}
                 maxLength={2000}
                 rows={4}
@@ -341,7 +342,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                   <input
                     type="radio"
                     name="contact-method"
-                    required
+                    required aria-required="true"
                     checked={contactMethod === "email"}
                     onChange={() => {
                       setContactMethod("email");
@@ -356,7 +357,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                   <input
                     type="radio"
                     name="contact-method"
-                    required
+                    required aria-required="true"
                     checked={contactMethod === "phone"}
                     onChange={() => {
                       setContactMethod("phone");
@@ -374,10 +375,13 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                   : "Contact phone (required)"}
                 <input
                   translate="no"
-                  required
+                  required aria-required="true"
                   type={contactMethod === "email" ? "email" : "tel"}
                   inputMode={contactMethod === "email" ? "email" : "tel"}
-                  maxLength={contactMethod === "email" ? 254 : 24}
+                  minLength={contactMethod === "email" ? undefined : 10}
+                  maxLength={contactMethod === "email" ? 254 : 16}
+                  pattern={contactMethod === "email" ? undefined : "(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"}
+                  autoComplete={contactMethod === "email" ? "email" : "tel"}
                   value={contact}
                   onChange={(e) => {
                     setContact(e.target.value);
@@ -390,7 +394,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               Email address for your report copy (required)
               <input
                 translate="no"
-                required
+                required aria-required="true"
                 type="email"
                 maxLength={254}
                 autoComplete="email"
@@ -424,6 +428,8 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                         type="tel"
                         inputMode="tel"
                         maxLength={24}
+                        pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"
+                        autoComplete="tel"
                         value={phoneNumber}
                         onChange={(e) => {
                           setPhoneNumber(e.target.value);
@@ -445,7 +451,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               <input
                 translate="no"
                 type="checkbox"
-                required
+                required aria-required="true"
                 checked={consent}
                 onChange={(e) => {
                   setConsent(e.target.checked);

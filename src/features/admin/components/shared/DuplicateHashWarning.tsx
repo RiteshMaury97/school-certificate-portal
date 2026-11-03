@@ -27,11 +27,13 @@ export default function DuplicateHashWarning({
           aria-label="Confirm duplicate is intentional"
           translate="no"
           type="checkbox"
+          required
+          aria-required="true"
           checked={acknowledged}
           onChange={(e) => { setAcknowledged(e.target.checked); }}
           className="h-5 w-5"
         />{" "}
-        I confirm this is intentional
+        I confirm this is intentional *
       </label>
       <label htmlFor="duplicate-hash-reason" className="mt-2 block text-sm font-semibold text-[var(--text)]">
         Reason
@@ -39,6 +41,9 @@ export default function DuplicateHashWarning({
           id="duplicate-hash-reason"
           aria-label="Reason for duplicate warning acknowledgement"
           translate="no"
+          required={acknowledged}
+          aria-required={acknowledged}
+          minLength={10}
           value={reason}
           onChange={(e) => { setReason(e.target.value); }}
           minLength={10}

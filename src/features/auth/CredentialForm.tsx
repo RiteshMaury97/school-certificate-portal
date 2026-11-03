@@ -52,7 +52,7 @@ export default function CredentialForm({
             translate="no"
             type="email"
             autoComplete="email"
-            required
+            required aria-required="true"
             placeholder="Enter your registered email address"
             value={email}
             onInvalid={() => {
@@ -78,7 +78,7 @@ export default function CredentialForm({
               translate="no"
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
-              required
+              required aria-required="true"
               value={password}
               onInvalid={() => {
                 onPasswordValidityChange(false);

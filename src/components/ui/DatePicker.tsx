@@ -127,7 +127,7 @@ export function DatePicker({
       <input
         aria-hidden="true"
         tabIndex={-1}
-        required={required}
+        required={required} aria-required={required}
         value={selectedDate ? (includeTime ? `${selectedDate}T${time}` : selectedDate) : ""}
         onChange={() => undefined}
         className="pointer-events-none absolute h-px w-px opacity-0"

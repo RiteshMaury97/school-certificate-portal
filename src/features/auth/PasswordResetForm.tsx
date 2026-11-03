@@ -40,7 +40,7 @@ export default function PasswordResetForm({
           translate="no"
           type="email"
           autoComplete="email"
-          required
+          required aria-required="true"
           placeholder="Enter your registered email address"
           value={email}
           onInvalid={() => {

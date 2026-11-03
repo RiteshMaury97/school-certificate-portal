@@ -10,8 +10,8 @@ export function useApprovals({ api, act, setError, load }: Props) {
   const [previewUrls, setPreviewUrls] = useState<CertificatePreviewMap>({});
   async function decideCertificate(id: string, decision: "approve" | "reject") {
     const reason = rejectReason[id] ?? "";
-    if (decision === "reject" && !reason.trim()) {
-      setError("A rejection reason is required.");
+    if (decision === "reject" && reason.trim().length < 10) {
+      setError("Enter a rejection reason of at least 10 characters.");
       return;
     }
     if (decision === "approve" && !approvalChecks[id]) {

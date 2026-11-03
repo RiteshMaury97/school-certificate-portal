@@ -97,7 +97,7 @@ export default function StudentCreatePanel(props: Props) {
               htmlFor={`student-${key}`}
               className="text-xs font-medium text-[var(--text)]"
             >
-              {label}
+              {label}{["studentName", "fatherName", "motherName", "scholarNumber"].includes(key) ? " *" : ""}
               {key === "dateOfBirth" ? (
                 <DatePicker
                   id={`student-${key}`}
@@ -115,6 +115,11 @@ export default function StudentCreatePanel(props: Props) {
                   "fatherName",
                   "motherName",
                   "scholarNumber",
+                ].includes(key)} aria-required={[
+                  "studentName",
+                  "fatherName",
+                  "motherName",
+                  "scholarNumber",
                 ].includes(key)}
                 minLength={
                   ["studentName", "fatherName", "motherName"].includes(key)
@@ -123,7 +128,7 @@ export default function StudentCreatePanel(props: Props) {
                 }
                 maxLength={
                   ["studentName", "fatherName", "motherName"].includes(key)
-                    ? 100
+                    ? 80
                     : 80
                 }
                 value={form[key]}
@@ -142,7 +147,7 @@ export default function StudentCreatePanel(props: Props) {
             <select
               id="student-class"
               translate="no"
-              required
+              required aria-required="true"
               value={form.className}
               onChange={(event) => {
                 setForm((value) => ({ ...value, className: event.target.value }));
@@ -175,7 +180,7 @@ export default function StudentCreatePanel(props: Props) {
             <select
               id="student-session"
               translate="no"
-              required
+              required aria-required="true"
               value={form.session}
               onChange={(event) => {
                 setForm((value) => ({ ...value, session: event.target.value }));
@@ -212,7 +217,7 @@ export default function StudentCreatePanel(props: Props) {
             <select
               id="certificate-type"
               translate="no"
-              required
+              required aria-required="true"
               value={form.certificateType}
               onChange={(event) => {
                 setForm((value) => ({
@@ -240,7 +245,7 @@ export default function StudentCreatePanel(props: Props) {
             <input
               id="certificate-number"
               translate="no"
-              required
+              required aria-required="true"
               maxLength={80}
               value={form.certificateNumber}
               onChange={(event) => {
@@ -276,7 +281,7 @@ export default function StudentCreatePanel(props: Props) {
             <input
               id="certificate-file"
               translate="no"
-              required
+              required aria-required="true"
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
               onChange={(event) => {
@@ -304,6 +309,8 @@ export default function StudentCreatePanel(props: Props) {
               aria-label="Parent email address"
               translate="no"
               type="email"
+              maxLength={254}
+              autoComplete="email"
               value={notify.email}
               onChange={(event) => {
                 setNotify((value) => ({ ...value, email: event.target.value }));
@@ -314,6 +321,12 @@ export default function StudentCreatePanel(props: Props) {
             <input
               aria-label="Parent mobile number with country code"
               translate="no"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              minLength={10}
+              maxLength={16}
+              pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"
               value={notify.mobile}
               onChange={(event) => {
                 setNotify((value) => ({ ...value, mobile: event.target.value }));
@@ -329,6 +342,8 @@ export default function StudentCreatePanel(props: Props) {
             <input
               id="parent-notification-consent"
               type="checkbox"
+              required={Boolean(notify.email || notify.mobile)}
+              aria-required={Boolean(notify.email || notify.mobile)}
               checked={notify.consent}
               onChange={(event) => {
                 setNotify((value) => ({ ...value, consent: event.target.checked }));

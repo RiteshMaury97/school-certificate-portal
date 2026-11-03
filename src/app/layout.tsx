@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Script from "next/script";
 import { Suspense } from "react";
 
@@ -79,16 +80,16 @@ export async function generateMetadata(): Promise<Metadata> {
 const themeInit = `(function(){var r=document.documentElement;try{var t=localStorage.getItem("sis-theme")||"system";var d=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);r.dataset.theme=d?"dark":"light";r.style.colorScheme=d?"dark":"light";}catch(e){var p=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)").matches:false;r.dataset.theme=p?"dark":"light";r.style.colorScheme=p?"dark":"light";}})();`;
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
-        <Script
+        <script
           id="theme-init"
-          strategy="beforeInteractive"
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: themeInit }}
           suppressHydrationWarning
-        >
-          {themeInit}
-        </Script>
+        />
       </head>
       <body>
         <a className="skip-link" href="#main-content">

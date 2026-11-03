@@ -31,7 +31,7 @@ import { consumeAdminUploadQuota, rejectOversizedRequest } from "@/server/upload
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { duplicateFileDecision } from "@/shared/certificate-lifecycle";
 import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
-import { normalize, studentCreateSchema } from "@/shared/validation";
+import { isValidPhoneNumber, normalize, studentCreateSchema } from "@/shared/validation";
 
 import type { NextRequest } from "next/server";
 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       ((parentEmail || parentMobile) &&
         (!notificationConsent ||
           (parentEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail)) ||
-          (parentMobile && !/^\+?[0-9]{10,15}$/.test(parentMobile))))
+          (parentMobile && !isValidPhoneNumber(parentMobile))))
     )
       return NextResponse.json(
         {

@@ -203,7 +203,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const site = await db.collection("siteSettings").doc("main").get();
     const schoolName = String(site.get("schoolName") ?? "").trim() || "Satyam International School";
     try {
-      await sendAdminOtpEmail({ to: storedEmail, code, schoolName });
+      await sendAdminOtpEmail({
+        to: storedEmail,
+        code,
+        schoolName,
+        tagline: String(site.get("tagline") ?? ""),
+        boardName: String(site.get("boardName") ?? ""),
+        affiliationNumber: String(site.get("affiliationNumber") ?? ""),
+        schoolCode: String(site.get("schoolCode") ?? ""),
+        address: String(site.get("address") ?? ""),
+        phone: String(site.get("phone") ?? ""),
+        email: String(site.get("email") ?? ""),
+      });
     } catch {
       await challengeRef.delete();
       await releaseFailedOtpReservation({ accountMinute, accountHour, ipHour, now });

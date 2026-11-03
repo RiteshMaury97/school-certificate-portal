@@ -51,7 +51,7 @@ function IncidentFields({ form, set, ids }: Props & { ids: string }) {
         <input
           aria-label="Short incident title"
           id={`${ids}-title`}
-          required
+          required aria-required="true"
           maxLength={160}
           className={inputClass}
           value={form.title}
@@ -67,7 +67,7 @@ function IncidentFields({ form, set, ids }: Props & { ids: string }) {
         <input
           aria-label="Discovery method"
           id={`${ids}-how`}
-          required
+          required aria-required="true"
           maxLength={1000}
           className={inputClass}
           value={form.howDiscovered}
@@ -106,7 +106,7 @@ function IncidentFields({ form, set, ids }: Props & { ids: string }) {
         <textarea
           aria-label="What happened"
           id={`${ids}-summary`}
-          required
+          required aria-required="true"
           minLength={10}
           maxLength={2000}
           className={`${inputClass} min-h-28 resize-y`}
@@ -128,11 +128,13 @@ function ClassificationFields({ form, set, ids }: Props & { ids: string }) {
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <label htmlFor={`${ids}-cause`} className="text-sm font-medium">
-          Likely cause
+          Likely cause *
           <select
             aria-label="Likely cause"
             id={`${ids}-cause`}
             className={inputClass}
+            required
+            aria-required="true"
             value={form.cause}
             onChange={(e) => {
               set("cause", e.target.value);
@@ -147,11 +149,13 @@ function ClassificationFields({ form, set, ids }: Props & { ids: string }) {
           <span className={warning}>Choose the closest known cause; it can be updated later.</span>
         </label>
         <label htmlFor={`${ids}-severity`} className="text-sm font-medium">
-          Severity
+          Severity *
           <select
             aria-label="Severity"
             id={`${ids}-severity`}
             className={inputClass}
+            required
+            aria-required="true"
             value={form.severity}
             onChange={(e) => {
               set("severity", e.target.value);

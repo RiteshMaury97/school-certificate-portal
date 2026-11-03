@@ -54,7 +54,7 @@ export default function SessionsTab({
   return (
     <main className="mx-auto max-w-6xl space-y-6 text-[var(--text)]">
       <section className="overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--surface)]">
-        <div className="bg-[linear-gradient(115deg,var(--primary),color-mix(in_srgb,var(--primary)_74%,#101f2a))] px-6 py-7 text-[var(--on-primary)] sm:px-8">
+        <div className="bg-[var(--primary)] px-6 py-7 text-[var(--on-primary)] sm:px-8">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] opacity-80"><ShieldCheck size={15} /> Account security</div>

@@ -40,10 +40,10 @@ export async function POST(
       (body as { detailsMatch?: unknown }).detailsMatch === true;
     if (decision !== "approve" && decision !== "reject")
       return NextResponse.json({ error: "Invalid decision." }, { status: 400 });
-    if (decision === "reject" && (reason.length < 5 || reason.length > 1000))
+    if (decision === "reject" && (reason.length < 10 || reason.length > 1000))
       return NextResponse.json(
         {
-          error: "A rejection reason of at least five characters is required.",
+          error: "Enter a rejection reason of at least 10 characters.",
         },
         { status: 400 },
       );

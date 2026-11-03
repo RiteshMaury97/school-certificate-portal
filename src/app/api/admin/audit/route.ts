@@ -14,7 +14,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["approver", "admin"]);
+    await requireRoles(request, ["approver", "superadmin"]);
     const filters = auditFilterSchema.safeParse({
       start: request.nextUrl.searchParams.get("start") ?? undefined,
       end: request.nextUrl.searchParams.get("end") ?? undefined,

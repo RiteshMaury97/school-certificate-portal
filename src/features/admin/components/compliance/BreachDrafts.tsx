@@ -105,10 +105,12 @@ export default function BreachDrafts({ incident }: { incident: Incident }) {
       </div>
       <div className="flex flex-wrap gap-2">
         <label htmlFor={recipientId} className="text-sm">
-          Recipient
+          Recipient *
         </label>
         <select
           id={recipientId}
+          required
+          aria-required="true"
           className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2"
           value={audience}
           onChange={(event) => {
@@ -119,10 +121,12 @@ export default function BreachDrafts({ incident }: { incident: Incident }) {
           <option value="people">Affected people</option>
         </select>
         <label htmlFor={languageId} className="text-sm">
-          Language
+          Language *
         </label>
         <select
           id={languageId}
+          required
+          aria-required="true"
           className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2"
           value={language}
           onChange={(event) => {
@@ -134,10 +138,14 @@ export default function BreachDrafts({ incident }: { incident: Incident }) {
         </select>
       </div>
       <label className="block text-sm font-medium" htmlFor={draftId}>
-        Draft text
+        Draft text *
       </label>
       <textarea
         id={draftId}
+        required
+        aria-required="true"
+        minLength={10}
+        maxLength={10000}
         className="min-h-64 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-sm"
         value={draft}
         onChange={(event) => {

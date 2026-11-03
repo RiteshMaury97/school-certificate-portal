@@ -239,7 +239,7 @@ export default function VerifyPage() {
                 <input
                   translate="no"
                   id={`${formId}-number`}
-                  required
+                  required aria-required="true"
                   maxLength={80}
                   autoComplete="off"
                   value={certificateNumber}
@@ -257,7 +257,7 @@ export default function VerifyPage() {
                 <select
                   translate="no"
                   id={`${formId}-session`}
-                  required
+                  required aria-required="true"
                   value={session}
                   onChange={(event) => setSession(event.target.value)}
                   disabled={sessionsLoading || sessionsLoadError || sessions.length === 0}
