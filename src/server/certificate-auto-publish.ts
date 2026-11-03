@@ -21,6 +21,7 @@ export async function publishCertificateWithoutReview(
     if (!certificate.exists) throw new Error("CERTIFICATE_NOT_FOUND");
     if (certificate.get("status") !== "pending")
       throw new Error("CERTIFICATE_NOT_PENDING");
+    if (certificate.get("scanStatus") !== "clean") throw new Error("MALWARE_SCAN_NOT_CLEAN");
 
     const studentId = String(certificate.get("studentId") ?? "");
     const session = String(certificate.get("session") ?? "");

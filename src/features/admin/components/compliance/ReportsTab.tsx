@@ -254,7 +254,7 @@ function ReportCard({
               maxLength={3000}
               placeholder="Write a response for the reporter…"
               className="mt-2 min-h-20 w-full resize-y rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-3 text-sm"
-            />
+            required aria-required="true" />
             <button
               type="button"
               disabled={!reportReply.trim() || (!report.email && report.contactMethod !== "email")}

@@ -163,7 +163,7 @@ function AnnouncementControls({
             }}
             placeholder="https://school.example/..."
             className="min-h-11 w-full rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-sm"
-          />
+          required aria-required="true" />
         </AnnouncementField>
       </div>
 
@@ -197,7 +197,7 @@ function AnnouncementControls({
               {locale}
               <textarea rows={2} maxLength={240} value={announcement.text_i18n?.[locale] ?? ""} onChange={(event) => {
                 setAnnouncement((current) => ({ ...current, text_i18n: { ...current.text_i18n, [locale]: event.target.value } }));
-              }} className="mt-1 w-full rounded-lg border border-[var(--divider)] bg-[var(--surface)] p-2 text-sm font-normal normal-case text-[var(--text)]" />
+              }} className="mt-1 w-full rounded-lg border border-[var(--divider)] bg-[var(--surface)] p-2 text-sm font-normal normal-case text-[var(--text)]" required aria-required="true" />
             </label>
           ))}
         </div>

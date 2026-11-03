@@ -1,0 +1,17 @@
+services:
+  clamav:
+    image: clamav/clamav:1.4_base
+    restart: unless-stopped
+    environment:
+      CLAMAV_NO_MILTERD: "true"
+      CLAMD_CONF_TCPAddr: "0.0.0.0"
+      CLAMD_CONF_TCPSocket: "3310"
+      CLAMD_CONF_StreamMaxLength: "8M"
+      CLAMD_CONF_MaxThreads: "4"
+    expose:
+      - "3310"
+    volumes:
+      - clamav-signatures:/var/lib/clamav
+
+volumes:
+  clamav-signatures:

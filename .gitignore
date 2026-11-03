@@ -21,6 +21,7 @@ coverage
 playwright-report
 test-results
 reports
+/scripts/reports/eslint-report.json
 !src/app/api/admin/reports/
 !src/app/api/admin/reports/route.ts
 .DS_Store

@@ -565,7 +565,7 @@ export default function StudentsList({
                       );
                     }}
                     className={controlClass}
-                  />
+                    />
                 </label>
               ))}
               <div className="flex justify-end gap-2 sm:col-span-2">

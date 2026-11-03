@@ -35,7 +35,9 @@ const state = vi.hoisted(() => ({
   add: vi.fn(() => Promise.resolve({ id: "breach-1", collection: () => ({ add: state.add }) })),
   set: vi.fn(() => Promise.resolve()),
   audit: vi.fn(() => Promise.resolve()),
-  mail: vi.fn(() => Promise.resolve()),
+  mail: vi.fn((input: { to: string[]; subject: string; text: string }) => {
+    return Promise.resolve(input.text);
+  }),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -170,7 +172,8 @@ describe("personal data breach records", () => {
     );
     expect(response.status).toBe(201);
     expect(state.mail).toHaveBeenCalledOnce();
-    expect(state.audit).toHaveBeenCalledOnce();
+    expect(JSON.stringify(state.mail.mock.calls[0]?.[0])).not.toContain("unusual account access alert");
+    expect(state.audit).toHaveBeenCalledTimes(2);
   });
 
   it("rejects non-superadmin full creates and accepts superadmin creates", async () => {
@@ -181,7 +184,9 @@ describe("personal data breach records", () => {
     const created = await POST(request("/api/admin/breaches", "POST", validIncident));
     expect(created.status).toBe(201);
     expect(state.add).toHaveBeenCalled();
-    expect(state.audit).toHaveBeenCalledOnce();
+    expect(state.mail).toHaveBeenCalledOnce();
+    expect(JSON.stringify(state.mail.mock.calls[0]?.[0])).not.toContain(validIncident.summary);
+    expect(state.audit).toHaveBeenCalledTimes(2);
   });
 
   it("restricts incident exports to superadmins", async () => {

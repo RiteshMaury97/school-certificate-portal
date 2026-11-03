@@ -380,7 +380,7 @@ export default function ProfileTab({
                           accept="image/*"
                           onChange={(event) => void updatePhoto(event)}
                           className="sr-only"
-                        />
+                        required aria-required="true" />
                       </label>
                       {profile.photoDataUrl && (
                         <button
@@ -420,7 +420,7 @@ export default function ProfileTab({
                         onChange={(event) => { update("preferredName", event.target.value); }}
                         className={inputClass}
                         placeholder="Name colleagues use"
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Employee / Staff ID">
                       <input
@@ -428,14 +428,14 @@ export default function ProfileTab({
                         value={profile.staffId}
                         onChange={(event) => { update("staffId", event.target.value); }}
                         className={inputClass}
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Gender">
                       <select
                         value={profile.gender}
                         onChange={(event) => { update("gender", event.target.value); }}
                         className={inputClass}
-                      >
+                       required aria-required="true">
                         <option value="">Prefer not to specify</option>
                         <option value="female">Female</option>
                         <option value="male">Male</option>
@@ -467,7 +467,7 @@ export default function ProfileTab({
                         onChange={(event) => { update("position", event.target.value); }}
                         className={inputClass}
                         placeholder="For example, Office Administrator"
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Department">
                       <input
@@ -476,7 +476,7 @@ export default function ProfileTab({
                         onChange={(event) => { update("department", event.target.value); }}
                         className={inputClass}
                         placeholder="For example, Student Records"
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Staff designation">
                       <input
@@ -484,7 +484,7 @@ export default function ProfileTab({
                         value={profile.designation}
                         onChange={(event) => { update("designation", event.target.value); }}
                         className={inputClass}
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Campus / Branch">
                       <input
@@ -493,7 +493,7 @@ export default function ProfileTab({
                         onChange={(event) => { update("campus", event.target.value); }}
                         className={inputClass}
                         placeholder="Lodipur, Zamania"
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Joining date">
                       <DatePicker
@@ -509,7 +509,7 @@ export default function ProfileTab({
                         value={profile.reportingManager}
                         onChange={(event) => { update("reportingManager", event.target.value); }}
                         className={inputClass}
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Office location" className="sm:col-span-2">
                       <input
@@ -518,7 +518,7 @@ export default function ProfileTab({
                         onChange={(event) => { update("officeLocation", event.target.value); }}
                         className={inputClass}
                         placeholder="Building, floor, or room"
-                      />
+                      required aria-required="true" />
                     </Field>
                   </div>
                 </Section>
@@ -533,7 +533,7 @@ export default function ProfileTab({
                         readOnly
                         value={email}
                         className={`${inputClass} cursor-not-allowed opacity-75`}
-                      />
+                      required aria-required="true" />
                       <span className="mt-1 block text-xs text-[var(--text-muted)]">
                         Managed by your school administrator
                       </span>
@@ -545,7 +545,7 @@ export default function ProfileTab({
                         value={profile.alternateEmail}
                         onChange={(event) => { update("alternateEmail", event.target.value); }}
                         className={inputClass}
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Primary phone number">
                       <input
@@ -558,7 +558,7 @@ export default function ProfileTab({
                         value={profile.primaryPhone}
                         onChange={(event) => { update("primaryPhone", event.target.value); }}
                         className={inputClass}
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Secondary phone number">
                       <input
@@ -571,7 +571,7 @@ export default function ProfileTab({
                         value={profile.secondaryPhone}
                         onChange={(event) => { update("secondaryPhone", event.target.value); }}
                         className={inputClass}
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Address" className="sm:col-span-2">
                       <textarea
@@ -580,7 +580,7 @@ export default function ProfileTab({
                         value={profile.address}
                         onChange={(event) => { update("address", event.target.value); }}
                         className={`${inputClass} resize-y`}
-                      />
+                      required aria-required="true" />
                     </Field>
                   </div>
                 </Section>
@@ -681,7 +681,7 @@ export default function ProfileTab({
                         value={profile.emergencyContactName}
                         onChange={(event) => { update("emergencyContactName", event.target.value); }}
                         className={inputClass}
-                      />
+                      required aria-required="true" />
                     </Field>
                     <Field label="Contact phone">
                       <input
@@ -694,7 +694,7 @@ export default function ProfileTab({
                         value={profile.emergencyContactPhone}
                         onChange={(event) => { update("emergencyContactPhone", event.target.value); }}
                         className={inputClass}
-                      />
+                      required aria-required="true" />
                     </Field>
                   </div>
                 </section>
@@ -710,7 +710,7 @@ export default function ProfileTab({
                     value={profile.preferredLanguage}
                     onChange={(event) => { update("preferredLanguage", event.target.value); }}
                     className={inputClass}
-                  >
+                   required aria-required="true">
                     <option value="en">English</option>
                     <option value="hi">Hindi</option>
                     <option value="bn">Bengali</option>
@@ -727,7 +727,7 @@ export default function ProfileTab({
                     value={profile.timeZone}
                     onChange={(event) => { update("timeZone", event.target.value); }}
                     className={inputClass}
-                  >
+                   required aria-required="true">
                     <option value="Asia/Kolkata">India Standard Time (Asia/Kolkata)</option>
                     <option value="UTC">UTC</option>
                     <option value="Asia/Dubai">Gulf Standard Time (Asia/Dubai)</option>
@@ -740,7 +740,7 @@ export default function ProfileTab({
                     value={profile.dateFormat}
                     onChange={(event) => { update("dateFormat", event.target.value); }}
                     className={inputClass}
-                  >
+                   required aria-required="true">
                     <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                     <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                     <option value="YYYY-MM-DD">YYYY-MM-DD</option>

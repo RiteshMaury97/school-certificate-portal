@@ -60,6 +60,8 @@ export async function POST(
       const snap = await tx.get(ref);
       if (!snap.exists) throw new Error("NOT_FOUND");
       if (snap.get("status") !== "pending") throw new Error("NOT_PENDING");
+      if (decision === "approve" && snap.get("scanStatus") !== "clean")
+        throw new Error("MALWARE_SCAN_NOT_CLEAN");
       const uploaderUid = String(snap.get("uploadedBy") ?? "");
       if (!uploaderUid) throw new Error("UPLOADER_UNKNOWN");
       const privilegedSelfReview =
@@ -163,6 +165,11 @@ export async function POST(
     if (error instanceof Error && error.message === "NOT_PENDING")
       return NextResponse.json(
         { error: "This certificate is no longer pending." },
+        { status: 409 },
+      );
+    if (error instanceof Error && error.message === "MALWARE_SCAN_NOT_CLEAN")
+      return NextResponse.json(
+        { error: "This certificate cannot be approved until a clean security scan is recorded." },
         { status: 409 },
       );
     if (error instanceof Error && error.message === "SELF_APPROVAL")

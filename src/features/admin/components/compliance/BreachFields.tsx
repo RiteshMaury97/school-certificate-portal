@@ -41,7 +41,7 @@ export function TextField({
           onChange={(event) => {
             onChange(event.target.value);
           }}
-        />
+          />
       )}
       {type === "text" && (
         <p className={warning}>
@@ -86,7 +86,7 @@ export function TextArea({
         onChange={(event) => {
           onChange(event.target.value);
         }}
-      />
+        />
       <p className={warning}>
         Do not enter names, phone numbers, email addresses or other personal details.
       </p>

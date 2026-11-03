@@ -721,7 +721,7 @@ export default function FinderPage() {
                     className="mt-2 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
                     required
                     aria-describedby={`${formId}-disambiguation-help`}
-                  />
+                   aria-required="true" />
                   <span id={`${formId}-disambiguation-help`} className="sr-only">
                     This information is used only to confirm the correct student record.
                   </span>

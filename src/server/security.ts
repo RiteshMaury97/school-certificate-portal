@@ -49,7 +49,7 @@ export async function writeAuditLog(
   request: NextRequest,
   actorUid: string,
   action: string,
-  ...details: [string, string?, { changedFields?: string[] }?]
+  ...details: [string, string?, { changedFields?: string[]; details?: Record<string, unknown> }?]
 ): Promise<void> {
   const [targetId, studentId, metadata] = details;
   const timestamp = FieldValue.serverTimestamp();
@@ -59,6 +59,7 @@ export async function writeAuditLog(
     targetId,
     ...(studentId ? { studentId } : {}),
     ...(metadata?.changedFields?.length ? { changedFields: metadata.changedFields } : {}),
+    ...(metadata?.details ? { details: metadata.details } : {}),
     ipHash: hashRequesterIp(request),
     timestamp,
   });
@@ -572,6 +573,8 @@ export function apiError(error: unknown): NextResponse {
     return response;
   }
   const responses = new Map<string, { error: string; status: number }>([
+    ["Security scan unavailable, try again", { error: "Security scan unavailable, try again", status: 503 }],
+    ["Malware detected; upload blocked", { error: "Malware detected; upload blocked", status: 422 }],
     ["File failed security checks", { error: "File failed security checks", status: 422 }],
     [
       "REAUTH_REQUIRED",

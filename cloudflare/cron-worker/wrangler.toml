@@ -1,0 +1,6 @@
+name = "school-portal-breach-reminders"
+main = "worker.js"
+compatibility_date = "2026-11-04"
+
+[triggers]
+crons = ["*/30 * * * *"]

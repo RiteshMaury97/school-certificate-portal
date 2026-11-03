@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { sendImmediateBreachAlert } from "@/server/breach-alerts";
 import { createBreach, listBreaches, updateBreach } from "@/server/breaches";
 import { apiError, requireRoles, writeAuditLog } from "@/server/security";
 import { breachCreateSchema } from "@/shared/breach-schema";
@@ -86,6 +87,10 @@ export async function POST(request: NextRequest) {
           }
         : undefined,
     );
+    await sendImmediateBreachAlert({ title: valid.data.title, severity: valid.data.severity });
+    await writeAuditLog(request, admin.uid, "breach.alert_sent", id, undefined, {
+      changedFields: ["immediate-superadmin-email"],
+    });
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {
     return apiError(error);

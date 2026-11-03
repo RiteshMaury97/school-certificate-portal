@@ -4,7 +4,33 @@ export const BREACH_DEADLINES = {
   affectedPeopleHours: 0,
   boardDetailedReportHours: 72,
   reminderHours: [24, 48, 66] as const,
+  boardReportPreDeadlineReminderHours: 30,
+  dailyCronIntervalHours: 24,
+  dailyCronJitterMinutes: 59,
 } as const;
+
+export function dueBreachReminderMilestones(discoveredAt: string | Date, now: Date): string[] {
+  const discovered = discoveredAt instanceof Date ? discoveredAt : new Date(discoveredAt);
+  if (!Number.isFinite(discovered.getTime())) return [];
+  const elapsed = now.getTime() - discovered.getTime();
+  const reached = BREACH_DEADLINES.reminderHours
+    .filter((hour) => elapsed >= hour * 3_600_000)
+    .map(String);
+  const boardDeadline = discovered.getTime() + BREACH_DEADLINES.boardDetailedReportHours * 3_600_000;
+  const remaining = boardDeadline - now.getTime();
+  const nextRunWindowMs =
+    (BREACH_DEADLINES.dailyCronIntervalHours * 60 + BREACH_DEADLINES.dailyCronJitterMinutes) *
+    60_000;
+  const preDeadlineWindowMs = Math.max(
+    BREACH_DEADLINES.boardReportPreDeadlineReminderHours * 3_600_000,
+    nextRunWindowMs,
+  );
+  if (
+    remaining >= 0 &&
+    remaining <= preDeadlineWindowMs
+  ) reached.push("due-within-30-hours");
+  return reached;
+}
 
 export type BreachDeadlineStep = "board-initial" | "affected-people" | "board-detailed";
 

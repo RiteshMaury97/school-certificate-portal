@@ -7,7 +7,7 @@ import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
 import {
   BREACH_DEADLINES,
-  dueReminderHours,
+  dueBreachReminderMilestones,
   isBoardReportOverdue,
 } from "@/shared/breach-deadlines";
 
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
   if (!authorized(request)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   try {
     const [records, admins] = await Promise.all([
-      db.collection("breaches").limit(1000).get(),
+      db.collection("breaches").get(),
       db
         .collection("admins")
         .where("role", "==", "superadmin")
@@ -86,23 +86,26 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function sendReminder(
-  id: string,
-  title: string,
-  discoveredAt: Date,
-  milestone: string,
-  recipients: string[],
-): Promise<boolean> {
+async function sendReminder(input: {
+  id: string;
+  title: string;
+  discoveredAt: Date;
+  milestone: string;
+  recipients: string[];
+}): Promise<boolean> {
+  const { id, title, discoveredAt, milestone, recipients } = input;
   if (!(await claimReminder(id, milestone))) return false;
   const deadline =
     milestone === "overdue"
       ? `Overdue: detailed report to the Board (${String(BREACH_DEADLINES.boardDetailedReportHours)} hours after discovery)`
-      : `${milestone}-hour reminder; detailed report due ${new Date(discoveredAt.getTime() + BREACH_DEADLINES.boardDetailedReportHours * 3_600_000).toISOString()}`;
+      : milestone === "due-within-30-hours"
+        ? `Detailed report to the Board is due within ${String(BREACH_DEADLINES.boardReportPreDeadlineReminderHours)} hours (${new Date(discoveredAt.getTime() + BREACH_DEADLINES.boardDetailedReportHours * 3_600_000).toISOString()})`
+        : `${milestone}-hour reminder; detailed report due ${new Date(discoveredAt.getTime() + BREACH_DEADLINES.boardDetailedReportHours * 3_600_000).toISOString()}`;
   const reference = db.collection("abuseCounters").doc(`breach_reminder_${id}_${milestone}`);
   try {
     await sendMail({
       to: recipients,
-      subject: `Breach register reminder: ${milestone === "overdue" ? "overdue" : `${milestone} hours`}`,
+      subject: `Breach register reminder: ${milestone === "overdue" ? "overdue" : milestone === "due-within-30-hours" ? "due within 30 hours" : `${milestone} hours`}`,
       text: `Incident: ${title}\nDeadline: ${deadline}\nReview: ${adminUrl()}`,
     });
     await reference.set({ status: "sent", sentAt: FieldValue.serverTimestamp() }, { merge: true });
@@ -122,7 +125,7 @@ async function processOne(
   if (data.status === "closed") return 0;
   const discoveredAt = discoveredDate(data);
   if (!discoveredAt) return 0;
-  const milestones = dueReminderHours(discoveredAt, now).map(String);
+  const milestones = dueBreachReminderMilestones(discoveredAt, now);
   const detailedAt =
     data.boardDetailedReportAt instanceof Timestamp
       ? data.boardDetailedReportAt.toDate().toISOString()
@@ -131,16 +134,20 @@ async function processOne(
         : typeof data.boardDetailedReportAt === "string"
           ? data.boardDetailedReportAt
           : null;
+  if (detailedAt) {
+    const dueSoonIndex = milestones.indexOf("due-within-30-hours");
+    if (dueSoonIndex >= 0) milestones.splice(dueSoonIndex, 1);
+  }
   if (isBoardReportOverdue(discoveredAt, now, detailedAt)) milestones.push("overdue");
   const title = typeof data.title === "string" ? data.title : "Incident record";
   let sent = 0;
   for (const milestone of milestones)
-    sent += Number(await sendReminder(id, title, discoveredAt, milestone, recipients));
+    sent += Number(await sendReminder({ id, title, discoveredAt, milestone, recipients }));
   return sent;
 }
 
 async function processReminders(
-  records: Array<{ id: string; data: () => Record<string, unknown> }>,
+  records: { id: string; data: () => Record<string, unknown> }[],
   recipients: string[],
   now: Date,
 ): Promise<number> {

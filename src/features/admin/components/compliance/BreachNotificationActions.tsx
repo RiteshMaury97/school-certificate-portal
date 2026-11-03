@@ -81,7 +81,7 @@ export default function BreachNotificationActions({ incident, api, act, load, re
                 onChange={(event) => {
                   setReasons((current) => ({ ...current, [reasonField]: event.target.value }));
                 }}
-              />
+              required aria-required="true" />
             </label>
             <button
               type="button"

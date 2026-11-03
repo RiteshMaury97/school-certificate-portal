@@ -36,7 +36,7 @@ import { isValidPhoneNumber, normalize, studentCreateSchema } from "@/shared/val
 import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 10;
+export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 function slugify(value: string): string {
   return normalize(value)
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     const certificateNumberEncrypted = encryptCertificateNumber(data.certificateNumber);
-    const stored = await uploadCertificate(file, data.session, data.certificateType, studentRef.id, admin.uid);
+    const stored = await uploadCertificate(file, data.session, data.certificateType, studentRef.id, admin.uid, request);
     const now = FieldValue.serverTimestamp();
     try {
       if (!reuseExisting) {
@@ -309,6 +309,10 @@ export async function POST(request: NextRequest) {
           mimeType: stored.mimeType,
           size: stored.size,
           sha256: stored.sha256,
+          scanStatus: stored.scanStatus,
+          scannedAt: stored.scannedAt,
+          scannerVersion: stored.scannerVersion,
+          signatureDatabaseDate: stored.signatureDatabaseDate,
           issueDate: data.issuedAt,
           status: "pending",
           published: false,

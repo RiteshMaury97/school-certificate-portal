@@ -239,8 +239,7 @@ export default function PrivacyPage() {
             launch. The student-record retention period is {retentionText} after the end of the
             passing session. Records are deleted on request or after manual review, unless a legal
             hold, statutory requirement, legitimate school-recordkeeping need or pending dispute
-            requires continued retention. The configured period does not trigger automatic review or
-            deletion.
+            requires continued retention.
           </p>
           <p>
             The School must validate this schedule against applicable education, archival,

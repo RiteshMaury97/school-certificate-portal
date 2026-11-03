@@ -56,6 +56,20 @@ The student-record policy states a configured retention period after the end of 
 
 Public vulnerability reports are described in [`/.well-known/security.txt`](public/.well-known/security.txt). Replace its example contact address and domain before launch. Review [`docs/SECURITY-CHECKLIST.md`](docs/SECURITY-CHECKLIST.md) for IP/location controls, upload limits, and the pre-launch penetration-test checklist.
 
+### Scheduled jobs
+
+Vercel cron expressions use UTC. The configured jobs run once per day:
+
+| Job | UTC schedule | India Standard Time |
+| --- | --- | --- |
+| Encrypted backup | 02:30 UTC | 08:00 IST |
+| Security summary | 03:00 UTC | 08:30 IST |
+| Breach reminders | 04:00 UTC | 09:30 IST |
+
+Vercel Hobby allows a cron job to run only once per day, and may start it anywhere within its scheduled hour. The breach reminder route checks every open incident on each run, sends every reached reminder milestone, and sends a pre-deadline reminder when the Board report is due within 30 hours. Countdown and overdue status in the admin interface update without a cron run.
+
+Set `CRON_SECRET` in the Vercel project environment and wherever an external scheduler runs. It must contain at least 32 characters; scheduled requests must send `Authorization: Bearer <CRON_SECRET>`. Keep it private. To use a more frequent Vercel schedule, upgrade the project/team to Pro from Vercel's billing settings, change the expression in `vercel.json`, and redeploy. Or keep the current Vercel plan and configure an external scheduler. An optional Cloudflare Worker example is in [`cloudflare/cron-worker/`](cloudflare/cron-worker/README.md); it triggers every 30 minutes and calls the same protected endpoint.
+
 ## Project layout
 
 ```

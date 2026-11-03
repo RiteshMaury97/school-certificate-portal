@@ -500,7 +500,7 @@ export default function CertificatesTab(props: Props) {
                             await load();
                           });
                       }}
-                    />
+                    required aria-required="true" />
                   </label>
                 )}
                 {role !== "uploader" && c.status === "published" && (

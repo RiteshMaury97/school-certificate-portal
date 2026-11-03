@@ -1,8 +1,8 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
+import { sendImmediateBreachAlert } from "@/server/breach-alerts";
 import { db } from "@/server/firebase-admin";
-import { sendMail } from "@/server/mailer";
 import { apiError, requireRoles, writeAuditLog } from "@/server/security";
 import { suspectedBreachSchema } from "@/shared/breach-schema";
 
@@ -64,22 +64,10 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    const admins = await db
-      .collection("admins")
-      .where("role", "==", "superadmin")
-      .where("status", "==", "active")
-      .get();
-    const recipients = [
-      ...new Set(admins.docs.map((doc) => String(doc.get("email") ?? "").trim()).filter(Boolean)),
-    ];
-    if (recipients.length) {
-      const schoolName = process.env.GMAIL_FROM_NAME?.trim() ?? "School portal";
-      await sendMail({
-        to: recipients,
-        subject: `${schoolName}: suspected personal data incident reported`,
-        text: `A suspected personal data incident was reported by an administrator.\n\nReference: ${ref.id}\nTitle: ${data.title}\nDiscovered at: ${data.discoveredAt}\nHow discovered: ${data.howDiscovered}\n\nSummary:\n${data.summary}\n\nReview the incident in the administrator breach register.`,
-      });
-    }
+    await sendImmediateBreachAlert({ title: data.title, severity: data.severity ?? "medium" });
+    await writeAuditLog(request, admin.uid, "breach.alert_sent", ref.id, undefined, {
+      changedFields: ["immediate-superadmin-email"],
+    });
     return NextResponse.json({ id: ref.id, status: "reported" }, { status: 201 });
   } catch (error) {
     return apiError(error);

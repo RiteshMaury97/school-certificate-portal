@@ -1,4 +1,5 @@
 import { AlertTriangle, Clock3 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { calculateBreachDeadlines } from "@/shared/breach-deadlines";
 
@@ -101,7 +102,16 @@ export default function BreachIncidentDetail(props: Props) {
 }
 
 function Deadline({ incident }: { incident: Incident }) {
-  const deadlines = calculateBreachDeadlines(incident.discoveredAt, new Date(), {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 60_000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+  const deadlines = calculateBreachDeadlines(incident.discoveredAt, now, {
     "board-initial":
       incident.boardNotifiedAt ??
       (incident.boardNotificationNotRequiredReason

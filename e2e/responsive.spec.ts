@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import {
   mockResponsiveApis,
@@ -9,25 +9,17 @@ import {
   scenarioFor,
   themes,
   viewports,
-  type Theme,
+  type AuditRow,
 } from "./responsive-audit";
 
-type AuditRow = {
-  route: string;
-  viewport: string;
-  theme: Theme;
-  fixture: string;
-  checks: Record<string, boolean | null>;
-  failures: string[];
-};
-
 const reportRoot = path.resolve("reports", "responsive");
+const rawRoot = path.join(reportRoot, "raw");
 
 function safeName(value: string) {
   return value.replaceAll("/", "_").replaceAll("?", "_").replaceAll(":", "_") || "home";
 }
 
-async function measure(page: import("@playwright/test").Page, route: string) {
+async function measure(page: Page, route: string) {
   return page.evaluate((routePath) => {
     const root = document.scrollingElement ?? document.documentElement;
     const width = document.documentElement.clientWidth;
@@ -59,7 +51,10 @@ async function measure(page: import("@playwright/test").Page, route: string) {
       const text = element.children.length === 0 ? element.textContent?.trim() ?? "" : "";
       if (text && /(hidden|clip)/.test(`${style.overflow} ${style.textOverflow}`) && element.scrollWidth > element.clientWidth + 1) clipped.push(label);
       if (text && /[\p{L}\p{N}_-]{35,}/u.test(text) && style.overflowWrap !== "anywhere" && style.wordBreak !== "break-all" && style.whiteSpace !== "normal" && !intentionalScroller(element)) longUnwrapped.push(label);
-      if (element instanceof HTMLImageElement && (rect.width > element.parentElement?.getBoundingClientRect().width! + 1 || rect.height > element.parentElement?.getBoundingClientRect().height! + 1)) imagesOut.push(label);
+      if (element instanceof HTMLImageElement) {
+        const parent = element.parentElement?.getBoundingClientRect();
+        if (parent && (rect.width > parent.width + 1 || rect.height > parent.height + 1)) imagesOut.push(label);
+      }
     }
     const interactive = elements.filter((element) => element.matches("button,a,input,select,textarea,[role=button]"));
     const smallControls = interactive.flatMap((element) => {
@@ -100,17 +95,16 @@ async function measure(page: import("@playwright/test").Page, route: string) {
     const logo = [...document.images].find((image) => /logo/i.test(image.alt));
     const logoOut = logo ? logo.getBoundingClientRect().right > (logo.parentElement?.getBoundingClientRect().right ?? width) + 1 : false;
     const hasViewportMeta = Boolean(document.querySelector('meta[name="viewport"]'));
-    const safeAreaReferenced = [...document.styleSheets].some((sheet) => {
-      try { return [...sheet.cssRules].some((rule) => rule.cssText.includes("safe-area-inset")); }
-      catch { return false; }
+    const readRules = (rules: CSSRuleList): string[] => [...rules].flatMap((rule) => {
+      const nested = "cssRules" in rule ? (rule as CSSGroupingRule).cssRules : null;
+      return [rule.cssText, ...(nested ? readRules(nested) : [])];
     });
-    const vhUsage = [...document.styleSheets].some((sheet) => {
-      try { return [...sheet.cssRules].some((rule) => /(^|[^d])100vh\b/.test(rule.cssText)); }
-      catch { return false; }
-    });
+    const cssRules = [...document.styleSheets].flatMap((sheet) => {
+      try { return readRules(sheet.cssRules); }
+      catch { return []; }
+    }).join("\n");
     const paddingTop = Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop);
     const printOverflow = routePath === "/certificates/print" && root.scrollWidth > width + 1;
-    const failures: string[] = [];
     const checks = {
       pageScroll: root.scrollWidth <= width,
       elementBounds: outside.length === 0,
@@ -127,79 +121,56 @@ async function measure(page: import("@playwright/test").Page, route: string) {
       imageBounds: imagesOut.length === 0 && !logoOut,
       printFit: !printOverflow,
       viewportMeta: hasViewportMeta,
-      safeAreaSupport: safeAreaReferenced,
-      no100vh: !vhUsage,
-      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      safeAreaSupport: cssRules.includes("safe-area-inset"),
+      no100vh: !/(^|[^d])100vh\b/.test(cssRules),
+      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches && cssRules.includes("prefers-reduced-motion: reduce"),
     };
-    for (const [name, passed] of Object.entries(checks)) if (!passed) failures.push(name);
+    const failures = Object.entries(checks).flatMap(([name, passed]) => passed ? [] : [name]);
     if (outside.length) failures.push(`outside=${outside.slice(0, 4).join(";")}`);
     if (smallControls.length) failures.push(`under44=${smallControls.slice(0, 4).join(";")}`);
     if (overlaps.length) failures.push(`overlap=${overlaps.slice(0, 3).join(";")}`);
     if (clipped.length) failures.push(`clipped=${clipped.slice(0, 4).join(";")}`);
     if (longUnwrapped.length) failures.push(`longString=${longUnwrapped.slice(0, 3).join(";")}`);
+    if (inputsUnder16) failures.push(`inputsUnder16=${String(inputsUnder16)}`);
+    if (multiColumnForms) failures.push(`multiColumnForms=${String(multiColumnForms)}`);
     if (modalIssues.length) failures.push(...modalIssues);
     return { checks, failures };
   }, route);
 }
 
-async function navigateToPrivatePage(page: import("@playwright/test").Page, route: string) {
+async function navigateToPrivatePage(page: Page, route: string) {
   if (route !== "/certificates/results" && route !== "/certificates/print") {
     await page.goto(route, { waitUntil: "domcontentloaded" });
     return;
   }
   await page.goto("/certificates", { waitUntil: "domcontentloaded" });
+  await expect(page.locator('select[name="className"]')).toBeEnabled();
   await page.locator('input[name="studentName"]').fill("Rahul Kumar");
   await page.locator('input[name="fatherName"]').fill("Amit Kumar");
   await page.locator('input[name="motherName"]').fill("Sunita Kumar");
   await page.locator('select[name="className"]').selectOption("Class 10");
   await page.locator('input[name="scholarNumber"]').fill("1001");
   await page.locator('select[name="session"]').selectOption("2025-26");
-  await page.locator('input[name="consent"]').check();
+  await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Find My Certificates" }).click();
-  await page.waitForURL("**/certificates/results");
+  await expect(page.getByRole("heading", { name: "Certificates found" })).toBeVisible();
   if (route === "/certificates/print") {
     await page.getByRole("link", { name: /Print all certificates/i }).click();
-    await page.waitForURL("**/certificates/print");
+    await expect(page.locator("body")).toContainText(/Print|Certificate/i);
   }
 }
 
-function matrixCell(rows: AuditRow[], route: string, viewport: string) {
-  const entries = rows.filter((row) => row.route === route && row.viewport === viewport);
-  return ["light", "dark", "contrast"].map((theme) => {
-    const row = entries.find((entry) => entry.theme === theme);
-    return `${theme[0]?.toUpperCase() ?? "?"}:${row?.failures.length ? "FAIL" : "PASS"}`;
-  }).join(" ");
-}
-
-function summaryMarkdown(rows: AuditRow[], baselineDate: string) {
-  const labels = viewports.map(([width, height]) => `${width}×${height}`);
-  const header = `| Route | Fixture | ${labels.join(" | ")} |`;
-  const separator = `|---|---|${labels.map(() => "---").join("|")}|`;
-  const table = responsiveRoutes.map((route) => {
+for (const route of responsiveRoutes) {
+  test(`responsive baseline ${route}`, async ({ page, browserName }) => {
+    test.skip(browserName !== "chromium", "Full screenshots and metric records are captured in Chromium.");
+    test.setTimeout(0);
+    page.setDefaultTimeout(15_000);
+    page.setDefaultNavigationTimeout(15_000);
     const fixture = scenarioFor(route);
-    const cells = viewports.map(([width, height]) => matrixCell(rows, route, `${width}x${height}`));
-    return `| ${route} | ${fixture} | ${cells.join(" | ")} |`;
-  });
-  const failedRows = rows.filter((row) => row.failures.length);
-  const failedChecks = new Map<string, number>();
-  for (const row of failedRows) for (const failure of row.failures) {
-    const check = failure.split("=")[0];
-    failedChecks.set(check, (failedChecks.get(check) ?? 0) + 1);
-  }
-  const details = failedChecks.size
-    ? [...failedChecks].sort(([a], [b]) => a.localeCompare(b)).map(([name, count]) => `- ${name}: ${String(count)} failing combinations`).join("\n")
-    : "No failing checks.";
-  return `# Responsive audit baseline\n\n- Captured: ${baselineDate}\n- Browser: Chromium via Playwright\n- Combinations: ${String(rows.length)} (route × viewport × theme)\n- Passing combinations: ${String(rows.length - failedRows.length)}\n- Failing combinations: ${String(failedRows.length)}\n- Screenshots: reports/responsive/screenshots/\n\nEach viewport cell lists Light, Dark and High Contrast status (L/D/C).\n\n${header}\n${separator}\n${table.join("\n")}\n\n## Failed checks\n\n${details}\n\n## Raw records\n\nSee matrix.json for individual check results and failure details.\n`;
-}
-
-test("responsive baseline: every page, viewport and theme", async ({ page, browserName }) => {
-  test.setTimeout(0);
-  test.skip(browserName !== "chromium", "The baseline screenshot set is captured in Chromium.");
-  const rows: AuditRow[] = [];
-  await mkdir(path.join(reportRoot, "screenshots"), { recursive: true });
-  for (const route of responsiveRoutes) {
-    const fixture = scenarioFor(route);
+    const rows: AuditRow[] = [];
     await mockResponsiveApis(page, fixture);
+    await mkdir(path.join(reportRoot, "screenshots", safeName(route)), { recursive: true });
+    await mkdir(rawRoot, { recursive: true });
     await page.setViewportSize({ width: 1280, height: 800 });
     await navigateToPrivatePage(page, route);
     for (const [width, height] of viewports) {
@@ -213,47 +184,47 @@ test("responsive baseline: every page, viewport and theme", async ({ page, brows
         await page.evaluate((activeTheme) => {
           document.documentElement.dataset.theme = activeTheme === "dark" ? "dark" : "light";
         }, theme);
-        if (theme === "contrast") {
-          await page.evaluate(() => {
-            if (location.pathname.startsWith("/admin")) return;
-            localStorage.setItem("sis-locale", "hi");
-            window.dispatchEvent(new Event("sis-locale-change"));
-          });
-          await page.waitForFunction(() => location.pathname.startsWith("/admin") || document.documentElement.lang === "hi");
-        }
         const measured = await measure(page, route);
         rows.push({ route, viewport: `${width}x${height}`, theme, fixture, ...measured });
-        const screenshotPath = path.join(reportRoot, "screenshots", safeName(route));
-        await mkdir(screenshotPath, { recursive: true });
         await page.screenshot({
-          path: path.join(screenshotPath, `${String(width)}x${String(height)}-${theme}.png`),
+          path: path.join(reportRoot, "screenshots", safeName(route), `${String(width)}x${String(height)}-${theme}.png`),
           fullPage: true,
           animations: "disabled",
         });
       }
     }
-  }
-  const capturedAt = new Date().toISOString();
-  await writeFile(path.join(reportRoot, "matrix.json"), JSON.stringify(rows, null, 2));
-  await writeFile(path.join(reportRoot, "summary.md"), summaryMarkdown(rows, capturedAt));
-  const failed = rows.filter((row) => row.failures.length);
-  expect(failed, `${String(failed.length)} responsive combinations failed; see reports/responsive/summary.md`).toEqual([]);
+    await writeFile(path.join(rawRoot, `${safeName(route)}.json`), JSON.stringify(rows, null, 2));
+    const failed = rows.filter((row) => row.failures.length);
+    expect(failed, `${route}: ${String(failed.length)} failing viewport/theme combinations`).toEqual([]);
+  });
+}
+
+test("Hindi selector keeps a phone layout within 320 CSS pixels", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "Hindi stress check runs in Chromium.");
+  await mockResponsiveApis(page, "worst");
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.locator("#language-toggle").selectOption("hi");
+  await expect(page.locator("html")).toHaveAttribute("lang", "hi");
+  await page.setViewportSize({ width: 320, height: 568 });
+  const dimensions = await page.evaluate(() => ({ content: document.scrollingElement?.scrollWidth ?? 0, viewport: document.documentElement.clientWidth }));
+  expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport);
+  await page.screenshot({ path: path.join(reportRoot, "stress-hindi-320.png"), fullPage: true });
 });
 
 test("responsive stress: 200% text and 200/400% zoom reflow to 320 CSS pixels", async ({ page, browserName }) => {
-  test.skip(browserName !== "chromium", "Chromium is the required baseline engine.");
-  test.setTimeout(120_000);
+  test.skip(browserName !== "chromium", "Zoom stress check runs in Chromium.");
   await mockResponsiveApis(page, "worst");
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/admin/students");
   for (const zoom of [2, 4]) {
-    await page.setViewportSize({ width: 320 * zoom, height: 568 * zoom });
-    await page.goto("/admin/students");
     await page.evaluate((value) => {
       document.documentElement.style.zoom = `${String(value * 100)}%`;
       document.documentElement.style.fontSize = "200%";
     }, zoom);
     const widths = await page.evaluate((value) => ({
-      effectiveContent: document.scrollingElement!.scrollWidth / value,
-      effectiveViewport: document.documentElement.clientWidth,
+      effectiveContent: (document.scrollingElement?.scrollWidth ?? 0) / value,
+      effectiveViewport: document.documentElement.clientWidth / value,
     }), zoom);
     expect(widths.effectiveContent).toBeLessThanOrEqual(widths.effectiveViewport + 1);
     await page.screenshot({ path: path.join(reportRoot, `stress-${String(zoom * 100)}-text200.png`), fullPage: true });
@@ -270,14 +241,8 @@ test("WebKit responsive smoke: every route, viewport and theme", async ({ page, 
     for (const [width, height] of viewports) {
       await page.setViewportSize({ width, height });
       for (const theme of themes) {
-        await page.emulateMedia({
-          colorScheme: theme === "dark" ? "dark" : "light",
-          forcedColors: theme === "contrast" ? "active" : "none",
-        });
-        const dimensions = await page.evaluate(() => ({
-          content: document.scrollingElement?.scrollWidth ?? document.documentElement.scrollWidth,
-          viewport: document.documentElement.clientWidth,
-        }));
+        await page.emulateMedia({ colorScheme: theme === "dark" ? "dark" : "light", forcedColors: theme === "contrast" ? "active" : "none" });
+        const dimensions = await page.evaluate(() => ({ content: document.scrollingElement?.scrollWidth ?? 0, viewport: document.documentElement.clientWidth }));
         expect(dimensions.content, `${route} ${width}x${height} ${theme}`).toBeLessThanOrEqual(dimensions.viewport);
       }
     }

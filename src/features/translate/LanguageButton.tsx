@@ -28,7 +28,7 @@ export default function LanguageButton() {
           if (isLocaleCode(next)) setLocale(next);
         }}
         className="max-w-32 cursor-pointer bg-transparent outline-none"
-      >
+       required aria-required="true">
         {options.map((code) => <option key={code} value={code}>{languageNames[code]}</option>)}
       </select>
     </label>

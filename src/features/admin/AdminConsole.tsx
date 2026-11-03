@@ -449,6 +449,7 @@ export default function AdminPage() {
               <DashboardOverview
                 stats={stats}
                 canManageStudents={role !== "approver"}
+                isSuperadmin={role === "superadmin"}
                 onAddStudent={() => {
                   setTab("studentAdd");
                 }}

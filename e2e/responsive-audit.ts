@@ -26,6 +26,14 @@ export const viewports = [
 
 export const themes = ["light", "dark", "contrast"] as const;
 export type Theme = (typeof themes)[number];
+export type AuditRow = {
+  route: string;
+  viewport: string;
+  theme: Theme;
+  fixture: string;
+  checks: Record<string, boolean | null>;
+  failures: string[];
+};
 
 function scenarioForRoute(path: string): ResponsiveScenario {
   if (path === "/admin/students" || path === "/admin/students/import") return "worst";

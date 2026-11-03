@@ -26,7 +26,7 @@ import { certificateMetadataSchema } from "@/shared/validation";
 import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 10;
+export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 
 export async function PATCH(
@@ -182,7 +182,7 @@ export async function PUT(
         },
         { status: 409 },
       );
-    const stored = await uploadCertificate(file, parsed.data.session, parsed.data.type, studentId, admin.uid);
+    const stored = await uploadCertificate(file, parsed.data.session, parsed.data.type, studentId, admin.uid, request);
     const replacementRef = db.collection("certificates").doc(randomUUID());
     try {
       await createCertificateNumberIndex(
@@ -201,6 +201,10 @@ export async function PUT(
         mimeType: stored.mimeType,
         size: stored.size,
         sha256: stored.sha256,
+        scanStatus: stored.scanStatus,
+        scannedAt: stored.scannedAt,
+        scannerVersion: stored.scannerVersion,
+        signatureDatabaseDate: stored.signatureDatabaseDate,
         issueDate: parsed.data.issueDate,
         status: "pending",
         published: false,

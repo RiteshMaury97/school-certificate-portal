@@ -87,7 +87,7 @@ export default function BrandingTab(props: Props) {
               onChange={(e) => setAllowedAdminCountries(e.target.value)}
               placeholder="IN"
               className="mt-1 w-full rounded border p-2.5"
-            />
+            required aria-required="true" />
           </label>
           <label className="text-sm font-semibold text-[var(--text)]">
             Location enforcement
@@ -95,7 +95,7 @@ export default function BrandingTab(props: Props) {
               value={adminLocationEnforcementMode}
               onChange={(e) => setAdminLocationEnforcementMode(e.target.value)}
               className="mt-1 w-full rounded border p-2.5"
-            >
+             required aria-required="true">
               <option value="block">Block outside policy</option>
               <option value="alert">Allow and log alerts</option>
               <option value="off">Off</option>
@@ -109,7 +109,7 @@ export default function BrandingTab(props: Props) {
               placeholder="203.0.113.0/24"
               rows={3}
               className="mt-1 w-full rounded border p-2.5 font-mono"
-            />
+            required aria-required="true" />
           </label>
           <label className="text-sm font-semibold text-[var(--text)]">
             Retention period after the end of the academic session (years)
@@ -123,7 +123,7 @@ export default function BrandingTab(props: Props) {
                 setRetentionYears(e.target.value);
               }}
               className="mt-1 w-full rounded border p-2.5"
-            />
+            required aria-required="true" />
           </label>
           <label className="text-sm font-semibold text-[var(--text)]">
             Encrypted backup rotation (days)
@@ -137,7 +137,7 @@ export default function BrandingTab(props: Props) {
                 setBackupRotationDays(e.target.value);
               }}
               className="mt-1 w-full rounded border p-2.5"
-            />
+            required aria-required="true" />
           </label>
           <label className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4 text-sm font-semibold text-[var(--text)] sm:col-span-2">
             <input
@@ -184,7 +184,7 @@ export default function BrandingTab(props: Props) {
                   setBranding((v) => ({ ...v, [key]: e.target.value }));
                 }}
                 className="mt-1 w-full rounded border p-2.5"
-              />
+              required aria-required="true" />
             </label>
           ))}
           <fieldset className="rounded-lg border border-[var(--border)] p-4 sm:col-span-2">
@@ -193,7 +193,7 @@ export default function BrandingTab(props: Props) {
               {(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const).map((locale) => (
                 <label key={locale} className="text-xs font-semibold uppercase text-[var(--text-muted)]">
                   {locale}
-                  <input value={branding[`tagline_i18n_${locale}`] ?? ""} onChange={(event) => setBranding((value) => ({ ...value, [`tagline_i18n_${locale}`]: event.target.value }))} className="mt-1 w-full rounded border p-2.5 text-sm font-normal normal-case text-[var(--text)]" />
+                  <input value={branding[`tagline_i18n_${locale}`] ?? ""} onChange={(event) => setBranding((value) => ({ ...value, [`tagline_i18n_${locale}`]: event.target.value }))} className="mt-1 w-full rounded border p-2.5 text-sm font-normal normal-case text-[var(--text)]" required aria-required="true" />
                 </label>
               ))}
             </div>
@@ -212,7 +212,7 @@ export default function BrandingTab(props: Props) {
                 }));
               }}
               className="mt-1 w-full rounded border p-2.5"
-            />
+            required aria-required="true" />
           </label>
           <fieldset className="rounded-lg border border-[var(--border)] p-4 sm:col-span-2">
             <legend className="px-2 text-sm font-semibold">Optional principal message translations</legend>
@@ -220,7 +220,7 @@ export default function BrandingTab(props: Props) {
               {(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const).map((locale) => (
                 <label key={locale} className="text-xs font-semibold uppercase text-[var(--text-muted)]">
                   {locale}
-                  <textarea rows={3} value={branding[`principalMessage_i18n_${locale}`] ?? ""} onChange={(event) => setBranding((value) => ({ ...value, [`principalMessage_i18n_${locale}`]: event.target.value }))} className="mt-1 w-full rounded border p-2.5 text-sm font-normal normal-case text-[var(--text)]" />
+                  <textarea rows={3} value={branding[`principalMessage_i18n_${locale}`] ?? ""} onChange={(event) => setBranding((value) => ({ ...value, [`principalMessage_i18n_${locale}`]: event.target.value }))} className="mt-1 w-full rounded border p-2.5 text-sm font-normal normal-case text-[var(--text)]" required aria-required="true" />
                 </label>
               ))}
             </div>
@@ -239,7 +239,7 @@ export default function BrandingTab(props: Props) {
               }}
               placeholder="Facebook|https://facebook.com/..."
               className="mt-1 w-full rounded border p-2.5"
-            />
+            required aria-required="true" />
           </label>
           <button
             disabled={busy}
@@ -267,7 +267,7 @@ export default function BrandingTab(props: Props) {
               value={exceptionTarget}
               onChange={(e) => setExceptionTarget(e.target.value)}
               className="mt-1 w-full rounded border p-2.5"
-            >
+             required aria-required="true">
               <option value="country">A country</option>
               <option value="admin">One administrator</option>
             </select>

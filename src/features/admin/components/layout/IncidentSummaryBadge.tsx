@@ -32,8 +32,10 @@ export default function IncidentSummaryBadge({ role }: { role: Role }) {
       }
     }
     void load();
+    const timer = window.setInterval(() => void load(), 60_000);
     return () => {
       active = false;
+      window.clearInterval(timer);
     };
   }, [role]);
   if (role !== "superadmin" || summary.openCount === 0) return null;

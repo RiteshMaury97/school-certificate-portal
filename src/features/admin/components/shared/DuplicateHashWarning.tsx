@@ -43,13 +43,12 @@ export default function DuplicateHashWarning({
           translate="no"
           required={acknowledged}
           aria-required={acknowledged}
-          minLength={10}
           value={reason}
           onChange={(e) => { setReason(e.target.value); }}
           minLength={10}
           maxLength={500}
           className="mt-1 block w-full rounded border bg-[var(--surface)] p-2"
-        />
+          />
       </label>
     </div>
   );

@@ -17,7 +17,7 @@ type Props = {
   label: string;
   required?: boolean;
   helperText?: string;
-  error?: string;
+  error?: string | undefined;
   children: ReactElement<ControlAttributes>;
   className?: string;
 };
@@ -39,7 +39,7 @@ export function FormField({
     required,
     "aria-required": required,
     "aria-invalid": Boolean(error),
-    "aria-describedby": describedBy,
+    ...(describedBy ? { "aria-describedby": describedBy } : {}),
     className: [
       children.props.className,
       error ? "border-2 border-[var(--danger)]" : "",

@@ -136,7 +136,7 @@ export default function StudentCreatePanel(props: Props) {
                   setForm((value) => ({ ...value, [key]: event.target.value }));
                 }}
                 className={fieldClass}
-              />}
+                />}
             </label>
           ))}
           <label
@@ -317,7 +317,7 @@ export default function StudentCreatePanel(props: Props) {
               }}
               placeholder="Parent email address"
               className={fieldClass}
-            />
+            required aria-required="true" />
             <input
               aria-label="Parent mobile number with country code"
               translate="no"
@@ -333,7 +333,7 @@ export default function StudentCreatePanel(props: Props) {
               }}
               placeholder="Mobile with country code"
               className={fieldClass}
-            />
+            required aria-required="true" />
           </div>
           <label
             htmlFor="parent-notification-consent"
@@ -349,7 +349,7 @@ export default function StudentCreatePanel(props: Props) {
                 setNotify((value) => ({ ...value, consent: event.target.checked }));
               }}
               className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
-            />
+              />
             Parent/guardian has consented to receive a generic certificate
             availability notification. Consent is recorded with timestamp and
             purpose; they can opt out at any time.

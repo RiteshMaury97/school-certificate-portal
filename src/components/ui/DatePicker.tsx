@@ -131,7 +131,7 @@ export function DatePicker({
         value={selectedDate ? (includeTime ? `${selectedDate}T${time}` : selectedDate) : ""}
         onChange={() => undefined}
         className="pointer-events-none absolute h-px w-px opacity-0"
-      />
+        />
 
       {open && (
         <div
@@ -206,7 +206,7 @@ export function DatePicker({
                   else onChange(`${keyFromDate(new Date())}T${event.target.value}`);
                 }}
                 className="rounded-lg border border-[var(--divider)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-              />
+              required aria-required="true" />
             </label>
           )}
           <div className="mt-3 flex items-center justify-between border-t border-[var(--divider)] pt-2">

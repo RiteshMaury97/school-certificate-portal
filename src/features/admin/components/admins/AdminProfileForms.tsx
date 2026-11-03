@@ -232,7 +232,7 @@ export function StaffProfileFields({
                 setProfile((current) => ({ ...current, [key]: event.target.value }));
               }}
               className="mt-1 w-full rounded border px-3 py-2"
-            />
+            required aria-required="true" />
           </label>
         );
       })}
@@ -245,7 +245,7 @@ export function StaffProfileFields({
             setProfile((current) => ({ ...current, gender: event.target.value }));
           }}
           className="mt-1 w-full rounded border px-3 py-2"
-        >
+         required aria-required="true">
           <option value="">Prefer not to specify</option>
           <option value="female">Female</option>
           <option value="male">Male</option>
@@ -266,7 +266,7 @@ export function StaffProfileFields({
             setProfile((current) => ({ ...current, address: event.target.value }));
           }}
           className="mt-1 w-full rounded border px-3 py-2"
-        />
+        required aria-required="true" />
       </label>
     </div>
   );

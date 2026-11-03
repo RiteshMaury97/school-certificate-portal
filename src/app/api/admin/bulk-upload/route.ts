@@ -23,7 +23,7 @@ import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
 
 import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
-export const maxDuration = 10;
+export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 const mappingSchema = z
   .object({
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 },
       );
-    const stored = await uploadCertificate(file, map.session, map.certificateType, student.id, admin.uid);
+    const stored = await uploadCertificate(file, map.session, map.certificateType, student.id, admin.uid, request);
     const ref = db.collection("certificates").doc(randomUUID());
     try {
       await createCertificateNumberIndex(map.certificateNumber, ref.id, map.session);
@@ -159,6 +159,10 @@ export async function POST(request: NextRequest) {
         mimeType: stored.mimeType,
         size: stored.size,
         sha256: stored.sha256,
+        scanStatus: stored.scanStatus,
+        scannedAt: stored.scannedAt,
+        scannerVersion: stored.scannerVersion,
+        signatureDatabaseDate: stored.signatureDatabaseDate,
         issueDate: map.issueDate,
         status: "pending",
         published: false,

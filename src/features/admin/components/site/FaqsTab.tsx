@@ -102,8 +102,8 @@ export default function FaqsTab({ faqs, setFaqs, saveFaqs, busy }: FaqsTabProps)
                   {(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const).map((locale) => (
                     <div key={locale} className="rounded-lg bg-[var(--surface-2)] p-3">
                       <p className="mb-2 text-[10px] font-bold uppercase text-[var(--text-muted)]">{locale}</p>
-                      <input aria-label={`${locale} FAQ question`} value={faq.question_i18n?.[locale] ?? ""} onChange={(event) => setFaqs((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, question_i18n: { ...item.question_i18n, [locale]: event.target.value } } : item))} className="mb-2 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm" />
-                      <textarea aria-label={`${locale} FAQ answer`} rows={2} value={faq.answer_i18n?.[locale] ?? ""} onChange={(event) => setFaqs((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, answer_i18n: { ...item.answer_i18n, [locale]: event.target.value } } : item))} className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm" />
+                      <input aria-label={`${locale} FAQ question`} value={faq.question_i18n?.[locale] ?? ""} onChange={(event) => setFaqs((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, question_i18n: { ...item.question_i18n, [locale]: event.target.value } } : item))} className="mb-2 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm" required aria-required="true" />
+                      <textarea aria-label={`${locale} FAQ answer`} rows={2} value={faq.answer_i18n?.[locale] ?? ""} onChange={(event) => setFaqs((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, answer_i18n: { ...item.answer_i18n, [locale]: event.target.value } } : item))} className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm" required aria-required="true" />
                     </div>
                   ))}
                 </div>

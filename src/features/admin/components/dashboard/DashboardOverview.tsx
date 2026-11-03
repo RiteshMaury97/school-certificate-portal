@@ -4,6 +4,7 @@ import { ArrowRight, FilePlus2, Upload } from "lucide-react";
 
 import DashboardActivityPanels from "./DashboardActivityPanels";
 import DashboardStatCard from "./DashboardStatCard";
+import MalwareScannerStatus from "./MalwareScannerStatus";
 
 type DashboardStats = Record<string, unknown>;
 type FeedbackStats = { total?: unknown; helpful?: unknown; notHelpful?: unknown };
@@ -17,6 +18,7 @@ type DashboardOverviewProps = {
   canManageStudents: boolean;
   onAddStudent: () => void;
   onImportRecords: () => void;
+  isSuperadmin: boolean;
 };
 
 export default function DashboardOverview({
@@ -24,6 +26,7 @@ export default function DashboardOverview({
   canManageStudents,
   onAddStudent,
   onImportRecords,
+  isSuperadmin,
 }: DashboardOverviewProps) {
   const hasRecords =
     Number(stats.totalStudents ?? 0) > 0 || Number(stats.totalCertificates ?? 0) > 0;
@@ -153,6 +156,8 @@ export default function DashboardOverview({
           <DashboardStatCard key={metric.label} {...metric} />
         ))}
       </section>
+
+      <MalwareScannerStatus isSuperadmin={isSuperadmin} />
 
       <section
         aria-label="Storage usage"

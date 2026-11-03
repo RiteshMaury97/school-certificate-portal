@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   calculateBreachDeadlines,
+  dueBreachReminderMilestones,
   dueReminderHours,
   isBoardReportOverdue,
 } from "../src/shared/breach-deadlines";
@@ -35,6 +36,18 @@ describe("breach deadline and export helpers", () => {
         "2026-11-03T23:00:00.000Z",
       ),
     ).toBe(false);
+  });
+
+  it("selects reached milestones on daily runs and the 30-hour Board pre-deadline reminder", () => {
+    expect(dueBreachReminderMilestones(discovered, new Date("2026-11-03T18:00:00.000Z"))).toEqual([
+      "24",
+      "48",
+      "66",
+      "due-within-30-hours",
+    ]);
+    expect(dueBreachReminderMilestones(discovered, new Date("2026-11-02T00:00:00.000Z"))).toEqual([
+      "24",
+    ]);
   });
 
   it("generates editable English and Hindi drafts without personal-data placeholders", () => {

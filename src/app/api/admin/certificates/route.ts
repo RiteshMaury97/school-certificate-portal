@@ -26,7 +26,7 @@ import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 10;
+export const maxDuration = 30;
 
 function safeDocumentValue(document: { get(field: string): unknown }, field: string): unknown {
   const value: unknown = document.get(field);
@@ -110,7 +110,7 @@ async function storeCertificateRecord(
   duplicateReason: string,
 ) {
   const { studentId, session, type, certificateNumber, issueDate } = details;
-  const stored = await uploadCertificate(file, session, type, studentId, admin.uid);
+  const stored = await uploadCertificate(file, session, type, studentId, admin.uid, request);
   const ref = db.collection("certificates").doc(randomUUID());
   try {
     await createCertificateNumberIndex(certificateNumber, ref.id, session);
@@ -125,6 +125,10 @@ async function storeCertificateRecord(
       certificateNumberEncrypted: encryptCertificateNumber(certificateNumber),
       size: stored.size,
       sha256: stored.sha256,
+      scanStatus: stored.scanStatus,
+      scannedAt: stored.scannedAt,
+      scannerVersion: stored.scannerVersion,
+      signatureDatabaseDate: stored.signatureDatabaseDate,
       issueDate,
       status: "pending",
       published: false,
@@ -223,6 +227,10 @@ export async function GET(request: NextRequest) {
           issueDate: safeDocumentValue(doc, "issueDate"),
           fileName: safeDocumentValue(doc, "fileName"),
           mimeType: safeDocumentValue(doc, "mimeType"),
+          scanStatus: safeDocumentValue(doc, "scanStatus") ?? "error",
+          scannedAt: documentTimestampIso(doc, "scannedAt"),
+          scannerVersion: safeDocumentValue(doc, "scannerVersion") ?? "",
+          signatureDatabaseDate: safeDocumentValue(doc, "signatureDatabaseDate") ?? "",
           size: safeDocumentValue(doc, "size"),
           status: safeDocumentValue(doc, "status") ?? "pending",
           downloadCount: Number(safeDocumentValue(doc, "downloadCount") ?? 0),
