@@ -1,9 +1,10 @@
 import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 
-import { db } from "@/server/firebase-admin";
 import { assertServerEnvironment } from "@/server/env";
+import { db } from "@/server/firebase-admin";
 import { escapeHtml, sendMail } from "@/server/mailer";
+import { absoluteUrl } from "@/server/site-origin";
 
 import type { DocumentSnapshot } from "firebase-admin/firestore";
 
@@ -111,16 +112,14 @@ export async function sendCertificateAvailableNotice(studentId: string): Promise
   const latestConsent = await getEligibleStudent(studentId);
   if (!latestConsent) return;
   const email = String(latestConsent.get("parentEmail") ?? "").trim();
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? "").replace(
-    /\/$/,
-    "",
-  );
-  if (!siteUrl) return;
+  const siteUrl = absoluteUrl("/");
   const siteSettings = await db.collection("siteSettings").doc("main").get();
   const configuredSchoolName: unknown = siteSettings.get("schoolName");
   const schoolName = safeText(configuredSchoolName).trim() || "Satyam International School";
   const token = await makeOptOutToken(studentId);
-  const optOutUrl = `${siteUrl}/api/public/notifications/opt-out?token=${encodeURIComponent(token)}`;
+  const optOutUrl = absoluteUrl(
+    `/api/public/notifications/opt-out?token=${encodeURIComponent(token)}`,
+  );
   let sent = false;
   let channel = "none";
   if (email) {

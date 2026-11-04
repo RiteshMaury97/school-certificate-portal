@@ -3,8 +3,11 @@
 import Link from "next/link";
 
 import Logo from "@/components/ui/Logo";
-import { SCHOOL_INFO } from "@/lib/school-info";
 import { useT } from "@/i18n/locale-provider";
+import { SCHOOL_INFO } from "@/lib/school-info";
+import { SITE_MAP } from "@/shared/site-map";
+
+import type { SiteMapGroup } from "@/shared/site-map";
 
 type Props = {
   schoolName?: string | undefined;
@@ -29,23 +32,19 @@ function SchoolLogo() {
   return <Logo size={40} className="h-10 w-10 rounded-full bg-white object-contain p-0.5" />;
 }
 
-function SchoolStatus({
-  schoolCode,
-  statusPageUrl,
-}: Pick<Props, "schoolCode" | "statusPageUrl">) {
+function SchoolStatus({ schoolCode, statusPageUrl }: Pick<Props, "schoolCode" | "statusPageUrl">) {
   const t = useT();
   if (!schoolCode?.trim() && !statusPageUrl?.trim()) return null;
 
   return (
     <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
-      {schoolCode?.trim() && <span>{t("footer.schoolCode")}: {schoolCode}</span>}
+      {schoolCode?.trim() && (
+        <span>
+          {t("footer.schoolCode")}: {schoolCode}
+        </span>
+      )}
       {statusPageUrl?.trim() && (
-        <a
-          href={statusPageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={linkClass}
-        >
+        <a href={statusPageUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
           {t("footer.systemStatus")} ↗
         </a>
       )}
@@ -72,48 +71,57 @@ function SchoolIdentity({
   | "statusPageUrl"
 >) {
   const t = useT();
+  const cleanAddress = address?.trim() ?? "";
+  const displayAddress = cleanAddress.length > 0 ? cleanAddress : SCHOOL_INFO.address;
+
   return (
     <section className="min-w-0">
       <div className="flex items-center gap-2.5">
         <SchoolLogo />
         <div className="min-w-0">
-          <h2 translate="no" className="whitespace-normal break-words text-sm font-bold uppercase tracking-wide">
+          <h2
+            translate="no"
+            className="whitespace-normal break-words text-sm font-bold uppercase tracking-wide"
+          >
             {schoolName}
           </h2>
           <p className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--text-muted)]">
-            {[affiliation, boardName].filter(Boolean).join("\u00b7").replace(/^$/, t("footer.schoolManagement"))}
+            {[affiliation, boardName]
+              .filter(Boolean)
+              .join("\u00b7")
+              .replace(/^$/, t("footer.schoolManagement"))}
           </p>
         </div>
       </div>
       <p className="mt-4 text-xs font-semibold text-[var(--text)]">{tagline}</p>
-      {(address?.trim() || SCHOOL_INFO.address) && (
-        <p className="mt-4 whitespace-pre-line text-xs leading-5 text-[var(--text-muted)]">
-          {address?.trim() || SCHOOL_INFO.address}
-        </p>
-      )}
+      <p className="mt-4 whitespace-pre-line text-xs leading-5 text-[var(--text-muted)]">
+        {displayAddress}
+      </p>
       <SchoolStatus schoolCode={schoolCode} statusPageUrl={statusPageUrl} />
     </section>
   );
 }
 
-function QuickLinks() {
+const groupTranslationKeys = {
+  School: "siteMap.groups.school",
+  Certificates: "siteMap.groups.certificates",
+  "Help and support": "siteMap.groups.helpAndSupport",
+  "Legal and privacy": "siteMap.groups.legalAndPrivacy",
+} as const;
+
+function SiteMapLinks({ group }: { group: SiteMapGroup }) {
   const t = useT();
-  const links = [
-    { href: "/", label: t("nav.home") },
-    { href: "/certificates", label: t("footer.findCertificates") },
-    { href: "/verify", label: t("footer.verifyCertificate") },
-    { href: "/faq", label: t("footer.faq") },
-    { href: "/contact", label: t("footer.contactSchool") },
-  ];
+  const pages = SITE_MAP.filter((page) => page.group === group);
+  if (pages.length === 0) return null;
 
   return (
-    <nav aria-label="Quick links">
-      <h2 className="text-sm font-bold">{t("footer.quickLinks")}</h2>
+    <nav aria-label={t(groupTranslationKeys[group])}>
+      <h2 className="text-sm font-bold">{t(groupTranslationKeys[group])}</h2>
       <ul className="mt-3 space-y-2 text-xs text-[var(--text-muted)]">
-        {links.map(({ href, label }) => (
-          <li key={href}>
-            <Link className={linkClass} href={href}>
-              {label}
+        {pages.map((page) => (
+          <li key={page.path}>
+            <Link className={linkClass} href={page.path}>
+              {t(page.labelKey)}
             </Link>
           </li>
         ))}
@@ -122,11 +130,25 @@ function QuickLinks() {
   );
 }
 
-function SupportLinks({ onReport, phone, officeHours, email }: Pick<Props, "onReport" | "phone" | "officeHours" | "email">) {
+function QuickLinks() {
+  return (
+    <div className="space-y-6">
+      <SiteMapLinks group="School" />
+      <SiteMapLinks group="Certificates" />
+    </div>
+  );
+}
+
+function SupportLinks({
+  onReport,
+  phone,
+  officeHours,
+  email,
+}: Pick<Props, "onReport" | "phone" | "officeHours" | "email">) {
   const t = useT();
   return (
     <section>
-      <h2 className="text-sm font-bold">{t("footer.support")}</h2>
+      <SiteMapLinks group="Help and support" />
       {onReport && (
         <button
           type="button"
@@ -159,27 +181,7 @@ function SupportLinks({ onReport, phone, officeHours, email }: Pick<Props, "onRe
 }
 
 function LegalLinks() {
-  const t = useT();
-  const links = [
-    { href: "/terms", label: t("footer.terms") },
-    { href: "/privacy", label: t("footer.privacy") },
-    { href: "/data-rights", label: t("footer.dataRights") },
-  ];
-
-  return (
-    <nav aria-label="Legal links">
-      <h2 className="text-sm font-bold">{t("footer.legal")}</h2>
-      <ul className="mt-3 space-y-2 text-xs text-[var(--text-muted)]">
-        {links.map(({ href, label }) => (
-          <li key={href}>
-            <Link className={linkClass} href={href}>
-              {label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
+  return <SiteMapLinks group="Legal and privacy" />;
 }
 
 function SocialLinks({ links }: { links: Props["socialLinks"] }) {
@@ -193,12 +195,7 @@ function SocialLinks({ links }: { links: Props["socialLinks"] }) {
       <ul className="mt-2 flex flex-wrap gap-4 text-xs text-[var(--text-muted)]">
         {visibleLinks.map((item, index) => (
           <li key={`${item.label}-${String(index)}`}>
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={linkClass}
-            >
+            <a href={item.url} target="_blank" rel="noopener noreferrer" className={linkClass}>
               {item.label}
             </a>
           </li>
@@ -208,10 +205,7 @@ function SocialLinks({ links }: { links: Props["socialLinks"] }) {
   );
 }
 
-function FooterAttribution({
-  schoolName,
-  lastUpdated,
-}: Pick<Props, "schoolName" | "lastUpdated">) {
+function FooterAttribution({ schoolName, lastUpdated }: Pick<Props, "schoolName" | "lastUpdated">) {
   const t = useT();
   return (
     <div className="border-t border-[var(--border)]">
@@ -219,7 +213,11 @@ function FooterAttribution({
         <span>
           © {new Date().getFullYear()} {schoolName}. {t("footer.allRightsReserved")}
         </span>
-        {lastUpdated?.trim() && <span>{t("footer.lastUpdated")} {lastUpdated}</span>}
+        {lastUpdated?.trim() && (
+          <span>
+            {t("footer.lastUpdated")} {lastUpdated}
+          </span>
+        )}
         <span className="font-medium text-[var(--text)]">{t("footer.officialServices")}</span>
       </div>
     </div>
@@ -258,10 +256,7 @@ export default function Footer({
         <LegalLinks />
         <SocialLinks links={socialLinks} />
       </div>
-      <FooterAttribution
-        schoolName={schoolName}
-        lastUpdated={lastUpdated}
-      />
+      <FooterAttribution schoolName={schoolName} lastUpdated={lastUpdated} />
     </footer>
   );
 }

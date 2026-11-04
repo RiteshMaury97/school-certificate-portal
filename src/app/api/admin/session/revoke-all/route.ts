@@ -10,6 +10,7 @@ import {
   csrfCookieOptions,
   writeAuditLog,
 } from "@/server/security";
+import { absoluteUrl, getAllowedOrigins } from "@/server/site-origin";
 import { isAllowedRequestOrigin } from "@/shared/origin-policy";
 
 import type { NextRequest} from "next/server";
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token") ?? "";
   if (token.length < 32)
     return NextResponse.redirect(
-      new URL("/admin/login?security=invalid", request.url),
+      absoluteUrl("/admin/login?security=invalid"),
       303,
     );
   try {
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
       expires = snap.get("expiresAt")?.toDate?.()?.getTime?.() ?? 0;
     if (!snap.exists || snap.get("usedAt") || Date.now() > expires)
       return NextResponse.redirect(
-        new URL("/admin/login?security=expired", request.url),
+        absoluteUrl("/admin/login?security=expired"),
         303,
       );
     const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirm sign out</title><main><h1>Sign out of all admin devices?</h1><p>This will revoke every active administrator session for your account.</p><form method="post"><input type="hidden" name="token" value="${token.replace(/[^A-Za-z0-9_-]/g, "")}"><button type="submit">Sign out everywhere</button></form></main></html>`;
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
     });
   } catch {
     return NextResponse.redirect(
-      new URL("/admin/login?security=error", request.url),
+      absoluteUrl("/admin/login?security=error"),
       303,
     );
   }
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
     if (
       !isAllowedRequestOrigin(
         origin,
-        process.env.APP_ORIGIN ?? request.nextUrl.origin,
+        getAllowedOrigins(),
         process.env.NODE_ENV !== "production",
       )
     ) {
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
     const token = formString(form, "token");
     if (token.length < 32)
       return NextResponse.redirect(
-        new URL("/admin/login?security=invalid", request.url),
+        absoluteUrl("/admin/login?security=invalid"),
         303,
       );
     const uid = await consume(token);
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
       "email_security_link",
     );
     const response = NextResponse.redirect(
-      new URL("/admin/login?security=signed-out", request.url),
+      absoluteUrl("/admin/login?security=signed-out"),
       303,
     );
     response.cookies.set("sis_admin_session", "", {
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
     return response;
   } catch {
     return NextResponse.redirect(
-      new URL("/admin/login?security=error", request.url),
+      absoluteUrl("/admin/login?security=error"),
       303,
     );
   }

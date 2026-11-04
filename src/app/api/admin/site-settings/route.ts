@@ -40,6 +40,7 @@ const schema = z.object({
   boardName: z.string().trim().max(160),
   affiliationNumber: z.string().trim().max(80),
   schoolCode: z.string().trim().max(80),
+  website: url.optional().default(""),
   principalPhotoUrl: url,
   principalName: z.string().trim().max(120),
   principalMessage: z.string().trim().max(1800),
@@ -63,6 +64,13 @@ const schema = z.object({
     .max(12),
   grievanceOfficerName: z.string().trim().max(120),
   grievanceOfficerEmail: z.string().trim().email().max(254),
+  securityContactEmail: z
+    .string()
+    .trim()
+    .max(254)
+    .refine((value) => !value || z.email().safeParse(value).success, "Enter a valid email address")
+    .optional()
+    .default(""),
   grievanceOfficerPhone: z.string().trim().max(80),
   lastUpdated: z.string().trim().max(80),
   maintenanceMode: z.boolean().optional().default(false),

@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowRight, Clock3, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
+import { ArrowRight, Clock3, Globe, Mail, MapPin, Phone, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
+import SiteShell from "@/components/layout/SiteShell";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,7 +12,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import SiteShell from "@/components/layout/SiteShell";
 import { useT } from "@/i18n/locale-provider";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
@@ -28,7 +28,8 @@ export default function ContactView() {
   const schoolName = settingOr(settings.schoolName, "Satyam International School");
   const address = settingOr(settings.address, "Lodipur, Zamania, Ghazipur, Uttar Pradesh 232329");
   const phone = settingOr(settings.phone, "+91 9336950476");
-  const email = settingOr(settings.email, "sischoolzam@gmail.com");
+  const email = settingOr(settings.email, "");
+  const website = settingOr(settings.website, "");
   const mapUrl = settingOr(
     settings.mapUrl,
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${schoolName}, ${address}`)}`,
@@ -91,25 +92,45 @@ export default function ContactView() {
               </span>
             </span>
           </a>
-          <a
-            href={`mailto:${email}`}
-            className="group flex min-h-24 items-center gap-3 rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm transition hover:border-[var(--primary)]"
-          >
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--surface-2)] text-[var(--primary)]">
-              <Mail size={18} aria-hidden="true" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Email the office
+          {email ? (
+            <a
+              href={`mailto:${email}`}
+              className="group flex min-h-24 items-center gap-3 rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm transition hover:border-[var(--primary)]"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--surface-2)] text-[var(--primary)]">
+                <Mail size={18} aria-hidden="true" />
               </span>
-              <span className="mt-1 block break-all text-sm font-semibold text-[var(--text)]">
-                {email}
+              <span className="min-w-0">
+                <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Email the office
+                </span>
+                <span className="mt-1 block break-all text-sm font-semibold text-[var(--text)]">
+                  {email}
+                </span>
+                <span className="mt-1 block text-[10px] text-[var(--text-muted)]">
+                  For enquiries and record-related support
+                </span>
               </span>
-              <span className="mt-1 block text-[10px] text-[var(--text-muted)]">
-                For enquiries and record-related support
-              </span>
-            </span>
-          </a>
+            </a>
+          ) : null}
+          {website ? (
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                Website
+              </dt>
+              <dd className="mt-1 break-all text-[var(--text)]">
+                <a
+                  className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
+                  href={website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Globe size={13} aria-hidden="true" />
+                  Visit official website
+                </a>
+              </dd>
+            </div>
+          ) : null}
           <a
             href={mapUrl}
             target="_blank"
@@ -175,12 +196,14 @@ export default function ContactView() {
                     <dd className="mt-1 text-[var(--text)]">{settings.officeHours}</dd>
                   </div>
                 )}
-                <div>
-                  <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                    Email
-                  </dt>
-                  <dd className="mt-1 break-all text-[var(--text)]">{email}</dd>
-                </div>
+                {email ? (
+                  <div>
+                    <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                      Email
+                    </dt>
+                    <dd className="mt-1 break-all text-[var(--text)]">{email}</dd>
+                  </div>
+                ) : null}
               </dl>
             </section>
 
@@ -210,19 +233,7 @@ export default function ContactView() {
           </aside>
         </div>
 
-        <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 px-1 text-[10px] text-[var(--text-muted)]">
-          <nav aria-label="Related links" className="flex gap-4">
-            <Link href="/privacy" className="hover:text-[var(--primary)]">
-              Privacy policy
-            </Link>
-            <Link href="/faq" className="hover:text-[var(--primary)]">
-              FAQ
-            </Link>
-            <Link href="/certificates" className="hover:text-[var(--primary)]">
-              Certificates
-            </Link>
-          </nav>
-        </footer>
+
       </div>
     </SiteShell>
   );

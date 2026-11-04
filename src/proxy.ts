@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
+import { absoluteUrl, getAllowedOrigins } from "./server/site-origin";
 import { getRequestOrigin } from "./server/request-origin";
 import { isAllowedRequestOrigin } from "./shared/origin-policy";
 
 import type { NextRequest } from "next/server";
 
-const APP_ORIGIN = process.env.APP_ORIGIN;
 let maintenanceCache: { enabled: boolean; expiresAt: number } | null = null;
 let maintenanceRead: Promise<boolean> | null = null;
 const locationDecisionCache = new Map<
@@ -88,7 +88,7 @@ async function maintenanceModeEnabled(request: NextRequest): Promise<boolean> {
 
 async function readMaintenanceMode(request: NextRequest): Promise<boolean> {
   try {
-    const response = await fetch(new URL("/api/public/site-settings", request.url), {
+    const response = await fetch(absoluteUrl("/api/public/site-settings"), {
       cache: "no-store",
       signal: AbortSignal.timeout(1800),
     });
@@ -103,14 +103,15 @@ async function readMaintenanceMode(request: NextRequest): Promise<boolean> {
 
 function httpsRedirect(request: NextRequest, production: boolean): NextResponse | null {
   if (!production || request.nextUrl.protocol === "https:") return null;
-  const destination = request.nextUrl.clone();
-  destination.protocol = "https:";
-  return NextResponse.redirect(destination, 308);
+  return NextResponse.redirect(
+    absoluteUrl(`${request.nextUrl.pathname}${request.nextUrl.search}`),
+    308,
+  );
 }
 
 function originResponse(request: NextRequest, production: boolean): NextResponse | null {
   const origin = request.headers.get("origin");
-  const expectedOrigin = APP_ORIGIN ?? request.nextUrl.origin;
+  const expectedOrigin = getAllowedOrigins();
   if (origin && !isAllowedRequestOrigin(origin, expectedOrigin, !production)) {
     return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403 });
   }
@@ -161,7 +162,7 @@ async function adminLocationGate(
       const isLoginPage = request.nextUrl.pathname === "/admin/login";
       const response =
         isAdminPage(request.nextUrl.pathname) && !isLoginPage
-          ? NextResponse.redirect(new URL("/admin/login", request.url), 307)
+          ? NextResponse.redirect(absoluteUrl("/admin/login"), 307)
           : isLoginPage
             ? createRequestResponse(request, production).response
             : locationGateResponse(nonce, production, 403);
@@ -234,7 +235,7 @@ async function checkLocationPolicy(
   const token = Array.from(new Uint8Array(signature), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");
-  const response = await fetch(new URL("/api/internal/admin-location-check", request.url), {
+  const response = await fetch(absoluteUrl("/api/internal/admin-location-check"), {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${timestamp}.${token}` },
     body: payload,
@@ -258,9 +259,7 @@ function adminLoginRedirect(request: NextRequest, path: string): NextResponse | 
     request.cookies.get("sis_admin_session")?.value
   )
     return null;
-  const login = request.nextUrl.clone();
-  login.pathname = "/admin/login";
-  login.search = "";
+  const login = new URL(absoluteUrl("/admin/login"));
   login.searchParams.set("next", path);
   return NextResponse.redirect(login);
 }
@@ -301,7 +300,7 @@ async function maintenanceResponse(
         { error: "Service temporarily unavailable for maintenance." },
         { status: 503 },
       )
-    : NextResponse.rewrite(new URL("/maintenance", request.url), { status: 503 });
+    : NextResponse.rewrite(absoluteUrl("/maintenance"), { status: 503 });
   securityHeaders(blocked, nonce, production);
   blocked.headers.set("Retry-After", "900");
   blocked.headers.set("Cache-Control", "no-store");

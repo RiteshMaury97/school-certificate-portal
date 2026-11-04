@@ -12,6 +12,7 @@
     "lint": "node scripts/maintenance/check-eslint-disables.mjs && eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
     "check:env": "node scripts/check-env.mjs",
+    "check:domain": "node scripts/check-domain-independence.mjs",
     "smoke": "node scripts/smoke/vercel-smoke.mjs",
     "backfill:certificate-ids": "node scripts/migrations/backfill-public-certificate-ids.mjs",
     "audit": "npm audit --audit-level=high",

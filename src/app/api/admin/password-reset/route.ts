@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { adminAuth } from "@/server/firebase-admin";
 import { escapeHtml, sendMail } from "@/server/mailer";
 import { sameOrigin, verifyRequestAppCheck } from "@/server/security";
+import { absoluteUrl } from "@/server/site-origin";
 
 import type { NextRequest} from "next/server";
 
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const email = body.email.trim().toLowerCase();
     if (email) {
       try {
-        const link = await adminAuth.generatePasswordResetLink(email, { url: `${process.env.APP_ORIGIN ?? request.nextUrl.origin}/admin/login` });
+        const link = await adminAuth.generatePasswordResetLink(email, { url: absoluteUrl("/admin/login") });
         await sendMail({ to: email, subject: "School Portal: password reset", text: `Use this secure link to reset your password: ${link}\n\nIf you did not request this, ignore this email.`, html: `<p>Use the link below to reset your password:</p><p><a href="${escapeHtml(link)}">Reset password</a></p><p>If you did not request this, ignore this email.</p>` });
       } catch {
         // Keep the response identical for unknown and known accounts.

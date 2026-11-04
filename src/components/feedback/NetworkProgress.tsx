@@ -9,7 +9,7 @@ function describe(input: RequestInfo | URL, init?: RequestInit) {
   const method = (init?.method ?? (typeof input === "object" && "method" in input ? input.method : "GET")).toUpperCase();
   let path = "";
   try {
-    path = new URL(raw, window.location.origin).pathname;
+    path = new URL(raw, "http://localhost").pathname;
   } catch {
     path = "";
   }

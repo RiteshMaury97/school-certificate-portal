@@ -31,6 +31,7 @@ describe("central Gmail mailer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("NODE_ENV", "test");
+    process.env.SITE_URL = "http://localhost:3000";
     process.env.GMAIL_USER = "school@example.com";
     process.env.GMAIL_APP_PASSWORD = "smtp-secret-not-for-logs";
     delete process.env.GMAIL_FROM_NAME;
@@ -42,6 +43,7 @@ describe("central Gmail mailer", () => {
     delete process.env.GMAIL_USER;
     delete process.env.GMAIL_APP_PASSWORD;
     delete process.env.GMAIL_FROM_NAME;
+    delete process.env.SITE_URL;
   });
 
   it("strips CR/LF from sender and subject headers", async () => {
@@ -92,9 +94,10 @@ describe("central Gmail mailer", () => {
     }
     expect(message.html).toContain("&lt;School &amp; &quot;Friends&quot;&gt;");
     expect(message.html).toContain("012345");
-    expect(message.html).toContain("valid for 10 minutes");
-    expect(message.html).toContain("Never share this code");
-    expect(message.html).toContain("reset your password");
+    expect(message.html).toContain("expires in");
+    expect(message.html).toContain("5 minutes");
+    expect(message.html).toContain("will never ask you to share it");
+    expect(message.html).toContain("resetting your password");
   });
 
   it("throws a clear error when Gmail credentials are missing", async () => {
@@ -122,6 +125,7 @@ describe("central Gmail mailer", () => {
 
   it("does not use the development fallback in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("SITE_URL", "https://mail-test.example");
     delete process.env.GMAIL_USER;
     delete process.env.GMAIL_APP_PASSWORD;
     const warning = vi.spyOn(console, "warn").mockImplementation(() => null);
@@ -131,5 +135,51 @@ describe("central Gmail mailer", () => {
       schoolName: "School",
     })).rejects.toThrow(/GMAIL_USER/);
     expect(warning).not.toHaveBeenCalled();
+  });
+
+});
+
+describe("email link origin independence", () => {
+  afterEach(() => {
+    vi.doUnmock("@/server/site-origin");
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("keeps OTP and invitation links on the configured portal origin", async () => {
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("VERCEL_ENV", "development");
+    vi.stubEnv("GMAIL_USER", "sender@gmail.com");
+    vi.stubEnv("GMAIL_APP_PASSWORD", "test-password");
+    vi.doMock("@/server/site-origin", () => ({
+      absoluteUrl: (path: string) => `https://new-school.example${path}`,
+    }));
+    vi.resetModules();
+    const mailer = await import("../src/server/mailer");
+    const verificationLink = `https://sis-e2e.firebaseapp.com/action?continueUrl=${encodeURIComponent("https://new-school.example/admin/login")}`;
+
+    await mailer.sendAdminOtpEmail({
+      to: "admin@example.net",
+      code: "012345",
+      schoolName: "School",
+    });
+    await mailer.sendAdminInvitationEmail({
+      to: "admin@example.net",
+      role: "admin",
+      temporaryPassword: "temporary-secret",
+      verificationLink,
+      schoolName: "School",
+    });
+
+    const messages = mocks.sendMail.mock.calls.map((call) => call[0]);
+    const rendered = JSON.stringify(messages);
+    expect(rendered).toContain("https://new-school.example/admin/login");
+    expect(rendered).toContain("https://new-school.example/sis-logo.png");
+    expect(rendered).not.toContain("sischool.in");
+    expect(rendered).not.toContain("old-school.example");
+    const senders = messages.map((message) =>
+      typeof message === "object" && message !== null && "from" in message ? message.from : "",
+    );
+    expect(senders.every((from) => typeof from === "string" && from.endsWith("<sender@gmail.com>"))).toBe(true);
   });
 });

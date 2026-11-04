@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 
 import { adminAuth, db } from "@/server/firebase-admin";
 import { sendAdminInvitationEmail } from "@/server/mailer";
+import { absoluteUrl } from "@/server/site-origin";
 import {
   requireAdmin,
   requireSensitiveReauth,
@@ -74,9 +75,8 @@ export async function POST(request: NextRequest) {
         createdBy: actor.uid,
       });
     try {
-      const origin = new URL(process.env.APP_ORIGIN ?? request.nextUrl.origin).origin;
       const verificationLink = await adminAuth.generateEmailVerificationLink(email, {
-        url: `${origin}/admin/login`,
+        url: absoluteUrl("/admin/login"),
       });
       const site = await db.collection("siteSettings").doc("main").get();
       const schoolName = String(site.get("schoolName") ?? "").trim() || "Satyam International School";
@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
         role,
         temporaryPassword,
         verificationLink,
-        origin,
         schoolName,
         recipientName: parsed.data.profile.preferredName || parsed.data.profile.name,
         tagline: String(site.get("tagline") ?? ""),

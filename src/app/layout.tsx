@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import AppProviders from "@/components/providers/AppProviders";
 import { Toaster } from "@/components/ui/toast";
 import { SCHOOL_INFO } from "@/lib/school-info";
+import { absoluteUrl, getSiteOrigin } from "@/server/site-origin";
 import { getCachedSiteSettings } from "@/server/site-settings-cache";
 
 import type { Metadata, Viewport } from "next";
@@ -12,9 +13,7 @@ import "@/styles/globals.css";
 
 const FALLBACK_NAME = SCHOOL_INFO.name;
 const FALLBACK_DESCRIPTION = "Secure school certificate retrieval and verification portal";
-const siteUrl = (
-  [process.env.SITE_URL, process.env.APP_ORIGIN].find(Boolean) ?? "https://example.org"
-).replace(/\/$/, "");
+const siteUrl = getSiteOrigin();
 
 export const viewport: Viewport = {
   themeColor: [
@@ -61,7 +60,7 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: name,
       title: name,
       description,
-      url: siteUrl,
+      url: absoluteUrl("/"),
       images: [
         { url: "/og-image.png", width: 1200, height: 630, alt: `${name} official school records` },
       ],

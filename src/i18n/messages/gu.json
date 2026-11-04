@@ -101,6 +101,29 @@
     "reportStatus": "Report status",
     "contactSupport": "Contact support"
   },
+  "siteMap": {
+    "title": "Sitemap",
+    "intro": "Browse the public pages for certificates, verification, school support and policies.",
+    "groups": {
+      "school": "School",
+      "certificates": "Certificates",
+      "helpAndSupport": "Help and support",
+      "legalAndPrivacy": "Legal and privacy"
+    },
+    "descriptions": {
+      "home": "Return to the school portal for student services, school information and important links.",
+      "certificates": "Search securely for certificates available for student records.",
+      "verify": "Check whether a certificate was issued by the school.",
+      "faq": "Find answers about certificates, student records and portal support.",
+      "contact": "Contact the school with an enquiry or request for assistance.",
+      "reportWrongRecord": "Request a review if a school record appears to be incorrect.",
+      "reportStatus": "Check the progress of a report you have already submitted.",
+      "dataRights": "Learn how to access, correct or request changes to personal data.",
+      "terms": "Read the terms that apply to the school's digital services.",
+      "privacy": "Learn how personal information is handled by the school's digital services.",
+      "sitemap": "Browse links to the public pages available on this website."
+    }
+  },
   "errors": {
     "notFoundTitle": "Page not found",
     "notFoundDescription": "The page you are looking for could not be found.",

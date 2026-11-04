@@ -23,6 +23,7 @@ import {
   type DisambiguationClaims,
 } from "./student-pii";
 import { isAllowedRequestOrigin } from "../shared/origin-policy";
+import { getAllowedOrigins } from "@/server/site-origin";
 import { hasAnyRole as hasRole } from "../shared/role-policy";
 import { ADMIN_HARD_SESSION_LIMIT_MS, isAdminSessionExpired } from "../shared/session-policy";
 
@@ -624,7 +625,7 @@ export function sameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
   return isAllowedRequestOrigin(
     origin,
-    process.env.APP_ORIGIN ?? new URL(request.url).origin,
+    getAllowedOrigins(),
     process.env.NODE_ENV !== "production",
   );
 }

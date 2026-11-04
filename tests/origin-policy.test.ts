@@ -38,4 +38,14 @@ describe("request origin policy", () => {
     );
     expect(isAllowedRequestOrigin(null, configuredOrigin, true)).toBe(false);
   });
+
+  it("accepts any configured migration origin", () => {
+    expect(
+      isAllowedRequestOrigin(
+        "https://old.school.example",
+        ["https://new.school.example", "https://old.school.example"],
+        false,
+      ),
+    ).toBe(true);
+  });
 });

@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   BookOpenCheck,
   FileCheck2,
+  Globe,
   HelpCircle,
   LockKeyhole,
   MapPin,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import SiteShell from "@/components/layout/SiteShell";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,7 +23,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import SiteShell from "@/components/layout/SiteShell";
 import { useT } from "@/i18n/locale-provider";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
@@ -69,7 +70,8 @@ export default function HomePage() {
   const schoolName = settingOr(settings.schoolName, "Satyam International School");
   const address = settingOr(settings.address, "Lodipur, Zamania, Ghazipur, Uttar Pradesh 232329");
   const phone = settingOr(settings.phone, "+91 9336950476");
-  const email = settingOr(settings.email, "sischoolzam@gmail.com");
+  const email = settingOr(settings.email, "");
+  const website = settingOr(settings.website, "");
 
   return (
     <SiteShell>
@@ -254,6 +256,17 @@ export default function HomePage() {
                   href={`mailto:${email}`}
                 >
                   {email}
+                </a>
+              )}
+              {website && (
+                <a
+                  className="inline-flex items-center gap-1.5 break-all text-[var(--text)] hover:text-[var(--primary)]"
+                  href={website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Globe size={13} aria-hidden="true" />
+                  Visit website
                 </a>
               )}
             </div>

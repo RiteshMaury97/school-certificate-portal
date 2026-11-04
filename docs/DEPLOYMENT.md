@@ -38,6 +38,18 @@ In **Vercel → Project → Settings → Git**, set **Production Branch** to `ma
 
 The application has a Vercel `/api/health` endpoint with version, environment, and boolean-only required-environment presence. It contains no secret values and makes no database writes.
 
+## Chunk 4: Domain change runbook
+
+When the production hostname or school email domain changes, update the existing deployment configuration and provider allowlists, then redeploy. No application source edit is required.
+
+1. In Vercel **Settings → Environment Variables**, update Production `SITE_URL` to the new HTTPS origin. Keep deprecated `APP_ORIGIN` equal to it only while legacy configuration still needs it. Add the old origin temporarily to `ADDITIONAL_ALLOWED_ORIGINS` when both domains must accept requests. Update the website and contact, grievance, and security addresses in `siteSettings/main` when they change; `SECURITY_CONTACT_EMAIL` is an optional fallback for security.txt. Update `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` when Plausible is enabled. `GMAIL_USER` is the independent outbound Gmail sender; change it only if the sender mailbox is moving too. Keep Preview variables scoped to staging. If the Cloudflare cron Worker is enabled, update its `SITE_URL` Worker variable to the new origin as well.
+2. Add the new hostname to the Firebase Authentication authorized domains. Add the hostname to the Firebase App Check allowed domains for every enabled provider, including reCAPTCHA Enterprise or reCAPTCHA v3 as applicable.
+3. Add the hostname to the Cloudflare Turnstile widget's allowed hostnames. If replacing site keys, update `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in the matching Vercel environment.
+4. In Google Cloud Console, update the OAuth client authorized JavaScript origins and redirect URIs for the website integrations. Preserve the Firebase Auth handler URI configured for Google sign-in.
+5. Add the domain in Vercel **Settings → Domains**, configure the requested DNS records, and verify HTTPS and the canonical/www redirect.
+6. Add or verify the hostname in the Plausible site configuration. In Sentry, check project allowed domains/client security settings and update any domain filters or alert rules that include the old hostname.
+7. Redeploy Production so the updated `NEXT_PUBLIC_` values are rebuilt. Confirm `SITE_URL` is valid and remove `APP_ORIGIN` once the alias is no longer needed. Run `npm run check:env` and `npm run smoke -- https://school.example --environment=production`. Verify sign-in, contact/security links, analytics, and error reporting on the new hostname before retiring the old domain; remove the old origin from `ADDITIONAL_ALLOWED_ORIGINS` when migration is complete.
+
 ## Roll back
 
 If Production has a regression, open **Vercel → Project → Deployments**, select the last known-good Production deployment, and choose **Instant Rollback**. Confirm the live domain serves that deployment, then run the Production smoke command above. Follow with a fix in a pull request and rerun CI before merging.

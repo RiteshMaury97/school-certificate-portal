@@ -1,8 +1,26 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
+import { getSiteOrigin } from "@/server/site-origin";
 import { getCachedSiteSettings } from "@/server/site-settings-cache";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+function validEmail(value: unknown): string {
+  const email = typeof value === "string" ? value.trim() : "";
+  return z.email().safeParse(email).success ? email : "";
+}
+
+function publicWebsite(value: unknown, fallback: string): string {
+  if (typeof value !== "string" || !value.trim()) return fallback;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password ? url.toString() : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 const localizedText = (value: unknown, maxLength: number) => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
   return Object.fromEntries(
@@ -12,6 +30,7 @@ const localizedText = (value: unknown, maxLength: number) => {
   );
 };
 export async function GET() {
+  const fallbackWebsite = getSiteOrigin();
   try {
     const data = await getCachedSiteSettings();
     const safe = {
@@ -50,7 +69,9 @@ export async function GET() {
       principalMessage_i18n: localizedText(data.principalMessage_i18n, 1800),
       address: String(data.address ?? ""),
       phone: String(data.phone ?? ""),
-      email: String(data.email ?? ""),
+      website: publicWebsite(data.website, fallbackWebsite),
+      email: validEmail(data.email),
+      securityContactEmail: validEmail(data.securityContactEmail),
       jurisdiction: String(data.jurisdiction ?? ""),
       officeHours: String(data.officeHours ?? ""),
       mapUrl:
@@ -83,7 +104,7 @@ export async function GET() {
             .map((item) => ({ label: item.label, url: item.url }))
         : [],
       grievanceOfficerName: String(data.grievanceOfficerName ?? ""),
-      grievanceOfficerEmail: String(data.grievanceOfficerEmail ?? ""),
+      grievanceOfficerEmail: validEmail(data.grievanceOfficerEmail),
       grievanceOfficerPhone: String(data.grievanceOfficerPhone ?? ""),
       lastUpdated: String(data.lastUpdated ?? ""),
       announcement: (() => {
@@ -131,10 +152,11 @@ export async function GET() {
       { settings: safe },
       { headers: { "Cache-Control": "no-store" } },
     );
-  } catch {
+  } catch (error) {
+    console.error("[site-settings] Could not load public site settings.", error);
     return NextResponse.json(
-      { settings: {} },
-      { headers: { "Cache-Control": "no-store" } },
+      { error: "Unable to load public site settings." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
 }

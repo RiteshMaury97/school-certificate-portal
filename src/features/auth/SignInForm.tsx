@@ -21,7 +21,7 @@ export default function SignInForm({ flow }: Props) {
       <div className="mx-auto w-full max-w-[440px] shrink-0">
         <Link
           href="/"
-          className="inline-flex min-h-10 items-center gap-2 text-xs font-medium text-[var(--primary)] outline-none transition hover:underline focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+          className="inline-flex min-h-10 items-center gap-2 text-xs font-medium text-[var(--primary)] no-underline outline-none transition hover:no-underline focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
         >
           <ArrowLeft aria-hidden="true" size={15} /> Back to public portal
         </Link>

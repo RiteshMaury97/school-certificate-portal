@@ -161,7 +161,7 @@ function AnnouncementControls({
             onChange={(event) => {
               updateAnnouncement(setAnnouncement, "linkUrl", event.target.value);
             }}
-            placeholder="https://school.example/..."
+            placeholder="Enter an HTTPS URL"
             className="min-h-11 w-full rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-sm"
           required aria-required="true" />
         </AnnouncementField>

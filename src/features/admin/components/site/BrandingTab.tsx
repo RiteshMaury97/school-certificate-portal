@@ -187,6 +187,28 @@ export default function BrandingTab(props: Props) {
               required aria-required="true" />
             </label>
           ))}
+          <label className="text-sm font-semibold text-[var(--text)]">
+            School website (HTTPS URL; optional)
+            <input
+              type="url"
+              value={branding.website ?? ""}
+              onChange={(e) => {
+                setBranding((v) => ({ ...v, website: e.target.value }));
+              }}
+              className="mt-1 w-full rounded border p-2.5"
+            />
+          </label>
+          <label className="text-sm font-semibold text-[var(--text)]">
+            Security contact email (published in security.txt)
+            <input
+              type="email"
+              value={branding.securityContactEmail ?? ""}
+              onChange={(e) => {
+                setBranding((v) => ({ ...v, securityContactEmail: e.target.value }));
+              }}
+              className="mt-1 w-full rounded border p-2.5"
+            />
+          </label>
           <fieldset className="rounded-lg border border-[var(--border)] p-4 sm:col-span-2">
             <legend className="px-2 text-sm font-semibold">Optional tagline translations</legend>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -226,7 +248,7 @@ export default function BrandingTab(props: Props) {
             </div>
           </fieldset>
           <label className="text-sm font-semibold text-[var(--text)] sm:col-span-2">
-            Social links (one per line: Label|https://... )
+            Social links (one per line: Label|HTTPS URL)
             <textarea
               translate="no"
               rows={4}
@@ -237,7 +259,7 @@ export default function BrandingTab(props: Props) {
                   socialLinks: e.target.value,
                 }));
               }}
-              placeholder="Facebook|https://facebook.com/..."
+              placeholder="Facebook|Enter an HTTPS URL"
               className="mt-1 w-full rounded border p-2.5"
             required aria-required="true" />
           </label>

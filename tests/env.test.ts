@@ -6,6 +6,7 @@ const validProductionEnvironment = {
   NODE_ENV: "production",
   APP_ORIGIN: "https://school.example",
   SITE_URL: "https://school.example",
+  SECURITY_CONTACT_EMAIL: "security@school.example",
   NEXT_PUBLIC_FIREBASE_API_KEY: "public-api-key",
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "school.firebaseapp.com",
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: "school-prod",
@@ -43,7 +44,7 @@ describe("server environment validator", () => {
   it("lists missing production variable names without exposing values", () => {
     const result = validateServerEnvironment({ NODE_ENV: "production", API_PRIVATE_VALUE: "do-not-leak" });
     expect(result.valid).toBe(false);
-    expect(result.missing).toContain("APP_ORIGIN");
+    expect(result.missing).toContain("SITE_URL");
     expect(JSON.stringify(result)).not.toContain("do-not-leak");
   });
 
@@ -71,6 +72,47 @@ describe("server environment validator", () => {
 
   it("accepts a complete production environment", () => {
     expect(validateServerEnvironment(validProductionEnvironment).valid).toBe(true);
+  });
+
+  it("accepts the deprecated APP_ORIGIN alias when SITE_URL is unset", () => {
+    expect(
+      validateServerEnvironment({ ...validProductionEnvironment, SITE_URL: undefined }).valid,
+    ).toBe(true);
+  });
+
+  it("accepts only comma-separated HTTPS origins for migration allowances", () => {
+    expect(
+      validateServerEnvironment({
+        ...validProductionEnvironment,
+        ADDITIONAL_ALLOWED_ORIGINS: "https://old.school.example,https://other.school.example",
+      }).valid,
+    ).toBe(true);
+    expect(
+      validateServerEnvironment({
+        ...validProductionEnvironment,
+        ADDITIONAL_ALLOWED_ORIGINS: "https://old.school.example/path",
+      }).errors,
+    ).toContain(
+      "ADDITIONAL_ALLOWED_ORIGINS: must be a comma-separated list of https origins with no path or trailing slash",
+    );
+  });
+
+  it("accepts a localhost development origin with a trailing slash", () => {
+    expect(
+      validateServerEnvironment({
+        NODE_ENV: "development",
+        APP_ORIGIN: "http://localhost:3000/",
+      }).valid,
+    ).toBe(true);
+  });
+
+  it("rejects localhost development origins with a non-root path", () => {
+    expect(
+      validateServerEnvironment({
+        NODE_ENV: "development",
+        APP_ORIGIN: "http://localhost:3000/app",
+      }).errors,
+    ).toContain("APP_ORIGIN: must be an https origin with no path or trailing slash");
   });
 
   it("requires Preview to omit APP_ORIGIN and have staging service settings", () => {

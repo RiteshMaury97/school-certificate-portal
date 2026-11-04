@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
+import { absoluteUrl } from "@/server/site-origin";
 import {
   BREACH_DEADLINES,
   dueBreachReminderMilestones,
@@ -52,10 +53,7 @@ function discoveredDate(data: Record<string, unknown>): Date | null {
 }
 
 function adminUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (configured) return `${configured.replace(/\/$/, "")}/admin/breaches`;
-  const deployment = process.env.VERCEL_URL?.trim();
-  return deployment ? `https://${deployment}/admin/breaches` : "/admin/breaches";
+  return absoluteUrl("/admin/breaches");
 }
 
 export async function GET(request: NextRequest) {

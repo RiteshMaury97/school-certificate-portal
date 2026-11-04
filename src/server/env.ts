@@ -12,7 +12,8 @@ const serverEnvironmentSchema = z
     VERCEL_ENV: optionalText,
     APP_ORIGIN: optionalText,
     SITE_URL: optionalText,
-    NEXT_PUBLIC_SITE_URL: optionalText,
+    ADDITIONAL_ALLOWED_ORIGINS: optionalText,
+    SECURITY_CONTACT_EMAIL: optionalText,
     NEXT_PUBLIC_FIREBASE_API_KEY: optionalText,
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: optionalText,
     NEXT_PUBLIC_FIREBASE_PROJECT_ID: optionalText,
@@ -164,7 +165,9 @@ const serverEnvironmentSchema = z
         return (
           parsed.protocol === "http:" &&
           ["localhost", "127.0.0.1"].includes(parsed.hostname) &&
-          parsed.origin === value
+          (parsed.origin === value || `${parsed.origin}/` === value) &&
+          parsed.search === "" &&
+          parsed.hash === ""
         );
       } catch {
         return false;
@@ -175,10 +178,13 @@ const serverEnvironmentSchema = z
       issue("APP_ORIGIN", "must be an https origin with no path or trailing slash");
     if (env.SITE_URL && !allowedOrigin(env.SITE_URL))
       issue("SITE_URL", "must be an https origin with no path or trailing slash");
-    if (env.NEXT_PUBLIC_SITE_URL) {
-      if (!allowedOrigin(env.NEXT_PUBLIC_SITE_URL))
-        issue("NEXT_PUBLIC_SITE_URL", "must be an https origin (or local development origin)");
+    if (env.ADDITIONAL_ALLOWED_ORIGINS) {
+      const origins = env.ADDITIONAL_ALLOWED_ORIGINS.split(",").map((origin) => origin.trim());
+      if (origins.some((origin) => !origin || !httpsOrigin(origin)))
+        issue("ADDITIONAL_ALLOWED_ORIGINS", "must be a comma-separated list of https origins with no path or trailing slash");
     }
+    if (env.SECURITY_CONTACT_EMAIL && !z.email().safeParse(env.SECURITY_CONTACT_EMAIL).success)
+      issue("SECURITY_CONTACT_EMAIL", "must be a valid email address");
 
     if (preview) {
       if (env.APP_ORIGIN) issue("APP_ORIGIN", "must not be set for Preview deployments");
@@ -215,8 +221,6 @@ const serverEnvironmentSchema = z
 
     if (production) {
       requireNames([
-        "APP_ORIGIN",
-        "SITE_URL",
         "NEXT_PUBLIC_FIREBASE_API_KEY",
         "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
         "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
@@ -246,12 +250,14 @@ const serverEnvironmentSchema = z
         "CLAMD_HOST",
         "MALWARE_SCAN_MODE",
       ]);
+      if (!env.SITE_URL && !env.APP_ORIGIN)
+        issue("SITE_URL", "is required in Production (APP_ORIGIN is a deprecated alias)");
       if (!hasFirebaseCredentials)
         issue("FIREBASE_SERVICE_ACCOUNT_BASE64", "Production requires Firebase Admin credentials");
       if (env.MALWARE_SCAN_MODE && env.MALWARE_SCAN_MODE !== "required")
         issue("MALWARE_SCAN_MODE", "must be required in Production");
-      if (httpsOrigin(env.APP_ORIGIN) && httpsOrigin(env.SITE_URL) && env.APP_ORIGIN !== env.SITE_URL)
-        issue("SITE_URL", "must exactly match APP_ORIGIN in Production");
+      if (env.APP_ORIGIN && env.SITE_URL && env.APP_ORIGIN !== env.SITE_URL)
+        issue("APP_ORIGIN", "is deprecated and must match SITE_URL when both are set");
       if (env.BACKUP_R2_BUCKET && env.R2_BUCKET && env.BACKUP_R2_BUCKET === env.R2_BUCKET)
         issue("BACKUP_R2_BUCKET", "must be different from R2_BUCKET");
     }
@@ -272,7 +278,7 @@ export function validateServerEnvironment(
   const deployment = source.VERCEL_ENV ?? source.NODE_ENV ?? "development";
   if (parsed.success) {
     const requiredNames = deployment === "production"
-      ? ["APP_ORIGIN", "SITE_URL", "FIREBASE_PROJECT_ID", "R2_BUCKET", "CRON_SECRET", "CLAMD_HOST", "MALWARE_SCAN_MODE"]
+      ? [source.SITE_URL ? "SITE_URL" : "APP_ORIGIN", "FIREBASE_PROJECT_ID", "R2_BUCKET", "CRON_SECRET", "CLAMD_HOST", "MALWARE_SCAN_MODE"]
       : deployment === "preview"
         ? ["FIREBASE_PROJECT_ID", "R2_BUCKET", "GMAIL_USER", "GMAIL_APP_PASSWORD", "CLAMD_HOST", "MALWARE_SCAN_MODE"]
         : [];

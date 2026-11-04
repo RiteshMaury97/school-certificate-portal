@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
+import { getAllowedOrigins } from "@/server/site-origin";
 import {
   hashRequesterIp,
   verifyRequestAppCheck,
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     if (
       !isAllowedRequestOrigin(
         request.headers.get("origin"),
-        process.env.APP_ORIGIN ?? request.nextUrl.origin,
+        getAllowedOrigins(),
         process.env.NODE_ENV !== "production",
       )
     )

@@ -24,7 +24,7 @@ The matching Firestore database must be created in `asia-south1` (Mumbai) to kee
 - [ ] Copy the DNS records Vercel shows for this exact domain. Commonly the apex is an `A` record to Vercel's displayed target and `www` is a `CNAME`, but use the values Vercel currently provides. Remove conflicting records at the DNS provider.
 - [ ] Wait for Vercel to verify the records and issue HTTPS certificates. Test both `https://school.example` and `https://www.school.example` after DNS propagation.
 - [ ] Configure a single redirect from `www.school.example` to `school.example` (apex) in Vercel's domain settings. Verify it is a permanent HTTPS redirect and does not loop.
-- [ ] Set `APP_ORIGIN` and `SITE_URL` in Production to the exact apex origin, e.g. `https://school.example` (no path, trailing slash, or `www`). Keep them equal.
+- [ ] Set `SITE_URL` in Production to the exact canonical HTTPS origin, e.g. `https://school.example` (no path, query, or trailing slash). `APP_ORIGIN` is a deprecated alias and may be removed after migration.
 - [ ] **HSTS caution:** Production sends `Strict-Transport-Security` with `includeSubDomains` and `preload`. Keep that policy only after every subdomain is HTTPS-capable and stays that way. Do not submit the domain to browser preload lists until all subdomains have been checked; preload removal is slow and can strand HTTP-only subdomains.
 
 ## 3. Firebase
@@ -81,7 +81,7 @@ ClamAV cannot run inside a Vercel Function: the function must connect to a separ
 ## Final go-live review
 
 - [ ] Production deployment is from `main`; Preview protection is on.
-- [ ] `APP_ORIGIN` and `SITE_URL` match the apex HTTPS origin; DNS, HTTPS, and www redirect work.
+- [ ] `SITE_URL` is the apex HTTPS origin; DNS, HTTPS, and www redirect work.
 - [ ] Production Firebase domains/providers/App Check are correct; Firestore location and deny-all rules are verified.
 - [ ] Production and Preview secrets/resources are separate; all secrets are marked Sensitive.
 - [ ] Private main and backup buckets, Gmail sender, Turnstile widget and ClamAV connectivity are verified.

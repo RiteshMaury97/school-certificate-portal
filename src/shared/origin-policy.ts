@@ -4,11 +4,12 @@
  */
 export function isAllowedRequestOrigin(
   origin: string | null,
-  expectedOrigin: string,
+  expectedOrigin: string | readonly string[],
   development: boolean,
 ): boolean {
   if (!origin) return false;
-  if (origin === expectedOrigin) return true;
+  const expectedOrigins = typeof expectedOrigin === "string" ? [expectedOrigin] : expectedOrigin;
+  if (expectedOrigins.includes(origin)) return true;
   if (!development) return false;
 
   try {

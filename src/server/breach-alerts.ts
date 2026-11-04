@@ -2,12 +2,10 @@ import "server-only";
 
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
+import { absoluteUrl } from "@/server/site-origin";
 
 function breachAdminUrl(): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (siteUrl) return `${siteUrl.replace(/\/$/, "")}/admin/breaches`;
-  const deployment = process.env.VERCEL_URL?.trim();
-  return deployment ? `https://${deployment}/admin/breaches` : "/admin/breaches";
+  return absoluteUrl("/admin/breaches");
 }
 
 export async function sendImmediateBreachAlert(input: {

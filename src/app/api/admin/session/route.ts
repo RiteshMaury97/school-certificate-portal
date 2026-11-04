@@ -9,6 +9,7 @@ import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
 import { escapeHtml, sendMail } from "@/server/mailer";
 import { getRequestOrigin, requesterIp } from "@/server/request-origin";
+import { absoluteUrl } from "@/server/site-origin";
 import {
   adminSessionCookieOptions,
   createCsrfToken,
@@ -217,8 +218,7 @@ export async function POST(request: NextRequest) {
           usedAt: null,
           createdAt: now,
         });
-      const origin = process.env.APP_ORIGIN ?? request.nextUrl.origin;
-      const link = `${origin}/api/admin/session/revoke-all?token=${encodeURIComponent(actionToken)}`;
+      const link = absoluteUrl(`/api/admin/session/revoke-all?token=${encodeURIComponent(actionToken)}`);
       const escapeMap: Record<string, string> = {
         "&": "&amp;",
         "<": "&lt;",

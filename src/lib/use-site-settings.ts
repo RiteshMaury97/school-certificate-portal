@@ -21,7 +21,9 @@ export type PublicSiteSettings = {
   officeHours?: string;
   mapUrl?: string;
   statusPageUrl?: string;
+  website?: string;
   email?: string;
+  securityContactEmail?: string;
   jurisdiction?: string;
   socialLinks?: { label: string; url: string }[];
   includedLanguages?: string;
@@ -37,7 +39,7 @@ const DEFAULT_SETTINGS: PublicSiteSettings = {
   schoolName: SCHOOL_INFO.name,
   address: SCHOOL_INFO.address,
   phone: SCHOOL_INFO.phone,
-  email: SCHOOL_INFO.email,
+  email: "",
   includedLanguages: "en,hi,bn,mr,gu,pa,ta,te,ur",
   announcement: null,
   socialLinks: [],
@@ -46,7 +48,7 @@ const DEFAULT_SETTINGS: PublicSiteSettings = {
 const stringKeys = [
   "schoolName", "tagline", "boardName", "affiliationNumber", "schoolCode", "principalPhotoUrl",
   "principalName", "principalMessage", "address", "phone", "officeHours", "mapUrl",
-  "statusPageUrl", "email", "jurisdiction", "includedLanguages", "grievanceOfficerName",
+  "statusPageUrl", "website", "email", "securityContactEmail", "jurisdiction", "includedLanguages", "grievanceOfficerName",
   "grievanceOfficerEmail", "grievanceOfficerPhone", "lastUpdated",
 ] as const;
 

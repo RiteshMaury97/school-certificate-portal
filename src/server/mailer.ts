@@ -2,8 +2,9 @@ import "server-only";
 
 import nodemailer from "nodemailer";
 
-import { db } from "@/server/firebase-admin";
 import { assertServerEnvironment } from "@/server/env";
+import { db } from "@/server/firebase-admin";
+import { absoluteUrl } from "@/server/site-origin";
 
 import type { SendMailOptions } from "nodemailer";
 
@@ -165,12 +166,8 @@ export async function sendAdminOtpEmail(input: {
   const contactDetails = [input.address?.trim(), input.phone?.trim(), input.email?.trim()].filter(
     (value): value is string => Boolean(value),
   );
-  const origin = (process.env.SITE_URL || process.env.APP_ORIGIN || "https://sischool.in").replace(
-    /\/$/,
-    "",
-  );
-  const logoUrl = `${origin}/sis-logo.png`;
-  const portalUrl = `${origin}/admin/login`;
+  const logoUrl = absoluteUrl("/sis-logo.png");
+  const portalUrl = absoluteUrl("/admin/login");
   const safeTagline = escapeHtml(tagline);
   const safeDetails = details.map(escapeHtml);
   const safeContactDetails = contactDetails.map(escapeHtml);
@@ -222,7 +219,6 @@ export async function sendAdminInvitationEmail(input: {
   role: string;
   temporaryPassword: string;
   verificationLink: string;
-  origin: string;
   schoolName: string;
   recipientName?: string;
   tagline?: string;
@@ -250,8 +246,8 @@ export async function sendAdminInvitationEmail(input: {
   const contacts = [input.address?.trim(), input.phone?.trim(), input.email?.trim()].filter(
     (value): value is string => Boolean(value),
   );
-  const portalUrl = new URL("/admin/login", input.origin).toString();
-  const logoUrl = new URL("/sis-logo.png", input.origin).toString();
+  const portalUrl = absoluteUrl("/admin/login");
+  const logoUrl = absoluteUrl("/sis-logo.png");
   const safeName = escapeHtml(name);
   const safeRecipientName = escapeHtml(recipientName);
   const safeRole = escapeHtml(roleLabel);

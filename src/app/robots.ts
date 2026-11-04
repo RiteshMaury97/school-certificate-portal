@@ -1,23 +1,17 @@
+import { absoluteUrl } from "@/server/site-origin";
+import { ROBOTS_DISALLOW_PATHS, SITE_MAP, XML_SITEMAP_PATH } from "@/shared/site-map";
+
 import type { MetadataRoute } from "next";
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/terms", "/privacy", "/verify"],
-        disallow: [
-          "/admin",
-          "/admin/",
-          "/api",
-          "/api/",
-          "/maintenance",
-          "/certificates/print",
-          "/certificates/results",
-        ],
+        allow: SITE_MAP.filter((page) => page.indexable).map((page) => page.path),
+        disallow: [...ROBOTS_DISALLOW_PATHS],
       },
     ],
-    sitemap: `${(
-      [process.env.SITE_URL, process.env.APP_ORIGIN].find(Boolean) ?? "https://example.org"
-    ).replace(/\/$/, "")}/sitemap.xml`,
+    sitemap: absoluteUrl(XML_SITEMAP_PATH),
   };
 }
