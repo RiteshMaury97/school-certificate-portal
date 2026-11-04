@@ -156,10 +156,11 @@ export async function PUT(
     const sameHash = await db.collection("certificates").where("sha256", "==", hash).get();
     const studentId = String(current.get("studentId") ?? "");
     const duplicateDecision = duplicateFileDecision(
-      sameHash.docs.map((doc) => ({
-        studentId: doc.get("studentId"),
-        type: doc.get("type"),
-      })),
+      sameHash.docs.map((doc) => {
+        const duplicateStudentId: unknown = doc.get("studentId");
+        const duplicateType: unknown = doc.get("type");
+        return { studentId: duplicateStudentId, type: duplicateType };
+      }),
       studentId,
       parsed.data.type,
     );
@@ -198,7 +199,7 @@ export async function PUT(
       );
       await replacementRef.set({
         publicId: randomUUID().replace(/-/g, ""),
-        studentId: current.get("studentId"),
+        studentId,
         session: parsed.data.session,
         type: parsed.data.type,
         certificateNumberEncrypted: encryptCertificateNumber(parsed.data.certificateNumber),

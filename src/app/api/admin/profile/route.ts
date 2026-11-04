@@ -34,10 +34,17 @@ const TEXT_LIMITS = {
   photoDataUrl: 300_000,
 } as const;
 type TextField = keyof typeof TEXT_LIMITS;
-const TEXT_FIELDS = Object.keys(TEXT_LIMITS) as TextField[];
+function isTextField(field: string): field is TextField {
+  return Object.hasOwn(TEXT_LIMITS, field);
+}
+const TEXT_FIELDS = Object.keys(TEXT_LIMITS).filter(isTextField);
 const BOOLEAN_FIELDS = ["emailNotifications", "systemNotifications"] as const;
 type BooleanField = (typeof BOOLEAN_FIELDS)[number];
 type Profile = Record<TextField, string> & Record<BooleanField, boolean>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 const emptyProfile: Profile = {
   name: "",
@@ -80,8 +87,8 @@ function validPersonName(value: string) {
 
 function readProfile(value: unknown): Profile {
   const profile = { ...emptyProfile };
-  if (!value || typeof value !== "object" || Array.isArray(value)) return profile;
-  const stored = value as Record<string, unknown>;
+  if (!isRecord(value)) return profile;
+  const stored = value;
   for (const field of TEXT_FIELDS) {
     const saved = stored[field];
     if (typeof saved === "string") profile[field] = saved;
@@ -128,10 +135,10 @@ export async function PATCH(request: NextRequest) {
   try {
     const actor = await requireAdmin(request);
     const body: unknown = await request.json();
-    if (!body || typeof body !== "object" || Array.isArray(body))
+    if (!isRecord(body))
       return NextResponse.json({ error: "Enter valid profile details." }, { status: 400 });
 
-    const input = body as Record<string, unknown>;
+    const input = body;
     const allowedFields = new Set<string>([...TEXT_FIELDS, ...BOOLEAN_FIELDS]);
     if (Object.keys(input).some((key) => !allowedFields.has(key)))
       return NextResponse.json({ error: "Profile contains unsupported fields." }, { status: 400 });

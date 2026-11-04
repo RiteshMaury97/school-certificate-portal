@@ -17,12 +17,22 @@ import {
 import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+function isManifestFile(value: unknown): value is { name: string; size: number } {
+  if (typeof value !== "object" || value === null) return false;
+  const name: unknown = Reflect.get(value, "name");
+  const size: unknown = Reflect.get(value, "size");
+  return typeof name === "string" && typeof size === "number";
+}
 function safeTypeSlug(value: string): string {
   try {
     return certificateTypeSlug(value);
   } catch {
     return "";
   }
+}
+function sessionOf(document: { get(field: string): unknown }): string {
+  const value: unknown = document.get("session");
+  return typeof value === "string" ? normalizeAcademicSession(value) ?? "" : "";
 }
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -70,15 +80,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File manifest is invalid." }, { status: 400 });
     }
     const files = Array.isArray(manifest)
-      ? manifest.filter(
-          (item): item is { name: string; size: number } =>
-            typeof item === "object" &&
-            item !== null &&
-            "name" in item &&
-            typeof item.name === "string" &&
-            "size" in item &&
-            typeof item.size === "number",
-        )
+      ? manifest.filter(isManifestFile)
       : [];
     if (
       files.length < 1 ||
@@ -157,10 +159,7 @@ export async function POST(request: NextRequest) {
         }
         if (!student?.exists)
           errors.push("Student/admission number did not match exactly one student.");
-        else if (
-          normalizeAcademicSession(typeof student.get("session") === "string" ? student.get("session") : "") !==
-          normalizeAcademicSession(session)
-        )
+        else if (sessionOf(student) !== normalizeAcademicSession(session))
           errors.push("Certificate session must match the student's passing session.");
         if (/^\d{4}-\d{2}$/.test(session)) {
           const sessionDoc = await db.collection("sessions").doc(session).get();

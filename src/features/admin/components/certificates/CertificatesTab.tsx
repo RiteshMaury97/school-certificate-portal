@@ -28,6 +28,12 @@ type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
   url: string,
   init?: RequestInit,
 ) => Promise<T>;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+function errorText(value: unknown, fallback: string): string {
+  return typeof value === "string" ? value : fallback;
+}
 type Props = {
   role: Role;
   form: StudentFormState;
@@ -493,12 +499,17 @@ export default function CertificatesTab(props: Props) {
                               },
                             });
                             if (!response.ok) {
-                              const data = await response.json().catch(() => ({}));
-                              if (data.duplicateFileWarning === true)
+                              const data: unknown = await response.json().catch(() => ({}));
+                              if (isRecord(data) && data.duplicateFileWarning === true)
                                 setDuplicateHashWarning(
-                                  String(data.error ?? "Duplicate file detected."),
+                                  errorText(data.error, "Duplicate file detected."),
                                 );
-                              throw new Error(String(data.error ?? "Replacement failed."));
+                              throw new Error(
+                                errorText(
+                                  isRecord(data) ? data.error : undefined,
+                                  "Replacement failed.",
+                                ),
+                              );
                             }
                             setDuplicateHashWarning("");
                             setDuplicateHashAcknowledged(false);

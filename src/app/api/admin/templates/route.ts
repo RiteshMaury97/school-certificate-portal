@@ -6,6 +6,18 @@ import { requireRoles, apiError } from "@/server/security";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 
 import type { NextRequest } from "next/server";
+
+function hasDataValidations(worksheet: ExcelJS.Worksheet): worksheet is ExcelJS.Worksheet & {
+  dataValidations: { add: (range: string, validation: DataValidation) => void };
+} {
+  const validations: unknown = Reflect.get(worksheet, "dataValidations");
+  return (
+    typeof validations === "object" &&
+    validations !== null &&
+    "add" in validations &&
+    typeof validations.add === "function"
+  );
+}
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const headers = [
@@ -39,9 +51,7 @@ export async function GET(request: NextRequest) {
           .filter((document) => document.get("isActive") !== false)
           .map((document) =>
             normalizeAcademicSession(
-              String(
-                document.get("label") ?? document.get("name") ?? document.id,
-              ),
+              String(document.get("label") ?? document.get("name") ?? document.id),
             ),
           )
           .filter((value): value is string => value !== null),
@@ -71,22 +81,16 @@ export async function GET(request: NextRequest) {
       return new NextResponse(csv, {
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition":
-            'attachment; filename="student-import-template.csv"',
+          "Content-Disposition": 'attachment; filename="student-import-template.csv"',
           "Cache-Control": "no-store",
         },
       });
     }
     if (format !== "xlsx")
-      return NextResponse.json(
-        { error: "Choose csv or xlsx." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Choose csv or xlsx." }, { status: 400 });
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Student Data");
-    const sheetWithValidations = sheet as typeof sheet & {
-      dataValidations: { add: (range: string, validation: DataValidation) => void };
-    };
+    if (!hasDataValidations(sheet)) throw new Error("Spreadsheet validations are unavailable.");
     sheet.views = [{ state: "frozen", ySplit: 1 }];
     sheet.addRow(headers);
     sheet.getRow(1).font = { bold: true };
@@ -122,7 +126,7 @@ export async function GET(request: NextRequest) {
         `'Allowed Values'!$A$2:$A$${String(classes.length + 1)}`,
         "ClassNames",
       );
-      sheetWithValidations.dataValidations.add("E2:E501", {
+      sheet.dataValidations.add("E2:E501", {
         type: "list",
         allowBlank: false,
         formulae: ["ClassNames"],
@@ -136,7 +140,7 @@ export async function GET(request: NextRequest) {
         `'Allowed Values'!$C$2:$C$${String(sessions.length + 1)}`,
         "AcademicSessions",
       );
-      sheetWithValidations.dataValidations.add("F2:F501", {
+      sheet.dataValidations.add("F2:F501", {
         type: "list",
         allowBlank: false,
         formulae: ["AcademicSessions"],
@@ -151,19 +155,47 @@ export async function GET(request: NextRequest) {
       ["Student Excel import — format guide"],
       ["Delete the DEMO row in Student Data, then add one student per row."],
       ["Use the exact class and session values from the dropdowns / Allowed Values sheet."],
-      ["Wrong class/session formats are rejected; the preview identifies the Excel row and column."],
-      ["Only a fully valid preview can be imported. Add certificates afterward from each student row."],
+      [
+        "Wrong class/session formats are rejected; the preview identifies the Excel row and column.",
+      ],
+      [
+        "Only a fully valid preview can be imported. Add certificates afterward from each student row.",
+      ],
       [""],
       ["Column", "Required", "Expected format"],
-      ["studentName", "Yes", "Student's official name; 2–100 letters, spaces, apostrophes, periods or hyphens."],
+      [
+        "studentName",
+        "Yes",
+        "Student's official name; 2–100 letters, spaces, apostrophes, periods or hyphens.",
+      ],
       ["fatherName", "Yes", "Father's official name; use the school register spelling."],
       ["motherName", "Yes", "Mother's official name; use the school register spelling."],
-      ["scholarNumber", "Yes", "Unique within the selected class and session; letters, numbers, spaces, / or -."],
-      ["className", "Yes", "Choose an exact active value from Allowed Values (for example Class 10 A only if listed)."],
+      [
+        "scholarNumber",
+        "Yes",
+        "Unique within the selected class and session; letters, numbers, spaces, / or -.",
+      ],
+      [
+        "className",
+        "Yes",
+        "Choose an exact active value from Allowed Values (for example Class 10 A only if listed).",
+      ],
       ["session", "Yes", "Choose an active YYYY-YY value, e.g. 2025-26."],
-      ["admissionNumber", "No", "Admission number; used to distinguish students with the same names."],
-      ["dateOfBirth", "No", "Valid date formatted as YYYY-MM-DD; also used to distinguish matching names."],
-      ["Certificates", "No", "Do not add certificate files to this workbook. Upload them from the student's table row."],
+      [
+        "admissionNumber",
+        "No",
+        "Admission number; used to distinguish students with the same names.",
+      ],
+      [
+        "dateOfBirth",
+        "No",
+        "Valid date formatted as YYYY-MM-DD; also used to distinguish matching names.",
+      ],
+      [
+        "Certificates",
+        "No",
+        "Do not add certificate files to this workbook. Upload them from the student's table row.",
+      ],
     ]);
     guide.getColumn(1).width = 30;
     guide.getColumn(2).width = 20;
@@ -176,10 +208,8 @@ export async function GET(request: NextRequest) {
     const bytes = await workbook.xlsx.writeBuffer();
     return new NextResponse(new Uint8Array(bytes), {
       headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition":
-          'attachment; filename="student-import-template.xlsx"',
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": 'attachment; filename="student-import-template.xlsx"',
         "Cache-Control": "no-store",
       },
     });

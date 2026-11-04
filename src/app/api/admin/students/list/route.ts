@@ -4,7 +4,7 @@ import { db } from "@/server/firebase-admin";
 import { apiError, requireRoles } from "@/server/security";
 import { decryptStudentIdentifier } from "@/server/student-pii";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
@@ -22,16 +22,17 @@ export async function GET(request: NextRequest) {
     const snapshot = await query.get();
     const students = await Promise.all(
       snapshot.docs.map(async (doc) => {
-        const certs = await db
-          .collection("certificates")
-          .where("studentId", "==", doc.id)
-          .get();
+        const certs = await db.collection("certificates").where("studentId", "==", doc.id).get();
         let admissionNo = String(doc.get("admissionNo") ?? "");
         let dateOfBirth = "";
         let scholarNumber = "";
-        const encryptedAdmission = doc.get("admissionNumber");
-        const encryptedDob = doc.get("dateOfBirth");
-        const encryptedScholarNumber = doc.get("scholarNumber");
+        const encryptedAdmission: unknown = doc.get("admissionNumber");
+        const encryptedDob: unknown = doc.get("dateOfBirth");
+        const encryptedScholarNumber: unknown = doc.get("scholarNumber");
+        const studentName: unknown = doc.get("studentName");
+        const fatherName: unknown = doc.get("fatherName");
+        const motherName: unknown = doc.get("motherName");
+        const session: unknown = doc.get("session");
         if (typeof encryptedAdmission === "string") {
           try {
             admissionNo = decryptStudentIdentifier(encryptedAdmission);
@@ -59,10 +60,10 @@ export async function GET(request: NextRequest) {
           dateOfBirth,
           scholarNumber,
           className: String(doc.get("className") ?? ""),
-          studentName: doc.get("studentName"),
-          fatherName: doc.get("fatherName"),
-          motherName: doc.get("motherName"),
-          session: doc.get("session"),
+          studentName,
+          fatherName,
+          motherName,
+          session,
           importedFromExcel: doc.get("importedFromExcel") === true,
           certificateCount: certs.size,
         };
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
       {
         students,
         hasMore: snapshot.size === 100,
-        nextCursor: snapshot.size === 100 ? snapshot.docs.at(-1)?.id ?? null : null,
+        nextCursor: snapshot.size === 100 ? (snapshot.docs.at(-1)?.id ?? null) : null,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

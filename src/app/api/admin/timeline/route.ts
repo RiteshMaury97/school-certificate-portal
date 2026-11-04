@@ -1,3 +1,4 @@
+import { Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
@@ -7,6 +8,12 @@ import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+function timestampMillis(value: unknown): number {
+  return value instanceof Timestamp ? value.toMillis() : 0;
+}
+function timestampIso(value: unknown): string | null {
+  return value instanceof Timestamp ? value.toDate().toISOString() : null;
+}
 export async function GET(request: NextRequest) {
   try {
     await requireRoles(request, ["uploader", "approver", "superadmin"]);
@@ -49,8 +56,7 @@ export async function GET(request: NextRequest) {
       ]
         .sort(
           (a, b) =>
-            (b.get("timestamp")?.toMillis?.() ?? 0) -
-            (a.get("timestamp")?.toMillis?.() ?? 0),
+            timestampMillis(b.get("timestamp")) - timestampMillis(a.get("timestamp")),
         )
         .slice(0, 150);
     } else {
@@ -76,15 +82,19 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json(
       {
-        events: rows.map((d) => ({
-          id: d.id,
-          action: d.get("action"),
-          targetId: d.get("targetId"),
-          actor:
-            actorNames.get(String(d.get("actorUid") ?? "")) ??
-            (d.get("actorUid") === "public" ? "Public user" : "System"),
-          timestamp: d.get("timestamp")?.toDate?.()?.toISOString?.() ?? null,
-        })),
+        events: rows.map((d) => {
+          const action: unknown = d.get("action");
+          const targetId: unknown = d.get("targetId");
+          return {
+            id: d.id,
+            action,
+            targetId,
+            actor:
+              actorNames.get(String(d.get("actorUid") ?? "")) ??
+              (d.get("actorUid") === "public" ? "Public user" : "System"),
+            timestamp: timestampIso(d.get("timestamp")),
+          };
+        }),
       },
       { headers: { "Cache-Control": "no-store" } },
     );

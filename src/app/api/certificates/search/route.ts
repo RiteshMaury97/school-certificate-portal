@@ -1,3 +1,4 @@
+import { Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 import { decryptCertificateNumber } from "@/server/certificate-number";
@@ -38,6 +39,9 @@ const genericBody = {
   found: false,
   message: "No record found. Check the details and try again.",
 };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 function genericResponse() {
   return NextResponse.json(genericBody, {
     status: 200,
@@ -136,12 +140,10 @@ async function retrieveStudent(
         document.get("published") !== false,
     )
     .sort((left, right) => {
-      const leftCreated = left.get("createdAt");
-      const rightCreated = right.get("createdAt");
-      const leftTime =
-        typeof leftCreated?.toMillis === "function" ? leftCreated.toMillis() : 0;
-      const rightTime =
-        typeof rightCreated?.toMillis === "function" ? rightCreated.toMillis() : 0;
+      const leftCreated: unknown = left.get("createdAt");
+      const rightCreated: unknown = right.get("createdAt");
+      const leftTime = leftCreated instanceof Timestamp ? leftCreated.toMillis() : 0;
+      const rightTime = rightCreated instanceof Timestamp ? rightCreated.toMillis() : 0;
       return rightTime - leftTime;
     });
   if (active.length === 0) {
@@ -195,13 +197,13 @@ export async function POST(request: NextRequest) {
     if (!requesterIp(request)) return NextResponse.json({ error: "Service temporarily unavailable." }, { status: 503 });
     await verifyRequestAppCheck(request);
     const raw: unknown = await request.json().catch(() => null);
-    if (typeof raw !== "object" || raw === null) {
+    if (!isRecord(raw)) {
       await consumeSearchBudget(request);
       await audit(request, "invalid_request");
       await delayFailedLookup();
       return genericResponse();
     }
-    const body = raw as Record<string, unknown>;
+    const body = raw;
 
     // Second stage: the signed challenge is bound to both the original search key and requester IP.
     if (typeof body.challengeToken === "string") {

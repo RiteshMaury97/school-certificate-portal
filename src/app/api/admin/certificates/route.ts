@@ -96,18 +96,21 @@ async function findDuplicateCertificate(
 
 async function storeCertificateRecord(
   request: NextRequest,
-  admin: CertificateAdmin,
-  details: {
-    studentId: string;
-    session: string;
-    type: string;
-    certificateNumber: string;
-    issueDate: string;
+  input: {
+    admin: CertificateAdmin;
+    details: {
+      studentId: string;
+      session: string;
+      type: string;
+      certificateNumber: string;
+      issueDate: string;
+    };
+    file: File;
+    sameHash: Awaited<ReturnType<typeof findDuplicateCertificate>>["sameHash"];
+    duplicateReason: string;
   },
-  file: File,
-  sameHash: Awaited<ReturnType<typeof findDuplicateCertificate>>["sameHash"],
-  duplicateReason: string,
 ) {
+  const { admin, details, file, sameHash, duplicateReason } = input;
   const { studentId, session, type, certificateNumber, issueDate } = details;
   const stored = await uploadCertificate({
     file,
@@ -301,14 +304,13 @@ export async function POST(request: NextRequest) {
     if (quotaError) return NextResponse.json({ error: quotaError }, { status: 429 });
     const duplicate = await findDuplicateCertificate(file, studentId, type, form);
     if (duplicate.response) return duplicate.response;
-    return await storeCertificateRecord(
-      request,
+    return await storeCertificateRecord(request, {
       admin,
-      { studentId, session, type, certificateNumber, issueDate },
+      details: { studentId, session, type, certificateNumber, issueDate },
       file,
-      duplicate.sameHash,
-      duplicate.reason,
-    );
+      sameHash: duplicate.sameHash,
+      duplicateReason: duplicate.reason,
+    });
   } catch (error) {
     return apiError(error);
   }

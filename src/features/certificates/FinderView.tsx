@@ -630,12 +630,12 @@ export default function FinderPage() {
                       onChange={(event) => {
                         update("session", event.target.value);
                       }}
-                      disabled={sessionsLoading || sessionsLoadError || sessions.length === 0}
+                      disabled={sessionsLoadError || sessions.length === 0}
                       className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--text)] outline-none transition focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] disabled:cursor-not-allowed disabled:bg-[var(--surface-2)]"
                     >
                       {sessions.length === 0 ? (
                         <option value="">
-                          {sessionsLoading ? "Loading sessions…" : "No data found"}
+                          No data found
                         </option>
                       ) : (
                         <option value="">Select passing session</option>

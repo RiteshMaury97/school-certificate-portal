@@ -103,7 +103,14 @@ export async function GET(request: NextRequest) {
     void Promise.resolve(archive.finalize())
       .then(() => recordCertificateDownloads(included))
       .catch(() => output.destroy(new Error("Archive finalization or download metrics failed")));
-    const body = Readable.toWeb(output) as ReadableStream<Uint8Array>;
+    const body = Readable.toWeb(output).pipeThrough(
+      new TransformStream<unknown, Uint8Array>({
+        transform(chunk, controller) {
+          if (!(chunk instanceof Uint8Array)) throw new Error("Invalid archive data.");
+          controller.enqueue(chunk);
+        },
+      }),
+    );
     return new NextResponse(body, {
       headers: {
         "Content-Type": "application/zip",

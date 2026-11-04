@@ -13,8 +13,8 @@ export async function GET() {
     const classes = snapshot.docs
       .filter((doc) => doc.get("isActive") !== false)
       .map((doc) => {
-        const label = doc.get("label");
-        const name = doc.get("name");
+        const label: unknown = doc.get("label");
+        const name: unknown = doc.get("name");
         return typeof label === "string" && label.trim()
           ? label.trim()
           : typeof name === "string" && name.trim()

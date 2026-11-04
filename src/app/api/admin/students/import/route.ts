@@ -137,9 +137,10 @@ function headerKey(value: string): string {
 }
 
 function catalogLabel(document: QueryDocumentSnapshot): string {
-  const label = document.get("label");
-  const name = document.get("name");
-  return String(label ?? name ?? document.id).trim();
+  const label: unknown = document.get("label");
+  const name: unknown = document.get("name");
+  const value = typeof label === "string" ? label : typeof name === "string" ? name : document.id;
+  return value.trim();
 }
 
 function addFieldError(row: PreviewRow, column: string, message: string): void {
@@ -178,7 +179,8 @@ export async function POST(request: NextRequest) {
       );
 
     const headerRow = rows.at(0);
-    if (!headerRow) return NextResponse.json({ error: "The file needs a header row." }, { status: 400 });
+    if (!headerRow)
+      return NextResponse.json({ error: "The file needs a header row." }, { status: 400 });
     const headers = headerRow.cells.map(headerKey);
     const headerErrors: string[] = [];
     const fieldIndexes = new Map<string, number>();
@@ -187,7 +189,8 @@ export async function POST(request: NextRequest) {
       const positions = headers
         .map((header, index) => (accepted.has(header) ? index : -1))
         .filter((index) => index >= 0);
-      if (positions.length > 1) headerErrors.push(`Use only one column for ${String(fieldLabels[field])}.`);
+      if (positions.length > 1)
+        headerErrors.push(`Use only one column for ${String(fieldLabels[field])}.`);
       if (positions[0] !== undefined) fieldIndexes.set(field, positions[0]);
     }
     for (const field of requiredFields)
@@ -238,7 +241,8 @@ export async function POST(request: NextRequest) {
           fieldErrors: [],
         };
         for (let index = headerRow.cells.length; index < cells.length; index++)
-          if (cells[index]) addFieldError(row, `Column ${String(index + 1)}`, "Unexpected cell value.");
+          if (cells[index])
+            addFieldError(row, `Column ${String(index + 1)}`, "Unexpected cell value.");
 
         const classValue = values.className ?? "";
         if (

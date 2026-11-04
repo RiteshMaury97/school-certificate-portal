@@ -1,3 +1,4 @@
+import { Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 
@@ -15,6 +16,10 @@ import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 async function getRequestsByStatus(status: string) {
   const collection = db.collection("dataRightsRequests");
   let docs: QueryDocumentSnapshot[];
@@ -22,12 +27,14 @@ async function getRequestsByStatus(status: string) {
     // Filter in Firestore, but avoid the status + createdAt composite index.
     docs = (await collection.where("status", "==", status).get()).docs;
   } catch (error) {
-    const detail = error as { code?: string | number; message?: string };
-    const message = detail.message ?? String(error);
+    const detail = error instanceof Error ? error : undefined;
+    const code: unknown =
+      typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+    const message = detail?.message ?? String(error);
     if (
-      detail.code !== 9 &&
-      detail.code !== "9" &&
-      detail.code !== "failed-precondition" &&
+      code !== 9 &&
+      code !== "9" &&
+      code !== "failed-precondition" &&
       !message.includes("FAILED_PRECONDITION") &&
       !message.includes("requires an index")
     ) {
@@ -40,10 +47,7 @@ async function getRequestsByStatus(status: string) {
   }
 
   const createdAtMillis = (value: unknown): number => {
-    if (value && typeof value === "object" && "toMillis" in value) {
-      const toMillis = (value as { toMillis?: () => number }).toMillis;
-      if (typeof toMillis === "function") return toMillis.call(value);
-    }
+    if (value instanceof Timestamp) return value.toMillis();
     if (value instanceof Date) return value.getTime();
     if (typeof value === "string") return Date.parse(value) || 0;
     return 0;
@@ -76,14 +80,10 @@ export async function GET(request: NextRequest) {
 }
 export async function PATCH(request: NextRequest) {
   try {
-    const body = (await request.json()) as {
-      id?: unknown;
-      resolution?: unknown;
-      action?: unknown;
-      studentId?: unknown;
-      reason?: unknown;
-      confirm?: unknown;
-    };
+    const raw: unknown = await request.json();
+    if (!isRecord(raw))
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    const body = raw;
     if (body.action === "erase") {
       const admin = await requireRoles(request, ["superadmin"]);
       await requireSensitiveReauth(request, admin);

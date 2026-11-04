@@ -98,7 +98,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const email = decoded.email?.trim().toLowerCase() ?? "";
     const adminRef = db.collection("admins").doc(decoded.uid);
     const admin = await adminRef.get();
-    const role = admin.get("role");
+    const role: unknown = admin.get("role");
     const storedEmail = adminOtpRecipient({ email: admin.get("email") });
     if (
       !decoded.email_verified ||

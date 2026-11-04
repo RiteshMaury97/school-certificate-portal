@@ -1,6 +1,6 @@
 import { createHmac, randomBytes } from "node:crypto";
 
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { after } from "next/server";
 
@@ -28,6 +28,15 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const COOKIE = "sis_admin_session";
 const DEVICE_COOKIE = "sis_admin_device";
+type AdminRole = "uploader" | "approver" | "admin" | "superadmin";
+function isAdminRole(value: unknown): value is AdminRole {
+  return (
+    value === "uploader" || value === "approver" || value === "admin" || value === "superadmin"
+  );
+}
+function timestampMillis(value: unknown): number {
+  return value instanceof Timestamp ? value.toDate().getTime() : 0;
+}
 const secret = () => {
   const value = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
   if (Buffer.byteLength(value) < 32) throw new Error("AUDIT_LOG_HMAC_SECRET is not configured");
@@ -90,16 +99,19 @@ export async function POST(request: NextRequest) {
         { status: 423 },
       );
     const admin = await db.collection("admins").doc(decoded.uid).get();
-    const role = admin.get("role");
+    const roleValue: unknown = admin.get("role");
+    const role = isAdminRole(roleValue) ? roleValue : null;
     const status = String(admin.get("status"));
+    const adminEmail: unknown = admin.get("email");
     if (
       !admin.exists ||
       admin.get("mustChangePassword") === true ||
       decoded.mustChangePassword === true ||
       !["active", "invited"].includes(status) ||
       !email ||
-      admin.get("email")?.toLowerCase() !== email ||
-      (role !== "uploader" && role !== "approver" && role !== "admin" && role !== "superadmin") ||
+      typeof adminEmail !== "string" ||
+      adminEmail.toLowerCase() !== email ||
+      role === null ||
       decoded.role !== role
     )
       return NextResponse.json({ error: "This account is not authorized." }, { status: 403 });
@@ -173,6 +185,7 @@ export async function POST(request: NextRequest) {
         : typeof deviceCountry === "string"
           ? deviceCountry
           : "";
+    const priorCreatedAt: unknown = known.get("createdAt");
     const newCountrySignIn = Boolean(
       country && latestPriorCountry && country !== latestPriorCountry,
     );
@@ -186,7 +199,7 @@ export async function POST(request: NextRequest) {
         ipHash: hashRequesterIp(request),
         lastSeenAt: FieldValue.serverTimestamp(),
         expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60_000),
-        createdAt: known.exists ? (known.get("createdAt") ?? now) : now,
+        createdAt: known.exists ? (priorCreatedAt ?? now) : now,
       },
       { merge: true },
     );
@@ -304,15 +317,18 @@ export async function GET(request: NextRequest) {
     if (!session) return NextResponse.json({ authenticated: false }, { status: 401 });
     const decoded = await adminAuth.verifySessionCookie(session, true);
     const admin = await db.collection("admins").doc(decoded.uid).get();
-    const role = admin.get("role");
+    const roleValue: unknown = admin.get("role");
+    const role = isAdminRole(roleValue) ? roleValue : null;
     const sessionHash = digest(session),
       sessionDoc = await db.collection("adminSessions").doc(sessionHash).get();
-    const lastActivity = sessionDoc.get("lastActivityAt")?.toDate?.()?.getTime?.() ?? 0;
-    const expiry = sessionDoc.get("absoluteExpiresAt")?.toDate?.()?.getTime?.() ?? 0;
+    const lastActivity = timestampMillis(sessionDoc.get("lastActivityAt"));
+    const expiry = timestampMillis(sessionDoc.get("absoluteExpiresAt"));
+    const revokedAt: unknown = sessionDoc.get("revokedAt");
+    const adminEmail: unknown = admin.get("email");
     if (
       !sessionDoc.exists ||
       sessionDoc.get("uid") !== decoded.uid ||
-      sessionDoc.get("revokedAt") ||
+      revokedAt ||
       isAdminSessionExpired(lastActivity, expiry)
     )
       return NextResponse.json({ authenticated: false }, { status: 401 });
@@ -323,8 +339,9 @@ export async function GET(request: NextRequest) {
     if (
       !admin.exists ||
       admin.get("status") !== "active" ||
-      (role !== "uploader" && role !== "approver" && role !== "admin" && role !== "superadmin") ||
-      admin.get("email")?.toLowerCase() !== decoded.email?.toLowerCase() ||
+      role === null ||
+      typeof adminEmail !== "string" ||
+      adminEmail.toLowerCase() !== decoded.email?.toLowerCase() ||
       decoded.role !== role
     )
       return NextResponse.json({ authenticated: false }, { status: 401 });
