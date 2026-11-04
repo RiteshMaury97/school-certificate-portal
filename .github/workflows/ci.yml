@@ -21,7 +21,7 @@ jobs:
 
       - name: Reject generated reports and build metadata
         run: |
-          if git ls-files | grep -E '(^|/)(test-results|reports)(/|$)|(^|/)eslint-report\.json$|(^|/)[^/]+\.tsbuildinfo$|(^|/)[^/]+\.log$'; then
+          if git ls-files | grep -E '^(test-results|reports)(/|$)|(^|/)eslint-report\.json$|(^|/)[^/]+\.tsbuildinfo$|(^|/)[^/]+\.log$'; then
             echo "::error::Generated test/lint reports, logs and TypeScript build metadata must not be committed."
             exit 1
           fi
