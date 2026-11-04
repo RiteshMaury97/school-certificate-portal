@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { useT } from "@/i18n/locale-provider";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
+import { OFFICIAL_WEBSITE } from "../../../config/school";
 
 import ContactEnquiryForm from "./ContactEnquiryForm";
 
@@ -29,7 +30,7 @@ export default function ContactView() {
   const address = settingOr(settings.address, "Lodipur, Zamania, Ghazipur, Uttar Pradesh 232329");
   const phone = settingOr(settings.phone, "+91 9336950476");
   const email = settingOr(settings.email, "");
-  const website = settingOr(settings.website, "");
+  const website = OFFICIAL_WEBSITE;
   const mapUrl = settingOr(
     settings.mapUrl,
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${schoolName}, ${address}`)}`,

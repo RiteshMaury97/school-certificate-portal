@@ -4,9 +4,11 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = path.resolve(
-  process.env.DOMAIN_INDEPENDENCE_ROOT ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."),
+  process.env.DOMAIN_INDEPENDENCE_ROOT ??
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."),
 );
-const roots = ["src", "app", "public", "vercel.json", "next.config.ts"];
+const roots = ["src", "app", "config/school.ts", "public", "vercel.json", "next.config.ts"];
+const officialWebsiteConfig = "config/school.ts";
 const allowedHostRoots = [
   "google.com",
   "googleapis.com",
@@ -23,6 +25,12 @@ const allowedHostRoots = [
   "plausible.io",
   "vercel.com",
   "vercel.app",
+  "facebook.com",
+  "instagram.com",
+  "youtube.com",
+  "x.com",
+  "wa.me",
+  "sischool.in",
 ];
 const licenseFiles = new Set(["public/fonts/OFL-NotoSansDevanagari.txt"]);
 
@@ -68,7 +76,10 @@ export function findDomainIndependenceViolations(file, content) {
   const normalizedPath = file.replaceAll("\\", "/");
   const violations = [];
   const lowered = content.toLowerCase();
-  if (lowered.includes("sischool.in"))
+  const containsConfiguredOfficialWebsite =
+    normalizedPath === officialWebsiteConfig &&
+    /export\s+const\s+OFFICIAL_WEBSITE\s*=\s*["']https:\/\/sischool\.in["'];/i.test(content);
+  if (lowered.includes("sischool.in") && !containsConfiguredOfficialWebsite)
     violations.push({ file: normalizedPath, reason: "contains the retired sischool.in domain" });
   if (lowered.includes("example.org"))
     violations.push({ file: normalizedPath, reason: "contains an example.org fallback" });
@@ -114,7 +125,9 @@ async function main() {
   const violations = await scanDomainIndependence();
   if (violations.length) {
     for (const violation of violations) {
-      const location = violation.line ? `${violation.file}:${String(violation.line)}` : violation.file;
+      const location = violation.line
+        ? `${violation.file}:${String(violation.line)}`
+        : violation.file;
       process.stderr.write(`FAIL ${location}: ${violation.reason}\n`);
     }
     process.exitCode = 1;

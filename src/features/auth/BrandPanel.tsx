@@ -3,6 +3,7 @@ import { Globe, Mail, MapPin, Phone } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 import { SCHOOL_INFO } from "@/lib/school-info";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
+import { OFFICIAL_WEBSITE } from "../../../config/school";
 
 type ContactItem = {
   label: string;
@@ -43,7 +44,7 @@ function ContactList({ className, contacts }: { className?: string; contacts: Co
 export default function BrandPanel() {
   const settings = usePublicSiteSettings();
   const email = settings.email?.trim() ?? "";
-  const website = settings.website?.trim() ?? "";
+  const website = OFFICIAL_WEBSITE;
   const contacts: ContactItem[] = [
     { label: "Address", value: SCHOOL_INFO.address, Icon: MapPin },
     {
@@ -54,13 +55,15 @@ export default function BrandPanel() {
     },
     ...(email ? [{ label: "Email", value: email, href: `mailto:${email}`, Icon: Mail }] : []),
     ...(website
-      ? [{
-          label: "Website",
-          value: "Visit Official Website",
-          href: website,
-          Icon: Globe,
-          external: true,
-        }]
+      ? [
+          {
+            label: "Website",
+            value: "Visit Official Website",
+            href: website,
+            Icon: Globe,
+            external: true,
+          },
+        ]
       : []),
   ];
   return (
@@ -80,16 +83,8 @@ export default function BrandPanel() {
             {SCHOOL_INFO.address}
           </p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--on-primary)]/90">
-            <a
-              href={`tel:${SCHOOL_INFO.phone.replaceAll(" ", "")}`}
-            >
-              {SCHOOL_INFO.phone}
-            </a>
-            {email && (
-              <a href={`mailto:${email}`}>
-                {email}
-              </a>
-            )}
+            <a href={`tel:${SCHOOL_INFO.phone.replaceAll(" ", "")}`}>{SCHOOL_INFO.phone}</a>
+            {email && <a href={`mailto:${email}`}>{email}</a>}
           </div>
           <p className="mt-2 hidden text-sm font-medium text-[var(--on-primary)] lg:block">
             Empowering Minds. Building Futures.

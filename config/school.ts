@@ -11,7 +11,7 @@ export const PHONE = "+91-9336950476";
 export const EMAIL = "sischoolzam@gmail.com";
 export const HOURS = "Mon–Sat, 8 AM – 3 PM";
 
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim().replace(/\/+$/, "");
+export const OFFICIAL_WEBSITE = "https://sischool.in";
 
 export const HIGHLIGHTS = [
   "Health & Medical Check-ups",

@@ -31,10 +31,10 @@ import {
   HOURS,
   HIGHLIGHTS,
   MANAGED_BY,
+  OFFICIAL_WEBSITE,
   PHONE,
   SCHOOL_NAME,
   SCHOOL_SUBTITLE,
-  SITE_URL,
   SOCIAL_URLS,
   TAGLINE,
 } from "../../../config/school";
@@ -237,13 +237,16 @@ export default function Footer() {
             <ContactRow icon={Clock} label="Office hours" className="text-sm">
               {HOURS}
             </ContactRow>
-            {SITE_URL && (
-              <ContactRow icon={MapPin} label="Official website">
-                <a href={SITE_URL} target="_blank" rel="noopener noreferrer" className="break-all">
-                  {SITE_URL.replace(/^https?:\/\//i, "")}
-                </a>
-              </ContactRow>
-            )}
+            <ContactRow icon={MapPin} label="Official website">
+              <a
+                href={OFFICIAL_WEBSITE}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-all"
+              >
+                {OFFICIAL_WEBSITE.replace(/^https?:\/\//i, "")}
+              </a>
+            </ContactRow>
           </address>
           <Link
             href="/contact"
