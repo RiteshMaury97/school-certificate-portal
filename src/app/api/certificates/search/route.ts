@@ -278,7 +278,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Service temporarily unavailable." }, { status: 503 });
     await verifyRequestAppCheck(request);
     const raw: unknown = await request.json().catch(() => null);
-    if (!isRecord(raw)) return failedLookup(request, "invalid_request", true);
+    if (!isRecord(raw)) return await failedLookup(request, "invalid_request", true);
     const challengeResponse = await resolveChallenge(request, raw);
     return challengeResponse ?? (await searchStudent(request, raw));
   } catch (error) {

@@ -4,6 +4,8 @@ import { db, describeFirebaseError } from "@/server/firebase-admin";
 import { ensurePublicSessions } from "@/server/public-sessions";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,14 @@ function addSession(sessions: Set<string>, value: unknown): boolean {
   return true;
 }
 
+function addDocumentSessions(sessions: Set<string>, document: QueryDocumentSnapshot): void {
+  if (document.get("isActive") === false) return;
+  const candidates = [document.get("label"), document.get("name"), document.id];
+  for (const candidate of candidates) {
+    if (addSession(sessions, candidate)) return;
+  }
+}
+
 export async function GET() {
   try {
     // Builds the compact index on first use so a fresh database never shows an error.
@@ -27,12 +37,13 @@ export async function GET() {
     ]);
     const stored: unknown = snapshot.get("sessions");
     const sessions = new Set<string>();
-    if (Array.isArray(stored)) stored.forEach((value: unknown) => addSession(sessions, value));
-    for (const doc of catalog.docs) {
-      if (doc.get("isActive") === false) continue;
-      for (const value of [doc.get("label"), doc.get("name"), doc.id]) {
-        if (addSession(sessions, value)) break;
+    if (Array.isArray(stored)) {
+      for (const value of stored) {
+        addSession(sessions, value);
       }
+    }
+    for (const doc of catalog.docs) {
+      addDocumentSessions(sessions, doc);
     }
     return NextResponse.json(
       { sessions: [...sessions].sort((a, b) => b.localeCompare(a)) },

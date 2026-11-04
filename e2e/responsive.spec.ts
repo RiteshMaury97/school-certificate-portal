@@ -19,11 +19,10 @@ function safeName(value: string) {
   return value.replaceAll("/", "_").replaceAll("?", "_").replaceAll(":", "_") || "home";
 }
 
-async function measure(page: Page, route: string) {
+async function measureLayout(page: Page, route: string) {
   return page.evaluate((routePath) => {
-    const root = document.scrollingElement ?? document.documentElement;
     const width = document.documentElement.clientWidth;
-    const height = document.documentElement.clientHeight;
+    const root = document.scrollingElement ?? document.documentElement;
     const visible = (element: Element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
@@ -38,24 +37,52 @@ async function measure(page: Page, route: string) {
       }
       return false;
     };
-    const elements = [...document.body.querySelectorAll("*")].filter(visible);
+    const label = (element: Element) =>
+      `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ""}.${typeof element.className === "string" ? element.className.split(/\s+/).slice(0, 2).join(".") : ""}`;
     const outside: string[] = [];
     const clipped: string[] = [];
     const longUnwrapped: string[] = [];
     const imagesOut: string[] = [];
-    for (const element of elements) {
+    for (const element of [...document.body.querySelectorAll("*")].filter(visible)) {
       const rect = element.getBoundingClientRect();
-      const label = `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ""}.${typeof element.className === "string" ? element.className.split(/\s+/).slice(0, 2).join(".") : ""}`;
-      if (!intentionalScroller(element) && (rect.left < -1 || rect.right > width + 1)) outside.push(label);
       const style = getComputedStyle(element);
       const text = element.children.length === 0 ? element.textContent.trim() : "";
-      if (text && /(hidden|clip)/.test(`${style.overflow} ${style.textOverflow}`) && element.scrollWidth > element.clientWidth + 1) clipped.push(label);
-      if (text && /[\p{L}\p{N}_-]{35,}/u.test(text) && style.overflowWrap !== "anywhere" && style.wordBreak !== "break-all" && style.whiteSpace !== "normal" && !intentionalScroller(element)) longUnwrapped.push(label);
+      const isOutside = rect.left < -1 || rect.right > width + 1;
+      const isClipped = /(hidden|clip)/.test(`${style.overflow} ${style.textOverflow}`) && element.scrollWidth > element.clientWidth + 1;
+      const isLong = /[\p{L}\p{N}_-]{35,}/u.test(text) && style.overflowWrap !== "anywhere" && style.wordBreak !== "break-all" && style.whiteSpace !== "normal";
+      if (isOutside && !intentionalScroller(element)) outside.push(label(element));
+      if (text && isClipped) clipped.push(label(element));
+      if (text && isLong && !intentionalScroller(element)) longUnwrapped.push(label(element));
       if (element instanceof HTMLImageElement) {
         const parent = element.parentElement?.getBoundingClientRect();
-        if (parent && (rect.width > parent.width + 1 || rect.height > parent.height + 1)) imagesOut.push(label);
+        if (parent && (rect.width > parent.width + 1 || rect.height > parent.height + 1)) imagesOut.push(label(element));
       }
     }
+    const logo = [...document.images].find((image) => /logo/i.test(image.alt));
+    const logoOut = logo ? logo.getBoundingClientRect().right > (logo.parentElement?.getBoundingClientRect().right ?? width) + 1 : false;
+    return {
+      pageScroll: root.scrollWidth <= width,
+      elementBounds: outside.length === 0,
+      textClipping: clipped.length === 0,
+      longTextWrap: longUnwrapped.length === 0,
+      imageBounds: imagesOut.length === 0 && !logoOut,
+      printFit: routePath !== "/certificates/print" || root.scrollWidth <= width,
+      outside,
+      clipped,
+      longUnwrapped,
+      imagesOut,
+    };
+  }, route);
+}
+
+async function measureControls(page: Page) {
+  return page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    const elements = [...document.body.querySelectorAll("*")].filter((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    });
     const interactive = elements.filter((element) => element.matches("button,a,input,select,textarea,[role=button]"));
     const smallControls = interactive.flatMap((element) => {
       const rect = element.getBoundingClientRect();
@@ -63,41 +90,67 @@ async function measure(page: Page, route: string) {
     });
     const overlaps: string[] = [];
     for (let left = 0; left < interactive.length; left += 1) {
-      const firstAtLeft = interactive[left];
-      if (!firstAtLeft) continue;
-      const a = firstAtLeft.getBoundingClientRect();
+      const first = interactive[left];
+      if (!first) continue;
+      const a = first.getBoundingClientRect();
       for (let right = left + 1; right < interactive.length; right += 1) {
-        const first = interactive[left];
         const second = interactive[right];
-        if (!first || !second) continue;
-        if (first.contains(second) || second.contains(first)) continue;
+        if (!second || first.contains(second) || second.contains(first)) continue;
         const b = second.getBoundingClientRect();
-        if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2)
-          overlaps.push(`${first.tagName.toLowerCase()} / ${second.tagName.toLowerCase()}`);
+        const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        if (overlapX > 2 && overlapY > 2) overlaps.push(`${first.tagName.toLowerCase()} / ${second.tagName.toLowerCase()}`);
       }
     }
+    const buttonsCut = interactive.filter((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.left < -1 || rect.right > width + 1;
+    }).length;
+    return { smallControls, overlaps, buttonsCut };
+  });
+}
+
+async function measureForms(page: Page) {
+  return page.evaluate(() => {
+    const visible = (element: Element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    };
     const forms = [...document.forms].filter(visible);
     const multiColumnForms = forms.filter((form) => {
       const columns = getComputedStyle(form).gridTemplateColumns;
       return innerWidth <= 430 && columns.split(" ").filter(Boolean).length > 1;
     }).length;
-    const inputsUnder16 = [...document.querySelectorAll("input,select,textarea")].filter(visible).filter((input) => Number.parseFloat(getComputedStyle(input).fontSize) < 16).length;
-    const buttonsCut = interactive.filter((element) => {
+    const inputsUnder16 = [...document.querySelectorAll("input,select,textarea")]
+      .filter(visible)
+      .filter((input) => Number.parseFloat(getComputedStyle(input).fontSize) < 16).length;
+    return { multiColumnForms, inputsUnder16 };
+  });
+}
+
+async function measureModals(page: Page) {
+  return page.evaluate(() => {
+    const height = document.documentElement.clientHeight;
+    const dialogs = [...document.querySelectorAll('[role="dialog"],dialog[open]')].filter((element) => {
+      const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return rect.left < -1 || rect.right > width + 1;
-    }).length;
-    const dialogs = [...document.querySelectorAll('[role="dialog"],dialog[open]')].filter(visible);
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    });
     const modalIssues = dialogs.flatMap((dialog) => {
       const rect = dialog.getBoundingClientRect();
       const close = dialog.querySelector('button[aria-label*="close" i],button[aria-label*="cancel" i],[data-close]');
       const closeRect = close?.getBoundingClientRect();
-      return rect.top < 0 || rect.bottom > height || (closeRect && (closeRect.top < 0 || closeRect.bottom > height)) ? ["dialog exceeds viewport or close action is unreachable"] : [];
+      const outside = rect.top < 0 || rect.bottom > height;
+      const closeOutside = Boolean(closeRect && (closeRect.top < 0 || closeRect.bottom > height));
+      return outside || closeOutside ? ["dialog exceeds viewport or close action is unreachable"] : [];
     });
-    const tables = [...document.querySelectorAll("table")].filter(visible);
-    const uncontainedTables = tables.filter((table) => !intentionalScroller(table) && table.getBoundingClientRect().width > width + 1).length;
-    const logo = [...document.images].find((image) => /logo/i.test(image.alt));
-    const logoOut = logo ? logo.getBoundingClientRect().right > (logo.parentElement?.getBoundingClientRect().right ?? width) + 1 : false;
-    const hasViewportMeta = Boolean(document.querySelector('meta[name="viewport"]'));
+    return { modalIssues };
+  });
+}
+
+async function measureStyles(page: Page) {
+  return page.evaluate(() => {
     const readRules = (rules: CSSRuleList): string[] => [...rules].flatMap((rule) => {
       const nested = rule instanceof CSSGroupingRule ? rule.cssRules : null;
       return [rule.cssText, ...(nested ? readRules(nested) : [])];
@@ -106,41 +159,67 @@ async function measure(page: Page, route: string) {
       try { return readRules(sheet.cssRules); }
       catch { return []; }
     }).join("\n");
-    const paddingTop = Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop);
-    const printOverflow = routePath === "/certificates/print" && root.scrollWidth > width + 1;
-    const checks = {
-      pageScroll: root.scrollWidth <= width,
-      elementBounds: outside.length === 0,
-      targetSize: smallControls.length === 0,
-      controlOverlap: overlaps.length === 0,
-      textClipping: clipped.length === 0,
-      longTextWrap: longUnwrapped.length === 0,
-      inputFont: inputsUnder16 === 0,
-      phoneFormColumns: multiColumnForms === 0,
-      buttonsVisible: buttonsCut === 0,
-      scrollPadding: paddingTop > 0,
-      modalFit: modalIssues.length === 0,
-      tableContainment: uncontainedTables === 0,
-      imageBounds: imagesOut.length === 0 && !logoOut,
-      printFit: !printOverflow,
-      viewportMeta: hasViewportMeta,
+    const tables = [...document.querySelectorAll("table")];
+    const width = document.documentElement.clientWidth;
+    const contained = tables.every((table) => {
+      let parent = table.parentElement;
+      while (parent && parent !== document.body) {
+        const style = getComputedStyle(parent);
+        if (/(auto|scroll)/.test(style.overflowX) && parent.scrollWidth > parent.clientWidth + 1) return true;
+        parent = parent.parentElement;
+      }
+      return table.getBoundingClientRect().width <= width + 1;
+    });
+    return {
+      tableContainment: contained,
+      scrollPadding: Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) > 0,
+      viewportMeta: Boolean(document.querySelector('meta[name="viewport"]')),
       safeAreaSupport: cssRules.includes("safe-area-inset"),
       no100vh: !/(^|[^d])100vh\b/.test(cssRules),
       reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches && cssRules.includes("prefers-reduced-motion: reduce"),
     };
-    const failures = Object.entries(checks).flatMap(([name, passed]) => passed ? [] : [name]);
-    if (outside.length) failures.push(`outside=${outside.slice(0, 4).join(";")}`);
-    if (smallControls.length) failures.push(`under44=${smallControls.slice(0, 4).join(";")}`);
-    if (overlaps.length) failures.push(`overlap=${overlaps.slice(0, 3).join(";")}`);
-    if (clipped.length) failures.push(`clipped=${clipped.slice(0, 4).join(";")}`);
-    if (longUnwrapped.length) failures.push(`longString=${longUnwrapped.slice(0, 3).join(";")}`);
-    if (inputsUnder16) failures.push(`inputsUnder16=${String(inputsUnder16)}`);
-    if (multiColumnForms) failures.push(`multiColumnForms=${String(multiColumnForms)}`);
-    if (modalIssues.length) failures.push(...modalIssues);
-    return { checks, failures };
-  }, route);
+  });
 }
 
+async function measure(page: Page, route: string) {
+  const [layout, controls, forms, modals, styles] = await Promise.all([
+    measureLayout(page, route),
+    measureControls(page),
+    measureForms(page),
+    measureModals(page),
+    measureStyles(page),
+  ]);
+  const checks = {
+    pageScroll: layout.pageScroll,
+    elementBounds: layout.elementBounds,
+    targetSize: controls.smallControls.length === 0,
+    controlOverlap: controls.overlaps.length === 0,
+    textClipping: layout.textClipping,
+    longTextWrap: layout.longTextWrap,
+    inputFont: forms.inputsUnder16 === 0,
+    phoneFormColumns: forms.multiColumnForms === 0,
+    buttonsVisible: controls.buttonsCut === 0,
+    scrollPadding: styles.scrollPadding,
+    modalFit: modals.modalIssues.length === 0,
+    tableContainment: styles.tableContainment,
+    imageBounds: layout.imageBounds,
+    printFit: layout.printFit,
+    viewportMeta: styles.viewportMeta,
+    safeAreaSupport: styles.safeAreaSupport,
+    no100vh: styles.no100vh,
+    reducedMotion: styles.reducedMotion,
+  };
+  const failures = Object.entries(checks).flatMap(([name, passed]) => passed ? [] : [name]);
+  if (layout.outside.length) failures.push(`outside=${layout.outside.slice(0, 4).join(";")}`);
+  if (controls.smallControls.length) failures.push(`under44=${controls.smallControls.slice(0, 4).join(";")}`);
+  if (controls.overlaps.length) failures.push(`overlap=${controls.overlaps.slice(0, 3).join(";")}`);
+  if (layout.clipped.length) failures.push(`clipped=${layout.clipped.slice(0, 4).join(";")}`);
+  if (layout.longUnwrapped.length) failures.push(`longString=${layout.longUnwrapped.slice(0, 3).join(";")}`);
+  if (forms.inputsUnder16) failures.push(`inputsUnder16=${String(forms.inputsUnder16)}`);
+  if (forms.multiColumnForms) failures.push(`multiColumnForms=${String(forms.multiColumnForms)}`);
+  failures.push(...modals.modalIssues);
+  return { checks, failures };
+}
 async function navigateToPrivatePage(page: Page, route: string) {
   if (route !== "/certificates/results" && route !== "/certificates/print") {
     await page.goto(route, { waitUntil: "domcontentloaded" });
@@ -165,7 +244,10 @@ async function navigateToPrivatePage(page: Page, route: string) {
 
 for (const route of responsiveRoutes) {
   test(`responsive baseline ${route}`, async ({ page, browserName }) => {
-    test.skip(browserName !== "chromium", "Full screenshots and metric records are captured in Chromium.");
+    test.skip(
+      browserName !== "chromium",
+      "Full screenshots and metric records are captured in Chromium.",
+    );
     test.setTimeout(0);
     page.setDefaultTimeout(15_000);
     page.setDefaultNavigationTimeout(15_000);
@@ -188,9 +270,20 @@ for (const route of responsiveRoutes) {
           document.documentElement.dataset.theme = activeTheme === "dark" ? "dark" : "light";
         }, theme);
         const measured = await measure(page, route);
-        rows.push({ route, viewport: `${String(width)}x${String(height)}`, theme, fixture, ...measured });
+        rows.push({
+          route,
+          viewport: `${String(width)}x${String(height)}`,
+          theme,
+          fixture,
+          ...measured,
+        });
         await page.screenshot({
-          path: path.join(reportRoot, "screenshots", safeName(route), `${String(width)}x${String(height)}-${theme}.png`),
+          path: path.join(
+            reportRoot,
+            "screenshots",
+            safeName(route),
+            `${String(width)}x${String(height)}-${theme}.png`,
+          ),
           fullPage: true,
           animations: "disabled",
         });
@@ -198,7 +291,10 @@ for (const route of responsiveRoutes) {
     }
     await writeFile(path.join(rawRoot, `${safeName(route)}.json`), JSON.stringify(rows, null, 2));
     const failed = rows.filter((row) => row.failures.length);
-    expect(failed, `${route}: ${String(failed.length)} failing viewport/theme combinations`).toEqual([]);
+    expect(
+      failed,
+      `${route}: ${String(failed.length)} failing viewport/theme combinations`,
+    ).toEqual([]);
   });
 }
 
@@ -210,12 +306,18 @@ test("Hindi selector keeps a phone layout within 320 CSS pixels", async ({ page,
   await page.locator("#language-toggle").selectOption("hi");
   await expect(page.locator("html")).toHaveAttribute("lang", "hi");
   await page.setViewportSize({ width: 320, height: 568 });
-  const dimensions = await page.evaluate(() => ({ content: document.scrollingElement?.scrollWidth ?? 0, viewport: document.documentElement.clientWidth }));
+  const dimensions = await page.evaluate(() => ({
+    content: document.scrollingElement?.scrollWidth ?? 0,
+    viewport: document.documentElement.clientWidth,
+  }));
   expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport);
   await page.screenshot({ path: path.join(reportRoot, "stress-hindi-320.png"), fullPage: true });
 });
 
-test("responsive stress: 200% text and 200/400% zoom reflow to 320 CSS pixels", async ({ page, browserName }) => {
+test("responsive stress: 200% text and 200/400% zoom reflow to 320 CSS pixels", async ({
+  page,
+  browserName,
+}) => {
   test.skip(browserName !== "chromium", "Zoom stress check runs in Chromium.");
   await mockResponsiveApis(page, "worst");
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -225,12 +327,18 @@ test("responsive stress: 200% text and 200/400% zoom reflow to 320 CSS pixels", 
       document.documentElement.style.zoom = `${String(value * 100)}%`;
       document.documentElement.style.fontSize = "200%";
     }, zoom);
-    const widths = await page.evaluate((value) => ({
-      effectiveContent: (document.scrollingElement?.scrollWidth ?? 0) / value,
-      effectiveViewport: document.documentElement.clientWidth / value,
-    }), zoom);
+    const widths = await page.evaluate(
+      (value) => ({
+        effectiveContent: (document.scrollingElement?.scrollWidth ?? 0) / value,
+        effectiveViewport: document.documentElement.clientWidth / value,
+      }),
+      zoom,
+    );
     expect(widths.effectiveContent).toBeLessThanOrEqual(widths.effectiveViewport + 1);
-    await page.screenshot({ path: path.join(reportRoot, `stress-${String(zoom * 100)}-text200.png`), fullPage: true });
+    await page.screenshot({
+      path: path.join(reportRoot, `stress-${String(zoom * 100)}-text200.png`),
+      fullPage: true,
+    });
   }
 });
 
@@ -244,9 +352,18 @@ test("WebKit responsive smoke: every route, viewport and theme", async ({ page, 
     for (const [width, height] of viewports) {
       await page.setViewportSize({ width, height });
       for (const theme of themes) {
-        await page.emulateMedia({ colorScheme: theme === "dark" ? "dark" : "light", forcedColors: theme === "contrast" ? "active" : "none" });
-        const dimensions = await page.evaluate(() => ({ content: document.scrollingElement?.scrollWidth ?? 0, viewport: document.documentElement.clientWidth }));
-        expect(dimensions.content, `${route} ${String(width)}x${String(height)} ${theme}`).toBeLessThanOrEqual(dimensions.viewport);
+        await page.emulateMedia({
+          colorScheme: theme === "dark" ? "dark" : "light",
+          forcedColors: theme === "contrast" ? "active" : "none",
+        });
+        const dimensions = await page.evaluate(() => ({
+          content: document.scrollingElement?.scrollWidth ?? 0,
+          viewport: document.documentElement.clientWidth,
+        }));
+        expect(
+          dimensions.content,
+          `${route} ${String(width)}x${String(height)} ${theme}`,
+        ).toBeLessThanOrEqual(dimensions.viewport);
       }
     }
   }

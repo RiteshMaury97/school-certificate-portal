@@ -54,10 +54,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ki
         { error: "Use an academic session like 2026-27 or 2026-2027." },
         { status: 400 },
       );
-    const id = String(
+    const idValue =
       (name === "sessions" ? label : parsed.data.id) ??
-        (name === "certificateTypes" || name === "classes" ? certificateTypeSlug(label) : label),
-    );
+      (name === "certificateTypes" || name === "classes" ? certificateTypeSlug(label) : label);
+    const id = idValue;
     await db.collection(name).doc(id).set(
       {
         label,

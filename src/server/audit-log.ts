@@ -58,10 +58,9 @@ export async function persistAuditLog(
   actorUid: string,
   action: string,
   targetId: string,
-  studentId: string | undefined,
-  metadata: AuditMetadata | undefined,
-  ipHash: string,
+  context: { studentId?: string; metadata?: AuditMetadata; ipHash: string },
 ): Promise<void> {
+  const { studentId, metadata, ipHash } = context;
   const timestamp = FieldValue.serverTimestamp();
   await db.collection("auditLogs").add({
     actorUid,

@@ -60,6 +60,311 @@ async function sendAlert(to: string, body: string) {
     html: `<p>${escapeHtml(schoolName)}</p>${body}`,
   });
 }
+
+type LoginBody = { idToken: string; challengeId: string };
+type LoginIdentity = {
+  decoded: Awaited<ReturnType<typeof adminAuth.verifyIdToken>>;
+  email: string;
+  role: AdminRole;
+};
+
+function readLoginBody(value: unknown): LoginBody | NextResponse {
+  if (!isLoginBody(value))
+    return NextResponse.json({ error: "Authentication failed." }, { status: 400 });
+  if (!/^[0-9a-f-]{36}$/i.test(value.challengeId))
+    return NextResponse.json(
+      { error: "Complete email verification before continuing." },
+      { status: 403 },
+    );
+  return { idToken: value.idToken, challengeId: value.challengeId };
+}
+
+function isLoginBody(value: unknown): value is LoginBody {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "idToken" in value &&
+    typeof value.idToken === "string" &&
+    "challengeId" in value &&
+    typeof value.challengeId === "string"
+  );
+}
+
+async function authenticateLogin(
+  request: NextRequest,
+  body: LoginBody,
+): Promise<LoginIdentity | NextResponse> {
+  const decoded = await adminAuth.verifyIdToken(body.idToken, true);
+  const email = decoded.email?.toLowerCase() ?? "";
+  const emailHash = digest(email);
+  const failureState = await db.collection("adminLoginFailures").doc(emailHash).get();
+  if (Number(failureState.get("lockedUntil") ?? 0) > Date.now())
+    return NextResponse.json(
+      { error: "This account is temporarily locked after repeated failed sign-ins." },
+      { status: 423 },
+    );
+  const admin = await db.collection("admins").doc(decoded.uid).get();
+  const roleValue: unknown = admin.get("role");
+  const role = isAdminRole(roleValue) ? roleValue : null;
+  const status = String(admin.get("status"));
+  const adminEmail: unknown = admin.get("email");
+  if (
+    !role ||
+    !isAuthorizedAdminAccount(
+      admin.exists,
+      admin.get("mustChangePassword"),
+      decoded.mustChangePassword,
+      status,
+      email,
+      adminEmail,
+      role,
+      decoded.role,
+    )
+  )
+    return NextResponse.json({ error: "This account is not authorized." }, { status: 403 });
+  const location = await enforceAdminLocation({ request, adminUid: decoded.uid });
+  if (!location.allowed)
+    return NextResponse.json(
+      { error: "This sign-in cannot be completed from your current network." },
+      { status: 403 },
+    );
+  const challengeRef = db.collection("adminOtpChallenges").doc(body.challengeId);
+  const consumed = await db.runTransaction((transaction) =>
+    consumeVerifiedAdminOtpChallenge(transaction, challengeRef, decoded.uid),
+  );
+  if (!consumed)
+    return NextResponse.json(
+      { error: "Email verification is missing, expired, or already used. Sign in again." },
+      { status: 403 },
+    );
+  if (status === "invited")
+    await admin.ref.update({ status: "active", activatedAt: FieldValue.serverTimestamp() });
+  await db
+    .collection("adminLoginFailures")
+    .doc(emailHash)
+    .set(
+      {
+        count: 0,
+        lockedUntil: 0,
+        windowStartedAt: Date.now(),
+        updatedAt: FieldValue.serverTimestamp(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60_000),
+      },
+      { merge: true },
+    );
+  return { decoded, email, role };
+}
+
+function isAuthorizedAdminAccount(
+  exists: boolean,
+  mustChangePassword: unknown,
+  decodedMustChangePassword: unknown,
+  status: string,
+  email: string,
+  adminEmail: unknown,
+  role: AdminRole | null,
+  decodedRole: unknown,
+): boolean {
+  return (
+    exists &&
+    mustChangePassword !== true &&
+    decodedMustChangePassword !== true &&
+    ["active", "invited"].includes(status) &&
+    email.length > 0 &&
+    typeof adminEmail === "string" &&
+    adminEmail.toLowerCase() === email &&
+    decodedRole === role
+  );
+}
+
+function escapeCity(city: string): string {
+  const escapeMap: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  };
+  return city.replace(/[&<>"']/g, (character) => escapeMap[character] ?? character);
+}
+
+async function saveSessionRecords(input: {
+  request: NextRequest;
+  uid: string;
+  email: string;
+  role: AdminRole;
+  session: string;
+  sessionHash: string;
+  deviceId: string;
+  now: Date;
+  city: string;
+  country: string;
+  userAgent: string;
+}) {
+  const { request, uid, email, role, sessionHash, deviceId, now, city, country, userAgent } = input;
+  const deviceHash = digest(`${userAgent}|${deviceId}`);
+  const deviceRef = db.collection("adminDevices").doc(`${uid}_${deviceHash}`);
+  const loginLocationRef = db.collection("adminLoginLocations").doc(uid);
+  const [known, lastLocation] = await Promise.all([deviceRef.get(), loginLocationRef.get()]);
+  const storedCountry: unknown = lastLocation.get("country");
+  const deviceCountry: unknown = known.get("country");
+  const priorCountry =
+    typeof storedCountry === "string"
+      ? storedCountry
+      : typeof deviceCountry === "string"
+        ? deviceCountry
+        : "";
+  const countryChanged = Boolean(country && priorCountry && country !== priorCountry);
+  await deviceRef.set(
+    {
+      uid,
+      deviceHash,
+      browser: browser(userAgent),
+      city,
+      country,
+      ipHash: hashRequesterIp(request),
+      lastSeenAt: FieldValue.serverTimestamp(),
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60_000),
+      createdAt: known.exists ? (known.get("createdAt") ?? now) : now,
+    },
+    { merge: true },
+  );
+  await db
+    .collection("adminSessions")
+    .doc(sessionHash)
+    .create({
+      uid,
+      email,
+      role,
+      sessionId: randomBytes(18).toString("hex"),
+      deviceHash,
+      browser: browser(userAgent),
+      city,
+      country,
+      ipHash: hashRequesterIp(request),
+      createdAt: now,
+      lastActivityAt: now,
+      absoluteExpiresAt: new Date(now.getTime() + ADMIN_HARD_SESSION_LIMIT_MS),
+      revokedAt: null,
+    });
+  await loginLocationRef.set({ country, lastSignInAt: now }, { merge: true });
+  return { deviceHash, isNewDevice: !known.exists, countryChanged };
+}
+
+async function scheduleNewDeviceAlert(input: {
+  identity: LoginIdentity;
+  city: string;
+  country: string;
+  countryChanged: boolean;
+  isNewDevice: boolean;
+  userAgent: string;
+  now: Date;
+}): Promise<void> {
+  const { identity, city, country, countryChanged, isNewDevice, userAgent, now } = input;
+  if (!isNewDevice && !countryChanged) return;
+  const actionToken = randomBytes(32).toString("base64url");
+  const tokenHash = digest(actionToken);
+  const link = absoluteUrl(
+    `/api/admin/session/revoke-all?token=${encodeURIComponent(actionToken)}`,
+  );
+  const localTime = `${new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(now)} IST`;
+  const countryNotice = countryChanged
+    ? ` This sign-in is from a new country: ${escapeHtml(country)}.`
+    : country
+      ? ` Country: ${escapeHtml(country)}.`
+      : "";
+  await db
+    .collection("adminSessionActions")
+    .doc(tokenHash)
+    .create({
+      uid: identity.decoded.uid,
+      expiresAt: new Date(Date.now() + 10 * 60_000),
+      usedAt: null,
+      createdAt: now,
+    });
+  after(() =>
+    sendAlert(
+      identity.email,
+      `<p>New sign-in to the admin panel from ${escapeHtml(browser(userAgent))}, ${escapeCity(city)}, ${escapeHtml(localTime)}.${countryNotice}</p><p>If this wasn't you, <a href="${escapeHtml(link)}">sign out everywhere</a>.</p>`,
+    ).catch((alertError: unknown) => {
+      console.error("[admin/session new-device alert]", describeFirebaseError(alertError));
+    }),
+  );
+}
+
+function decodeCity(value: string | null): string {
+  if (!value) return "";
+  try {
+    return decodeURIComponent(value).slice(0, 80);
+  } catch {
+    return value.slice(0, 80);
+  }
+}
+
+async function establishSession(
+  request: NextRequest,
+  body: LoginBody,
+  identity: LoginIdentity,
+): Promise<NextResponse> {
+  const session = await adminAuth.createSessionCookie(body.idToken, {
+    expiresIn: ADMIN_HARD_SESSION_LIMIT_MS,
+  });
+  const sessionHash = digest(session);
+  const now = new Date();
+  const deviceId =
+    request.cookies.get(DEVICE_COOKIE)?.value ?? randomBytes(24).toString("base64url");
+  const userAgent = request.headers.get("user-agent") ?? "";
+  const requestOrigin = getRequestOrigin(request);
+  const city = decodeCity(requestOrigin.city);
+  const country = (requestOrigin.country ?? "").slice(0, 8);
+  const record = await saveSessionRecords({
+    request,
+    uid: identity.decoded.uid,
+    email: identity.email,
+    role: identity.role,
+    session,
+    sessionHash,
+    deviceId,
+    now,
+    city,
+    country,
+    userAgent,
+  });
+  await scheduleNewDeviceAlert({ ...record, identity, city, country, userAgent, now });
+  const csrf = createCsrfToken();
+  await writeAuditLog(request, identity.decoded.uid, "admin.login", "session");
+  const response = NextResponse.json(
+    { ok: true, email: identity.email, role: identity.role },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+  response.cookies.set(COOKIE, session, adminSessionCookieOptions());
+  response.cookies.set("sis_admin_csrf", csrf, csrfCookieOptions());
+  response.cookies.set(DEVICE_COOKIE, deviceId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 365 * 24 * 60 * 60,
+  });
+  return response;
+}
+
+function sessionPostError(error: unknown): NextResponse {
+  if (error instanceof Error && error.message === "APP_CHECK")
+    return NextResponse.json(
+      { error: "App verification failed. Reload the page and try again." },
+      { status: 403 },
+    );
+  console.error("[admin/session POST]", describeFirebaseError(error));
+  return NextResponse.json(
+    { error: "Unable to establish administrator session." },
+    { status: 401 },
+  );
+}
 export async function POST(request: NextRequest) {
   try {
     if (!requesterIp(request))
@@ -70,280 +375,70 @@ export async function POST(request: NextRequest) {
     await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
-    const body: unknown = await request.json();
-    if (
-      typeof body !== "object" ||
-      body === null ||
-      !("idToken" in body) ||
-      typeof body.idToken !== "string"
-    )
-      return NextResponse.json({ error: "Authentication failed." }, { status: 400 });
-    const decoded = await adminAuth.verifyIdToken(body.idToken, true);
-    if (
-      !("challengeId" in body) ||
-      typeof body.challengeId !== "string" ||
-      !/^[0-9a-f-]{36}$/i.test(body.challengeId)
-    )
-      return NextResponse.json(
-        { error: "Complete email verification before continuing." },
-        { status: 403 },
-      );
-    const email = decoded.email?.toLowerCase() ?? "";
-    const emailHash = createHmac("sha256", secret()).update(email).digest("hex");
-    const failureState = await db.collection("adminLoginFailures").doc(emailHash).get();
-    if (Number(failureState.get("lockedUntil") ?? 0) > Date.now())
-      return NextResponse.json(
-        {
-          error: "This account is temporarily locked after repeated failed sign-ins.",
-        },
-        { status: 423 },
-      );
-    const admin = await db.collection("admins").doc(decoded.uid).get();
-    const roleValue: unknown = admin.get("role");
-    const role = isAdminRole(roleValue) ? roleValue : null;
-    const status = String(admin.get("status"));
-    const adminEmail: unknown = admin.get("email");
-    if (
-      !admin.exists ||
-      admin.get("mustChangePassword") === true ||
-      decoded.mustChangePassword === true ||
-      !["active", "invited"].includes(status) ||
-      !email ||
-      typeof adminEmail !== "string" ||
-      adminEmail.toLowerCase() !== email ||
-      role === null ||
-      decoded.role !== role
-    )
-      return NextResponse.json({ error: "This account is not authorized." }, { status: 403 });
-
-    const location = await enforceAdminLocation({ request, adminUid: decoded.uid });
-    if (!location.allowed)
-      return NextResponse.json(
-        { error: "This sign-in cannot be completed from your current network." },
-        { status: 403 },
-      );
-
-    const challengeRef = db.collection("adminOtpChallenges").doc(body.challengeId);
-    const challengeConsumed = await db.runTransaction((transaction) =>
-      consumeVerifiedAdminOtpChallenge(transaction, challengeRef, decoded.uid),
-    );
-    if (!challengeConsumed) {
-      return NextResponse.json(
-        { error: "Email verification is missing, expired, or already used. Sign in again." },
-        { status: 403 },
-      );
-    }
-
-    // A completed email-code sign-in activates an invited account.
-    if (status === "invited")
-      await admin.ref.update({
-        status: "active",
-        activatedAt: FieldValue.serverTimestamp(),
-      });
-    await db
-      .collection("adminLoginFailures")
-      .doc(emailHash)
-      .set(
-        {
-          count: 0,
-          lockedUntil: 0,
-          windowStartedAt: Date.now(),
-          updatedAt: FieldValue.serverTimestamp(),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60_000),
-        },
-        { merge: true },
-      );
-    const session = await adminAuth.createSessionCookie(body.idToken, {
-      expiresIn: ADMIN_HARD_SESSION_LIMIT_MS,
-    });
-    const sessionHash = digest(session),
-      now = new Date();
-    const deviceId =
-      request.cookies.get(DEVICE_COOKIE)?.value ?? randomBytes(24).toString("base64url");
-    const ua = request.headers.get("user-agent") ?? "";
-    const deviceHash = digest(`${ua}|${deviceId}`);
-    const requestOrigin = getRequestOrigin(request);
-    const rawCity = requestOrigin.city;
-    const city = rawCity
-      ? (() => {
-          try {
-            return decodeURIComponent(rawCity).slice(0, 80);
-          } catch {
-            return rawCity.slice(0, 80);
-          }
-        })()
-      : "";
-    const country = (requestOrigin.country ?? "").slice(0, 8);
-    const deviceRef = db.collection("adminDevices").doc(`${decoded.uid}_${deviceHash}`);
-    const loginLocationRef = db.collection("adminLoginLocations").doc(decoded.uid);
-    const [known, lastLocation] = await Promise.all([deviceRef.get(), loginLocationRef.get()]);
-    const storedCountry: unknown = lastLocation.get("country");
-    const deviceCountry: unknown = known.get("country");
-    const latestPriorCountry =
-      typeof storedCountry === "string"
-        ? storedCountry
-        : typeof deviceCountry === "string"
-          ? deviceCountry
-          : "";
-    const priorCreatedAt: unknown = known.get("createdAt");
-    const newCountrySignIn = Boolean(
-      country && latestPriorCountry && country !== latestPriorCountry,
-    );
-    await deviceRef.set(
-      {
-        uid: decoded.uid,
-        deviceHash,
-        browser: browser(ua),
-        city,
-        country,
-        ipHash: hashRequesterIp(request),
-        lastSeenAt: FieldValue.serverTimestamp(),
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60_000),
-        createdAt: known.exists ? (priorCreatedAt ?? now) : now,
-      },
-      { merge: true },
-    );
-    await db
-      .collection("adminSessions")
-      .doc(sessionHash)
-      .create({
-        uid: decoded.uid,
-        email,
-        role,
-        sessionId: randomBytes(18).toString("hex"),
-        deviceHash,
-        browser: browser(ua),
-        city,
-        country,
-        ipHash: hashRequesterIp(request),
-        createdAt: now,
-        lastActivityAt: now,
-        absoluteExpiresAt: new Date(now.getTime() + ADMIN_HARD_SESSION_LIMIT_MS),
-        revokedAt: null,
-      });
-    await loginLocationRef.set({ country, lastSignInAt: now }, { merge: true });
-    if (!known.exists || newCountrySignIn) {
-      const actionToken = randomBytes(32).toString("base64url"),
-        tokenHash = digest(actionToken);
-      await db
-        .collection("adminSessionActions")
-        .doc(tokenHash)
-        .create({
-          uid: decoded.uid,
-          expiresAt: new Date(Date.now() + 10 * 60_000),
-          usedAt: null,
-          createdAt: now,
-        });
-      const link = absoluteUrl(
-        `/api/admin/session/revoke-all?token=${encodeURIComponent(actionToken)}`,
-      );
-      const escapeMap: Record<string, string> = {
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;",
-      };
-      const safeCity = city.replace(/[&<>"']/g, (char: string) => escapeMap[char] ?? char);
-      const localTime =
-        new Intl.DateTimeFormat("en-IN", {
-          timeZone: "Asia/Kolkata",
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(now) + " IST";
-      const countryNotice = newCountrySignIn
-        ? ` This sign-in is from a new country: ${escapeHtml(country)}.`
-        : country
-          ? ` Country: ${escapeHtml(country)}.`
-          : "";
-      after(() =>
-        sendAlert(
-          email,
-          `<p>New sign-in to the admin panel from ${escapeHtml(browser(ua))}, ${safeCity}, ${escapeHtml(localTime)}.${countryNotice}</p><p>If this wasn't you, <a href="${escapeHtml(link)}">sign out everywhere</a>.</p>`,
-        ).catch((alertError: unknown) => {
-          console.error("[admin/session new-device alert]", describeFirebaseError(alertError));
-        }),
-      );
-    }
-    const csrf = createCsrfToken();
-    await writeAuditLog(request, decoded.uid, "admin.login", "session");
-    const response = NextResponse.json(
-      { ok: true, email, role },
-      { headers: { "Cache-Control": "no-store" } },
-    );
-    response.cookies.set(COOKIE, session, adminSessionCookieOptions());
-    response.cookies.set("sis_admin_csrf", csrf, csrfCookieOptions());
-    response.cookies.set(DEVICE_COOKIE, deviceId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 365 * 24 * 60 * 60,
-    });
-    return response;
+    const bodyResult = readLoginBody(await request.json());
+    if (bodyResult instanceof NextResponse) return bodyResult;
+    const identity = await authenticateLogin(request, bodyResult);
+    if (identity instanceof NextResponse) return identity;
+    return await establishSession(request, bodyResult, identity);
   } catch (error) {
-    if (error instanceof Error && error.message === "APP_CHECK")
-      return NextResponse.json(
-        { error: "App verification failed. Reload the page and try again." },
-        { status: 403 },
-      );
-    console.error("[admin/session POST]", describeFirebaseError(error));
-    return NextResponse.json(
-      { error: "Unable to establish administrator session." },
-      { status: 401 },
-    );
+    return sessionPostError(error);
   }
 }
-export async function GET(request: NextRequest) {
-  // A missing cookie is the normal signed-out state (especially on /admin/login).
-  // Return it before App Check so the login screen does not wait on a client
-  // attestation round trip just to learn that there is no session to verify.
-  if (!request.cookies.get(COOKIE)?.value)
-    return NextResponse.json(
-      { authenticated: false },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+function sessionRecordIsValid(
+  sessionDoc: FirebaseFirestore.DocumentSnapshot,
+  uid: string,
+): boolean {
+  const lastActivity = timestampMillis(sessionDoc.get("lastActivityAt"));
+  const expiry = timestampMillis(sessionDoc.get("absoluteExpiresAt"));
+  return (
+    sessionDoc.exists &&
+    sessionDoc.get("uid") === uid &&
+    !sessionDoc.get("revokedAt") &&
+    !isAdminSessionExpired(lastActivity, expiry)
+  );
+}
+
+function adminRecordIsValid(
+  admin: FirebaseFirestore.DocumentSnapshot,
+  decoded: Awaited<ReturnType<typeof adminAuth.verifySessionCookie>>,
+  role: AdminRole | null,
+): boolean {
+  const adminEmail: unknown = admin.get("email");
+  return (
+    admin.exists &&
+    admin.get("status") === "active" &&
+    role !== null &&
+    typeof adminEmail === "string" &&
+    adminEmail.toLowerCase() === decoded.email?.toLowerCase() &&
+    decoded.role === role
+  );
+}
+
+function sessionGetError(error: unknown): NextResponse {
+  if (readErrorCode(error).startsWith("auth/"))
+    return NextResponse.json({ authenticated: false }, { status: 401 });
+  console.error("[admin/session GET]", describeFirebaseError(error));
+  return NextResponse.json(
+    { authenticated: false, error: "The session service is temporarily unavailable." },
+    { status: 503 },
+  );
+}
+
+async function readSessionStatus(session: string): Promise<NextResponse> {
   try {
-    await verifyRequestAppCheck(request);
-  } catch {
-    // Not "signed out": the browser could not prove it is the real app.
-    return NextResponse.json(
-      { authenticated: false, error: "App verification failed." },
-      { status: 403 },
-    );
-  }
-  try {
-    const session = request.cookies.get(COOKIE)?.value;
-    if (!session) return NextResponse.json({ authenticated: false }, { status: 401 });
     const decoded = await adminAuth.verifySessionCookie(session, true);
     const admin = await db.collection("admins").doc(decoded.uid).get();
     const roleValue: unknown = admin.get("role");
     const role = isAdminRole(roleValue) ? roleValue : null;
-    const sessionHash = digest(session),
-      sessionDoc = await db.collection("adminSessions").doc(sessionHash).get();
-    const lastActivity = timestampMillis(sessionDoc.get("lastActivityAt"));
+    const sessionDoc = await db.collection("adminSessions").doc(digest(session)).get();
     const expiry = timestampMillis(sessionDoc.get("absoluteExpiresAt"));
-    const revokedAt: unknown = sessionDoc.get("revokedAt");
-    const adminEmail: unknown = admin.get("email");
-    if (
-      !sessionDoc.exists ||
-      sessionDoc.get("uid") !== decoded.uid ||
-      revokedAt ||
-      isAdminSessionExpired(lastActivity, expiry)
-    )
+    if (!sessionRecordIsValid(sessionDoc, decoded.uid))
       return NextResponse.json({ authenticated: false }, { status: 401 });
     await sessionDoc.ref.update({
       lastActivityAt: new Date(),
       lastSeenAt: FieldValue.serverTimestamp(),
     });
-    if (
-      !admin.exists ||
-      admin.get("status") !== "active" ||
-      role === null ||
-      typeof adminEmail !== "string" ||
-      adminEmail.toLowerCase() !== decoded.email?.toLowerCase() ||
-      decoded.role !== role
-    )
+    if (!adminRecordIsValid(admin, decoded, role))
       return NextResponse.json({ authenticated: false }, { status: 401 });
     return NextResponse.json(
       {
@@ -357,16 +452,26 @@ export async function GET(request: NextRequest) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    const code = readErrorCode(error);
-    // Invalid / expired / revoked cookie => signed out. Anything else is an outage.
-    if (code.startsWith("auth/"))
-      return NextResponse.json({ authenticated: false }, { status: 401 });
-    console.error("[admin/session GET]", describeFirebaseError(error));
+    return sessionGetError(error);
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const session = request.cookies.get(COOKIE)?.value;
+  if (!session)
     return NextResponse.json(
-      { authenticated: false, error: "The session service is temporarily unavailable." },
-      { status: 503 },
+      { authenticated: false },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  try {
+    await verifyRequestAppCheck(request);
+  } catch {
+    return NextResponse.json(
+      { authenticated: false, error: "App verification failed." },
+      { status: 403 },
     );
   }
+  return readSessionStatus(session);
 }
 export async function DELETE(request: NextRequest) {
   try {

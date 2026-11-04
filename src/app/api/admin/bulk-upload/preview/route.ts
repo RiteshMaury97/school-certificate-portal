@@ -32,7 +32,7 @@ function safeTypeSlug(value: string): string {
 }
 function sessionOf(document: { get(field: string): unknown }): string {
   const value: unknown = document.get("session");
-  return typeof value === "string" ? normalizeAcademicSession(value) ?? "" : "";
+  return typeof value === "string" ? (normalizeAcademicSession(value) ?? "") : "";
 }
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -40,177 +40,246 @@ function parseCsv(text: string): string[][] {
   let cell = "";
   let quoted = false;
   for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === undefined) continue;
-    if (c === '"' && quoted && text[i + 1] === '"') {
-      cell += '"';
-      i++;
-    } else if (c === '"') quoted = !quoted;
-    else if (c === "," && !quoted) {
-      row.push(cell.trim());
-      cell = "";
-    } else if ((c === "\n" || c === "\r") && !quoted) {
-      if (c === "\r" && text[i + 1] === "\n") i++;
-      row.push(cell.trim());
-      if (row.some(Boolean)) rows.push(row);
-      row = [];
-      cell = "";
-    } else cell += c;
+    const consumed = consumeCsvCharacter(text[i], text[i + 1], i, { rows, row, cell, quoted });
+    row = consumed.row;
+    cell = consumed.cell;
+    quoted = consumed.quoted;
+    i += consumed.skip;
   }
   row.push(cell.trim());
   if (row.some(Boolean)) rows.push(row);
   return rows.filter((item) => !item[0]?.startsWith("#"));
 }
+
+function consumeCsvCharacter(
+  character: string | undefined,
+  next: string | undefined,
+  index: number,
+  state: { rows: string[][]; row: string[]; cell: string; quoted: boolean },
+): { row: string[]; cell: string; quoted: boolean; skip: number } {
+  let { row, cell, quoted } = state;
+  if (character === undefined) return { row, cell, quoted, skip: 0 };
+  if (character === '"') {
+    if (quoted && next === '"') return { row, cell: `${cell}"`, quoted, skip: 1 };
+    return { row, cell, quoted: !quoted, skip: 0 };
+  }
+  if (character === "," && !quoted) {
+    row.push(cell.trim());
+    return { row, cell: "", quoted, skip: 0 };
+  }
+  if ((character === "\n" || character === "\r") && !quoted) {
+    const skip = character === "\r" && next === "\n" ? 1 : 0;
+    row.push(cell.trim());
+    if (row.some(Boolean)) state.rows.push(row);
+    row = [];
+    cell = "";
+    return { row, cell, quoted, skip };
+  }
+  return { row, cell: cell + character, quoted, skip: 0 };
+}
+
+type MappingRow = Record<string, string>;
+type PreviewFile = { name: string; size: number };
+
+function filenamePattern(fileName: string): RegExpExecArray | null {
+  return /^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(fileName);
+}
+
+function matchesFilename(row: MappingRow, fileName: string): boolean {
+  return (row.filename ?? row.file ?? "") === fileName;
+}
+
+function matchesInferredMapping(row: MappingRow, pattern: RegExpExecArray | null): boolean {
+  const admission = row.admissionnumber ?? row.admissionno ?? "";
+  if (!pattern || admission !== pattern[1]) return false;
+  const rowType = row.certificatetype ?? row.type ?? "";
+  if (!rowType) return true;
+  const inferredType = (pattern[2] ?? "").replace(/[-_]+/g, " ");
+  return safeTypeSlug(rowType) === safeTypeSlug(inferredType);
+}
+
+function findMappingRow(fileName: string, values: MappingRow[]): MappingRow | undefined {
+  const pattern = filenamePattern(fileName);
+  return values.find(
+    (row) => matchesFilename(row, fileName) || matchesInferredMapping(row, pattern),
+  );
+}
+
+async function findStudent(row: MappingRow, admissionNo: string) {
+  if (row.studentid) return db.collection("students").doc(row.studentid).get();
+  if (!admissionNo) return null;
+  const admissionKey = studentIdentifierHmac(admissionNo);
+  const current = await db
+    .collection("students")
+    .where("admissionNumberDisambiguationKey", "==", admissionKey)
+    .limit(2)
+    .get();
+  if (current.size === 1) return current.docs.at(0) ?? null;
+  if (current.size > 1) return null;
+  const legacy = await db
+    .collection("students")
+    .where("admissionNo", "==", admissionNo)
+    .limit(2)
+    .get();
+  return legacy.size === 1 ? (legacy.docs.at(0) ?? null) : null;
+}
+
+async function validateNumber(
+  number: string,
+  seenNumbers: Set<string>,
+  errors: string[],
+): Promise<void> {
+  if (!number) {
+    errors.push("Certificate number is required.");
+    return;
+  }
+  const hash = createCertificateNumberHash(number);
+  if (seenNumbers.has(hash)) errors.push("Duplicate certificate number in this batch.");
+  seenNumbers.add(hash);
+  const existing = await db.collection("certificateNumberIndex").doc(hash).get();
+  if (existing.exists) errors.push("Certificate number is already assigned.");
+}
+
+async function validateStudent(
+  row: MappingRow,
+  admissionNo: string,
+  session: string,
+  errors: string[],
+): Promise<void> {
+  const student = await findStudent(row, admissionNo);
+  if (!student?.exists) {
+    errors.push("Student/admission number did not match exactly one student.");
+    return;
+  }
+  if (sessionOf(student) !== normalizeAcademicSession(session))
+    errors.push("Certificate session must match the student's passing session.");
+}
+
+async function validateCatalog(session: string, type: string, errors: string[]): Promise<void> {
+  if (/^\d{4}-\d{2}$/.test(session)) {
+    const sessionDoc = await db.collection("sessions").doc(session).get();
+    if (!sessionDoc.exists || sessionDoc.get("isActive") === false)
+      errors.push("Session is not configured/active.");
+  }
+  if (type.length < 2) return;
+  const typeSlug = safeTypeSlug(type);
+  if (!typeSlug) {
+    errors.push("Certificate type is invalid.");
+    return;
+  }
+  const typeDoc = await db.collection("certificateTypes").doc(typeSlug).get();
+  if (!typeDoc.exists) errors.push("Certificate type is not configured.");
+}
+
+async function validateMappingRow(
+  row: MappingRow,
+  file: PreviewFile,
+  seenNumbers: Set<string>,
+): Promise<string[]> {
+  const pattern = filenamePattern(file.name);
+  const session = row.session ?? "";
+  const type = row.certificatetype ?? row.type ?? (pattern?.[2] ?? "").replace(/[-_]+/g, " ");
+  const number = row.certificatenumber ?? "";
+  const date = row.issuedate ?? "";
+  const admissionNo = row.admissionnumber ?? row.admissionno ?? pattern?.[1] ?? "";
+  const errors: string[] = [];
+  if (!/^\d{4}-\d{2}$/.test(session)) errors.push("Invalid session.");
+  if (type.length < 2)
+    errors.push("Certificate type is required (or use admissionNo_type.pdf naming). ");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push("Issue date must be YYYY-MM-DD.");
+  await validateNumber(number, seenNumbers, errors);
+  await validateStudent(row, admissionNo, session, errors);
+  await validateCatalog(session, type, errors);
+  return errors;
+}
+
+function mappedValues(fileName: string, row?: MappingRow) {
+  if (!row) return null;
+  const pattern = filenamePattern(fileName);
+  return {
+    fileName,
+    admissionNo: row.admissionnumber ?? row.admissionno ?? pattern?.[1] ?? "",
+    studentId: row.studentid ?? "",
+    session: row.session ?? "",
+    certificateType: row.certificatetype ?? row.type ?? (pattern?.[2] ?? "").replace(/[-_]+/g, " "),
+    certificateNumber: row.certificatenumber ?? "",
+    issueDate: row.issuedate ?? "",
+  };
+}
+
+async function previewFile(file: PreviewFile, values: MappingRow[], seenNumbers: Set<string>) {
+  const row = findMappingRow(file.name, values);
+  const errors: string[] = [];
+  if (!row) errors.push("No mapping row for this filename.");
+  if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES) errors.push("File must be 1 byte to 4 MB.");
+  if (!/\.(pdf|jpe?g|png)$/i.test(file.name))
+    errors.push("File extension must be PDF, JPG or PNG.");
+  if (row) errors.push(...(await validateMappingRow(row, file, seenNumbers)));
+  return {
+    fileName: file.name,
+    size: file.size,
+    valid: errors.length === 0,
+    errors,
+    mapping: mappedValues(file.name, row),
+  };
+}
+
+async function previewRequest(request: NextRequest): Promise<NextResponse> {
+  await requireRoles(request, ["uploader", "admin"]);
+  const tooLarge = rejectOversizedRequest(request, MAX_CSV_BYTES);
+  if (tooLarge) return tooLarge;
+  const form = await request.formData();
+  const csv = form.get("mappingCsv");
+  if (!(csv instanceof File) || csv.size > MAX_CSV_BYTES)
+    return NextResponse.json(
+      { error: "Provide a mapping CSV smaller than 2 MB." },
+      { status: 400 },
+    );
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(formString(form, "fileManifest") || "[]");
+  } catch {
+    return NextResponse.json({ error: "File manifest is invalid." }, { status: 400 });
+  }
+  const files = Array.isArray(manifest) ? manifest.filter(isManifestFile) : [];
+  if (!validManifest(manifest, files))
+    return NextResponse.json({ error: "Provide between 1 and 20 files." }, { status: 400 });
+  const values = csvMappings(parseCsv(await csv.text()));
+  if (values instanceof NextResponse) return values;
+  const seenNumbers = new Set<string>();
+  const preview = [];
+  for (const file of files) preview.push(await previewFile(file, values, seenNumbers));
+  return NextResponse.json(
+    { total: preview.length, valid: preview.filter((item) => item.valid).length, preview },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
+
+function validManifest(manifest: unknown, files: { name: string; size: number }[]): boolean {
+  if (files.length < 1 || files.length > MAX_BULK_FILES) return false;
+  return !Array.isArray(manifest) || files.length === manifest.length;
+}
+
+function csvMappings(rows: string[][]): MappingRow[] | NextResponse {
+  if (rows.length < 2 || rows.length - 1 > MAX_CSV_ROWS)
+    return NextResponse.json(
+      { error: `Mapping CSV needs headers and 1 to ${String(MAX_CSV_ROWS)} rows.` },
+      { status: 400 },
+    );
+  const headerRow = rows[0];
+  if (!headerRow)
+    return NextResponse.json({ error: "Mapping CSV has no header row." }, { status: 400 });
+  const headers = headerRow.map((value) => value.toLowerCase().replace(/\s+/g, ""));
+  return rows
+    .slice(1)
+    .map((cells) =>
+      Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ""])),
+    );
+}
+
 export async function POST(request: NextRequest) {
   try {
-    await requireRoles(request, ["uploader", "admin"]);
-    const tooLarge = rejectOversizedRequest(request, MAX_CSV_BYTES);
-    if (tooLarge) return tooLarge;
-    const form = await request.formData();
-    const csv = form.get("mappingCsv");
-    if (!(csv instanceof File) || csv.size > MAX_CSV_BYTES)
-      return NextResponse.json(
-        { error: "Provide a mapping CSV smaller than 2 MB." },
-        { status: 400 },
-      );
-    let manifest: unknown;
-    try {
-      manifest = JSON.parse(formString(form, "fileManifest") || "[]");
-    } catch {
-      return NextResponse.json({ error: "File manifest is invalid." }, { status: 400 });
-    }
-    const files = Array.isArray(manifest)
-      ? manifest.filter(isManifestFile)
-      : [];
-    if (
-      files.length < 1 ||
-      files.length > MAX_BULK_FILES ||
-      manifest instanceof Array && files.length !== manifest.length
-    )
-      return NextResponse.json({ error: "Provide between 1 and 20 files." }, { status: 400 });
-    const rows = parseCsv(await csv.text());
-    if (rows.length < 2 || rows.length - 1 > MAX_CSV_ROWS)
-      return NextResponse.json(
-        { error: `Mapping CSV needs headers and 1 to ${String(MAX_CSV_ROWS)} rows.` },
-        { status: 400 },
-      );
-    const headerRow = rows[0];
-    if (!headerRow) return NextResponse.json({ error: "Mapping CSV has no header row." }, { status: 400 });
-    const headers = headerRow.map((x) => x.toLowerCase().replace(/\s+/g, ""));
-    const values = rows
-      .slice(1)
-      .map((c) => Object.fromEntries(headers.map((h, i) => [h, c[i] ?? ""])));
-    const preview = [];
-    const seenNumbers = new Set<string>();
-    for (const file of files) {
-      const pattern = /^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name);
-      const row = values.find(
-        (v) =>
-          (v.filename ?? v.file ?? "") === file.name ||
-          ((v.admissionnumber ?? v.admissionno ?? "") === pattern?.[1] &&
-            ((!v.certificatetype && !v.type) ||
-              safeTypeSlug(v.certificatetype ?? v.type ?? "") ===
-                safeTypeSlug((pattern[2] ?? "").replace(/[-_]+/g, " ")))),
-      );
-      const errors: string[] = [];
-      if (!row) errors.push("No mapping row for this filename.");
-      if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
-        errors.push("File must be 1 byte to 4 MB.");
-      if (!/\.(pdf|jpe?g|png)$/i.test(file.name))
-        errors.push("File extension must be PDF, JPG or PNG.");
-      if (row) {
-        const session = row.session ?? "";
-        const filePattern = /^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name);
-        const inferredAdmission = filePattern?.[1] ?? "";
-        const inferredType = (filePattern?.[2] ?? "").replace(/[-_]+/g, " ");
-        const type = row.certificatetype ?? row.type ?? inferredType;
-        const number = row.certificatenumber ?? "";
-        const date = row.issuedate ?? "";
-        const admissionNo = row.admissionnumber ?? row.admissionno ?? inferredAdmission;
-        if (!/^\d{4}-\d{2}$/.test(session)) errors.push("Invalid session.");
-        if (type.length < 2)
-          errors.push("Certificate type is required (or use admissionNo_type.pdf naming). ");
-        if (!number) errors.push("Certificate number is required.");
-        else {
-          const hash = createCertificateNumberHash(number);
-          if (seenNumbers.has(hash)) errors.push("Duplicate certificate number in this batch.");
-          seenNumbers.add(hash);
-          const existing = await db.collection("certificateNumberIndex").doc(hash).get();
-          if (existing.exists) errors.push("Certificate number is already assigned.");
-        }
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push("Issue date must be YYYY-MM-DD.");
-        let student = null;
-        if (row.studentid)
-          student = await db.collection("students").doc(row.studentid).get();
-        else if (admissionNo) {
-          const admissionKey = studentIdentifierHmac(admissionNo);
-          let s = await db
-            .collection("students")
-            .where("admissionNumberDisambiguationKey", "==", admissionKey)
-            .limit(2)
-            .get();
-          if (!s.size)
-            s = await db
-              .collection("students")
-              .where("admissionNo", "==", admissionNo)
-              .limit(2)
-              .get();
-          if (s.size === 1) student = s.docs.at(0) ?? null;
-        }
-        if (!student?.exists)
-          errors.push("Student/admission number did not match exactly one student.");
-        else if (sessionOf(student) !== normalizeAcademicSession(session))
-          errors.push("Certificate session must match the student's passing session.");
-        if (/^\d{4}-\d{2}$/.test(session)) {
-          const sessionDoc = await db.collection("sessions").doc(session).get();
-          if (!sessionDoc.exists || sessionDoc.get("isActive") === false)
-            errors.push("Session is not configured/active.");
-        }
-        if (type.length >= 2) {
-          const typeSlug = safeTypeSlug(type);
-          if (!typeSlug) errors.push("Certificate type is invalid.");
-          else {
-            const typeDoc = await db.collection("certificateTypes").doc(typeSlug).get();
-            if (!typeDoc.exists) errors.push("Certificate type is not configured.");
-          }
-        }
-      }
-      preview.push({
-        fileName: file.name,
-        size: file.size,
-        valid: errors.length === 0,
-        errors,
-        mapping: row
-          ? {
-              fileName: file.name,
-              admissionNo:
-                row.admissionnumber ??
-                  row.admissionno ??
-                  /^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name)?.[1] ??
-                  "",
-              studentId: row.studentid ?? "",
-              session: row.session ?? "",
-              certificateType:
-                row.certificatetype ??
-                  row.type ??
-                  (/^([^_]+)_(.+)\.(pdf|jpe?g|png)$/i.exec(file.name)?.[2] ?? "").replace(
-                    /[-_]+/g,
-                    " ",
-                  ),
-              certificateNumber: row.certificatenumber ?? "",
-              issueDate: row.issuedate ?? "",
-            }
-          : null,
-      });
-    }
-    return NextResponse.json(
-      {
-        total: preview.length,
-        valid: preview.filter((x) => x.valid).length,
-        preview,
-      },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    return await previewRequest(request);
   } catch (error) {
     return apiError(error);
   }

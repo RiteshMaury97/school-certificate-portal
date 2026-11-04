@@ -4,17 +4,17 @@ import archiver from "archiver";
 import { NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
 
+import { findAuthorizedCertificates } from "@/app/api/certificates/_lib/public-certificate-access";
 import { recordCertificateDownloads } from "@/server/download-metrics";
 import { db } from "@/server/firebase-admin";
 import { readR2Object } from "@/server/r2";
 import { verifyStudentAccessToken } from "@/server/security";
 import { watermarkCertificate } from "@/server/watermark";
 import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
-import { findAuthorizedCertificates } from "@/app/api/certificates/_lib/public-certificate-access";
 
+import type { Archiver } from "archiver";
 import type { DocumentReference } from "firebase-admin/firestore";
 import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
-import type { Archiver } from "archiver";
 import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";

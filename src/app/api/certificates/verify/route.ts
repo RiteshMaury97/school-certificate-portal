@@ -184,17 +184,17 @@ export async function POST(request: NextRequest) {
     const parsed = inputSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       const allowed = await consumeVerificationBudget(request);
-      return failedResponse(request, allowed ? "invalid_request" : "rate_limited");
+      return await failedResponse(request, allowed ? "invalid_request" : "rate_limited");
     }
     const input = parsed.data;
     const hash = createCertificateNumberHash(input.certificateNumber);
     if (!(await consumeVerificationBudget(request, hash)))
-      return failedResponse(request, "rate_limited");
+      return await failedResponse(request, "rate_limited");
     if (!(await verifyTurnstile(input.turnstileToken, requesterIp(request))))
-      return failedResponse(request, "turnstile_failed");
+      return await failedResponse(request, "turnstile_failed");
     const result = await findCertificateAndStudent(hash, input.session);
-    if (!result) return failedResponse(request, "no_match");
-    return lifecycleResponse(request, result.certificate, result.student, input);
+    if (!result) return await failedResponse(request, "no_match");
+    return await lifecycleResponse(request, result.certificate, result.student, input);
   } catch {
     return failedResponse(request, "internal_error");
   }

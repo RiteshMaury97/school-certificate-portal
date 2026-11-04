@@ -143,6 +143,53 @@ function StatusActions({
   );
 }
 
+function ReportReply({
+  id,
+  report,
+  reply,
+  setReply,
+  sendReply,
+}: {
+  id: string;
+  report: Record<string, unknown>;
+  reply: string;
+  setReply: (value: string) => void;
+  sendReply: ReportsTabProps["sendReportReply"];
+}) {
+  const contact = displayValue(report.email, displayValue(report.contact, "reporter"));
+  return (
+    <div className="border-t border-[var(--divider)] pt-3">
+      <p id={`report-reply-label-${id}`} className="text-xs font-semibold text-[var(--text-muted)]">
+        Email response to {contact}
+      </p>
+      <textarea
+        id={`report-reply-${id}`}
+        aria-labelledby={`report-reply-label-${id}`}
+        value={reply}
+        onChange={(event) => {
+          setReply(event.target.value);
+        }}
+        rows={3}
+        maxLength={3000}
+        placeholder="Write a response for the reporterâ€¦"
+        className="mt-2 min-h-20 w-full resize-y rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-3 text-sm"
+        required
+        aria-required="true"
+      />
+      <button
+        type="button"
+        disabled={!reply.trim() || (!report.email && report.contactMethod !== "email")}
+        onClick={() => {
+          sendReply(id, reply);
+        }}
+        className="mt-2 min-h-10 rounded-lg bg-[var(--primary)] px-4 text-xs font-semibold text-[var(--on-primary)] disabled:opacity-50"
+      >
+        Send email response
+      </button>
+    </div>
+  );
+}
+
 function ReportCard({
   report,
   note,
@@ -235,37 +282,13 @@ function ReportCard({
             />
           </label>
           <StatusActions id={id} status={status} updateReport={updateReport} />
-          <div className="border-t border-[var(--divider)] pt-3">
-            <p
-              id={`report-reply-label-${id}`}
-              className="text-xs font-semibold text-[var(--text-muted)]"
-            >
-              Email response to{" "}
-              {displayValue(report.email, displayValue(report.contact, "reporter"))}
-            </p>
-            <textarea
-              id={`report-reply-${id}`}
-              aria-labelledby={`report-reply-label-${id}`}
-              value={reportReply}
-              onChange={(event) => {
-                setReportReply(event.target.value);
-              }}
-              rows={3}
-              maxLength={3000}
-              placeholder="Write a response for the reporter…"
-              className="mt-2 min-h-20 w-full resize-y rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-3 text-sm"
-            required aria-required="true" />
-            <button
-              type="button"
-              disabled={!reportReply.trim() || (!report.email && report.contactMethod !== "email")}
-              onClick={() => {
-                sendReportReply(id, reportReply);
-              }}
-              className="mt-2 min-h-10 rounded-lg bg-[var(--primary)] px-4 text-xs font-semibold text-[var(--on-primary)] disabled:opacity-50"
-            >
-              Send email response
-            </button>
-          </div>
+          <ReportReply
+            id={id}
+            report={report}
+            reply={reportReply}
+            setReply={setReportReply}
+            sendReply={sendReportReply}
+          />
         </div>
       </div>
     </article>

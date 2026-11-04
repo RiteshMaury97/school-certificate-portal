@@ -185,6 +185,67 @@ async function storeCertificateRecord(
   );
 }
 
+async function validateNewUpload(form: FormData, adminUid: string) {
+  const parsed = certificateUploadMetadataSchema.safeParse({
+    studentId: formString(form, "studentId"),
+    session: normalizeAcademicSession(formString(form, "session")) ?? formString(form, "session"),
+    type: formString(form, "certificateType"),
+    certificateNumber: formString(form, "certificateNumber"),
+    issueDate: formString(form, "issuedAt"),
+  });
+  if (!parsed.success)
+    return {
+      response: NextResponse.json({ error: "Invalid certificate metadata." }, { status: 400 }),
+    };
+  const { studentId, session, type, certificateNumber, issueDate } = parsed.data;
+  const student = await db.collection("students").doc(studentId).get();
+  if (!student.exists)
+    return { response: NextResponse.json({ error: "Student not found." }, { status: 404 }) };
+  if (
+    normalizeAcademicSession(documentString(student, "session")) !==
+    normalizeAcademicSession(session)
+  )
+    return {
+      response: NextResponse.json(
+        { error: "Certificate session must match the student's passing session." },
+        { status: 400 },
+      ),
+    };
+  const [sessionDoc, typeDoc] = await Promise.all([
+    findAcademicSessionDocument(session),
+    db.collection("certificateTypes").doc(certificateTypeSlug(type)).get(),
+  ]);
+  if (!sessionDoc.exists || sessionDoc.get("isActive") === false || !typeDoc.exists)
+    return {
+      response: NextResponse.json(
+        { error: "Select an active session and configured certificate type." },
+        { status: 400 },
+      ),
+    };
+  const file = form.get("file");
+  if (!(file instanceof File))
+    return {
+      response: NextResponse.json(
+        { error: "Select one finished certificate file." },
+        { status: 400 },
+      ),
+    };
+  if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
+    return {
+      response: NextResponse.json(
+        { error: "Certificate must be no larger than 4 MB." },
+        { status: 413 },
+      ),
+    };
+  const quotaError = await consumeAdminUploadQuota(adminUid, file.size);
+  if (quotaError) return { response: NextResponse.json({ error: quotaError }, { status: 429 }) };
+  return {
+    response: null,
+    details: { studentId, session, type, certificateNumber, issueDate },
+    file,
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     await requireRoles(request, ["uploader", "approver", "admin", "superadmin"]);
@@ -262,52 +323,19 @@ export async function POST(request: NextRequest) {
     const tooLarge = rejectOversizedRequest(request);
     if (tooLarge) return tooLarge;
     const form = await request.formData();
-    const parsed = certificateUploadMetadataSchema.safeParse({
-      studentId: formString(form, "studentId"),
-      session: normalizeAcademicSession(formString(form, "session")) ?? formString(form, "session"),
-      type: formString(form, "certificateType"),
-      certificateNumber: formString(form, "certificateNumber"),
-      issueDate: formString(form, "issuedAt"),
-    });
-    if (!parsed.success)
-      return NextResponse.json({ error: "Invalid certificate metadata." }, { status: 400 });
-    const { studentId, session, type, certificateNumber, issueDate } = parsed.data;
-    const student = await db.collection("students").doc(studentId).get();
-    if (!student.exists) return NextResponse.json({ error: "Student not found." }, { status: 404 });
-    if (
-      normalizeAcademicSession(documentString(student, "session")) !==
-      normalizeAcademicSession(session)
-    )
-      return NextResponse.json(
-        { error: "Certificate session must match the student's passing session." },
-        { status: 400 },
-      );
-    const [sessionDoc, typeDoc] = await Promise.all([
-      findAcademicSessionDocument(session),
-      db.collection("certificateTypes").doc(certificateTypeSlug(type)).get(),
-    ]);
-    if (!sessionDoc.exists || sessionDoc.get("isActive") === false || !typeDoc.exists) {
-      return NextResponse.json(
-        { error: "Select an active session and configured certificate type." },
-        { status: 400 },
-      );
-    }
-    const file = form.get("file");
-    if (!(file instanceof File))
-      return NextResponse.json({ error: "Select one finished certificate file." }, { status: 400 });
-    if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
-      return NextResponse.json(
-        { error: "Certificate must be no larger than 4 MB." },
-        { status: 413 },
-      );
-    const quotaError = await consumeAdminUploadQuota(admin.uid, file.size);
-    if (quotaError) return NextResponse.json({ error: quotaError }, { status: 429 });
-    const duplicate = await findDuplicateCertificate(file, studentId, type, form);
+    const upload = await validateNewUpload(form, admin.uid);
+    if (upload.response) return upload.response;
+    const duplicate = await findDuplicateCertificate(
+      upload.file,
+      upload.details.studentId,
+      upload.details.type,
+      form,
+    );
     if (duplicate.response) return duplicate.response;
     return await storeCertificateRecord(request, {
       admin,
-      details: { studentId, session, type, certificateNumber, issueDate },
-      file,
+      details: upload.details,
+      file: upload.file,
       sameHash: duplicate.sameHash,
       duplicateReason: duplicate.reason,
     });

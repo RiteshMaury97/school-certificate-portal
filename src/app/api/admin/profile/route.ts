@@ -74,6 +74,29 @@ const emptyProfile: Profile = {
   systemNotifications: true,
 };
 
+function parseProfileInput(value: unknown): Profile | string {
+  if (!isRecord(value)) return "Enter valid profile details.";
+  const allowedFields = new Set<string>([...TEXT_FIELDS, ...BOOLEAN_FIELDS]);
+  if (Object.keys(value).some((key) => !allowedFields.has(key)))
+    return "Profile contains unsupported fields.";
+  const profile = { ...emptyProfile };
+  for (const field of TEXT_FIELDS) {
+    const item = value[field] ?? emptyProfile[field];
+    if (typeof item !== "string") return `Enter a valid ${field} value.`;
+    const trimmed = item.trim();
+    if (trimmed.length > TEXT_LIMITS[field]) return `The ${field} field is too long.`;
+    profile[field] = trimmed;
+  }
+  for (const field of BOOLEAN_FIELDS) {
+    const item = value[field] ?? emptyProfile[field];
+    if (typeof item !== "boolean") return `Enter a valid ${field} setting.`;
+    profile[field] = item;
+  }
+  return (
+    validateIdentity(profile) ?? validateContact(profile) ?? validatePreferences(profile) ?? profile
+  );
+}
+
 function validDate(value: string) {
   if (!value) return true;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -98,9 +121,7 @@ function validateIdentity(profile: Profile): string | null {
   }
   if (
     profile.gender &&
-    !["female", "male", "nonbinary", "prefer-not-to-say", "self-described"].includes(
-      profile.gender,
-    )
+    !["female", "male", "nonbinary", "prefer-not-to-say", "self-described"].includes(profile.gender)
   )
     return "Choose a valid gender option.";
   if (!validDate(profile.dateOfBirth) || !validDate(profile.joiningDate))
@@ -109,10 +130,7 @@ function validateIdentity(profile: Profile): string | null {
 }
 
 function validateContact(profile: Profile): string | null {
-  if (
-    profile.alternateEmail &&
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.alternateEmail)
-  )
+  if (profile.alternateEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.alternateEmail))
     return "Enter a valid alternate email address.";
   for (const [field, label] of [
     ["primaryPhone", "Primary phone"],
@@ -192,37 +210,8 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const actor = await requireAdmin(request);
-    const body: unknown = await request.json();
-    if (!isRecord(body))
-      return NextResponse.json({ error: "Enter valid profile details." }, { status: 400 });
-
-    const input = body;
-    const allowedFields = new Set<string>([...TEXT_FIELDS, ...BOOLEAN_FIELDS]);
-    if (Object.keys(input).some((key) => !allowedFields.has(key)))
-      return NextResponse.json({ error: "Profile contains unsupported fields." }, { status: 400 });
-
-    const profile = { ...emptyProfile };
-    for (const field of TEXT_FIELDS) {
-      const value = input[field] ?? emptyProfile[field];
-      if (typeof value !== "string")
-        return NextResponse.json({ error: `Enter a valid ${field} value.` }, { status: 400 });
-      const trimmed = value.trim();
-      if (trimmed.length > TEXT_LIMITS[field])
-        return NextResponse.json({ error: `The ${field} field is too long.` }, { status: 400 });
-      profile[field] = trimmed;
-    }
-    for (const field of BOOLEAN_FIELDS) {
-      const value = input[field] ?? emptyProfile[field];
-      if (typeof value !== "boolean")
-        return NextResponse.json({ error: `Enter a valid ${field} setting.` }, { status: 400 });
-      profile[field] = value;
-    }
-
-    const validationError =
-      validateIdentity(profile) ?? validateContact(profile) ?? validatePreferences(profile);
-    if (validationError)
-      return NextResponse.json({ error: validationError }, { status: 400 });
-
+    const profile = parseProfileInput(await request.json());
+    if (typeof profile === "string") return NextResponse.json({ error: profile }, { status: 400 });
     await db
       .collection("admins")
       .doc(actor.uid)

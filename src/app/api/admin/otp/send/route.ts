@@ -80,6 +80,173 @@ function validBody(value: unknown): value is SendBody & { idToken: string } {
   );
 }
 
+async function verifyOtpIdentity(
+  request: NextRequest,
+  idToken: string,
+): Promise<
+  | { decoded: Awaited<ReturnType<typeof adminAuth.verifyIdToken>>; storedEmail: string }
+  | NextResponse
+> {
+  const decoded = await adminAuth.verifyIdToken(idToken, true);
+  const email = decoded.email?.trim().toLowerCase() ?? "";
+  const adminRef = db.collection("admins").doc(decoded.uid);
+  const admin = await adminRef.get();
+  const role: unknown = admin.get("role");
+  const storedEmail = adminOtpRecipient({ email: admin.get("email") });
+  const validAccount =
+    decoded.email_verified &&
+    email.length > 0 &&
+    admin.exists &&
+    admin.get("mustChangePassword") !== true &&
+    decoded.mustChangePassword !== true &&
+    ["active", "invited"].includes(String(admin.get("status"))) &&
+    storedEmail === email &&
+    ["uploader", "approver", "admin", "superadmin"].includes(String(role)) &&
+    decoded.role === role;
+  if (!validAccount)
+    return NextResponse.json({ error: "Unable to send verification code." }, { status: 403 });
+  const location = await enforceAdminLocation({ request, adminUid: decoded.uid });
+  if (!location.allowed)
+    return NextResponse.json({ error: "Unable to send verification code." }, { status: 403 });
+  if (await isAdminOtpLocked(email)) {
+    await writeAuditLog(request, decoded.uid, "otp.locked", decoded.uid);
+    return NextResponse.json({ error: "Unable to send verification code." }, { status: 423 });
+  }
+  return { decoded, storedEmail };
+}
+
+async function reserveOtpChallenge(input: {
+  uid: string;
+  ipHash: string;
+  deviceHash: string;
+  now: number;
+}) {
+  const { uid, ipHash, deviceHash, now } = input;
+  const challengeId = randomUUID();
+  const code = createAdminOtpCode();
+  const challengeRef = adminOtpChallengeCollection().doc(challengeId);
+  const accountMinute = db.collection("abuseCounters").doc(`otp_account_cooldown_${uid}`);
+  const accountHour = db
+    .collection("abuseCounters")
+    .doc(`otp_account_hour_${uid}_${String(Math.floor(now / hourMs))}`);
+  const ipHour = db
+    .collection("abuseCounters")
+    .doc(`otp_ip_hour_${ipHash}_${String(Math.floor(now / hourMs))}`);
+  const blockedForSeconds = await db.runTransaction(async (transaction) => {
+    const [minuteSnap, hourSnap, ipSnap, previous] = await Promise.all([
+      transaction.get(accountMinute),
+      transaction.get(accountHour),
+      transaction.get(ipHour),
+      transaction.get(
+        adminOtpChallengeCollection().where("uid", "==", uid).where("consumedAt", "==", null),
+      ),
+    ]);
+    const minuteCount = Number(minuteSnap.get("count") ?? 0);
+    const hourCount = Number(hourSnap.get("count") ?? 0);
+    const ipCount = Number(ipSnap.get("count") ?? 0);
+    const lastSentAt = Number(minuteSnap.get("lastSentAt") ?? 0);
+    const canSend = canSendAdminOtp({
+      lastSentAt,
+      accountHourlyCount: hourCount,
+      ipHourlyCount: ipCount,
+      now,
+    });
+    if (!canSend)
+      return retrySeconds({
+        lastSentAt,
+        accountHourlyCount: hourCount,
+        ipHourlyCount: ipCount,
+        now,
+      });
+    for (const doc of previous.docs)
+      transaction.update(doc.ref, { consumedAt: FieldValue.serverTimestamp() });
+    transaction.set(
+      accountMinute,
+      {
+        count: minuteCount + 1,
+        lastSentAt: now,
+        expiresAt: new Date(now + 2 * minuteMs),
+      },
+      { merge: true },
+    );
+    transaction.set(
+      accountHour,
+      { count: hourCount + 1, expiresAt: new Date(now + 2 * hourMs) },
+      { merge: true },
+    );
+    transaction.set(
+      ipHour,
+      { count: ipCount + 1, expiresAt: new Date(now + 2 * hourMs) },
+      { merge: true },
+    );
+    transaction.create(
+      challengeRef,
+      createAdminOtpChallengeRecord({ uid, challengeId, code, now, ipHash, deviceHash }),
+    );
+    return 0;
+  });
+  return {
+    challengeId,
+    code,
+    challengeRef,
+    accountMinute,
+    accountHour,
+    ipHour,
+    blockedForSeconds,
+    now,
+  };
+}
+
+async function deliverOtpEmail(
+  storedEmail: string,
+  challenge: Awaited<ReturnType<typeof reserveOtpChallenge>>,
+): Promise<void> {
+  const site = await db.collection("siteSettings").doc("main").get();
+  const schoolName = String(site.get("schoolName") ?? "").trim() || "Satyam International School";
+  try {
+    await sendAdminOtpEmail({
+      to: storedEmail,
+      code: challenge.code,
+      schoolName,
+      tagline: String(site.get("tagline") ?? ""),
+      boardName: String(site.get("boardName") ?? ""),
+      affiliationNumber: String(site.get("affiliationNumber") ?? ""),
+      schoolCode: String(site.get("schoolCode") ?? ""),
+      address: String(site.get("address") ?? ""),
+      phone: String(site.get("phone") ?? ""),
+      email: String(site.get("email") ?? ""),
+    });
+  } catch {
+    await challenge.challengeRef.delete();
+    await releaseFailedOtpReservation({
+      accountMinute: challenge.accountMinute,
+      accountHour: challenge.accountHour,
+      ipHour: challenge.ipHour,
+      now: challenge.now,
+    });
+    throw new Error("MAIL_DELIVERY_FAILED");
+  }
+}
+
+function otpErrorResponse(error: unknown): NextResponse {
+  if (error instanceof Error && error.message === "APP_CHECK")
+    return NextResponse.json({ error: "App verification failed." }, { status: 403 });
+  const code = readErrorCode(error);
+  console.error("[admin/otp/send]", describeFirebaseError(error));
+  if (code.startsWith("auth/"))
+    return NextResponse.json(
+      { error: "Your sign-in session is invalid or expired. Sign in again." },
+      { status: 401 },
+    );
+  return NextResponse.json(
+    {
+      error:
+        "The verification email could not be sent. Check the server email and security configuration, then try again.",
+    },
+    { status: 503 },
+  );
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     if (!requesterIp(request))
@@ -93,138 +260,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body: unknown = await request.json();
     if (!validBody(body))
       return NextResponse.json({ error: "Unable to send verification code." }, { status: 400 });
-
-    const decoded = await adminAuth.verifyIdToken(body.idToken, true);
-    const email = decoded.email?.trim().toLowerCase() ?? "";
-    const adminRef = db.collection("admins").doc(decoded.uid);
-    const admin = await adminRef.get();
-    const role: unknown = admin.get("role");
-    const storedEmail = adminOtpRecipient({ email: admin.get("email") });
-    if (
-      !decoded.email_verified ||
-      !email ||
-      !admin.exists ||
-      admin.get("mustChangePassword") === true ||
-      decoded.mustChangePassword === true ||
-      !["active", "invited"].includes(String(admin.get("status"))) ||
-      storedEmail !== email ||
-      !["uploader", "approver", "admin", "superadmin"].includes(String(role)) ||
-      decoded.role !== role
-    )
-      return NextResponse.json({ error: "Unable to send verification code." }, { status: 403 });
-
-    const location = await enforceAdminLocation({ request, adminUid: decoded.uid });
-    if (!location.allowed)
-      return NextResponse.json({ error: "Unable to send verification code." }, { status: 403 });
-
-    if (await isAdminOtpLocked(email)) {
-      await writeAuditLog(request, decoded.uid, "otp.locked", decoded.uid);
-      return NextResponse.json({ error: "Unable to send verification code." }, { status: 423 });
-    }
-
+    const identity = await verifyOtpIdentity(request, body.idToken);
+    if (identity instanceof NextResponse) return identity;
     const now = Date.now();
-    const ipHash = hashRequesterIp(request);
-    const deviceHash = createDeviceHash(request);
-    const challengeId = randomUUID();
-    const code = createAdminOtpCode();
-    const challengeRef = adminOtpChallengeCollection().doc(challengeId);
-    const accountMinute = db.collection("abuseCounters").doc(`otp_account_cooldown_${decoded.uid}`);
-    const accountHour = db
-      .collection("abuseCounters")
-      .doc(`otp_account_hour_${decoded.uid}_${String(Math.floor(now / 3_600_000))}`);
-    const ipHour = db
-      .collection("abuseCounters")
-      .doc(`otp_ip_hour_${ipHash}_${String(Math.floor(now / 3_600_000))}`);
-    const blockedForSeconds = await db.runTransaction(async (transaction) => {
-      const [minuteSnap, hourSnap, ipSnap, previous] = await Promise.all([
-        transaction.get(accountMinute),
-        transaction.get(accountHour),
-        transaction.get(ipHour),
-        transaction.get(
-          adminOtpChallengeCollection()
-            .where("uid", "==", decoded.uid)
-            .where("consumedAt", "==", null),
-        ),
-      ]);
-      const minuteCount = Number(minuteSnap.get("count") ?? 0);
-      const hourCount = Number(hourSnap.get("count") ?? 0);
-      const ipCount = Number(ipSnap.get("count") ?? 0);
-      const lastSentAt = Number(minuteSnap.get("lastSentAt") ?? 0);
-      if (
-        !canSendAdminOtp({ lastSentAt, accountHourlyCount: hourCount, ipHourlyCount: ipCount, now })
-      )
-        return retrySeconds({
-          lastSentAt,
-          accountHourlyCount: hourCount,
-          ipHourlyCount: ipCount,
-          now,
-        });
-      for (const doc of previous.docs)
-        transaction.update(doc.ref, { consumedAt: FieldValue.serverTimestamp() });
-      transaction.set(
-        accountMinute,
-        { count: minuteCount + 1, lastSentAt: now, expiresAt: new Date(now + 2 * 60_000) },
-        { merge: true },
-      );
-      transaction.set(
-        accountHour,
-        { count: hourCount + 1, expiresAt: new Date(now + 2 * 60 * 60_000) },
-        { merge: true },
-      );
-      transaction.set(
-        ipHour,
-        { count: ipCount + 1, expiresAt: new Date(now + 2 * 60 * 60_000) },
-        { merge: true },
-      );
-      transaction.create(
-        challengeRef,
-        createAdminOtpChallengeRecord({
-          uid: decoded.uid,
-          challengeId,
-          code,
-          now,
-          ipHash,
-          deviceHash,
-        }),
-      );
-      return 0;
+    const challenge = await reserveOtpChallenge({
+      uid: identity.decoded.uid,
+      ipHash: hashRequesterIp(request),
+      deviceHash: createDeviceHash(request),
+      now,
     });
-    if (blockedForSeconds > 0)
+    if (challenge.blockedForSeconds > 0)
       return NextResponse.json(
         {
-          error: `A verification code was recently sent or the hourly send limit was reached. Try again in ${String(blockedForSeconds)} seconds.`,
-          retryAfterSeconds: blockedForSeconds,
+          error: `A verification code was recently sent or the hourly send limit was reached. Try again in ${String(challenge.blockedForSeconds)} seconds.`,
+          retryAfterSeconds: challenge.blockedForSeconds,
         },
         {
           status: 429,
-          headers: { "Cache-Control": "no-store", "Retry-After": String(blockedForSeconds) },
+          headers: {
+            "Cache-Control": "no-store",
+            "Retry-After": String(challenge.blockedForSeconds),
+          },
         },
       );
-
-    const site = await db.collection("siteSettings").doc("main").get();
-    const schoolName = String(site.get("schoolName") ?? "").trim() || "Satyam International School";
-    try {
-      await sendAdminOtpEmail({
-        to: storedEmail,
-        code,
-        schoolName,
-        tagline: String(site.get("tagline") ?? ""),
-        boardName: String(site.get("boardName") ?? ""),
-        affiliationNumber: String(site.get("affiliationNumber") ?? ""),
-        schoolCode: String(site.get("schoolCode") ?? ""),
-        address: String(site.get("address") ?? ""),
-        phone: String(site.get("phone") ?? ""),
-        email: String(site.get("email") ?? ""),
-      });
-    } catch {
-      await challengeRef.delete();
-      await releaseFailedOtpReservation({ accountMinute, accountHour, ipHour, now });
-      throw new Error("MAIL_DELIVERY_FAILED");
-    }
-    // Email delivery has succeeded. Audit logging must not turn a successful
-    // delivery into a false 401 response (which would leave the user without
-    // the challengeId needed to verify the code).
-    await writeAuditLog(request, decoded.uid, "otp.sent", challengeId).catch(
+    await deliverOtpEmail(identity.storedEmail, challenge);
+    await writeAuditLog(request, identity.decoded.uid, "otp.sent", challenge.challengeId).catch(
       (auditError: unknown) => {
         console.error("[admin/otp/send audit]", describeFirebaseError(auditError));
       },
@@ -235,34 +295,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }),
     );
     return NextResponse.json(
-      { challengeId, resendAfterSeconds: 60 },
+      { challengeId: challenge.challengeId, resendAfterSeconds: 60 },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    if (error instanceof Error && error.message === "APP_CHECK") {
-      return NextResponse.json({ error: "App verification failed." }, { status: 403 });
-    }
-
-    const code = readErrorCode(error);
-    const authFailure = code.startsWith("auth/");
-    // Keep the detailed cause in server logs only. The previous implementation
-    // converted every exception (SMTP, missing secrets, Firestore outages, etc.)
-    // into HTTP 401, incorrectly making infrastructure failures look like bad
-    // credentials.
-    console.error("[admin/otp/send]", describeFirebaseError(error));
-
-    if (authFailure) {
-      return NextResponse.json(
-        { error: "Your sign-in session is invalid or expired. Sign in again." },
-        { status: 401 },
-      );
-    }
-    return NextResponse.json(
-      {
-        error:
-          "The verification email could not be sent. Check the server email and security configuration, then try again.",
-      },
-      { status: 503 },
-    );
+    return otpErrorResponse(error);
   }
 }

@@ -4,8 +4,8 @@ import { createHmac, randomInt, randomBytes, timingSafeEqual } from "node:crypto
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getAllowedOrigins } from "@/server/site-origin";
 import { persistAuditLog } from "@/server/audit-log";
+import { getAllowedOrigins } from "@/server/site-origin";
 
 import { assertServerEnvironment } from "./env";
 import { adminAuth, adminAppCheck, db, describeFirebaseError } from "./firebase-admin";
@@ -57,7 +57,11 @@ export async function writeAuditLog(
   ...details: [string, string?, { changedFields?: string[]; details?: Record<string, unknown> }?]
 ): Promise<void> {
   const [targetId, studentId, metadata] = details;
-  await persistAuditLog(actorUid, action, targetId, studentId, metadata, hashRequesterIp(request));
+  await persistAuditLog(actorUid, action, targetId, {
+    ...(studentId ? { studentId } : {}),
+    ...(metadata ? { metadata } : {}),
+    ipHash: hashRequesterIp(request),
+  });
 }
 export async function writeConsentLog(
   request: NextRequest,

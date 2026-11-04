@@ -78,20 +78,31 @@ function csvRows(text: string): string[][] {
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (ch === undefined) continue;
-    if (ch === '"' && quoted && text[i + 1] === '"') {
-      cell += '"';
-      i++;
-    } else if (ch === '"') quoted = !quoted;
-    else if (ch === "," && !quoted) {
+    if (ch === '"') {
+      const escapedQuote = quoted && text[i + 1] === '"';
+      if (escapedQuote) {
+        cell += '"';
+        i++;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+    if (ch === "," && !quoted) {
       row.push(cell.trim());
       cell = "";
-    } else if ((ch === "\n" || ch === "\r") && !quoted) {
+      continue;
+    }
+    const newline = ch === "\n" || ch === "\r";
+    if (newline && !quoted) {
       if (ch === "\r" && text[i + 1] === "\n") i++;
       row.push(cell.trim());
       if (row.some(Boolean)) rows.push(row);
       row = [];
       cell = "";
-    } else cell += ch;
+      continue;
+    }
+    cell += ch;
   }
   row.push(cell.trim());
   if (row.some(Boolean)) rows.push(row);
@@ -149,6 +160,409 @@ function addFieldError(row: PreviewRow, column: string, message: string): void {
   row.error = row.fieldErrors.map((error) => `${error.column}: ${error.message}`).join("; ");
 }
 
+function importValues(cells: string[], fieldIndexes: Map<string, number>): Record<string, string> {
+  const values: Record<string, string> = {};
+  for (const field of Object.keys(importFields)) {
+    const column = fieldIndexes.get(field);
+    values[field] = column === undefined ? "" : (cells[column] ?? "");
+  }
+  return values;
+}
+
+function validateCatalogRow(
+  row: PreviewRow,
+  activeClasses: Set<string>,
+  activeSessions: Set<string>,
+): void {
+  const classValue = row.values.className ?? "";
+  const validClass =
+    activeClasses.has(classValue) && classValue.length > 0 && classValue === classValue.trim();
+  if (!validClass)
+    addFieldError(
+      row,
+      "className",
+      activeClasses.size
+        ? "Use an exact class name from the active Classes list."
+        : "No active classes are configured. Add classes in the catalog first.",
+    );
+  const sessionValue = row.values.session ?? "";
+  const validSession = /^\d{4}-\d{2}$/.test(sessionValue) && activeSessions.has(sessionValue);
+  if (!validSession)
+    addFieldError(
+      row,
+      "session",
+      activeSessions.size
+        ? "Use an active session in the exact YYYY-YY format shown in the template."
+        : "No active sessions are configured. Add sessions in the catalog first.",
+    );
+}
+
+function parseImportedStudent(row: PreviewRow): ImportData | null {
+  const parsed = studentCreateSchema
+    .omit({ certificateType: true, certificateNumber: true, issuedAt: true })
+    .safeParse(row.values);
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const field = String(issue.path[0] ?? "file");
+      addFieldError(row, fieldLabels[field] ?? field, issue.message);
+    }
+    return null;
+  }
+  return {
+    studentName: parsed.data.studentName,
+    fatherName: parsed.data.fatherName,
+    motherName: parsed.data.motherName,
+    className: parsed.data.className,
+    scholarNumber: parsed.data.scholarNumber,
+    session: parsed.data.session,
+    admissionNumber: parsed.data.admissionNumber ?? "",
+    dateOfBirth: parsed.data.dateOfBirth ?? "",
+    admissionNo: parsed.data.admissionNo ?? "",
+  };
+}
+
+async function validateExistingStudent(row: PreviewRow, data: ImportData): Promise<void> {
+  const key = createSearchKey(data);
+  const scholarKey = scholarLookupHmac(data.scholarNumber, data.className, data.session);
+  const [existing, scholarMatches] = await Promise.all([
+    db.collection("students").where("searchKey", "==", key).get(),
+    db.collection("students").where("scholarLookupKey", "==", scholarKey).get(),
+  ]);
+  const hasDisambiguator = Boolean(data.dateOfBirth || data.admissionNumber || data.admissionNo);
+  const existingNeedsIdentity = existing.docs.some(
+    (doc) =>
+      !doc.get("dateOfBirthDisambiguationKey") && !doc.get("admissionNumberDisambiguationKey"),
+  );
+  if (scholarMatches.docs.some((doc) => doc.get("searchKey") !== key))
+    addFieldError(
+      row,
+      "scholarNumber",
+      "Already assigned to a different student in this class and session.",
+    );
+  if (!existing.empty && (!hasDisambiguator || existingNeedsIdentity))
+    addFieldError(
+      row,
+      "studentName",
+      "Duplicate name combination: add a date of birth or admission number.",
+    );
+}
+
+async function previewImportRow(input: {
+  source: SourceRow;
+  headerLength: number;
+  fieldIndexes: Map<string, number>;
+  activeClasses: Set<string>;
+  activeSessions: Set<string>;
+}): Promise<PreviewRow> {
+  const { source, headerLength, fieldIndexes, activeClasses, activeSessions } = input;
+  const values = importValues(source.cells, fieldIndexes);
+  const row: PreviewRow = { row: source.row, data: null, values, error: null, fieldErrors: [] };
+  for (let index = headerLength; index < source.cells.length; index++)
+    if (source.cells[index])
+      addFieldError(row, `Column ${String(index + 1)}`, "Unexpected cell value.");
+  validateCatalogRow(row, activeClasses, activeSessions);
+  const data = parseImportedStudent(row);
+  if (!data) return row;
+  row.data = data;
+  if (!row.error) await validateExistingStudent(row, data);
+  return row;
+}
+
+function groupValidRows(
+  preview: PreviewRow[],
+  keyOf: (data: ImportData) => string,
+): Map<string, PreviewRow[]> {
+  const groups = new Map<string, PreviewRow[]>();
+  for (const row of preview) {
+    if (!row.data) continue;
+    const key = keyOf(row.data);
+    const group = groups.get(key) ?? [];
+    group.push(row);
+    groups.set(key, group);
+  }
+  return groups;
+}
+
+function markDuplicateNames(preview: PreviewRow[]): void {
+  const groups = groupValidRows(preview, createSearchKey);
+  for (const group of groups.values()) markDuplicateNameGroup(group);
+}
+
+function markDuplicateNameGroup(group: PreviewRow[]): void {
+  if (group.length < 2) return;
+  for (const row of group) {
+    const data = row.data;
+    if (data && !data.dateOfBirth && !data.admissionNumber && !data.admissionNo)
+      addFieldError(
+        row,
+        "studentName",
+        "Duplicate name combination: add a date of birth or admission number.",
+      );
+  }
+}
+
+function markDuplicateScholars(preview: PreviewRow[]): void {
+  const groups = groupValidRows(preview, (data) =>
+    scholarLookupHmac(data.scholarNumber, data.className, data.session),
+  );
+  for (const group of groups.values()) markDuplicateScholarGroup(group);
+}
+
+function markDuplicateScholarGroup(group: PreviewRow[]): void {
+  if (group.length < 2) return;
+  for (const row of group)
+    addFieldError(row, "scholarNumber", "Repeated in this file for the same class and session.");
+}
+
+async function loadCommitMatches(data: ImportData) {
+  const key = createSearchKey(data);
+  const scholarKey = scholarLookupHmac(data.scholarNumber, data.className, data.session);
+  const [matches, scholarMatches] = await Promise.all([
+    db.collection("students").where("searchKey", "==", key).get(),
+    db.collection("students").where("scholarLookupKey", "==", scholarKey).get(),
+  ]);
+  return { key, scholarKey, matches, scholarMatches };
+}
+
+function importIdentityKeys(data: ImportData) {
+  const dateOfBirth = data.dateOfBirth || "";
+  const admission = data.admissionNumber || data.admissionNo || "";
+  return {
+    dateOfBirth,
+    admission,
+    dateOfBirthKey: dateOfBirth ? studentIdentifierHmac(dateOfBirth) : "",
+    admissionKey: admission ? studentIdentifierHmac(admission) : "",
+  };
+}
+
+function assertNoImportConflict(input: {
+  rowNumber: number;
+  key: string;
+  matches: FirebaseFirestore.QuerySnapshot;
+  scholarMatches: FirebaseFirestore.QuerySnapshot;
+  dateOfBirthKey: string;
+  admissionKey: string;
+}): void {
+  const { rowNumber, key, matches, scholarMatches, dateOfBirthKey, admissionKey } = input;
+  if (scholarMatches.docs.some((doc) => doc.get("searchKey") !== key))
+    throw new Error(
+      `Scholar number on import row ${String(rowNumber)} is already assigned in this class and session.`,
+    );
+  const existingNeedsIdentity = matches.docs.some(
+    (doc) =>
+      !doc.get("dateOfBirthDisambiguationKey") && !doc.get("admissionNumberDisambiguationKey"),
+  );
+  if (!matches.empty && ((!dateOfBirthKey && !admissionKey) || existingNeedsIdentity))
+    throw new Error(
+      `Duplicate name combination detected on import row ${String(rowNumber)}: add a date of birth or admission number so students can be told apart.`,
+    );
+}
+
+function importedStudentFields(
+  data: ImportData,
+  key: string,
+  scholarKey: string,
+  identity: ReturnType<typeof importIdentityKeys>,
+) {
+  return {
+    studentName: data.studentName,
+    fatherName: data.fatherName,
+    motherName: data.motherName,
+    className: data.className,
+    scholarNumber: encryptStudentIdentifier(data.scholarNumber),
+    scholarLookupKey: scholarKey,
+    session: data.session,
+    searchKey: key,
+    ...(identity.dateOfBirth
+      ? {
+          dateOfBirth: encryptStudentIdentifier(identity.dateOfBirth),
+          dateOfBirthDisambiguationKey: identity.dateOfBirthKey,
+        }
+      : {}),
+    ...(identity.admission
+      ? {
+          admissionNumber: encryptStudentIdentifier(identity.admission),
+          admissionNumberDisambiguationKey: identity.admissionKey,
+        }
+      : {}),
+  };
+}
+
+async function persistImportedStudent(input: {
+  request: NextRequest;
+  adminUid: string;
+  data: ImportData;
+  identified: QueryDocumentSnapshot[];
+  fields: ReturnType<typeof importedStudentFields>;
+}): Promise<"created" | "updated"> {
+  const { request, adminUid, data, identified, fields } = input;
+  const existing = identified.at(0);
+  if (existing) {
+    await existing.ref.update({
+      ...fields,
+      importedFromExcel: true,
+      ...(fields.admissionNumber ? { admissionNo: FieldValue.delete() } : {}),
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedBy: adminUid,
+    });
+    await writeAuditLog(request, adminUid, "student.update", existing.id, existing.id);
+    return "updated";
+  }
+  const created = await db.collection("students").add({
+    ...fields,
+    importedFromExcel: true,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+    createdBy: adminUid,
+  });
+  await writeAuditLog(request, adminUid, "student.create", created.id, created.id);
+  return "created";
+}
+
+async function commitImportRow(
+  request: NextRequest,
+  adminUid: string,
+  item: PreviewRow,
+): Promise<"created" | "updated" | null> {
+  const data = item.data;
+  if (!data) return null;
+  const { key, scholarKey, matches, scholarMatches } = await loadCommitMatches(data);
+  const identity = importIdentityKeys(data);
+  assertNoImportConflict({
+    rowNumber: item.row,
+    key,
+    matches,
+    scholarMatches,
+    dateOfBirthKey: identity.dateOfBirthKey,
+    admissionKey: identity.admissionKey,
+  });
+  const identified = matches.docs.filter((doc) =>
+    studentIdentityMatches(doc.data(), identity.dateOfBirthKey, identity.admissionKey),
+  );
+  if (identified.length > 1)
+    throw new Error(`Import row ${String(item.row)} matches multiple existing students.`);
+  const fields = importedStudentFields(data, key, scholarKey, identity);
+  return persistImportedStudent({ request, adminUid, data, identified, fields });
+}
+
+function resolveHeaderIndexes(headerRow: SourceRow): Map<string, number> | NextResponse {
+  const headers = headerRow.cells.map(headerKey);
+  const headerErrors: string[] = [];
+  const fieldIndexes = new Map<string, number>();
+  for (const [field, acceptedHeaders] of Object.entries(importFields)) {
+    const accepted = new Set<string>(acceptedHeaders);
+    const positions = headers
+      .map((header, index) => (accepted.has(header) ? index : -1))
+      .filter((index) => index >= 0);
+    if (positions.length > 1)
+      headerErrors.push(`Use only one column for ${String(fieldLabels[field])}.`);
+    if (positions[0] !== undefined) fieldIndexes.set(field, positions[0]);
+  }
+  for (const field of requiredFields) {
+    if (!fieldIndexes.has(field))
+      headerErrors.push(`Missing required column: ${String(fieldLabels[field])}.`);
+  }
+  const knownHeaders = new Set<string>(
+    Object.values(importFields).flatMap((values) => [...values]),
+  );
+  for (const [index, header] of headers.entries()) {
+    if (header && !knownHeaders.has(header))
+      headerErrors.push(`Unexpected column "${String(headerRow.cells[index])}".`);
+  }
+  if (headerErrors.length)
+    return NextResponse.json(
+      { error: `Fix the Excel header row ${String(headerRow.row)}: ${headerErrors.join(" ")}` },
+      { status: 400 },
+    );
+  return fieldIndexes;
+}
+
+async function activeCatalogs(): Promise<{ classes: Set<string>; sessions: Set<string> }> {
+  const [classesSnapshot, sessionsSnapshot] = await Promise.all([
+    db.collection("classes").get(),
+    db.collection("sessions").get(),
+  ]);
+  return {
+    classes: new Set(
+      classesSnapshot.docs
+        .filter((doc) => doc.get("isActive") !== false)
+        .map(catalogLabel)
+        .filter(Boolean),
+    ),
+    sessions: new Set(
+      sessionsSnapshot.docs
+        .filter((doc) => doc.get("isActive") !== false)
+        .map((doc) => normalizeAcademicSession(catalogLabel(doc)) ?? "")
+        .filter(Boolean),
+    ),
+  };
+}
+
+async function buildImportPreview(
+  rows: SourceRow[],
+  headerRow: SourceRow,
+  fieldIndexes: Map<string, number>,
+  catalogs: { classes: Set<string>; sessions: Set<string> },
+): Promise<PreviewRow[]> {
+  const preview = await Promise.all(
+    rows.slice(1).map((source) =>
+      previewImportRow({
+        source,
+        headerLength: headerRow.cells.length,
+        fieldIndexes,
+        activeClasses: catalogs.classes,
+        activeSessions: catalogs.sessions,
+      }),
+    ),
+  );
+  markDuplicateNames(preview);
+  markDuplicateScholars(preview);
+  return preview;
+}
+
+function invalidRowCount(rows: SourceRow[]): NextResponse | null {
+  if (rows.length < 2)
+    return NextResponse.json(
+      { error: "The file needs a header row and at least one student row." },
+      { status: 400 },
+    );
+  if (rows.length - 1 > MAX_CSV_ROWS)
+    return NextResponse.json(
+      { error: `Import no more than ${String(MAX_CSV_ROWS)} student rows at a time.` },
+      { status: 400 },
+    );
+  return null;
+}
+
+function previewResponse(preview: PreviewRow[]): NextResponse {
+  const errors = preview.filter((row) => row.error);
+  return NextResponse.json(
+    {
+      total: preview.length,
+      valid: preview.length - errors.length,
+      errors,
+      preview: preview.slice(0, 500),
+    },
+    { headers: { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } },
+  );
+}
+
+async function commitPreview(
+  request: NextRequest,
+  adminUid: string,
+  preview: PreviewRow[],
+): Promise<{ created: number; updated: number }> {
+  let created = 0;
+  let updated = 0;
+  for (const item of preview) {
+    const result = await commitImportRow(request, adminUid, item);
+    if (result === "created") created++;
+    if (result === "updated") updated++;
+  }
+  await writeAuditLog(request, adminUid, "student.bulk_import", String(preview.length));
+  return { created, updated };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireRoles(request, ["uploader", "admin", "superadmin"]);
@@ -167,335 +581,28 @@ export async function POST(request: NextRequest) {
     const quotaError = await consumeAdminUploadQuota(admin.uid, file.size);
     if (quotaError) return NextResponse.json({ error: quotaError }, { status: 429 });
     const rows = await importRows(file);
-    if (rows.length < 2)
-      return NextResponse.json(
-        { error: "The file needs a header row and at least one student row." },
-        { status: 400 },
-      );
-    if (rows.length - 1 > MAX_CSV_ROWS)
-      return NextResponse.json(
-        { error: `Import no more than ${String(MAX_CSV_ROWS)} student rows at a time.` },
-        { status: 400 },
-      );
-
+    const rowCountError = invalidRowCount(rows);
+    if (rowCountError) return rowCountError;
     const headerRow = rows.at(0);
     if (!headerRow)
       return NextResponse.json({ error: "The file needs a header row." }, { status: 400 });
-    const headers = headerRow.cells.map(headerKey);
-    const headerErrors: string[] = [];
-    const fieldIndexes = new Map<string, number>();
-    for (const [field, acceptedHeaders] of Object.entries(importFields)) {
-      const accepted = new Set<string>(acceptedHeaders);
-      const positions = headers
-        .map((header, index) => (accepted.has(header) ? index : -1))
-        .filter((index) => index >= 0);
-      if (positions.length > 1)
-        headerErrors.push(`Use only one column for ${String(fieldLabels[field])}.`);
-      if (positions[0] !== undefined) fieldIndexes.set(field, positions[0]);
-    }
-    for (const field of requiredFields)
-      if (!fieldIndexes.has(field))
-        headerErrors.push(`Missing required column: ${String(fieldLabels[field])}.`);
-    const knownHeaders = new Set<string>(
-      Object.values(importFields).flatMap((values) => [...values]),
-    );
-    for (const [index, header] of headers.entries())
-      if (header && !knownHeaders.has(header))
-        headerErrors.push(`Unexpected column "${String(headerRow.cells[index])}".`);
-    if (headerErrors.length)
-      return NextResponse.json(
-        {
-          error: `Fix the Excel header row ${String(headerRow.row)}: ${headerErrors.join(" ")}`,
-        },
-        { status: 400 },
-      );
-
-    const [classesSnapshot, sessionsSnapshot] = await Promise.all([
-      db.collection("classes").get(),
-      db.collection("sessions").get(),
-    ]);
-    const activeClasses = new Set(
-      classesSnapshot.docs
-        .filter((document) => document.get("isActive") !== false)
-        .map(catalogLabel)
-        .filter(Boolean),
-    );
-    const activeSessions = new Set(
-      sessionsSnapshot.docs
-        .filter((document) => document.get("isActive") !== false)
-        .map((document) => normalizeAcademicSession(catalogLabel(document)) ?? "")
-        .filter(Boolean),
-    );
-    const preview: PreviewRow[] = await Promise.all(
-      rows.slice(1).map(async ({ cells, row: sourceRow }) => {
-        const values: Record<string, string> = {};
-        for (const field of Object.keys(importFields)) {
-          const column = fieldIndexes.get(field);
-          values[field] = column === undefined ? "" : (cells[column] ?? "");
-        }
-        const row: PreviewRow = {
-          row: sourceRow,
-          data: null,
-          values,
-          error: null,
-          fieldErrors: [],
-        };
-        for (let index = headerRow.cells.length; index < cells.length; index++)
-          if (cells[index])
-            addFieldError(row, `Column ${String(index + 1)}`, "Unexpected cell value.");
-
-        const classValue = values.className ?? "";
-        if (
-          !activeClasses.has(classValue) ||
-          classValue.length === 0 ||
-          classValue !== classValue.trim()
-        )
-          addFieldError(
-            row,
-            "className",
-            activeClasses.size
-              ? "Use an exact class name from the active Classes list."
-              : "No active classes are configured. Add classes in the catalog first.",
-          );
-        const sessionValue = values.session ?? "";
-        if (!/^\d{4}-\d{2}$/.test(sessionValue) || !activeSessions.has(sessionValue))
-          addFieldError(
-            row,
-            "session",
-            activeSessions.size
-              ? "Use an active session in the exact YYYY-YY format shown in the template."
-              : "No active sessions are configured. Add sessions in the catalog first.",
-          );
-
-        const parsed = studentCreateSchema
-          .omit({
-            certificateType: true,
-            certificateNumber: true,
-            issuedAt: true,
-          })
-          .safeParse({
-            admissionNumber: values.admissionNumber,
-            dateOfBirth: values.dateOfBirth,
-            studentName: values.studentName,
-            fatherName: values.fatherName,
-            motherName: values.motherName,
-            className: classValue,
-            scholarNumber: values.scholarNumber,
-            session: sessionValue,
-          });
-        if (!parsed.success) {
-          for (const issue of parsed.error.issues) {
-            const field = String(issue.path[0] ?? "file");
-            addFieldError(row, fieldLabels[field] ?? field, issue.message);
-          }
-          return row;
-        }
-        const importedData: ImportData = {
-          studentName: parsed.data.studentName,
-          fatherName: parsed.data.fatherName,
-          motherName: parsed.data.motherName,
-          className: parsed.data.className,
-          scholarNumber: parsed.data.scholarNumber,
-          session: parsed.data.session,
-          admissionNumber: parsed.data.admissionNumber ?? "",
-          dateOfBirth: parsed.data.dateOfBirth ?? "",
-          admissionNo: parsed.data.admissionNo ?? "",
-        };
-        row.data = importedData;
-        if (row.error) return row;
-
-        const key = createSearchKey(importedData);
-        const scholarKey = scholarLookupHmac(
-          importedData.scholarNumber,
-          importedData.className,
-          importedData.session,
-        );
-        const existing = await db.collection("students").where("searchKey", "==", key).get();
-        const scholarMatches = await db
-          .collection("students")
-          .where("scholarLookupKey", "==", scholarKey)
-          .get();
-        const hasDisambiguator = Boolean(
-          importedData.dateOfBirth || importedData.admissionNumber || importedData.admissionNo,
-        );
-        const existingNeedsIdentity = existing.docs.some(
-          (doc) =>
-            !doc.get("dateOfBirthDisambiguationKey") &&
-            !doc.get("admissionNumberDisambiguationKey"),
-        );
-        if (scholarMatches.docs.some((doc) => doc.get("searchKey") !== key))
-          addFieldError(
-            row,
-            "scholarNumber",
-            "Already assigned to a different student in this class and session.",
-          );
-        if (!existing.empty && (!hasDisambiguator || existingNeedsIdentity))
-          addFieldError(
-            row,
-            "studentName",
-            "Duplicate name combination: add a date of birth or admission number.",
-          );
-        return row;
-      }),
-    );
-    const duplicateGroups = new Map<string, PreviewRow[]>();
-    for (const row of preview) {
-      if (!row.data) continue;
-      const key = createSearchKey(row.data);
-      const group = duplicateGroups.get(key) ?? [];
-      group.push(row);
-      duplicateGroups.set(key, group);
-    }
-    for (const group of duplicateGroups.values())
-      if (group.length > 1)
-        for (const row of group) {
-          if (
-            row.data &&
-            !row.data.dateOfBirth &&
-            !row.data.admissionNumber &&
-            !row.data.admissionNo
-          )
-            addFieldError(
-              row,
-              "studentName",
-              "Duplicate name combination: add a date of birth or admission number.",
-            );
-        }
-    const scholarGroups = new Map<string, PreviewRow[]>();
-    for (const row of preview) {
-      if (!row.data) continue;
-      const key = scholarLookupHmac(row.data.scholarNumber, row.data.className, row.data.session);
-      const group = scholarGroups.get(key) ?? [];
-      group.push(row);
-      scholarGroups.set(key, group);
-    }
-    for (const group of scholarGroups.values())
-      if (group.length > 1)
-        for (const row of group)
-          addFieldError(
-            row,
-            "scholarNumber",
-            "Repeated in this file for the same class and session.",
-          );
-    const errors = preview.filter((r) => r.error);
-    if (action !== "commit")
-      return NextResponse.json(
-        {
-          total: preview.length,
-          valid: preview.length - errors.length,
-          errors,
-          preview: preview.slice(0, 500),
-        },
-        {
-          headers: {
-            "Cache-Control": "no-store",
-            "X-Robots-Tag": "noindex, nofollow",
-          },
-        },
-      );
+    const fieldIndexes = resolveHeaderIndexes(headerRow);
+    if (fieldIndexes instanceof NextResponse) return fieldIndexes;
+    const catalogs = await activeCatalogs();
+    const preview = await buildImportPreview(rows, headerRow, fieldIndexes, catalogs);
+    const errors = preview.filter((row) => row.error);
+    if (action === "preview") return previewResponse(preview);
     if (errors.length)
       return NextResponse.json(
-        {
-          error: "Resolve every invalid row before committing.",
-          total: preview.length,
-          errors,
-        },
+        { error: "Resolve every invalid row before committing.", total: preview.length, errors },
         { status: 400 },
       );
-    let created = 0,
-      updated = 0;
-    for (const item of preview) {
-      if (!item.data) continue;
-      const data = item.data;
-      const key = createSearchKey(data);
-      const scholarKey = scholarLookupHmac(data.scholarNumber, data.className, data.session);
-      const matches = await db.collection("students").where("searchKey", "==", key).get();
-      const scholarMatches = await db
-        .collection("students")
-        .where("scholarLookupKey", "==", scholarKey)
-        .get();
-      if (scholarMatches.docs.some((doc) => doc.get("searchKey") !== key))
-        throw new Error(
-          `Scholar number on import row ${String(item.row)} is already assigned in this class and session.`,
-        );
-      const dob = data.dateOfBirth || "";
-      const admission = data.admissionNumber || data.admissionNo || "";
-      const dobKey = dob ? studentIdentifierHmac(dob) : "";
-      const admissionKey = admission ? studentIdentifierHmac(admission) : "";
-      if (
-        !matches.empty &&
-        ((!dobKey && !admissionKey) ||
-          matches.docs.some(
-            (doc) =>
-              !doc.get("dateOfBirthDisambiguationKey") &&
-              !doc.get("admissionNumberDisambiguationKey"),
-          ))
-      )
-        throw new Error(
-          `Duplicate name combination detected on import row ${String(item.row)}: add a date of birth or admission number so students can be told apart.`,
-        );
-      const identified = matches.docs.filter((doc) =>
-        studentIdentityMatches(doc.data(), dobKey, admissionKey),
-      );
-      if (identified.length > 1)
-        throw new Error(`Import row ${String(item.row)} matches multiple existing students.`);
-      const common = {
-        studentName: data.studentName,
-        fatherName: data.fatherName,
-        motherName: data.motherName,
-        className: data.className,
-        scholarNumber: encryptStudentIdentifier(data.scholarNumber),
-        scholarLookupKey: scholarKey,
-        session: data.session,
-        searchKey: key,
-        ...(dob
-          ? {
-              dateOfBirth: encryptStudentIdentifier(dob),
-              dateOfBirthDisambiguationKey: dobKey,
-            }
-          : {}),
-        ...(admission
-          ? {
-              admissionNumber: encryptStudentIdentifier(admission),
-              admissionNumberDisambiguationKey: admissionKey,
-            }
-          : {}),
-      };
-      if (identified.length === 1) {
-        const existing = identified.at(0);
-        if (!existing) continue;
-        await existing.ref.update({
-          ...common,
-          importedFromExcel: true,
-          ...(admission ? { admissionNo: FieldValue.delete() } : {}),
-          updatedAt: FieldValue.serverTimestamp(),
-          updatedBy: admin.uid,
-        });
-        updated++;
-        await writeAuditLog(request, admin.uid, "student.update", existing.id, existing.id);
-      } else {
-        const createdRef = await db.collection("students").add({
-          ...common,
-          importedFromExcel: true,
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
-          createdBy: admin.uid,
-        });
-        created++;
-        await writeAuditLog(request, admin.uid, "student.create", createdRef.id, createdRef.id);
-      }
-    }
-    await writeAuditLog(request, admin.uid, "student.bulk_import", String(preview.length));
+    const result = await commitPreview(request, admin.uid, preview);
     return NextResponse.json(
-      { ok: true, total: preview.length, created, updated },
-      {
-        headers: {
-          "Cache-Control": "no-store",
-          "X-Robots-Tag": "noindex, nofollow",
-        },
-      },
+      { ok: true, total: preview.length, ...result },
+      { headers: { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } },
     );
-  } catch (e) {
-    return apiError(e);
+  } catch (error) {
+    return apiError(error);
   }
 }

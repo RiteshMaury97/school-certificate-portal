@@ -1,5 +1,6 @@
 import { db } from "@/server/firebase-admin";
-import { studentAccessTokenOwnsStudent, verifyStudentAccessToken } from "@/server/security";
+import { studentAccessTokenOwnsStudent } from "@/server/security";
+import type { verifyStudentAccessToken } from "@/server/security";
 
 import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 
