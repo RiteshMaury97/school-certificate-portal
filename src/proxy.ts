@@ -8,10 +8,13 @@ import type { NextRequest } from "next/server";
 const APP_ORIGIN = process.env.APP_ORIGIN;
 let maintenanceCache: { enabled: boolean; expiresAt: number } | null = null;
 let maintenanceRead: Promise<boolean> | null = null;
-const locationDecisionCache = new Map<string, {
-  result: { allowed: boolean; reason?: string };
-  expiresAt: number;
-}>();
+const locationDecisionCache = new Map<
+  string,
+  {
+    result: { allowed: boolean; reason?: string };
+    expiresAt: number;
+  }
+>();
 
 function buildCsp(nonce: string, allowSameOriginFrame = false): string {
   const dev = process.env.NODE_ENV !== "production";
@@ -75,7 +78,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 async function maintenanceModeEnabled(request: NextRequest): Promise<boolean> {
   if (maintenanceCache && maintenanceCache.expiresAt > Date.now()) return maintenanceCache.enabled;
-  maintenanceRead ??= readMaintenanceMode(request).finally(() => { maintenanceRead = null; });
+  maintenanceRead ??= readMaintenanceMode(request).finally(() => {
+    maintenanceRead = null;
+  });
   const enabled = await maintenanceRead;
   maintenanceCache = { enabled, expiresAt: Date.now() + 30_000 };
   return enabled;
@@ -97,9 +102,7 @@ async function readMaintenanceMode(request: NextRequest): Promise<boolean> {
 }
 
 function httpsRedirect(request: NextRequest, production: boolean): NextResponse | null {
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  if (!production || (request.nextUrl.protocol === "https:" && forwardedProto !== "http"))
-    return null;
+  if (!production || request.nextUrl.protocol === "https:") return null;
   const destination = request.nextUrl.clone();
   destination.protocol = "https:";
   return NextResponse.redirect(destination, 308);
@@ -181,7 +184,9 @@ async function checkLocationPolicyCached(
   const sessionCookie = request.cookies.get("sis_admin_session")?.value ?? "";
   const rawKey = `${request.nextUrl.pathname}\u0000${origin.ip ?? ""}\u0000${origin.country ?? ""}\u0000${sessionCookie}`;
   const keyBytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
-  const key = Array.from(new Uint8Array(keyBytes), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const key = Array.from(new Uint8Array(keyBytes), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
   const now = Date.now();
   const cached = locationDecisionCache.get(key);
   if (cached && cached.expiresAt > now) return cached.result;
@@ -364,12 +369,19 @@ async function continueRequest(
   return response;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const production = process.env.NODE_ENV === "production";
   const redirect = httpsRedirect(request, production);
-  if (redirect) return redirect;
-  const { nonce, response } = createRequestResponse(request, production);
-  return continueRequest(request, response, nonce, production);
+  const result =
+    redirect ??
+    (await (async () => {
+      const { nonce, response } = createRequestResponse(request, production);
+      return continueRequest(request, response, nonce, production);
+    })());
+  if (process.env.VERCEL_ENV !== "production" || isAdminPage(request.nextUrl.pathname)) {
+    result.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+  return result;
 }
 
 export const config = {

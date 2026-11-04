@@ -30,7 +30,7 @@ export default async function responsiveReport() {
   const failedRows = rows.filter((row) => row.failures.length);
   const failedChecks = new Map<string, number>();
   for (const row of failedRows) for (const failure of row.failures) {
-    const check = failure.split("=")[0];
+    const check = failure.split("=")[0] ?? "unknown";
     failedChecks.set(check, (failedChecks.get(check) ?? 0) + 1);
   }
   const details = failedChecks.size

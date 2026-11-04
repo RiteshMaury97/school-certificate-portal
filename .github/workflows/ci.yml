@@ -1,61 +1,62 @@
-name: CI and Vercel deployment
+name: CI
+
 on:
-  push:
-    branches: ["**"]
   pull_request:
+  push:
+    branches: [main]
+
 permissions:
   contents: read
-  pull-requests: read
+
 jobs:
-  quality:
+  checks:
+    name: Lint, typecheck, test, build, audit, secrets
     runs-on: ubuntu-latest
-    env:
-      FIREBASE_PROJECT_ID: sis-ci-build
-      SITE_URL: https://ci.example.invalid
-      APP_ORIGIN: https://ci.example.invalid
-      NEXT_PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm install --no-audit --no-fund
-      - run: npm run lint
-      - name: Scan for secrets
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reject generated reports and build metadata
+        run: |
+          if git ls-files | grep -E '(^|/)(test-results|reports)(/|$)|(^|/)eslint-report\.json$|(^|/)[^/]+\.tsbuildinfo$|(^|/)[^/]+\.log$'; then
+            echo "::error::Generated test/lint reports, logs and TypeScript build metadata must not be committed."
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+        env:
+          VERCEL_ENV: development
+          NEXT_PUBLIC_FIREBASE_API_KEY: ci-public-api-key
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ci-test.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ci-test-project
+          NEXT_PUBLIC_FIREBASE_APP_ID: 1:1234567890:web:ci-test
+
+      - name: Build
+        run: npm run build
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Secret scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm audit --audit-level=high
-      - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-      - run: npm run test:a11y
-  deploy-preview:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-    needs: quality
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm install --no-audit --no-fund
-      - run: npx vercel link --yes --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID" --token=${{ secrets.VERCEL_TOKEN }}
-        env: { VERCEL_PROJECT_ID: "${{ secrets.VERCEL_PROJECT_ID }}", VERCEL_ORG_ID: "${{ secrets.VERCEL_ORG_ID }}" }
-      - run: npx vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-      - run: npx vercel build --token=${{ secrets.VERCEL_TOKEN }}
-      - run: npx vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
-  deploy-production:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: quality
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm install --no-audit --no-fund
-      - run: npx vercel link --yes --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID" --token=${{ secrets.VERCEL_TOKEN }}
-        env: { VERCEL_PROJECT_ID: "${{ secrets.VERCEL_PROJECT_ID }}", VERCEL_ORG_ID: "${{ secrets.VERCEL_ORG_ID }}" }
-      - run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-      - run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-      - run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

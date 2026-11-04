@@ -2,11 +2,13 @@ import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 
 import { db } from "@/server/firebase-admin";
+import { assertServerEnvironment } from "@/server/env";
 import { escapeHtml, sendMail } from "@/server/mailer";
 
 import type { DocumentSnapshot } from "firebase-admin/firestore";
 
 function secret() {
+  assertServerEnvironment();
   const value = process.env.NOTIFICATION_OPT_OUT_SECRET;
   if (!value || Buffer.byteLength(value) < 32)
     throw new Error("NOTIFICATION_OPT_OUT_SECRET must be at least 32 bytes.");

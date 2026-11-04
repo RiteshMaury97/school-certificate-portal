@@ -5,6 +5,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { requireRequesterIp } from "./request-origin";
+import { assertServerEnvironment } from "./env";
 import { adminAuth, adminAppCheck, db, describeFirebaseError } from "./firebase-admin";
 import {
   bindStudentId,
@@ -26,6 +27,7 @@ import { hasAnyRole as hasRole } from "../shared/role-policy";
 import { ADMIN_HARD_SESSION_LIMIT_MS, isAdminSessionExpired } from "../shared/session-policy";
 
 function requiredSecret(name: string): string {
+  assertServerEnvironment();
   const value = process.env[name];
   if (!value || Buffer.byteLength(value, "utf8") < 32) {
     throw new Error(`${name} must be configured with at least 32 bytes`);

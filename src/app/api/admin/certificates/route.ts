@@ -26,7 +26,6 @@ import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
 
 function safeDocumentValue(document: { get(field: string): unknown }, field: string): unknown {
   const value: unknown = document.get(field);

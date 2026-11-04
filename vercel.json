@@ -1,18 +1,50 @@
 {
+  "framework": "nextjs",
+  "installCommand": "npm install",
+  "buildCommand": "next build",
+  "regions": [
+    "bom1"
+  ],
   "functions": {
-    "src/app/api/admin/certificates/route.ts": { "maxDuration": 30 },
-    "src/app/api/admin/certificates/[certificateId]/route.ts": { "maxDuration": 30 },
-    "src/app/api/admin/students/route.ts": { "maxDuration": 30 },
-    "src/app/api/admin/bulk-upload/route.ts": { "maxDuration": 30 }
+    "src/app/api/admin/bulk-upload/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/certificates/bundle/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/certificates/print/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/admin/export/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/admin/breaches/export/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/admin/backup/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/admin/malware/rescan/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/security-summary/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/breach-reminders/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/malware-rescan/route.ts": {
+      "maxDuration": 60
+    }
   },
   "crons": [
     {
       "path": "/api/admin/backup",
-      "schedule": "30 2 * * *"
+      "schedule": "0 4 * * *"
     },
     {
       "path": "/api/cron/security-summary",
-      "schedule": "0 3 * * *"
+      "schedule": "0 4 * * *"
     },
     {
       "path": "/api/cron/breach-reminders",
@@ -20,7 +52,7 @@
     },
     {
       "path": "/api/cron/malware-rescan",
-      "schedule": "0 * * * *"
+      "schedule": "0 4 * * *"
     }
   ]
 }

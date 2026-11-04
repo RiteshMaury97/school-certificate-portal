@@ -23,7 +23,6 @@ import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
 
 import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
-export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 const mappingSchema = z
   .object({

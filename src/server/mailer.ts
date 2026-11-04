@@ -3,6 +3,7 @@ import "server-only";
 import nodemailer from "nodemailer";
 
 import { db } from "@/server/firebase-admin";
+import { assertServerEnvironment } from "@/server/env";
 
 import type { SendMailOptions } from "nodemailer";
 
@@ -38,6 +39,7 @@ export function escapeHtml(value: unknown): string {
 }
 
 function getTransport(): nodemailer.Transporter {
+  assertServerEnvironment();
   const user = process.env.GMAIL_USER?.trim();
   const password = process.env.GMAIL_APP_PASSWORD?.trim();
   if (!user || !password) {

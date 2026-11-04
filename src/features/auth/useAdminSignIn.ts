@@ -1,12 +1,10 @@
 "use client";
 import {
-  getRedirectResult,
   GoogleAuthProvider,
   sendEmailVerification,
   reload,
   signInWithEmailAndPassword,
   signInWithPopup,
-  signInWithRedirect,
   signOut,
   type User,
 } from "firebase/auth";
@@ -181,24 +179,6 @@ export function useAdminSignIn() {
       );
     throw new Error(describeSignInError(cause, "password"));
   };
-  useEffect(() => {
-    let active = true;
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (result && active) await run(() => begin(result.user), "Google sign-in failed");
-      })
-      .catch((cause: unknown) => {
-        if (active)
-          toast.add({
-            type: "error",
-            title: "Google sign-in failed",
-            description: describeSignInError(cause, "google"),
-          });
-      });
-    return () => {
-      active = false;
-    };
-  }, [begin, run]);
   const submitCredentials = (typedEmail: string, password: string) =>
     run(async () => {
       setEmail(typedEmail);
@@ -218,10 +198,6 @@ export function useAdminSignIn() {
     run(async () => {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        await signInWithRedirect(auth, provider);
-        return;
-      }
       try {
         const credential = await signInWithPopup(auth, provider);
         await begin(credential.user);

@@ -37,7 +37,7 @@ export function studentsFor(scenario: ResponsiveScenario): ResponsiveStudent[] {
   return Array.from({ length: count }, (_, index) => ({
     id: `student-${String(index).padStart(4, "0")}`,
     admissionNo: scenario === "worst" ? `ADM-${String(index).padStart(6, "0")}` : `10${index + 1}`,
-    studentName: scenario === "worst" ? longName : ["Rahul Kumar", "Aarav Patel", "Sana Khan"][index % 3],
+    studentName: scenario === "worst" ? longName : (["Rahul Kumar", "Aarav Patel", "Sana Khan"][index % 3] ?? "Rahul Kumar"),
     fatherName: scenario === "worst" ? longName : "Amit Kumar",
     motherName: scenario === "worst" ? longName : "Sunita Kumar",
     email: scenario === "worst" ? longEmail : `student${String(index + 1)}@example.test`,
@@ -53,7 +53,7 @@ export function certificatesFor(scenario: ResponsiveScenario): ResponsiveCertifi
   return Array.from({ length: count }, (_, index) => ({
     id: `certificate-${String(index).padStart(4, "0")}`,
     studentId: `student-${String(index).padStart(4, "0")}`,
-    studentName: scenario === "worst" ? longName : ["Rahul Kumar", "Aarav Patel", "Sana Khan"][index % 3],
+    studentName: scenario === "worst" ? longName : (["Rahul Kumar", "Aarav Patel", "Sana Khan"][index % 3] ?? "Rahul Kumar"),
     admissionNo: `ADM-${String(index + 1).padStart(6, "0")}`,
     email: scenario === "worst" ? longEmail : `student${String(index + 1)}@example.test`,
     session: "2025-26",

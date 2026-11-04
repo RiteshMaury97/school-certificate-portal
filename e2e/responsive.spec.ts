@@ -63,10 +63,13 @@ async function measure(page: Page, route: string) {
     });
     const overlaps: string[] = [];
     for (let left = 0; left < interactive.length; left += 1) {
-      const a = interactive[left].getBoundingClientRect();
+      const firstAtLeft = interactive[left];
+      if (!firstAtLeft) continue;
+      const a = firstAtLeft.getBoundingClientRect();
       for (let right = left + 1; right < interactive.length; right += 1) {
         const first = interactive[left];
         const second = interactive[right];
+        if (!first || !second) continue;
         if (first.contains(second) || second.contains(first)) continue;
         const b = second.getBoundingClientRect();
         if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2)

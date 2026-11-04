@@ -15,6 +15,7 @@ import { PDFDocument, PDFArray, PDFDict, PDFName, PDFRef } from "pdf-lib";
 import sharp from "sharp";
 
 import { db } from "@/server/firebase-admin";
+import { assertServerEnvironment } from "@/server/env";
 import { sendMail } from "@/server/mailer";
 import { MalwareScanError, scanForMalware } from "@/server/malware-scan";
 import { writeAuditLog } from "@/server/security";
@@ -26,6 +27,7 @@ const MAX_FILE_BYTES = UPLOAD_MAX_BYTES;
 type SupportedMimeType = "application/pdf" | "image/jpeg" | "image/png";
 
 function required(name: string): string {
+  assertServerEnvironment();
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not configured`);
   return value;

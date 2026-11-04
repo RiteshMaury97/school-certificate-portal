@@ -1,7 +1,10 @@
 import "server-only";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
+import { assertServerEnvironment } from "./env";
+
 function key(): Buffer {
+  assertServerEnvironment();
   const encoded = process.env.CERTIFICATE_NUMBER_ENCRYPTION_KEY;
   if (!encoded)
     throw new Error("CERTIFICATE_NUMBER_ENCRYPTION_KEY is not configured");

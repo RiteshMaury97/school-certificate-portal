@@ -2,12 +2,17 @@
   "name": "school-certificate-portal",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "node scripts/maintenance/check-eslint-disables.mjs && eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
+    "check:env": "node scripts/check-env.mjs",
+    "smoke": "node scripts/smoke/vercel-smoke.mjs",
     "backfill:certificate-ids": "node scripts/migrations/backfill-public-certificate-ids.mjs",
     "audit": "npm audit --audit-level=high",
     "audit:fix": "npm audit fix",
@@ -30,7 +35,7 @@
     "lint:fix": "node scripts/maintenance/check-eslint-disables.mjs && eslint . --fix --max-warnings=0 && prettier --write .",
     "format": "prettier --write .",
     "lint:report": "node scripts/maintenance/lint-report.mjs",
-    "check": "npm run lint && npm run typecheck && npm test",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "prepare": "husky",
     "firebase:deploy:rules": "firebase deploy --only firestore",
     "admin:promote-superadmin": "node scripts/admin/promote-superadmin-by-uid.mjs"

@@ -10,7 +10,7 @@ function request(headers: Record<string, string> = {}) {
 }
 
 describe("trusted request origin", () => {
-  it("uses the first x-vercel-forwarded-for value before x-real-ip", () => {
+  it("uses only the first x-vercel-forwarded-for value", () => {
     expect(
       getRequestOrigin(
         request({
@@ -22,10 +22,10 @@ describe("trusted request origin", () => {
     ).toBe("203.0.113.4");
   });
 
-  it("uses x-real-ip when the Vercel forwarded header is absent", () => {
+  it("ignores x-real-ip when the Vercel forwarded header is absent", () => {
     expect(
       getRequestOrigin(request({ "x-real-ip": "198.51.100.8" }), { production: true }).ip,
-    ).toBe("198.51.100.8");
+    ).toBeNull();
   });
 
   it("ignores spoofed Cloudflare IP and country headers by default", () => {
@@ -49,7 +49,7 @@ describe("trusted request origin", () => {
     expect(getRequestOrigin(request(), { production: false }).ip).toBe("127.0.0.1");
   });
 
-  it("uses Cloudflare IP and geo only when its proxy is explicitly trusted", () => {
+  it("ignores Cloudflare supplied IP and geo headers", () => {
     expect(
       getRequestOrigin(
         request({
@@ -57,9 +57,9 @@ describe("trusted request origin", () => {
           "cf-ipcountry": "NZ",
           "cf-ipcity": "Auckland",
         }),
-        { production: true, trustCloudflareProxy: true },
+        { production: true },
       ),
-    ).toEqual({ ip: "203.0.113.9", country: "NZ", city: "Auckland" });
+    ).toEqual({ ip: null, country: null, city: null });
   });
 
   it("keeps different IPs in different rate-limit buckets", () => {

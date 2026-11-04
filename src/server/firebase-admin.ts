@@ -4,6 +4,8 @@ import { getAppCheck } from "firebase-admin/app-check";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
+import { assertServerEnvironment } from "./env";
+
 type ServiceAccountInput = Parameters<typeof cert>[0];
 
 const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -38,6 +40,7 @@ function firebaseErrorCode(error: unknown): string | number | undefined {
  * A service-account file must never be committed to the repository.
  */
 function readServiceAccount(): ServiceAccountInput | null {
+  assertServerEnvironment();
   const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();
   if (encoded) {
     try {

@@ -39,7 +39,7 @@ vi.mock("@/server/firebase-admin", () => ({
   },
 }));
 
-import { inspectCertificateContent } from "@/server/r2";
+import { validateCertificateFile } from "@/server/r2";
 import { consumeAdminUploadQuota, rejectOversizedRequest } from "@/server/upload-policy";
 import { MULTIPART_ALLOWANCE_BYTES, UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
 
@@ -58,10 +58,10 @@ describe("upload limits", () => {
 
   it("rejects mismatched magic bytes, encrypted PDFs, and PDFs over the page limit", async () => {
     await expect(
-      inspectCertificateContent(Buffer.from("not a PDF"), "scan.pdf", "application/pdf"),
+      validateCertificateFile(Buffer.from("not a PDF"), "scan.pdf", "application/pdf"),
     ).rejects.toThrow(/supported/);
     await expect(
-      inspectCertificateContent(
+      validateCertificateFile(
         Buffer.from("%PDF-1.7\n/Encrypt 1 0 R"),
         "locked.pdf",
         "application/pdf",
@@ -70,7 +70,7 @@ describe("upload limits", () => {
     const pdf = await PDFDocument.create();
     for (let page = 0; page < 11; page++) pdf.addPage();
     await expect(
-      inspectCertificateContent(Buffer.from(await pdf.save()), "many.pdf", "application/pdf"),
+      validateCertificateFile(Buffer.from(await pdf.save()), "many.pdf", "application/pdf"),
     ).rejects.toThrow(/between 1 and 10/);
   });
 

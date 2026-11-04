@@ -1,9 +1,6 @@
 export type RequestLike = { headers: Headers };
 export type RequestOrigin = { ip: string | null; country: string | null; city: string | null };
-export type RequestOriginOptions = {
-  production?: boolean;
-  trustCloudflareProxy?: boolean;
-};
+export type RequestOriginOptions = { production?: boolean };
 
 function firstHeaderValue(headers: Headers, name: string): string | null {
   const value = headers.get(name)?.split(",", 1)[0]?.trim();
@@ -15,12 +12,8 @@ function nonEmptyHeader(headers: Headers, name: string): string | null {
   return value && value.length > 0 ? value : null;
 }
 
-function trustedIp(headers: Headers, trustCloudflareProxy: boolean): string | null {
-  return (
-    firstHeaderValue(headers, "x-vercel-forwarded-for") ??
-    firstHeaderValue(headers, "x-real-ip") ??
-    (trustCloudflareProxy ? firstHeaderValue(headers, "cf-connecting-ip") : null)
-  );
+function trustedIp(headers: Headers): string | null {
+  return firstHeaderValue(headers, "x-vercel-forwarded-for");
 }
 
 /** Reads only trusted edge headers. Options are injectable for unit tests. */
@@ -29,16 +22,10 @@ export function getRequestOrigin(
   options: RequestOriginOptions = {},
 ): RequestOrigin {
   const production = options.production ?? process.env.NODE_ENV === "production";
-  const trustCloudflareProxy =
-    options.trustCloudflareProxy ?? process.env.TRUST_CLOUDFLARE_PROXY === "true";
   const headers = request.headers;
-  const ip = trustedIp(headers, trustCloudflareProxy) ?? (production ? null : "127.0.0.1");
-  const country =
-    nonEmptyHeader(headers, "x-vercel-ip-country") ??
-    (trustCloudflareProxy ? nonEmptyHeader(headers, "cf-ipcountry") : null);
-  const city =
-    nonEmptyHeader(headers, "x-vercel-ip-city") ??
-    (trustCloudflareProxy ? nonEmptyHeader(headers, "cf-ipcity") : null);
+  const ip = trustedIp(headers) ?? (production ? null : "127.0.0.1");
+  const country = nonEmptyHeader(headers, "x-vercel-ip-country");
+  const city = null;
   return { ip, country, city };
 }
 

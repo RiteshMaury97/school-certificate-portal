@@ -36,7 +36,6 @@ import { isValidPhoneNumber, normalize, studentCreateSchema } from "@/shared/val
 import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 function slugify(value: string): string {
   return normalize(value)
