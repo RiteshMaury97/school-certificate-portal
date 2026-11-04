@@ -25,9 +25,7 @@ export async function POST(request: NextRequest) {
     const format =
       "format" in body ? String((body).format) : "json";
     const passphrase =
-      "passphrase" in body
-        ? String((body as { passphrase?: unknown }).passphrase ?? "")
-        : "";
+      "passphrase" in body && typeof body.passphrase === "string" ? body.passphrase : "";
     if (format !== "json" && format !== "csv")
       return NextResponse.json(
         { error: "Choose JSON or CSV." },

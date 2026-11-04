@@ -108,6 +108,7 @@ export default function StudentCreatePanel(props: Props) {
                 />
               ) : <input
                 id={`student-${key}`}
+                aria-label={label}
                 translate="no"
                 type="text"
                 required={[
@@ -244,6 +245,7 @@ export default function StudentCreatePanel(props: Props) {
             Certificate number
             <input
               id="certificate-number"
+              aria-label="Certificate number"
               translate="no"
               required aria-required="true"
               maxLength={80}
@@ -280,6 +282,7 @@ export default function StudentCreatePanel(props: Props) {
             Certificate file
             <input
               id="certificate-file"
+              aria-label="Certificate file"
               translate="no"
               required aria-required="true"
               type="file"
@@ -341,6 +344,7 @@ export default function StudentCreatePanel(props: Props) {
           >
             <input
               id="parent-notification-consent"
+              aria-label="Confirm parent or guardian consent to notifications"
               type="checkbox"
               required={Boolean(notify.email || notify.mobile)}
               aria-required={Boolean(notify.email || notify.mobile)}

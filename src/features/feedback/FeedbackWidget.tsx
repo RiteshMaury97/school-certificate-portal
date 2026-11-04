@@ -142,6 +142,7 @@ export default function FeedbackWidget({ page = "/" }: { page?: string }) {
               What could be improved? (optional)
               <textarea
                 translate="no"
+                aria-label="Feedback suggestion"
                 value={comment}
                 onChange={(e) => { setComment(e.target.value.slice(0, 200)); }}
                 maxLength={200}

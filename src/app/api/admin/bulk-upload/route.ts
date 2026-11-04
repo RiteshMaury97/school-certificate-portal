@@ -24,6 +24,9 @@ import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
 import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+function readFirestoreText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
 const mappingSchema = z
   .object({
     fileName: z.string().min(1).max(255),
@@ -35,7 +38,11 @@ const mappingSchema = z
     certificateNumber: z.string().min(1).max(80),
     issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   })
-  .refine((x) => Boolean(x.studentId || x.admissionNo || x.admissionNumber));
+  .refine((x) =>
+    [x.studentId, x.admissionNo, x.admissionNumber].some(
+      (value) => typeof value === "string" && value.length > 0,
+    ),
+  );
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireRoles(request, ["uploader", "admin"]);
@@ -45,7 +52,8 @@ export async function POST(request: NextRequest) {
     const file = form.get("file");
     let rawMapping: unknown = {};
     try {
-      rawMapping = JSON.parse(formString(form, "mapping") || "{}");
+      const mappingJson = formString(form, "mapping");
+      rawMapping = JSON.parse(mappingJson.length > 0 ? mappingJson : "{}");
     } catch {
       return NextResponse.json({ error: "Mapping JSON is invalid." }, { status: 400 });
     }
@@ -68,7 +76,10 @@ export async function POST(request: NextRequest) {
     const studentQuery = map.studentId
       ? await db.collection("students").doc(map.studentId).get()
       : null;
-    const admissionValue = map.admissionNumber || map.admissionNo || "";
+    const admissionValue =
+      map.admissionNumber && map.admissionNumber.length > 0
+        ? map.admissionNumber
+        : map.admissionNo ?? "";
     const admissionKey =
       !studentQuery && admissionValue ? studentIdentifierHmac(admissionValue) : "";
     const admissionQuery =
@@ -119,8 +130,8 @@ export async function POST(request: NextRequest) {
     const sameHash = await db.collection("certificates").where("sha256", "==", sha256).get();
     const duplicateDecision = duplicateFileDecision(
       sameHash.docs.map((doc) => ({
-        studentId: doc.get("studentId"),
-        type: doc.get("type"),
+        studentId: readFirestoreText(doc.get("studentId")),
+        type: readFirestoreText(doc.get("type")),
       })),
       student.id,
       map.certificateType,

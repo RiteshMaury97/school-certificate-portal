@@ -76,6 +76,7 @@ export default function BreachNotificationActions({ incident, api, act, load, re
               Written reason if this step is not required
               <textarea
                 id={`reason-${field}`}
+                aria-label={`Written reason for ${label.toLowerCase()}`}
                 className={`${inputClass} min-h-20`}
                 value={reasons[reasonField] ?? incident[reasonField] ?? ""}
                 maxLength={1000}

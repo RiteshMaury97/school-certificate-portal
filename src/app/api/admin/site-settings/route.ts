@@ -1,4 +1,4 @@
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -15,7 +15,29 @@ const url = z
   .string()
   .trim()
   .max(1000)
-  .refine((value) => !value || /^https:\/\//i.test(value), "Use an HTTPS URL");
+  .refine((value) => !value || isHttpsUrl(value), "Use an HTTPS URL");
+
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isLanguageCode(value: string): boolean {
+  const parts = value.trim().split("-");
+  if (parts.length > 2) return false;
+  const [language, region] = parts;
+  const hasAsciiLetters = (part: string, min: number, max: number) => {
+    if (part.length < min || part.length > max) return false;
+    for (const character of part.toLowerCase()) {
+      if (character < "a" || character > "z") return false;
+    }
+    return true;
+  };
+  return hasAsciiLetters(language, 2, 3) && (region === undefined || hasAsciiLetters(region, 2, 2));
+}
 const localeText = z
   .object({
     hi: z.string().max(1800).optional(),
@@ -41,7 +63,7 @@ const schema = z.object({
     .optional()
     .default("en,hi,bn,mr,gu,pa,ta,te,ur")
     .refine(
-      (value) => value.split(",").every((code) => /^[a-z]{2,3}(?:-[a-z]{2})?$/i.test(code.trim())),
+      (value) => value.split(",").every(isLanguageCode),
       "Use comma-separated language codes",
     ),
   boardName: z.string().trim().max(160),
@@ -56,21 +78,22 @@ const schema = z.object({
   phone: z.string().trim().max(80),
   officeHours: z.string().trim().max(160).optional().default(""),
   mapUrl: url.optional().default(""),
-  email: z.string().trim().email().max(254),
+  email: z.string().trim().max(254).refine((value) => z.email().safeParse(value).success),
   jurisdiction: z.string().trim().max(120),
   socialLinks: z
     .array(
       z.object({
         label: z.string().trim().min(1).max(40),
-        url: z
-          .string()
-          .url()
-          .refine((v) => /^https:\/\//i.test(v)),
+      url: z.url().refine(isHttpsUrl),
       }),
     )
     .max(12),
   grievanceOfficerName: z.string().trim().max(120),
-  grievanceOfficerEmail: z.string().trim().email().max(254),
+  grievanceOfficerEmail: z
+    .string()
+    .trim()
+    .max(254)
+    .refine((value) => z.email().safeParse(value).success),
   securityContactEmail: z
     .string()
     .trim()
@@ -121,13 +144,7 @@ export async function GET(request: NextRequest) {
       .slice(0, 10)
       .map((document) => {
         const timestamp: unknown = document.get("timestamp");
-        const date =
-          typeof timestamp === "object" &&
-          timestamp !== null &&
-          "toDate" in timestamp &&
-          typeof timestamp.toDate === "function"
-            ? timestamp.toDate()
-            : null;
+        const date = timestamp instanceof Timestamp ? timestamp.toDate() : null;
         return {
           action: String(document.get("action")),
           country: String(document.get("country") ?? "Unknown"),

@@ -196,7 +196,7 @@ function AnnouncementControls({
           {(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const).map((locale) => (
             <label key={locale} className="text-xs font-semibold uppercase text-[var(--text-muted)]">
               {locale}
-              <textarea rows={2} maxLength={240} value={announcement.text_i18n?.[locale] ?? ""} onChange={(event) => {
+              <textarea aria-label={`${locale.toUpperCase()} announcement text`} rows={2} maxLength={240} value={announcement.text_i18n?.[locale] ?? ""} onChange={(event) => {
                 setAnnouncement((current) => ({ ...current, text_i18n: { ...current.text_i18n, [locale]: event.target.value } }));
               }} className="mt-1 w-full rounded-lg border border-[var(--divider)] bg-[var(--surface)] p-2 text-sm font-normal normal-case text-[var(--text)]" required aria-required="true" />
             </label>

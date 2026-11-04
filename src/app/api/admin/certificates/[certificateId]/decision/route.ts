@@ -30,14 +30,12 @@ export async function POST(
         { error: "Choose approve or reject." },
         { status: 400 },
       );
-    const decision = String((body).decision);
+    const decision = typeof body.decision === "string" ? body.decision : "";
     const reason =
-      "reason" in body
-        ? String((body as { reason?: unknown }).reason ?? "").trim()
+      "reason" in body && typeof body.reason === "string"
+        ? body.reason.trim()
         : "";
-    const detailsMatch =
-      "detailsMatch" in body &&
-      (body as { detailsMatch?: unknown }).detailsMatch === true;
+    const detailsMatch = "detailsMatch" in body && body.detailsMatch === true;
     if (decision !== "approve" && decision !== "reject")
       return NextResponse.json({ error: "Invalid decision." }, { status: 400 });
     if (decision === "reject" && (reason.length < 10 || reason.length > 1000))

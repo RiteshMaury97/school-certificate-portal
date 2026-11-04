@@ -26,16 +26,20 @@ type AdminUpdate = {
 };
 
 function parseAdminUpdate(value: unknown): AdminUpdate | null {
-  if (typeof value !== "object" || value === null || !("uid" in value) || typeof value.uid !== "string") return null;
-  const input = value;
-  if ("disabled" in input && typeof input.disabled !== "boolean") return null;
-  if ("role" in input && !isAdminRole(input.role)) return null;
-  return {
-    uid: input.uid,
-    ...(typeof input.disabled === "boolean" ? { disabled: input.disabled } : {}),
-    ...(isAdminRole(input.role) ? { role: input.role } : {}),
-    ...("profile" in input ? { profile: input.profile } : {}),
-  };
+  if (typeof value !== "object" || value === null || !("uid" in value)) return null;
+  const uid: unknown = value.uid;
+  if (typeof uid !== "string") return null;
+  const update: AdminUpdate = { uid };
+  if ("disabled" in value) {
+    if (typeof value.disabled !== "boolean") return null;
+    update.disabled = value.disabled;
+  }
+  if ("role" in value) {
+    if (!isAdminRole(value.role)) return null;
+    update.role = value.role;
+  }
+  if ("profile" in value) update.profile = value.profile;
+  return update;
 }
 
 async function applyAdminUpdate(input: {
@@ -64,6 +68,42 @@ async function applyAdminUpdate(input: {
     changes.profileUpdatedAt = new Date();
   }
   await db.collection("admins").doc(update.uid).update(changes);
+}
+
+function adminUpdateError(update: AdminUpdate, actorUid: string): string | null {
+  if (update.disabled === undefined && update.role === undefined && !("profile" in update))
+    return "No changes supplied.";
+  if (update.uid === actorUid && update.disabled === true) return "You cannot disable your own account.";
+  if (update.uid === actorUid && update.role) return "You cannot change your own role.";
+  return null;
+}
+
+async function deliverAdminInvitation(input: {
+  email: string;
+  role: "uploader" | "approver" | "admin" | "superadmin";
+  temporaryPassword: string;
+  profile: { preferredName: string; name: string };
+}): Promise<void> {
+  const verificationLink = await adminAuth.generateEmailVerificationLink(input.email, {
+    url: absoluteUrl("/admin/login"),
+  });
+  const site = await db.collection("siteSettings").doc("main").get();
+  const schoolName = String(site.get("schoolName") ?? "").trim() || "Satyam International School";
+  await sendAdminInvitationEmail({
+    to: input.email,
+    role: input.role,
+    temporaryPassword: input.temporaryPassword,
+    verificationLink,
+    schoolName,
+    recipientName: input.profile.preferredName || input.profile.name,
+    tagline: String(site.get("tagline") ?? ""),
+    boardName: String(site.get("boardName") ?? ""),
+    affiliationNumber: String(site.get("affiliationNumber") ?? ""),
+    schoolCode: String(site.get("schoolCode") ?? ""),
+    address: String(site.get("address") ?? ""),
+    phone: String(site.get("phone") ?? ""),
+    email: String(site.get("email") ?? ""),
+  });
 }
 async function superadmin(request: NextRequest) {
   const actor = await requireAdmin(request);
@@ -124,26 +164,11 @@ export async function POST(request: NextRequest) {
         createdBy: actor.uid,
       });
     try {
-      const verificationLink = await adminAuth.generateEmailVerificationLink(email, {
-        url: absoluteUrl("/admin/login"),
-      });
-      const site = await db.collection("siteSettings").doc("main").get();
-      const schoolName =
-        String(site.get("schoolName") ?? "").trim() || "Satyam International School";
-      await sendAdminInvitationEmail({
-        to: email,
+      await deliverAdminInvitation({
+        email,
         role,
         temporaryPassword,
-        verificationLink,
-        schoolName,
-        recipientName: parsed.data.profile.preferredName || parsed.data.profile.name,
-        tagline: String(site.get("tagline") ?? ""),
-        boardName: String(site.get("boardName") ?? ""),
-        affiliationNumber: String(site.get("affiliationNumber") ?? ""),
-        schoolCode: String(site.get("schoolCode") ?? ""),
-        address: String(site.get("address") ?? ""),
-        phone: String(site.get("phone") ?? ""),
-        email: String(site.get("email") ?? ""),
+        profile: parsed.data.profile,
       });
     } catch (error) {
       await Promise.all([
@@ -173,12 +198,8 @@ export async function PATCH(request: NextRequest) {
     const profileResult = hasProfile ? adminInviteProfileSchema.safeParse(update.profile) : null;
     if (hasProfile && !profileResult?.success)
       return NextResponse.json({ error: "Enter valid staff profile details." }, { status: 400 });
-    if (update.disabled === undefined && update.role === undefined && !hasProfile)
-      return NextResponse.json({ error: "No changes supplied." }, { status: 400 });
-    if (update.uid === actor.uid && update.disabled === true)
-      return NextResponse.json({ error: "You cannot disable your own account." }, { status: 400 });
-    if (update.uid === actor.uid && update.role)
-      return NextResponse.json({ error: "You cannot change your own role." }, { status: 400 });
+    const validationError = adminUpdateError(update, actor.uid);
+    if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
     await applyAdminUpdate({ actorUid: actor.uid, update, profile: profileResult });
     await writeAuditLog(
       request,

@@ -1,10 +1,13 @@
-import {
+﻿import {
   useState,
   type Dispatch,
   type SubmitEvent,
   type SubmitEventHandler,
   type SetStateAction,
 } from "react";
+
+import { readText } from "@/shared/safe-values";
+
 type Props = {
   branding: Record<string, string>;
   setBranding: Dispatch<SetStateAction<Record<string, string>>>;
@@ -372,14 +375,14 @@ export default function BrandingTab(props: Props) {
         </form>
         <ul className="mt-4 space-y-2 text-sm">
           {adminLocationExceptions
-            .filter((item) => Date.parse(String(item.expiresAt)) > Date.now())
+            .filter((item) => Date.parse(readText(item.expiresAt)) > Date.now())
             .map((item) => (
-              <li key={String(item.id)} className="rounded border p-3">
+              <li key={readText(item.id)} className="rounded border p-3">
                 {item.country
-                  ? `Country ${String(item.country)}`
-                  : `Admin ${String(item.adminUid)}`}{" "}
-                · expires {new Date(String(item.expiresAt)).toLocaleString()} ·{" "}
-                {String(item.reason)}
+                  ? `Country ${readText(item.country)}`
+                  : `Admin ${readText(item.adminUid)}`}{" "}
+                Â· expires {new Date(readText(item.expiresAt)).toLocaleString()} Â·{" "}
+                {readText(item.reason)}
               </li>
             ))}
         </ul>
@@ -389,9 +392,9 @@ export default function BrandingTab(props: Props) {
         <ul className="mt-3 space-y-2 text-sm">
           {recentLocationBlocks.length ? (
             recentLocationBlocks.map((item, index) => (
-              <li key={`${String(item.action)}-${index}`} className="rounded border p-3">
-                {String(item.action)} · {String(item.country)} ·{" "}
-                {item.at ? new Date(String(item.at)).toLocaleString() : "time unavailable"}
+              <li key={`${readText(item.action)}-${index}`} className="rounded border p-3">
+                {readText(item.action)} Â· {readText(item.country)} Â·{" "}
+                {item.at ? new Date(readText(item.at)).toLocaleString() : "time unavailable"}
               </li>
             ))
           ) : (

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
+import { readErrorCode } from "@/shared/safe-values";
 import { sameOrigin, verifyRequestAppCheck, writeAuditLog } from "@/server/security";
 
 import type { NextRequest } from "next/server";
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const code = String((error as { code?: unknown } | null)?.code ?? "");
+    const code = readErrorCode(error);
     if (
       error instanceof Error &&
       (error.message === "APP_CHECK" || error.message === "Invalid origin")

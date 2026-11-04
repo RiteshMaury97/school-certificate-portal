@@ -17,7 +17,10 @@ const unavailable = () =>
 function esc(value: string) {
   return value.replace(
     /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+    (character) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        character
+      ] ?? character,
   );
 }
 export async function GET(request: NextRequest) {

@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { FilePlus2, Search, ShieldCheck, UsersRound, X } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type SubmitEvent } from "react";
 
 import EmptyState from "@/components/feedback/EmptyState";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -130,6 +130,12 @@ export default function StudentsList({
       ),
     [classOptions, students],
   );
+
+function displayScalar(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value || fallback;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
   const sessionNames = useMemo(
     () =>
       choices(
@@ -199,7 +205,7 @@ export default function StudentsList({
     }
   }
 
-  async function saveStudent(event: FormEvent<HTMLFormElement>) {
+  async function saveStudent(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!editing || !editForm) return;
     setSavingEdit(true);
@@ -228,7 +234,7 @@ export default function StudentsList({
     }
   }
 
-  async function addCertificate(event: FormEvent<HTMLFormElement>) {
+  async function addCertificate(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!certificateStudent || !certificateFile) {
       setCertificateError("Choose a certificate file first.");
@@ -300,6 +306,7 @@ export default function StudentsList({
             />
             <input
               id="student-search"
+              aria-label="Search student records"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
@@ -403,11 +410,11 @@ export default function StudentsList({
                   <td className={`${cellClass} font-semibold`}>{student.studentName}</td>
                   <td className={cellClass}>{student.fatherName}</td>
                   <td className={cellClass}>{student.motherName}</td>
-                  <td className={cellClass}>{student.scholarNumber || "—"}</td>
-                  <td className={cellClass}>{student.admissionNo || "—"}</td>
-                  <td className={cellClass}>{student.dateOfBirth || "—"}</td>
-                  <td className={cellClass}>{student.className || "—"}</td>
-                  <td className={cellClass}>{student.session || "—"}</td>
+                  <td className={cellClass}>{displayScalar(student.scholarNumber, "—")}</td>
+                  <td className={cellClass}>{displayScalar(student.admissionNo, "—")}</td>
+                  <td className={cellClass}>{displayScalar(student.dateOfBirth, "—")}</td>
+                  <td className={cellClass}>{displayScalar(student.className, "—")}</td>
+                  <td className={cellClass}>{displayScalar(student.session, "—")}</td>
                   <td className={cellClass}>{student.certificateCount}</td>
                   <td className={cellClass}>
                     <div className="flex items-center gap-2">
@@ -469,7 +476,7 @@ export default function StudentsList({
       {visible.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--divider)] px-5 py-3 text-xs">
           <span className="text-[var(--text-muted)]">
-            Showing {page * 15 + 1}–{Math.min((page + 1) * 15, filtered.length)} of{" "}
+            Showing {page * 15 + 1}â€“{Math.min((page + 1) * 15, filtered.length)} of{" "}
             {filtered.length} students
           </span>
           <div className="flex items-center gap-2">
@@ -556,6 +563,7 @@ export default function StudentsList({
                   {label}
                   <input
                     id={`edit-student-${key}`}
+                    aria-label={label}
                     type={type ?? "text"}
                     required={required} aria-required={required}
                     value={editForm[key]}
@@ -591,16 +599,16 @@ export default function StudentsList({
                 <ul className="mt-2 max-h-36 space-y-2 overflow-auto text-xs text-[var(--text-muted)]">
                   {history.map((item, index) => (
                     <li
-                      key={String(item.id ?? index)}
+                      key={displayScalar(item.id, String(index))}
                       className="rounded-lg bg-[var(--surface-2)] p-3"
                     >
                       <strong className="text-[var(--text)]">
-                        {String(item.action ?? "Record activity")}
+                        {displayScalar(item.action, "Record activity")}
                       </strong>
                       {item.timestamp
-                        ? ` · ${new Date(String(item.timestamp)).toLocaleString()}`
+                        ? ` Â· ${new Date(item.timestamp).toLocaleString()}`
                         : ""}
-                      {item.actor ? ` · ${String(item.actor)}` : ""}
+                      {item.actor ? ` Â· ${displayScalar(item.actor)}` : ""}
                       {Array.isArray(item.changedFields) && item.changedFields.length > 0 ? (
                         <p className="mt-1">Changed: {item.changedFields.map(String).join(", ")}</p>
                       ) : null}
@@ -645,7 +653,7 @@ export default function StudentsList({
                   Add certificate
                 </h2>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">
-                  {certificateStudent.studentName} · Class {certificateStudent.className} · Session{" "}
+                  {certificateStudent.studentName} Â· Class {certificateStudent.className} Â· Session{" "}
                   {certificateStudent.session}
                 </p>
               </div>
@@ -693,6 +701,7 @@ export default function StudentsList({
                 Certificate number
                 <input
                   id="student-certificate-number"
+                  aria-label="Certificate number"
                   required aria-required="true"
                   maxLength={80}
                   value={certificate.certificateNumber}
@@ -731,6 +740,7 @@ export default function StudentsList({
                 Certificate document
                 <input
                   id="student-certificate-file"
+                  aria-label="Certificate document"
                   type="file"
                   required aria-required="true"
                   accept=".pdf,.jpg,.jpeg,.png"
@@ -778,7 +788,7 @@ export default function StudentsList({
                   }
                   className="min-h-10 rounded-lg bg-[var(--primary)] px-5 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-50"
                 >
-                  {uploadingCertificate ? "Uploading…" : "Upload certificate"}
+                  {uploadingCertificate ? "Uploadingâ€¦" : "Upload certificate"}
                 </button>
               </div>
             </form>

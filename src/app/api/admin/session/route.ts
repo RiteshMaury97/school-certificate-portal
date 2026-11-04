@@ -20,6 +20,7 @@ import {
   hashRequesterIp,
 } from "@/server/security";
 import { absoluteUrl } from "@/server/site-origin";
+import { readErrorCode } from "@/shared/safe-values";
 import { ADMIN_HARD_SESSION_LIMIT_MS, isAdminSessionExpired } from "@/shared/session-policy";
 
 import type { NextRequest } from "next/server";
@@ -339,7 +340,7 @@ export async function GET(request: NextRequest) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    const code = String((error as { code?: unknown } | null)?.code ?? "");
+    const code = readErrorCode(error);
     // Invalid / expired / revoked cookie => signed out. Anything else is an outage.
     if (code.startsWith("auth/"))
       return NextResponse.json({ authenticated: false }, { status: 401 });

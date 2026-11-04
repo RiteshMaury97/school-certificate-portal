@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
+import { formString } from "@/app/api/_lib/form-data";
 import { db } from "@/server/firebase-admin";
 import { createSearchKey, requireRoles, writeAuditLog, apiError } from "@/server/security";
 import {
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
     if (tooLarge) return tooLarge;
     const form = await request.formData();
     const file = form.get("file");
-    const action = String(form.get("action") ?? "preview");
+    const action = formString(form, "action", "preview");
     if (action !== "preview" && action !== "commit")
       return NextResponse.json({ error: "Choose preview or commit." }, { status: 400 });
     if (!(file instanceof File) || file.size > MAX_CSV_BYTES)

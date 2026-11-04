@@ -12,18 +12,23 @@ import type { LegalSection } from "@/components/layout/LegalPageLayout";
 import type { SubmitEvent } from "react";
 
 
-const region = process.env.NEXT_PUBLIC_DATA_HOSTING_REGION || "{{HOSTING_REGION}}";
-const version = process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION || "2026-10";
+function textOr(value: string | undefined | null, fallback: string): string {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : fallback;
+}
+
+const region = textOr(process.env.NEXT_PUBLIC_DATA_HOSTING_REGION, "{{HOSTING_REGION}}");
+const version = textOr(process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION, "2026-10");
 
 export default function PrivacyPage() {
   const settings = usePublicSiteSettings();
-  const school = settings.schoolName?.trim() || "Satyam International School";
-  const address = settings.address?.trim() || "";
-  const email = settings.email?.trim() || "";
-  const officer = settings.grievanceOfficerName?.trim() || "";
-  const updated = settings.lastUpdated?.trim() || "No data found";
+  const school = textOr(settings.schoolName, "Satyam International School");
+  const address = textOr(settings.address, "");
+  const email = textOr(settings.email, "");
+  const officer = textOr(settings.grievanceOfficerName, "");
+  const updated = textOr(settings.lastUpdated, "No data found");
   const retentionYears =
-    settings.retentionYears ?? Number(process.env.NEXT_PUBLIC_RETENTION_YEARS || 7);
+    settings.retentionYears ?? Number(process.env.NEXT_PUBLIC_RETENTION_YEARS ?? "7");
   const backupRotationDays = settings.backupRotationDays ?? 30;
   const [requestType, setRequestType] = useState("");
   const [requesterName, setRequesterName] = useState("");
@@ -274,7 +279,7 @@ export default function PrivacyPage() {
             related correspondence are retained in accordance with the School’s officially approved
             recordkeeping and support-ticket retention policy, which will be established and
             published before the portal becomes operational. Student records are retained for a
-            period of <strong>seven (7) years</strong> following the end of the relevant passing
+            period of <strong>{retentionYears === 7 ? "seven (7)" : retentionYears} years</strong> following the end of the relevant passing
             session. Upon expiry of this period, records are reviewed for secure deletion or
             anonymisation, subject to applicable legal and administrative requirements. Deletion
             requests are assessed by the School on a case-by-case basis. Information may be retained
@@ -325,11 +330,11 @@ export default function PrivacyPage() {
             <strong>Grievance Officer / Data Protection contact:</strong> {officer}
             <br />
             <strong>Email:</strong>
-            <a className="font-semibold text-[var(--text)]" href={`mailto:${settings.grievanceOfficerEmail?.trim() || email}`}>
-              {settings.grievanceOfficerEmail?.trim() || email}
+            <a className="font-semibold text-[var(--text)]" href={`mailto:${textOr(settings.grievanceOfficerEmail, email)}`}>
+              {textOr(settings.grievanceOfficerEmail, email)}
             </a>
             <br />
-            <strong>Phone:</strong> {settings.grievanceOfficerPhone?.trim() || "Contact the School office"}
+            <strong>Phone:</strong> {textOr(settings.grievanceOfficerPhone, "Contact the School office")}
             <br />
             <strong>Postal address:</strong> Lodipur Zamania Ghazipur (U.P.),232329
           </p>
@@ -461,7 +466,9 @@ export default function PrivacyPage() {
           identify and verify your request.
         </p>
         <form
-          onSubmit={submit}
+          onSubmit={(event) => {
+            void submit(event);
+          }}
           noValidate
           className="privacy-request-form mt-6 grid items-start gap-x-5 gap-y-5 rounded-2xl border border-[var(--divider)] bg-[var(--surface-2)] p-5 shadow-sm sm:grid-cols-2 sm:p-6"
         >
@@ -489,6 +496,7 @@ export default function PrivacyPage() {
             Your name
             <input
               translate="no"
+              aria-label="Your name"
               required
               aria-required="true"
               minLength={2}
@@ -505,6 +513,7 @@ export default function PrivacyPage() {
             Contact email
             <input
               translate="no"
+              aria-label="Contact email"
               type="email"
               required
               aria-required="true"
@@ -523,6 +532,7 @@ export default function PrivacyPage() {
             Student name
             <input
               translate="no"
+              aria-label="Student name"
               required
               aria-required="true"
               minLength={2}
@@ -539,6 +549,7 @@ export default function PrivacyPage() {
             Request details
             <textarea
               translate="no"
+              aria-label="Request details"
               required
               aria-required="true"
               minLength={10}
@@ -555,6 +566,7 @@ export default function PrivacyPage() {
           <label className="flex items-start gap-3 text-sm leading-6 text-[var(--text)] sm:col-span-2">
             <input
               translate="no"
+              aria-label="Confirm student or guardian authority"
               type="checkbox"
               required
               aria-required="true"

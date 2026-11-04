@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { db } from "@/server/firebase-admin";
 import { apiError, requireAdmin, writeAuditLog } from "@/server/security";
+import { readText } from "@/shared/safe-values";
 
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
@@ -41,8 +42,8 @@ export async function GET(request: NextRequest) {
       {
         faqs: Array.isArray(s.get("faqs"))
           ? (s.get("faqs") as Record<string, unknown>[]).slice(0, 30).map((item) => ({
-              questionEn: String(item.questionEn ?? "").slice(0, 180),
-              answerEn: String(item.answerEn ?? "").slice(0, 1500),
+              questionEn: readText(item.questionEn).slice(0, 180),
+              answerEn: readText(item.answerEn).slice(0, 1500),
               question_i18n: item.question_i18n ?? {},
               answer_i18n: item.answer_i18n ?? {},
             }))

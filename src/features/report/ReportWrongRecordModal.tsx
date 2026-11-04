@@ -259,16 +259,16 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
         ) : (
           <form onSubmit={submit} className="mt-5 space-y-4">
             <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 text-sm leading-6 text-[var(--text)]">
-              "Many records belong to students under 18. If the student is a minor, a parent or
+              Many records belong to students under 18. If the student is a minor, a parent or
               guardian should use this portal or be present. The school processes this data only to
-              provide certificates. "
+              provide certificates.
               <Link
                 href="/privacy"
                 target="_blank"
                 rel="noreferrer"
                 className="font-semibold"
               >
-                "See our Privacy Policy"
+                See our Privacy Policy
               </Link>
             </p>
             <label className="block text-sm font-semibold">
@@ -468,10 +468,10 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 className="mt-1"
               />
               <span>
-                "I am the student, or the parent/guardian of the student. I confirm that the School
-                may use these details to review this report." (
+                I am the student, or the parent/guardian of the student. I confirm that the School
+                may use these details to review this report. (
                 {
-                "I consent to the school using these details to investigate and respond to this report, and emailing a copy to the address provided. I confirm the information is accurate to the best of my knowledge."
+                I consent to the school using these details to investigate and respond to this report, and emailing a copy to the address provided. I confirm the information is accurate to the best of my knowledge.
                 }
                 )
               </span>

@@ -8,7 +8,10 @@ import { csrf } from "../utils/admin-helpers";
 import type { Role } from "../types/admin.types";
 import type { AdminSessionState } from "@/features/auth/admin-session";
 
-type Api = <T extends Record<string, unknown> = Record<string, unknown>>(url: string, init?: RequestInit) => Promise<T>;
+type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
+  url: string,
+  init?: RequestInit,
+) => Promise<T>;
 type Props = { sessionState: AdminSessionState; api: Api; onLogin: () => void };
 function ignoreRequestFailure(error: unknown): void {
   if (error instanceof Error) console.warn("Session refresh failed", error.message);
@@ -38,14 +41,18 @@ function useSessionExpiryTimers(
       setIdleWarning(false);
       lastActivity = Date.now();
       lastScheduled = lastActivity;
-      warningTimer = setTimeout(() => setIdleWarning(true), ADMIN_IDLE_WARNING_MS);
+      warningTimer = setTimeout(() => {
+        setIdleWarning(true);
+      }, ADMIN_IDLE_WARNING_MS);
       logoutTimer = setTimeout(() => void logout(), ADMIN_IDLE_TIMEOUT_MS);
     };
     const activity = () => {
       lastActivity = Date.now();
       if (Date.now() - lastScheduled > 5_000) schedule();
     };
-    const externalActivity = () => schedule();
+    const externalActivity = () => {
+      schedule();
+    };
     const events = ["pointerdown", "keydown", "mousemove", "scroll", "touchstart"];
     for (const event of events) window.addEventListener(event, activity, { passive: true });
     window.addEventListener("sis-session-activity", externalActivity);
@@ -123,8 +130,8 @@ export function useAdminSessionLifecycle({ sessionState, api, onLogin }: Props) 
         sessions: Record<string, unknown>[];
         recentLogins: Record<string, unknown>[];
       }>("/api/admin/sessions");
-      setSessions(d.sessions ?? []);
-      setRecentLogins(d.recentLogins ?? []);
+      setSessions(d.sessions);
+      setRecentLogins(d.recentLogins);
     } catch (error) {
       setSessionsError(error instanceof Error ? error.message : "Could not load account sessions.");
     }
@@ -155,5 +162,19 @@ export function useAdminSessionLifecycle({ sessionState, api, onLogin }: Props) 
       setSessionsError(error instanceof Error ? error.message : "Could not revoke all sessions.");
     }
   }
-  return { uid, role, email, idleWarning, setIdleWarning, sessions, recentLogins, sessionsError, loadSessions, revokeSession, revokeAllSessions, logout, staySignedIn };
+  return {
+    uid,
+    role,
+    email,
+    idleWarning,
+    setIdleWarning,
+    sessions,
+    recentLogins,
+    sessionsError,
+    loadSessions,
+    revokeSession,
+    revokeAllSessions,
+    logout,
+    staySignedIn,
+  };
 }

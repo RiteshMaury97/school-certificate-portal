@@ -145,6 +145,7 @@ export default function StudentImportPanel({
             </span>
             <input
               id="student-excel-file"
+              aria-label="Choose student import workbook"
               type="file"
               required
               aria-required="true"

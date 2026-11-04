@@ -57,10 +57,10 @@ export function ChangeTemporaryPasswordStep({ busy, onSubmit, onCancel }: {
   return <form onSubmit={submit} className="mt-6 space-y-4">
     <p className="text-sm text-[var(--text-muted)]">This is your first sign-in. Set a new password to replace the temporary password before continuing.</p>
     <label htmlFor="new-admin-password" className="block text-sm font-medium">New password
-      <input id="new-admin-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required aria-required="true" value={password} onChange={(event) => { setPassword(event.target.value); }} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5" />
+      <input id="new-admin-password" aria-label="New password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required aria-required="true" value={password} onChange={(event) => { setPassword(event.target.value); }} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5" />
     </label>
     <label htmlFor="confirm-admin-password" className="block text-sm font-medium">Confirm new password
-      <input id="confirm-admin-password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required aria-required="true" value={confirmation} onChange={(event) => { setConfirmation(event.target.value); }} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5" />
+      <input id="confirm-admin-password" aria-label="Confirm new password" type="password" autoComplete="new-password" minLength={12} maxLength={128} required aria-required="true" value={confirmation} onChange={(event) => { setConfirmation(event.target.value); }} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5" />
     </label>
     {confirmation && password !== confirmation && <p role="alert" className="text-sm text-[var(--danger)]">Passwords do not match.</p>}
     <p className="text-xs text-[var(--text-muted)]">Use at least 12 characters. You will sign in again with your new password.</p>

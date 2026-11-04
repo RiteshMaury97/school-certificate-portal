@@ -44,6 +44,10 @@ function slugify(value: string): string {
     .slice(0, 60);
 }
 
+function readFirestoreText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireRoles(request, ["uploader", "admin", "superadmin"]);
@@ -52,9 +56,10 @@ export async function POST(request: NextRequest) {
     const tooLarge = rejectOversizedRequest(request);
     if (tooLarge) return tooLarge;
     const form = await request.formData();
+    const admissionNumberInput = formString(form, "admissionNumber");
     const payload = {
       admissionNo: formString(form, "admissionNo").trim(),
-      admissionNumber: String(form.get("admissionNumber") ?? form.get("admissionNo") ?? "").trim(),
+      admissionNumber: (admissionNumberInput || formString(form, "admissionNo")).trim(),
       dateOfBirth: formString(form, "dateOfBirth").trim(),
       studentName: formString(form, "studentName"),
       fatherName: formString(form, "fatherName"),
@@ -134,8 +139,8 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     const matching = await db.collection("students").where("searchKey", "==", searchKey).get();
-    const dateOfBirth = data.dateOfBirth || "";
-    const admissionNumber = data.admissionNumber || "";
+    const dateOfBirth = data.dateOfBirth ?? "";
+    const admissionNumber = data.admissionNumber ?? "";
     const dateOfBirthDisambiguationKey = dateOfBirth ? studentIdentifierHmac(dateOfBirth) : "";
     const admissionNumberDisambiguationKey = admissionNumber
       ? studentIdentifierHmac(admissionNumber)
@@ -197,8 +202,8 @@ export async function POST(request: NextRequest) {
     const sameHash = await db.collection("certificates").where("sha256", "==", fileHash).get();
     const duplicateDecision = duplicateFileDecision(
       sameHash.docs.map((doc) => ({
-        studentId: doc.get("studentId"),
-        type: doc.get("type"),
+        studentId: readFirestoreText(doc.get("studentId")),
+        type: readFirestoreText(doc.get("type")),
       })),
       studentRef.id,
       data.certificateType,
@@ -211,7 +216,7 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     const duplicateHashConfirmed = formString(form, "confirmDuplicateHash") === "true";
-    const duplicateHashReason = String(form.get("duplicateHashReason") ?? "").trim();
+    const duplicateHashReason = formString(form, "duplicateHashReason").trim();
     if (
       duplicateDecision === "warn-cross-record" &&
       (!duplicateHashConfirmed || duplicateHashReason.length < 10)

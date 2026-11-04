@@ -3,6 +3,7 @@ import { BadgeCheck, Clock3, FileText, ShieldCheck, Upload, UserRound } from "lu
 import { DatePicker } from "@/components/ui/DatePicker";
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { normalizeAcademicSession } from "@/shared/academic-session";
+import { readText } from "@/shared/safe-values";
 import { confirmAction, requestInput } from "@/shared/admin-dialogs";
 import {
   MAX_BULK_FILES,
@@ -598,7 +599,7 @@ export default function CertificatesTab(props: Props) {
                 {events.map((event) => (
                   <li key={String(event.id)}>
                     {String(event.action)} · {String(event.actorUid)} ·{" "}
-                    {String(event.timestamp ?? "Time unavailable")}
+                    {readText(event.timestamp, "Time unavailable")}
                   </li>
                 ))}
               </ol>

@@ -69,7 +69,7 @@ const serverEnvironmentSchema = z
     SEED_SESSIONS: optionalText,
     SEED_CERTIFICATE_TYPES: optionalText,
   })
-  .passthrough()
+  .loose()
   .superRefine((env, context) => {
     const production = env.VERCEL_ENV
       ? env.VERCEL_ENV === "production"
@@ -109,7 +109,7 @@ const serverEnvironmentSchema = z
       const value = env[name];
       if (!value) continue;
       const decoded = Buffer.from(value, "base64");
-      if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value) || decoded.length !== 32)
+      if (decoded.toString("base64") !== value || decoded.length !== 32)
         issue(name, "must be valid base64 encoding of exactly 32 bytes");
     }
 

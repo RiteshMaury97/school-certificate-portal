@@ -1,9 +1,13 @@
-import EmptyState from "@/components/feedback/EmptyState";
+﻿import EmptyState from "@/components/feedback/EmptyState";
 
 import type { CertificatePreviewMap } from "../../types/admin-state.types";
 import type { Cert } from "../../types/admin.types";
 import type { Role } from "../../types/admin.types";
 import type { Dispatch, SetStateAction } from "react";
+
+function valueOrFallback(value: string | undefined, fallback: string): string {
+  return value && value.length > 0 ? value : fallback;
+}
 
 type ApprovalsTabProps = {
   pending: Cert[];
@@ -45,14 +49,14 @@ export default function ApprovalsTab({
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
               <div>
                 <div className="flex flex-wrap justify-between gap-2">
-                  <b>{c.type} · {c.session}</b>
+                  <b>{c.type} Â· {c.session}</b>
                   <span className="text-xs font-semibold text-[var(--text)]">Pending</span>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <div><dt className="text-[var(--text-muted)]">Student</dt><dd className="font-semibold">{c.studentName || c.studentId}</dd></div>
-                  <div><dt className="text-[var(--text-muted)]">Father</dt><dd>{c.fatherName || "—"}</dd></div>
-                  <div><dt className="text-[var(--text-muted)]">Mother</dt><dd>{c.motherName || "—"}</dd></div>
-                  <div><dt className="text-[var(--text-muted)]">Certificate number</dt><dd className="font-semibold">{c.certificateNumber || "Not recorded"}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Student</dt><dd className="font-semibold">{valueOrFallback(c.studentName, c.studentId)}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Father</dt><dd>{valueOrFallback(c.fatherName, "—")}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Mother</dt><dd>{valueOrFallback(c.motherName, "—")}</dd></div>
+                  <div><dt className="text-[var(--text-muted)]">Certificate number</dt><dd className="font-semibold">{valueOrFallback(c.certificateNumber, "Not recorded")}</dd></div>
                   <div><dt className="text-[var(--text-muted)]">Session</dt><dd>{c.session}</dd></div>
                   <div><dt className="text-[var(--text-muted)]">Type</dt><dd>{c.type}</dd></div>
                   <div><dt className="text-[var(--text-muted)]">Issue date</dt><dd>{c.issueDate}</dd></div>
@@ -68,7 +72,7 @@ export default function ApprovalsTab({
                   <textarea translate="no" aria-label="Reason for rejection" minLength={10} maxLength={1000} value={rejectReason[c.id] ?? ""} onChange={(e) => { setRejectReason((v) => ({ ...v, [c.id]: e.target.value })); }} rows={2} className="mt-1 w-full rounded border p-2" placeholder="Required only when rejecting" required aria-required="true" />
                 </label>
                 <label className="mt-3 flex items-start gap-2 text-sm">
-                  <input translate="no" type="checkbox" required={Boolean(previewUrls[c.id])} aria-required={Boolean(previewUrls[c.id])} checked={approvalChecks[c.id] === true} disabled={!previewUrls[c.id]} onChange={(e) => { setApprovalChecks((v) => ({ ...v, [c.id]: e.target.checked })); }} className="mt-0.5 h-4 w-4" />
+                  <input translate="no" type="checkbox" aria-label="Confirm certificate details match the document" required={Boolean(previewUrls[c.id])} aria-required={Boolean(previewUrls[c.id])} checked={approvalChecks[c.id] === true} disabled={!previewUrls[c.id]} onChange={(e) => { setApprovalChecks((v) => ({ ...v, [c.id]: e.target.checked })); }} className="mt-0.5 h-4 w-4" />
                   <span>Details match the document</span>
                 </label>
                 <div className="mt-3 flex gap-2">

@@ -154,6 +154,7 @@ export default function FaqPage() {
               />
               <input
                 id="faq-search"
+                aria-label="Search frequently asked questions"
                 type="search"
                 value={query}
                 onChange={(event) => {

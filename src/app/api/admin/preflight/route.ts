@@ -4,6 +4,7 @@ import { enforceAdminLocation } from "@/server/admin-location";
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
 import { requesterIp } from "@/server/request-origin";
 import { sameOrigin, verifyRequestAppCheck } from "@/server/security";
+import { readErrorCode } from "@/shared/safe-values";
 
 import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
       );
     return NextResponse.json({ authorized: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const code = String((error as { code?: unknown } | null)?.code ?? "");
+    const code = readErrorCode(error);
     if (error instanceof Error && error.message === "APP_CHECK") {
       return NextResponse.json(
         { error: "App verification failed. Reload the page and try again." },

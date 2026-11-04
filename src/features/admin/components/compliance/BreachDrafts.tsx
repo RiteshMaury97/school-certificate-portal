@@ -142,6 +142,7 @@ export default function BreachDrafts({ incident }: { incident: Incident }) {
       </label>
       <textarea
         id={draftId}
+        aria-label="Draft notification text"
         required
         aria-required="true"
         minLength={10}

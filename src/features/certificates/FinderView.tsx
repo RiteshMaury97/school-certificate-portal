@@ -198,7 +198,7 @@ export default function FinderPage() {
     setForm((current) => ({ ...current, [field]: value }));
   }
   useEffect(() => {
-    const shouldNoIndex = Boolean(result || notFound);
+    const shouldNoIndex = Boolean(result ?? notFound);
     let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
     const original = meta?.content;
     if (shouldNoIndex) {
@@ -447,7 +447,14 @@ export default function FinderPage() {
                 Enter your details exactly as they appear in your school records.
               </p>
             </div>
-            <form ref={formRef} onSubmit={submit} noValidate aria-describedby={`${formId}-help`}>
+            <form
+              ref={formRef}
+              onSubmit={(event) => {
+                void submit(event);
+              }}
+              noValidate
+              aria-describedby={`${formId}-help`}
+            >
               <FormErrorSummary errors={visibleFieldErrors} />
               <div className="grid gap-5 sm:grid-cols-2">
                 {(
@@ -500,6 +507,7 @@ export default function FinderPage() {
                     ) : (
                       <input
                         translate="no"
+                        aria-label={label}
                         id={`${formId}-${key}`}
                         name={key}
                         autoComplete="off"
@@ -628,20 +636,20 @@ export default function FinderPage() {
 
               <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
                 <p className="mb-3 text-sm leading-6 text-[var(--text-muted)]">
-                  "Many records belong to students under 18. If the student is a minor, a parent or
+                  Many records belong to students under 18. If the student is a minor, a parent or
                   guardian should use this portal or be present. The school processes this data only
-                  to provide certificates. "
+                  to provide certificates.
                   <Link
                     href="/privacy"
                     target="_blank"
                     rel="noreferrer"
                     className="font-semibold"
                   >
-                    "See our Privacy Policy"
+                    See our Privacy Policy
                   </Link>
                 </p>
                 <p className="mb-3 text-sm leading-6 text-[var(--text-muted)]">
-                  Privacy notice: We use the student's name, parents' names, class, scholar number
+                  Privacy notice: We use the student&apos;s name, parents&apos; names, class, scholar number
                   and passing session only to verify and retrieve the matching school certificate.
                   The matching certificate file and limited certificate details are stored securely
                   by the school. We do not use these details for advertising or student profiling.
@@ -664,6 +672,7 @@ export default function FinderPage() {
                 <label className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-[var(--text-muted)]">
                   <input
                     translate="no"
+                    aria-label="Confirm student or guardian consent"
                     type="checkbox"
                     checked={form.consent}
                     onChange={(event) => {
@@ -712,6 +721,7 @@ export default function FinderPage() {
                   </p>
                   <input
                     translate="no"
+                    aria-label="Date of birth or admission number"
                     id={`${formId}-disambiguation`}
                     autoComplete="off"
                     value={disambiguationValue}

@@ -29,8 +29,8 @@ export async function POST(
     const { certificateId } = await context.params;
     const body: unknown = await request.json().catch(() => null);
     const reason =
-      body && typeof body === "object" && "reason" in body
-        ? String(body.reason ?? "").trim()
+      body && typeof body === "object" && "reason" in body && typeof body.reason === "string"
+        ? body.reason.trim()
         : "";
     if (reason.length < 5 || reason.length > 1000)
       return NextResponse.json(

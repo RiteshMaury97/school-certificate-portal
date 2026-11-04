@@ -170,6 +170,7 @@ export default function CatalogTab({
             </label>
             <input
               id="catalog-item-name"
+              aria-label={`${section.label} name`}
               translate="no"
               required aria-required="true"
               maxLength={80}
@@ -180,7 +181,7 @@ export default function CatalogTab({
               placeholder={section.placeholder}
               className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--divider)] bg-[var(--surface)] px-3.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--focus)]"
             />
-            <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-5 text-sm font-semibold text-[var(--on-primary)] transition hover:opacity-90">
+            <button aria-label={`Add ${section.singular}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-5 text-sm font-semibold text-[var(--on-primary)] transition hover:opacity-90">
               <Plus size={16} aria-hidden="true" />
               Add {section.singular}
             </button>

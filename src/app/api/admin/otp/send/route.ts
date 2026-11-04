@@ -16,6 +16,7 @@ import {
   adminOtpRecipient,
 } from "@/server/admin-otp";
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
+import { readErrorCode } from "@/shared/safe-values";
 import { sendAdminOtpEmail } from "@/server/mailer";
 import { requesterIp } from "@/server/request-origin";
 import {
@@ -242,7 +243,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "App verification failed." }, { status: 403 });
     }
 
-    const code = String((error as { code?: unknown } | null)?.code ?? "");
+    const code = readErrorCode(error);
     const authFailure = code.startsWith("auth/");
     // Keep the detailed cause in server logs only. The previous implementation
     // converted every exception (SMTP, missing secrets, Firestore outages, etc.)
