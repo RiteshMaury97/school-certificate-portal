@@ -39,7 +39,12 @@ export default function PrivacyPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const validation = useFormValidation(dataRightsRequestSchema, {
-    requestType, requesterName, contactEmail, studentName, description, guardianConfirmation,
+    requestType,
+    requesterName,
+    contactEmail,
+    studentName,
+    description,
+    guardianConfirmation,
   });
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {
@@ -89,14 +94,18 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            {school} (â€œSchoolâ€) is the Data Fiduciary for personal data processed through this
-            portal. The School decides the purposes and means of processing and is responsible for
-            handling requests and grievances.
+            {school} (SiS) is the Data Fiduciary for personal data processed through this portal.
+            The School decides the purposes and means of processing and is responsible for handling
+            requests and grievances.
           </p>
           <p>
-            Postal address: {address}. General contact:{" "}
-            <a className="font-semibold text-[var(--text)]" href={`mailto:${email}`}>
-              {email}
+            Postal address: Lodipur Zamania Ghazipur (U.P.)232329.
+            <br />
+            General contact: 9336950476
+            <br />
+            Email:{" "}
+            <a className="font-semibold text-[var(--text)]" href={`mailto:$sischoolzam@gmail.com`}>
+              sischoolzam@gmail.com
             </a>
             .
           </p>
@@ -109,10 +118,12 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            For certificate retrieval, the portal collects the studentâ€™s name, fatherâ€™s name,
-            motherâ€™s name, academic/passing session and the certificate file. Limited certificate
-            metadata (such as certificate type, number and issue date) is used to identify and
-            deliver the requested document.
+            The certificate portal securely processes student information to facilitate certificate
+            verification and retrieval. Students can access their academic documents by providing
+            the required identification details, including their full name, parents’ names, and
+            passing session. Relevant certificate information, such as document type, certificate
+            number, and date of issuance, is used solely to locate, verify, and provide the
+            corresponding academic records.
           </p>
           <p>
             For security and administration, the system may also record consent version and
@@ -133,11 +144,20 @@ export default function PrivacyPage() {
             identifier for abuse prevention and audit purposes.
           </p>
           <p>
-            If you use the optional â€œWas this helpful?â€ widget, the portal stores only your
-            helpful/not-helpful choice, an optional comment of up to 200 characters, the submission
-            timestamp and the page path. Do not enter personal details in the comment. A separate
-            short-lived abuse counter uses a hashed network identifier to rate-limit submissions;
-            that identifier is not added to the feedback record.
+            The certificate portal provides an optional “Was this helpful?” feedback feature to help
+            the School evaluate and improve the accessibility, clarity, and usefulness of its online
+            services. When feedback is submitted, the portal collects and stores only the selected
+            response (helpful or not helpful), an optional comment limited to 200 characters, the
+            date and time of submission, and the page address or path associated with the feedback.
+            Users are advised not to include names, contact information, student identification
+            details, certificate numbers, or other personal or confidential information in their
+            comments. To prevent spam, automated submissions, and misuse of the feedback feature,
+            the portal maintains a separate, temporary rate-limiting mechanism that uses a hashed
+            network identifier. This identifier is used exclusively for abuse prevention, is
+            retained for a limited period, and is not included in or directly associated with the
+            stored feedback record. Feedback information is used for service evaluation and
+            improvement and is accessible only to authorised School personnel responsible for
+            reviewing and managing portal feedback.
           </p>
         </>
       ),
@@ -161,12 +181,18 @@ export default function PrivacyPage() {
             prevent further portal retrieval using that consent.
           </p>
           <p>
-            Where applicable under the DPDP Act, 2023, the School may process personal data for a
-            â€œcertain legitimate useâ€ recognised by the Act (including applicable school-related or
-            legal purposes under section 7), or to comply with a legal obligation. This is not a
-            broad commercial legitimate-interest basis. The School will identify the applicable
-            basis for the specific processing activity and will not use this statement to bypass
-            consent where consent is required.
+            The School processes personal data in accordance with the Digital Personal Data
+            Protection Act, 2023 (DPDP Act), and other applicable legal requirements. Where
+            permitted by law, certain information may be processed without obtaining separate
+            consent when the processing falls within a recognised “certain legitimate use” under the
+            Act, including applicable educational, school-related, or statutory purposes covered by
+            Section 7. Personal data may also be processed where necessary to fulfil legal
+            obligations, comply with applicable regulations, or respond to lawful requests from
+            competent authorities. The School will determine and document the appropriate legal
+            basis for each specific processing activity. These provisions will not be interpreted as
+            a general commercial legitimate-interest exemption or used to avoid obtaining consent
+            where consent is legally required. All processing will remain subject to applicable data
+            protection principles, safeguards, and individual rights.
           </p>
         </>
       ),
@@ -182,16 +208,19 @@ export default function PrivacyPage() {
             School processes this data only to provide certificates. See our Privacy Policy.{" "}
           </p>
           <p>
-            Student records may relate to children. A parent or legal guardian must be involved in
-            the portal process and should submit or confirm the request on the studentâ€™s behalf
-            where required. The School relies on its verified school records and approved
-            parent/guardian verification procedures; ticking a checkbox alone is not proof of
-            identity or parental authority.
+            As student records may contain information relating to minors, the School takes
+            additional measures to protect their privacy and personal data. Parents or legally
+            authorised guardians are required to participate in the process and provide or approve
+            requests on behalf of students whenever applicable. The School verifies parental or
+            guardian authority through its established verification procedures and official school
+            records. Providing consent through a checkbox or online declaration alone does not
+            constitute sufficient proof of identity or legal authority.
           </p>
           <p>
-            The portal does not use behavioural tracking, targeted advertising or profiling
-            analytics for children. The School applies access restrictions and other safeguards
-            appropriate to student records.
+            The portal does not engage in behavioural monitoring, targeted advertising, or profiling
+            activities involving children. Appropriate security measures, restricted access
+            controls, and data protection practices are implemented to safeguard student information
+            against unauthorised access, misuse, or disclosure.
           </p>
         </>
       ),
@@ -202,12 +231,19 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            The School uses Firebase / Google Cloud Firestore for application data and Cloudflare R2
-            for private certificate-file storage. These providers act as processors/service
-            providers on the Schoolâ€™s behalf, subject to the applicable service terms and configured
-            security controls. Cloudflare R2 stores finished certificate files in a private,
-            access-restricted bucket. Cloudflare Turnstile is used for abuse prevention and may
-            process technical request information. Selecting a language uses translation files hosted with the portal and does not send page text to a translation provider.
+            The School uses trusted technology infrastructure to operate and maintain the
+            certificate portal securely. Firebase and Google Cloud Firestore are used to manage
+            application data, while Cloudflare R2 provides private storage for digital certificate
+            documents. These services operate on behalf of the School in accordance with their
+            applicable service terms and the security configurations implemented by the School. All
+            certificate files are maintained in a private, access-controlled Cloudflare R2 storage
+            environment. Access to these documents is restricted to authorised application processes
+            and permitted users. Cloudflare Turnstile is integrated to protect the portal against
+            automated submissions, spam, and other forms of misuse. As part of this protection, it
+            may process certain technical information associated with incoming requests. The portal
+            provides language selection through locally hosted translation files. Changing the
+            display language does not transmit page content or personal information to any external
+            translation service.
           </p>
           <p>
             The original uploaded certificate is retained unchanged in private storage. When a
@@ -233,13 +269,22 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            Authorized School administrators can correct inaccurate student details and certificate
-            metadata. Wrong-record reports are retained under the Schoolâ€™s approved support-ticket
-            and recordkeeping schedule; the School should publish and configure that schedule before
-            launch. The student-record retention period is {retentionText} after the end of the
-            passing session. Records are deleted on request or after manual review, unless a legal
-            hold, statutory requirement, legitimate school-recordkeeping need or pending dispute
-            requires continued retention.
+            The School maintains procedures to ensure that student information and certificate
+            records remain accurate and up to date. Authorised School administrators may review and
+            make necessary corrections to student details and certificate metadata when inaccuracies
+            are identified or reported. Requests concerning incorrect student records are handled
+            through the School’s designated support and record-correction process. Such reports and
+            related correspondence are retained in accordance with the School’s officially approved
+            recordkeeping and support-ticket retention policy, which will be established and
+            published before the portal becomes operational. Student records are retained for a
+            period of <strong>seven (7) years</strong> following the end of the relevant passing
+            session. Upon expiry of this period, records are reviewed for secure deletion or
+            anonymisation, subject to applicable legal and administrative requirements. Deletion
+            requests are assessed by the School on a case-by-case basis. Information may be retained
+            where continued storage is necessary to comply with legal or statutory obligations,
+            satisfy legitimate academic recordkeeping requirements, address an ongoing dispute, or
+            comply with a legal hold. Where no such requirement applies, the School will proceed
+            with deletion in accordance with its data retention and disposal procedures.
           </p>
           <p>
             The School must validate this schedule against applicable education, archival,
@@ -282,24 +327,28 @@ export default function PrivacyPage() {
           <p>
             <strong>Grievance Officer / Data Protection contact:</strong> {officer}
             <br />
-            <strong>Email:</strong>{" "}
-            <a
-              className="font-semibold text-[var(--text)]"
-              href={`mailto:${officerEmail}`}
-            >
-              {officerEmail}
+            <strong>Email:</strong>
+            <a className="font-semibold text-[var(--text)]" href={`mailto:$sischoolzam@gmail.com`}>
+              sischoolzam@gmail.com
             </a>
             <br />
-            <strong>Phone:</strong> {officerPhone}
+            <strong>Phone:</strong> +91 9336950476
             <br />
-            <strong>Postal address:</strong> {address}
+            <strong>Postal address:</strong> Lodipur Zamania Ghazipur (U.P.),232329
           </p>
           <p>
-            Please include your acknowledgment ID, if you have one, and avoid sending unnecessary
-            sensitive documents by email. If you are not satisfied with the Schoolâ€™s response, you
-            may use the escalation mechanism available under applicable law, including the Data
-            Protection Board of India when legally constituted and the relevant provisions are in
-            force.
+            When contacting the School regarding a privacy concern, data protection request, or
+            complaint, please provide your acknowledgment or reference number, if one has been
+            issued. To protect your personal information, include only the details necessary to
+            explain your concern and avoid sharing confidential documents, identity proofs, or other
+            sensitive information through ordinary email unless specifically requested through an
+            authorised and secure channel. The School will review and address complaints in
+            accordance with its established grievance-redressal procedures and applicable data
+            protection requirements. If you are dissatisfied with the resolution provided by the
+            School, you may exercise your right to seek further remedies through the appropriate
+            legal and regulatory channels, including the Data Protection Board of India, subject to
+            its legal constitution, jurisdiction, and the commencement of the relevant provisions of
+            applicable law.
           </p>
         </>
       ),
@@ -342,9 +391,15 @@ export default function PrivacyPage() {
             could increase risk to affected individuals.
           </p>
           <p>
-            The register is used to document suspected incidents, response steps and notification
-            decisions. Its existence does not promise a particular legal outcome or replace advice
-            from the Schoolâ€™s legal and privacy advisers.
+            The School maintains an incident register to record suspected or confirmed data security
+            incidents, the actions taken to investigate and address them, and decisions regarding
+            any required notifications to affected individuals or relevant authorities. This
+            register supports internal accountability, incident management, and ongoing improvements
+            to the School’s data protection practices. Maintaining this register does not guarantee
+            a specific legal or regulatory outcome, nor does it replace the need for professional
+            legal guidance. Decisions concerning incident handling, reporting obligations, and
+            regulatory compliance are made in accordance with applicable laws and, where necessary,
+            in consultation with the School’s legal and data privacy advisers.
           </p>
         </>
       ),
@@ -359,7 +414,9 @@ export default function PrivacyPage() {
             administrator authentication and session integrity. It does not use marketing or
             advertising cookies, and does not sell personal data or run child-profiling analytics.
             Cloudflare Turnstile may use technical mechanisms necessary to distinguish legitimate
-            requests from automated abuse. If you choose a language other than English, the portal stores your language choice in browser local storage so it can be restored on your next visit. The choice is not sent in a cookie.
+            requests from automated abuse. If you choose a language other than English, the portal
+            stores your language choice in browser local storage so it can be restored on your next
+            visit. The choice is not sent in a cookie.
           </p>
         </>
       ),
@@ -409,13 +466,14 @@ export default function PrivacyPage() {
         <form
           onSubmit={submit}
           noValidate
-          className="mt-5 grid gap-4 rounded-2xl border border-[var(--divider)] bg-[var(--surface-2)] p-5 sm:grid-cols-2"
+          className="privacy-request-form mt-6 grid items-start gap-x-5 gap-y-5 rounded-2xl border border-[var(--divider)] bg-[var(--surface-2)] p-5 shadow-sm sm:grid-cols-2 sm:p-6"
         >
           <label className="text-sm font-semibold text-[var(--text)]">
             Request type
             <select
               translate="no"
-              required aria-required="true"
+              required
+              aria-required="true"
               value={requestType}
               onChange={(e) => {
                 setRequestType(e.target.value);
@@ -434,7 +492,8 @@ export default function PrivacyPage() {
             Your name
             <input
               translate="no"
-              required aria-required="true"
+              required
+              aria-required="true"
               minLength={2}
               maxLength={80}
               pattern="[\\p{L}\\p{M} .'-]+"
@@ -450,7 +509,8 @@ export default function PrivacyPage() {
             <input
               translate="no"
               type="email"
-              required aria-required="true"
+              required
+              aria-required="true"
               minLength={5}
               maxLength={254}
               autoComplete="email"
@@ -466,7 +526,8 @@ export default function PrivacyPage() {
             Student name
             <input
               translate="no"
-              required aria-required="true"
+              required
+              aria-required="true"
               minLength={2}
               maxLength={80}
               pattern="[\\p{L}\\p{M} .'-]+"
@@ -481,7 +542,8 @@ export default function PrivacyPage() {
             Request details
             <textarea
               translate="no"
-              required aria-required="true"
+              required
+              aria-required="true"
               minLength={10}
               maxLength={1500}
               rows={4}
@@ -497,7 +559,8 @@ export default function PrivacyPage() {
             <input
               translate="no"
               type="checkbox"
-              required aria-required="true"
+              required
+              aria-required="true"
               checked={guardianConfirmation}
               onChange={(e) => {
                 setGuardianConfirmation(e.target.checked);
@@ -521,7 +584,9 @@ export default function PrivacyPage() {
               {error}
             </p>
           )}
-          <FormErrorSummary errors={validation.errors} />
+          <div className="sm:col-span-2">
+            <FormErrorSummary errors={validation.errors} />
+          </div>
           {acknowledgment && (
             <p
               role="status"

@@ -5,7 +5,6 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-import ReportWrongRecordModal from "@/features/report/ReportWrongRecordModal";
 import { useLocale } from "@/i18n/locale-provider";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
@@ -160,7 +159,6 @@ export default function SiteShell({ children }: { children: ReactNode }) {
   const settings = usePublicSiteSettings();
   const { locale } = useLocale();
   const [announcementDismissed, setAnnouncementDismissed] = useAnnouncementDismissal();
-  const [reportOpen, setReportOpen] = useState(false);
   const pathname = usePathname();
   useServiceWorkerMaintenance();
 
@@ -190,37 +188,13 @@ export default function SiteShell({ children }: { children: ReactNode }) {
       <SchoolMetadata settings={settings} />
       <main
         id="main-content"
-        tabIndex={-1}
+  
         className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12 lg:px-8"
       >
         {children}
       </main>
       {pathname === "/" && <PrincipalMessage settings={settings} />}
-      <Footer
-        schoolName={schoolName}
-        tagline={settings.tagline_i18n?.[locale]?.trim() || settings.tagline}
-        address={settings.address}
-        affiliation={settings.affiliationNumber}
-        boardName={settings.boardName}
-        schoolCode={settings.schoolCode}
-        email={settings.email}
-        phone={settings.phone}
-        website={settings.website}
-        officeHours={settings.officeHours}
-        lastUpdated={settings.lastUpdated}
-        statusPageUrl={settings.statusPageUrl}
-        socialLinks={settings.socialLinks}
-        onReport={() => {
-          setReportOpen(true);
-        }}
-      />
-      {reportOpen && (
-        <ReportWrongRecordModal
-          onClose={() => {
-            setReportOpen(false);
-          }}
-        />
-      )}
+      <Footer />
     </div>
   );
 }

@@ -187,9 +187,9 @@ export default function TermsPage() {
           <p>
             <strong>{school}</strong>
             <br />
-            {address}
+        Lodipur, Zamania, Ghazipur, Uttar Pradesh – 232329
             <br />
-            Email:{" "}
+            Email:{"sischoolzam@gmail.com"}
             <a
               className="font-semibold text-[var(--text)]"
               href={`mailto:${email}`}

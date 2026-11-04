@@ -439,6 +439,7 @@ html[data-locale="hi"] {
 }
 
 .public-footer {
+  color-scheme: dark;
   --surface: #0b1d3d;
   --surface-2: #12294c;
   --text: #f3f6fc;
@@ -452,7 +453,16 @@ html[data-locale="hi"] {
     linear-gradient(rgb(176 195 228 / 3%) 1px, transparent 1px),
     linear-gradient(90deg, rgb(176 195 228 / 3%) 1px, transparent 1px),
     radial-gradient(ellipse at 12% 0%, rgb(37 75 132 / 24%), transparent 46%);
-  background-size: 42px 42px, 42px 42px, auto;
+  background-size:
+    42px 42px,
+    42px 42px,
+    auto;
+}
+
+.public-footer ::selection {
+  background: #315b91;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -482,35 +492,30 @@ html[data-locale="hi"] {
     animation-delay: var(--entry-delay, 150ms);
   }
 
-  .public-footer .footer-column {
+  .public-footer > div:nth-child(2) > * {
     animation: fade-up 650ms var(--ease-out) both;
   }
-  .public-footer .footer-column:nth-child(2) {
+  .public-footer > div:nth-child(2) > :nth-child(2) {
     animation-delay: 90ms;
   }
-  .public-footer .footer-column:nth-child(3) {
+  .public-footer > div:nth-child(2) > :nth-child(3) {
     animation-delay: 170ms;
   }
-  .public-footer .footer-column:nth-child(4) {
+  .public-footer > div:nth-child(2) > :nth-child(4) {
     animation-delay: 250ms;
   }
-  .public-footer .footer-column:nth-child(5) {
+  .public-footer > div:nth-child(2) > :nth-child(5) {
     animation-delay: 330ms;
   }
   .public-footer section:first-child > div:first-child {
-    transition: transform 240ms ease, box-shadow 240ms ease;
+    transition:
+      transform 240ms ease,
+      box-shadow 240ms ease;
   }
   .public-footer section:first-child > div:first-child:hover {
     transform: translateY(-3px) rotate(-3deg);
     box-shadow: 0 10px 24px rgb(0 0 0 / 10%);
   }
-  .public-footer button {
-    transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease;
-  }
-  .public-footer button:hover {
-    transform: translateY(-2px);
-  }
-
   html {
     scroll-behavior: smooth;
   }
@@ -649,7 +654,9 @@ html[data-locale="hi"] {
     transition-duration: 0.01ms !important;
   }
   .sitemap-card:hover,
-  .sitemap-hero-mark:hover {
+  .sitemap-hero-mark:hover,
+  .public-footer a:hover,
+  .public-footer section:first-child > div:first-child:hover {
     transform: none !important;
   }
   /* A static (non-animated) busy indicator remains visible. */
@@ -1155,4 +1162,8 @@ form:has([required])::before {
   margin-bottom: 0.5rem;
   color: var(--text-muted);
   font-size: 0.75rem;
+}
+
+.privacy-request-form:has([required])::before {
+  grid-column: 1 / -1;
 }

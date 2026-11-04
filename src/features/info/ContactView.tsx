@@ -74,7 +74,10 @@ export default function ContactView() {
           </div>
         </header>
 
-        <section aria-label={t("contact.contactOptions")} className="mt-5 grid gap-3 md:grid-cols-3">
+        <section
+          aria-label={t("contact.contactOptions")}
+          className="mt-5 grid gap-3 md:grid-cols-3"
+        >
           <a
             href={`tel:${phone}`}
             className="group flex min-h-24 items-center gap-3 rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm transition hover:border-[var(--primary)]"
@@ -114,22 +117,27 @@ export default function ContactView() {
             </a>
           ) : null}
           {website ? (
-            <div>
-              <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Website
-              </dt>
-              <dd className="mt-1 break-all text-[var(--text)]">
-                <a
-                  className="inline-flex items-center gap-1.5"
-                  href={website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Globe size={13} aria-hidden="true" />
+            <a
+              href={website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex min-h-24 min-w-0 items-center gap-3 rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-4 shadow-sm transition hover:border-[var(--primary)]"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--surface-2)] text-[var(--primary)]">
+                <Globe size={18} aria-hidden="true" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                  Website
+                </span>
+                <span className="mt-1 block text-sm font-semibold text-[var(--text)]">
                   Visit official website
-                </a>
-              </dd>
-            </div>
+                </span>
+                <span className="mt-1 block break-all text-[10px] text-[var(--text-muted)]">
+                  {website.replace(/^https?:\/\//i, "").replace(/\/+$/, "")}
+                </span>
+              </span>
+            </a>
           ) : null}
           <a
             href={mapUrl}
@@ -232,8 +240,6 @@ export default function ContactView() {
             </section>
           </aside>
         </div>
-
-
       </div>
     </SiteShell>
   );

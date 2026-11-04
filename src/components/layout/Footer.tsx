@@ -1,133 +1,90 @@
 "use client";
 
 import Link from "next/link";
-import { Facebook, Instagram, Link2, Linkedin, Twitter, Youtube } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  ArrowLeftRight,
+  Clock,
+  Facebook,
+  HeartPulse,
+  Instagram,
+  Languages,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Twitter,
+  Youtube,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import Logo from "@/components/ui/Logo";
 import { useT } from "@/i18n/locale-provider";
-import { SCHOOL_INFO } from "@/lib/school-info";
 import { SITE_MAP } from "@/shared/site-map";
+import type { SiteMapPage } from "@/shared/site-map";
+import {
+  ADDRESS,
+  AFFILIATION,
+  BOARD,
+  CAMPUS_SIZE,
+  EMAIL,
+  HOURS,
+  HIGHLIGHTS,
+  MANAGED_BY,
+  PHONE,
+  SCHOOL_NAME,
+  SCHOOL_SUBTITLE,
+  SITE_URL,
+  SOCIAL_URLS,
+  TAGLINE,
+} from "../../../config/school";
 
-import type { SiteMapGroup } from "@/shared/site-map";
+const cardClass =
+  "flex h-full min-w-0 flex-col rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition-colors duration-200 hover:bg-white/[0.055]";
+const highlightIcons = [HeartPulse, ArrowLeftRight, Languages] as const;
 
-type Props = {
-  schoolName?: string | undefined;
-  tagline?: string | undefined;
-  address?: string | undefined;
-  affiliation?: string | undefined;
-  boardName?: string | undefined;
-  schoolCode?: string | undefined;
-  email?: string | undefined;
-  phone?: string | undefined;
-  website?: string | undefined;
-  officeHours?: string | undefined;
-  lastUpdated?: string | undefined;
-  statusPageUrl?: string | undefined;
-  socialLinks?: { label: string; url: string }[] | undefined;
-  onReport?: (() => void) | undefined;
-};
-
-const linkClass =
-  "text-[var(--text-muted)] transition-colors hover:text-[var(--primary)]";
-
-function SchoolLogo() {
-  return <Logo size={40} className="h-10 w-10 rounded-full bg-white object-contain p-0.5" />;
-}
-
-function SchoolStatus({ schoolCode, statusPageUrl }: Pick<Props, "schoolCode" | "statusPageUrl">) {
-  const t = useT();
-  if (!schoolCode?.trim() && !statusPageUrl?.trim()) return null;
-
+function ContactRow({
+  icon: Icon,
+  label,
+  children,
+  className = "text-xs",
+}: {
+  icon: LucideIcon;
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]">
-      {schoolCode?.trim() && (
-        <span>
-          {t("footer.schoolCode")}: {schoolCode}
-        </span>
-      )}
-      {statusPageUrl?.trim() && (
-        <a href={statusPageUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
-          {t("footer.systemStatus")} ↗
-        </a>
-      )}
+    <div className={`flex items-start gap-2.5 leading-5 text-[var(--text-muted)] ${className}`}>
+      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-white/70" />
+      <div className="min-w-0">
+        <span className="mr-1 font-semibold text-white/80">{label}:</span>
+        {children}
+      </div>
     </div>
   );
 }
 
-function SchoolIdentity({
-  schoolName,
-  tagline,
-  address,
-  affiliation,
-  boardName,
-  schoolCode,
-  statusPageUrl,
-  socialLinks,
-}: Pick<
-  Props,
-  | "schoolName"
-  | "tagline"
-  | "address"
-  | "affiliation"
-  | "boardName"
-  | "schoolCode"
-  | "statusPageUrl"
-  | "socialLinks"
->) {
+function FooterNavigation({
+  title,
+  ariaLabel,
+  pages,
+}: {
+  title: string;
+  ariaLabel: string;
+  pages: readonly SiteMapPage[];
+}) {
   const t = useT();
-  const cleanAddress = address?.trim() ?? "";
-  const displayAddress = cleanAddress.length > 0 ? cleanAddress : SCHOOL_INFO.address;
-
   return (
-    <section className="footer-column min-w-0">
-      <div className="flex items-center gap-3">
-        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] shadow-sm">
-          <SchoolLogo />
-        </div>
-        <div className="min-w-0">
-          <h2
-            translate="no"
-            className="whitespace-normal break-words text-sm font-extrabold uppercase tracking-[0.08em]"
-          >
-            {schoolName}
-          </h2>
-          <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
-            {[affiliation, boardName]
-              .filter(Boolean)
-              .join("\u00b7")
-              .replace(/^$/, t("footer.schoolManagement"))}
-          </p>
-        </div>
-      </div>
-      <p className="mt-4 text-sm leading-6 text-[var(--text-muted)]">{tagline}</p>
-      <address className="mt-5 not-italic">
-        <p className="whitespace-pre-line text-sm leading-6 text-[var(--text)]">{displayAddress}</p>
-      </address>
-      <SchoolStatus schoolCode={schoolCode} statusPageUrl={statusPageUrl} />
-      <SocialLinks links={socialLinks} />
-    </section>
-  );
-}
-
-const groupTranslationKeys = {
-  School: "siteMap.groups.school",
-  Certificates: "siteMap.groups.certificates",
-  "Help and support": "siteMap.groups.helpAndSupport",
-  "Legal and privacy": "siteMap.groups.legalAndPrivacy",
-} as const;
-
-function SiteMapLinks({ group }: { group: SiteMapGroup }) {
-  const t = useT();
-  const pages = SITE_MAP.filter((page) => page.group === group);
-  if (pages.length === 0) return null;
-
-  return (
-    <nav aria-label={t(groupTranslationKeys[group])} className="footer-column">
-      <h2 className="text-sm font-bold tracking-tight">{t(groupTranslationKeys[group])}</h2>
-      <ul className="mt-4 space-y-3 text-sm text-[var(--text-muted)]">
+    <nav aria-label={ariaLabel} className={cardClass}>
+      <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55">{title}</h2>
+      <ul className="mt-3 space-y-1.5 text-sm">
         {pages.map((page) => (
           <li key={page.path}>
-            <Link className={linkClass} href={page.path}>
+            <Link
+              href={page.path}
+              className="inline-flex py-0.5 text-[var(--text-muted)] transition-colors hover:text-white focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
               {t(page.labelKey)}
             </Link>
           </li>
@@ -137,201 +94,189 @@ function SiteMapLinks({ group }: { group: SiteMapGroup }) {
   );
 }
 
-function QuickLinks() {
-  return (
-    <div className="space-y-6">
-      <SiteMapLinks group="School" />
-      <SiteMapLinks group="Certificates" />
-    </div>
-  );
-}
-
-function SupportLinks({
-  onReport,
-  phone,
-  officeHours,
-  email,
-  website,
-}: Pick<Props, "onReport" | "phone" | "officeHours" | "email" | "website">) {
-  const t = useT();
-  return (
-    <section className="footer-column">
-      <SiteMapLinks group="Help and support" />
-      {onReport && (
-        <button
-          type="button"
-          onClick={onReport}
-          className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--divider)] bg-[var(--surface-2)] px-3 text-xs font-semibold text-[var(--text)] transition hover:border-[var(--primary)]"
-        >
-          {t("footer.reportWrongRecord")} <span aria-hidden="true">→</span>
-        </button>
-      )}
-      <div className="mt-4 space-y-3 text-sm text-[var(--text-muted)]">
-        <p>{t("footer.needHelp")}</p>
-        {(phone?.trim() || email?.trim() || website?.trim() || officeHours?.trim()) && (
-          <address className="not-italic">
-            <h3 className="mb-2 text-xs font-bold text-[var(--text)]">
-              {t("footer.contactSchool")}
-            </h3>
-            <dl className="space-y-2.5 text-xs leading-5">
-              {phone?.trim() && (
-                <div>
-                  <dt className="font-semibold text-[var(--text)]">Phone</dt>
-                  <dd>
-                    <a className={linkClass} href={`tel:${phone.replace(/[^\d+]/g, "")}`}>
-                      {phone}
-                    </a>
-                  </dd>
-                </div>
-              )}
-              {email?.trim() && (
-                <div>
-                  <dt className="font-semibold text-[var(--text)]">Email</dt>
-                  <dd>
-                    <a className={`${linkClass} break-all`} href={`mailto:${email}`}>
-                      {email}
-                    </a>
-                  </dd>
-                </div>
-              )}
-              {website?.trim() && (
-                <div>
-                  <dt className="font-semibold text-[var(--text)]">Official website</dt>
-                  <dd>
-                    <a
-                      className={`${linkClass} break-all`}
-                      href={website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {website.replace(/^https?:\/\//i, "").replace(/\/$/, "")}
-                    </a>
-                  </dd>
-                </div>
-              )}
-              {officeHours?.trim() && (
-                <div>
-                  <dt className="font-semibold text-[var(--text)]">Office hours</dt>
-                  <dd>{officeHours}</dd>
-                </div>
-              )}
-            </dl>
-          </address>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function LegalLinks() {
-  return <SiteMapLinks group="Legal and privacy" />;
-}
-
-function SocialLinks({ links }: { links: Props["socialLinks"] }) {
-  const t = useT();
-  const visibleSocialLinks = links?.filter((item) => item.label.trim() && item.url.trim()) ?? [];
-  if (!visibleSocialLinks.length) return null;
+function SocialCard() {
+  const socialLinks = [
+    { label: "Facebook", url: SOCIAL_URLS.facebook, Icon: Facebook },
+    { label: "Instagram", url: SOCIAL_URLS.instagram, Icon: Instagram },
+    { label: "YouTube", url: SOCIAL_URLS.youtube, Icon: Youtube },
+    { label: "WhatsApp", url: SOCIAL_URLS.whatsapp, Icon: MessageCircle },
+    { label: "X / Twitter", url: SOCIAL_URLS.twitter, Icon: Twitter },
+  ];
+  const hasConfiguredLinks = socialLinks.some(({ url }) => url.trim().length > 0);
+  const visibleLinks = hasConfiguredLinks
+    ? socialLinks.filter(({ url }) => url.trim().length > 0)
+    : socialLinks;
 
   return (
-    <nav aria-label="Social media links" className="footer-column mt-6">
-      <h2 className="text-xs font-medium text-[var(--text-muted)]">{t("footer.connect")}</h2>
-      <ul className="mt-3 flex flex-wrap gap-2.5">
-        {visibleSocialLinks.map((item, index) => {
-          const label = item.label.toLowerCase();
-          const Icon = label.includes("facebook")
-            ? Facebook
-            : label.includes("instagram")
-              ? Instagram
-              : label.includes("linkedin")
-                ? Linkedin
-                : label.includes("youtube")
-                  ? Youtube
-                  : label.includes("twitter") || label === "x"
-                    ? Twitter
-                    : Link2;
-          return (
-            <li key={`${item.label}-${String(index)}`}>
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={item.label}
-                title={item.label}
-                className="grid size-9 place-items-center rounded-full border border-white/15 bg-white/[0.07] text-white transition-colors hover:border-white/35 hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                <Icon aria-hidden="true" size={16} strokeWidth={2.2} />
-              </a>
-            </li>
-          );
-        })}
+    <nav aria-label="Follow us on social media" className={cardClass}>
+      <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55">Follow us</h2>
+      <ul className="mt-3 flex flex-wrap gap-2">
+        {visibleLinks.map(({ label, url, Icon }) => (
+          <li key={label}>
+            <a
+              href={url.trim() || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={label}
+              title={label}
+              className="grid size-10 place-items-center rounded-full border border-white/15 bg-white/[0.07] text-[var(--text-muted)] transition duration-200 hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <Icon aria-hidden="true" className="size-4" />
+            </a>
+          </li>
+        ))}
       </ul>
     </nav>
   );
 }
 
-function FooterAttribution({ schoolName, lastUpdated }: Pick<Props, "schoolName" | "lastUpdated">) {
-  const t = useT();
-  return (
-    <div className="border-t border-[var(--border)]">
-      <div className="flex w-full flex-col gap-2 px-5 py-4 text-[10px] text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12 xl:px-16">
-        <span>
-          © {new Date().getFullYear()} {schoolName}. {t("footer.allRightsReserved")}
-        </span>
-        {lastUpdated?.trim() && (
-          <span>
-            {t("footer.lastUpdated")} {lastUpdated}
-          </span>
-        )}
-        <span className="font-medium text-[var(--text)]">{t("footer.officialServices")}</span>
-      </div>
-    </div>
+function SchoolLinks() {
+  return SITE_MAP.filter((page) => ["/", "/certificates", "/verify"].includes(page.path));
+}
+
+function HelpLinks() {
+  return SITE_MAP.filter(
+    (page) => page.group === "Help and support" && page.path !== "/contact" && page.inHtmlSitemap,
   );
 }
 
-export default function Footer({
-  schoolName = "Satyam International School",
-  tagline = "Educate. Elevate. Empower.",
-  address,
-  affiliation,
-  boardName,
-  schoolCode,
-  email,
-  phone,
-  website,
-  officeHours,
-  lastUpdated,
-  statusPageUrl,
-  socialLinks,
-  onReport,
-}: Props) {
+function LegalLinks() {
+  return SITE_MAP.filter((page) => page.group === "Legal and privacy" && page.inHtmlSitemap);
+}
+
+export default function Footer() {
+  const t = useT();
+  const boardDetails = [AFFILIATION, BOARD].filter((value) => value.trim()).join(" · ");
+  const validPhone = !PHONE.includes("X");
+
   return (
-    <footer className="public-footer relative mx-2 my-2 overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-xl">
+    <footer className="public-footer relative mx-2 my-2 overflow-hidden rounded-3xl border border-[var(--border)] text-[var(--text)] shadow-xl">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--primary)]/50 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent"
       />
-      <div className="relative grid w-full gap-10 px-6 py-10 sm:grid-cols-2 sm:px-8 lg:grid-cols-[1.6fr_0.85fr_1.15fr_1fr] lg:gap-10 lg:px-10 lg:py-12 xl:px-14">
-        <SchoolIdentity
-          schoolName={schoolName}
-          tagline={tagline}
-          address={address}
-          affiliation={affiliation}
-          boardName={boardName}
-          schoolCode={schoolCode}
-          statusPageUrl={statusPageUrl}
-          socialLinks={socialLinks}
+      <div className="relative grid grid-cols-1 items-stretch gap-4 px-5 py-8 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:px-10 xl:px-14">
+        {/* Row 1: school identity and details */}
+        <section aria-label="School" className={`${cardClass} bg-white/[0.055]`}>
+          <div className="flex items-center gap-3">
+            <div className="grid size-14 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/[0.08]">
+              <Logo size={42} className="size-11 rounded-full bg-white object-contain p-0.5" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-sm font-extrabold uppercase tracking-[0.08em] text-white">
+                {SCHOOL_NAME}
+              </h2>
+              <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/55">
+                {SCHOOL_SUBTITLE}
+              </p>
+            </div>
+          </div>
+          <p className="mt-4 line-clamp-2 break-words text-sm leading-5 text-[var(--text-muted)]">
+            {TAGLINE}
+          </p>
+        </section>
+
+        <section aria-label="School details" className={cardClass}>
+          <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55">
+            School details
+          </h2>
+          <div className="mt-3 space-y-2">
+            <address className="not-italic">
+              <ContactRow icon={MapPin} label="Address">
+                {ADDRESS}
+              </ContactRow>
+            </address>
+            <p className="text-xs leading-5 text-[var(--text-muted)]">
+              <span className="font-semibold text-white/80">Managed by:</span> {MANAGED_BY}
+            </p>
+            <p className="text-xs leading-5 text-[var(--text-muted)]">
+              <span className="font-semibold text-white/80">Campus:</span> {CAMPUS_SIZE}
+            </p>
+            {boardDetails && (
+              <p className="text-xs leading-5 text-[var(--text-muted)]">
+                <span className="font-semibold text-white/80">Affiliation / Board:</span>{" "}
+                {boardDetails}
+              </p>
+            )}
+          </div>
+        </section>
+
+        <section aria-label="School highlights" className={cardClass}>
+          <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55">
+            Highlights
+          </h2>
+          <ul className="mt-3 space-y-2">
+            {HIGHLIGHTS.map((highlight, index) => {
+              const Icon = highlightIcons[index] ?? HeartPulse;
+              return (
+                <li
+                  key={highlight}
+                  className="flex items-start gap-2.5 text-xs leading-5 text-[var(--text-muted)]"
+                >
+                  <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-white/70" />
+                  <span>{highlight}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        <section aria-label="Contact details" className={cardClass}>
+          <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55">
+            Contact
+          </h2>
+          <address className="mt-3 space-y-2 not-italic">
+            <ContactRow icon={Phone} label="Phone">
+              {validPhone ? <a href={`tel:${PHONE.replace(/[^\d+]/g, "")}`}>{PHONE}</a> : PHONE}
+            </ContactRow>
+            <ContactRow icon={Mail} label="Email">
+              <a className="break-all" href={`mailto:${EMAIL}`}>
+                {EMAIL}
+              </a>
+            </ContactRow>
+            <ContactRow icon={Clock} label="Office hours" className="text-sm">
+              {HOURS}
+            </ContactRow>
+            {SITE_URL && (
+              <ContactRow icon={MapPin} label="Official website">
+                <a href={SITE_URL} target="_blank" rel="noopener noreferrer" className="break-all">
+                  {SITE_URL.replace(/^https?:\/\//i, "")}
+                </a>
+              </ContactRow>
+            )}
+          </address>
+          <Link
+            href="/contact"
+            className="mt-auto pt-4 text-sm font-medium text-white/80 transition-colors hover:text-white focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            Contact us <span aria-hidden="true">→</span>
+          </Link>
+        </section>
+
+        {/* Row 2: navigation and social links */}
+        <FooterNavigation
+          title={t("footer.quickLinks")}
+          ariaLabel={t("footer.quickLinks")}
+          pages={SchoolLinks()}
         />
-        <QuickLinks />
-        <SupportLinks
-          onReport={onReport}
-          phone={phone}
-          officeHours={officeHours}
-          email={email}
-          website={website}
+        <FooterNavigation
+          title={t("siteMap.groups.helpAndSupport")}
+          ariaLabel={t("siteMap.groups.helpAndSupport")}
+          pages={HelpLinks()}
         />
-        <LegalLinks />
+        <FooterNavigation
+          title={t("siteMap.groups.legalAndPrivacy")}
+          ariaLabel={t("siteMap.groups.legalAndPrivacy")}
+          pages={LegalLinks()}
+        />
+        <SocialCard />
       </div>
-      <FooterAttribution schoolName={schoolName} lastUpdated={lastUpdated} />
+      <div className="border-t border-[var(--border)] bg-[var(--surface)]/70 px-5 py-4 sm:px-8 lg:px-10 xl:px-14">
+        <div className="flex flex-col gap-2 text-[10px] text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between">
+          <span>© 2026 {SCHOOL_NAME}. All rights reserved.</span>
+          <span className="font-medium text-white">Official student services</span>
+        </div>
+      </div>
     </footer>
   );
 }
