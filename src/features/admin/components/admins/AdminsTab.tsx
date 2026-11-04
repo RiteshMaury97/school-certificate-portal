@@ -137,6 +137,20 @@ type AdminRowProps = {
   load: AdminsTabProps["load"];
 };
 
+function AdminStatus({ status }: { status: string }) {
+  const className =
+    status === "active"
+      ? "text-[var(--success)]"
+      : status === "disabled"
+        ? "text-[var(--danger)]"
+        : "text-[var(--text)]";
+  return (
+    <span className={`rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-semibold capitalize ${className}`}>
+      {status}
+    </span>
+  );
+}
+
 function AdminRow({
   admin,
   editingUid,
@@ -184,11 +198,7 @@ function AdminRow({
         {stringValue(profile.campus, "Not set") || "Not set"}
       </td>
       <td className="px-4 py-3">
-        <span
-          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize ${status === "active" ? "bg-[var(--surface-2)] text-[var(--success)]" : status === "disabled" ? "bg-[var(--surface-2)] text-[var(--danger)]" : "bg-[var(--surface-2)] text-[var(--text)]"}`}
-        >
-          {status}
-        </span>
+        <AdminStatus status={status} />
       </td>
       <td className="px-4 py-3 text-xs text-[var(--text-muted)]">
         {lastLogin || (status === "invited" ? "Invitation sent" : "No record")}

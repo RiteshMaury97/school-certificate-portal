@@ -74,6 +74,172 @@ const sections: {
   },
 ];
 
+type CatalogSection = (typeof sections)[number];
+
+function CatalogHeader({
+  section,
+  catalogKind,
+  changeSection,
+}: {
+  section: CatalogSection;
+  catalogKind: CatalogKind;
+  changeSection: (kind: CatalogKind) => void;
+}) {
+  const Icon = section.icon;
+  return (
+    <header className="border-b border-[var(--divider)] bg-[var(--surface-2)] px-5 py-5 sm:px-7">
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--primary)] text-[var(--on-primary)]">
+          <Icon size={20} aria-hidden="true" />
+        </span>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--primary)]">
+            School setup
+          </p>
+          <h1 className="mt-1 text-xl font-bold text-[var(--text)]">Catalog management</h1>
+          <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+            Keep academic sessions, certificate types, and classes in their own lists.
+          </p>
+        </div>
+      </div>
+      <div
+        className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3"
+        role="tablist"
+        aria-label="Catalog sections"
+      >
+        {sections.map(({ kind, label, icon: SectionIcon }) => {
+          const selected = catalogKind === kind;
+          return (
+            <button
+              key={kind}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => {
+                changeSection(kind);
+              }}
+              className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition ${selected ? "border-[var(--primary)] bg-[var(--surface)] text-[var(--primary)] shadow-sm" : "border-[var(--divider)] bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface)]"}`}
+            >
+              <SectionIcon size={16} aria-hidden="true" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </header>
+  );
+}
+
+function CatalogItems({
+  section,
+  catalog,
+  items,
+  page,
+  visiblePage,
+  pageCount,
+  canManage,
+  onPageChange,
+  onDelete,
+}: {
+  section: CatalogSection;
+  catalog: CatalogOption[];
+  items: CatalogOption[];
+  page: number;
+  visiblePage: number;
+  pageCount: number;
+  canManage: boolean;
+  onPageChange: (page: number) => void;
+  onDelete: (item: CatalogOption) => void;
+}) {
+  const Icon = section.icon;
+  return (
+    <div className="mt-5 overflow-hidden rounded-xl border border-[var(--divider)]">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center border-b border-[var(--divider)] bg-[var(--surface-2)] px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+        <span>{section.singular} name</span>
+        <span>Actions</span>
+      </div>
+      {items.length === 0 ? (
+        <div className="px-4 py-12 text-center">
+          <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--surface-2)] text-[var(--text-muted)]">
+            <Icon size={18} aria-hidden="true" />
+          </span>
+          <p className="mt-3 text-sm font-semibold text-[var(--text)]">Nothing here yet</p>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">{section.empty}</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-[var(--divider)]">
+          {items.map((item, index) => (
+            <li
+              key={item.id}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition hover:bg-[var(--surface-2)]"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--surface-2)] text-[10px] font-semibold text-[var(--text-muted)]">
+                  {visiblePage * pageSize + index + 1}
+                </span>
+                <span className="truncate text-sm font-medium text-[var(--text)]">
+                  {item.label ?? item.name ?? item.id}
+                </span>
+              </div>
+              {canManage ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDelete(item);
+                  }}
+                  aria-label={`Delete ${item.label ?? item.name ?? item.id}`}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)]"
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                  Delete
+                </button>
+              ) : (
+                <span className="text-xs text-[var(--text-muted)]">View only</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <nav
+        aria-label={`${section.label} pagination`}
+        className="flex items-center justify-between border-t border-[var(--divider)] bg-[var(--surface)] px-4 py-3"
+      >
+        <span className="text-[11px] text-[var(--text-muted)]">
+          Showing {catalog.length ? page * pageSize + 1 : 0}–
+          {Math.min((page + 1) * pageSize, catalog.length)} of {catalog.length}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={visiblePage === 0}
+            onClick={() => {
+              onPageChange(Math.max(0, visiblePage - 1));
+            }}
+            className="grid h-8 w-8 place-items-center rounded-md border border-[var(--divider)] text-[var(--text)] disabled:opacity-40"
+          >
+            <ChevronLeft size={15} aria-hidden="true" />
+            <span className="sr-only">Previous page</span>
+          </button>
+          <span className="min-w-16 text-center text-xs text-[var(--text-muted)]">
+            {visiblePage + 1} / {pageCount}
+          </span>
+          <button
+            type="button"
+            disabled={visiblePage + 1 >= pageCount}
+            onClick={() => {
+              onPageChange(visiblePage + 1);
+            }}
+            className="grid h-8 w-8 place-items-center rounded-md border border-[var(--divider)] text-[var(--text)] disabled:opacity-40"
+          >
+            <ChevronRight size={15} aria-hidden="true" />
+            <span className="sr-only">Next page</span>
+          </button>
+        </div>
+      </nav>
+    </div>
+  );
+}
+
 export default function CatalogTab({
   role,
   catalogKind,
@@ -96,7 +262,6 @@ export default function CatalogTab({
   );
   const canManage = role === "superadmin" || role === "admin";
   if (!section) return null;
-  const Icon = section.icon;
 
   function changeSection(kind: CatalogKind) {
     setPage(0);
@@ -105,46 +270,11 @@ export default function CatalogTab({
 
   return (
     <section className="overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
-      <header className="border-b border-[var(--divider)] bg-[var(--surface-2)] px-5 py-5 sm:px-7">
-        <div className="flex items-start gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--primary)] text-[var(--on-primary)]">
-            <Icon size={20} aria-hidden="true" />
-          </span>
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--primary)]">
-              School setup
-            </p>
-            <h1 className="mt-1 text-xl font-bold text-[var(--text)]">Catalog management</h1>
-            <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-              Keep academic sessions, certificate types, and classes in their own lists.
-            </p>
-          </div>
-        </div>
-        <div
-          className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3"
-          role="tablist"
-          aria-label="Catalog sections"
-        >
-          {sections.map(({ kind, label, icon: SectionIcon }) => {
-            const selected = catalogKind === kind;
-            return (
-              <button
-                key={kind}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => {
-                  changeSection(kind);
-                }}
-                className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition ${selected ? "border-[var(--primary)] bg-[var(--surface)] text-[var(--primary)] shadow-sm" : "border-[var(--divider)] bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface)]"}`}
-              >
-                <SectionIcon size={16} aria-hidden="true" />
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </header>
+      <CatalogHeader
+        section={section}
+        catalogKind={catalogKind}
+        changeSection={changeSection}
+      />
 
       <div role="tabpanel" className="p-5 sm:p-7">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -185,103 +315,32 @@ export default function CatalogTab({
           </form>
         )}
 
-        <div className="mt-5 overflow-hidden rounded-xl border border-[var(--divider)]">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center border-b border-[var(--divider)] bg-[var(--surface-2)] px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-            <span>{section.singular} name</span>
-            <span>Actions</span>
-          </div>
-          {visibleItems.length === 0 ? (
-            <div className="px-4 py-12 text-center">
-              <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--surface-2)] text-[var(--text-muted)]">
-                <Icon size={18} aria-hidden="true" />
-              </span>
-              <p className="mt-3 text-sm font-semibold text-[var(--text)]">Nothing here yet</p>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">{section.empty}</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-[var(--divider)]">
-              {visibleItems.map((item, index) => (
-                <li
-                  key={item.id}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition hover:bg-[var(--surface-2)]"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--surface-2)] text-[10px] font-semibold text-[var(--text-muted)]">
-                      {visiblePage * pageSize + index + 1}
-                    </span>
-                    <span className="truncate text-sm font-medium text-[var(--text)]">
-                      {item.label ?? item.name ?? item.id}
-                    </span>
-                  </div>
-                  {canManage ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void confirmAction(
-                          "Delete catalog item",
-                          `Delete “${item.label ?? item.name ?? item.id}” from ${section.label.toLowerCase()}?`,
-                          "Delete item",
-                        ).then((accepted) => {
-                          if (accepted)
-                            void act(async () => {
-                              await api(
-                                `/api/admin/catalog/${catalogKind}?id=${encodeURIComponent(item.id)}`,
-                                { method: "DELETE" },
-                              );
-                              await load();
-                            });
-                        });
-                      }}
-                      aria-label={`Delete ${item.label ?? item.name ?? item.id}`}
-                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface)]"
-                    >
-                      <Trash2 size={14} aria-hidden="true" />
-                      Delete
-                    </button>
-                  ) : (
-                    <span className="text-xs text-[var(--text-muted)]">View only</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-          <nav
-            aria-label={`${section.label} pagination`}
-            className="flex items-center justify-between border-t border-[var(--divider)] bg-[var(--surface)] px-4 py-3"
-          >
-            <span className="text-[11px] text-[var(--text-muted)]">
-              Showing {catalog.length ? page * pageSize + 1 : 0}–
-              {Math.min((page + 1) * pageSize, catalog.length)} of {catalog.length}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={visiblePage === 0}
-                onClick={() => {
-                  setPage(Math.max(0, visiblePage - 1));
-                }}
-                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--divider)] text-[var(--text)] disabled:opacity-40"
-              >
-                <ChevronLeft size={15} aria-hidden="true" />
-                <span className="sr-only">Previous page</span>
-              </button>
-              <span className="min-w-16 text-center text-xs text-[var(--text-muted)]">
-                {visiblePage + 1} / {pageCount}
-              </span>
-              <button
-                type="button"
-                disabled={visiblePage + 1 >= pageCount}
-                onClick={() => {
-                  setPage(visiblePage + 1);
-                }}
-                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--divider)] text-[var(--text)] disabled:opacity-40"
-              >
-                <ChevronRight size={15} aria-hidden="true" />
-                <span className="sr-only">Next page</span>
-              </button>
-            </div>
-          </nav>
-        </div>
+        <CatalogItems
+          section={section}
+          catalog={catalog}
+          items={visibleItems}
+          page={page}
+          visiblePage={visiblePage}
+          pageCount={pageCount}
+          canManage={canManage}
+          onPageChange={setPage}
+          onDelete={(item) => {
+            void confirmAction(
+              "Delete catalog item",
+              `Delete “${item.label ?? item.name ?? item.id}” from ${section.label.toLowerCase()}?`,
+              "Delete item",
+            ).then((accepted) => {
+              if (accepted)
+                void act(async () => {
+                  await api(
+                    `/api/admin/catalog/${catalogKind}?id=${encodeURIComponent(item.id)}`,
+                    { method: "DELETE" },
+                  );
+                  await load();
+                });
+            });
+          }}
+        />
       </div>
     </section>
   );

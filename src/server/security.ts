@@ -5,6 +5,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getAllowedOrigins } from "@/server/site-origin";
+import { persistAuditLog } from "@/server/audit-log";
 
 import { assertServerEnvironment } from "./env";
 import { adminAuth, adminAppCheck, db, describeFirebaseError } from "./firebase-admin";
@@ -56,53 +57,7 @@ export async function writeAuditLog(
   ...details: [string, string?, { changedFields?: string[]; details?: Record<string, unknown> }?]
 ): Promise<void> {
   const [targetId, studentId, metadata] = details;
-  const timestamp = FieldValue.serverTimestamp();
-  await db.collection("auditLogs").add({
-    actorUid,
-    action,
-    targetId,
-    ...(studentId ? { studentId } : {}),
-    ...(metadata?.changedFields?.length ? { changedFields: metadata.changedFields } : {}),
-    ...(metadata?.details ? { details: metadata.details } : {}),
-    ipHash: hashRequesterIp(request),
-    timestamp,
-  });
-  const counters = db.collection("metricsCounters");
-  const weeklyId = new Date().toISOString().slice(0, 10);
-  const updates: Record<string, unknown> = {};
-  if (action === "certificate.search") updates.searchesTotal = FieldValue.increment(1);
-  if (action === "certificate.verify") updates.verificationChecks = FieldValue.increment(1);
-  if (
-    action === "certificate.search" &&
-    [
-      "no_match",
-      "no_certificates",
-      "no_certificates",
-      "invalid_request",
-      "rate_limited",
-      "search_key_rate_limited",
-      "turnstile_failed",
-      "internal_error",
-      "failed",
-    ].includes(targetId)
-  )
-    updates.failedLookups = FieldValue.increment(1);
-  if (action === "certificate.upload") updates.totalCertificates = FieldValue.increment(1);
-  if (action === "student.create") updates.totalStudents = FieldValue.increment(1);
-  if (action === "student.delete") updates.totalStudents = FieldValue.increment(-1);
-  if (action === "certificate.delete") updates.totalCertificates = FieldValue.increment(-1);
-  if (Object.keys(updates).length)
-    await counters.doc("portal").set({ ...updates, updatedAt: timestamp }, { merge: true });
-  if (action === "certificate.search") {
-    await counters.doc(`searches_${weeklyId}`).set(
-      {
-        date: weeklyId,
-        count: FieldValue.increment(1),
-        updatedAt: timestamp,
-      },
-      { merge: true },
-    );
-  }
+  await persistAuditLog(actorUid, action, targetId, studentId, metadata, hashRequesterIp(request));
 }
 export async function writeConsentLog(
   request: NextRequest,
@@ -468,12 +423,17 @@ function hasActiveAdminSession(
   return sessionSnapshot.exists && sessionUid === uid && !sessionSnapshot.get("revokedAt");
 }
 
-export async function requireAdmin(request: NextRequest): Promise<AdminIdentity> {
+async function authenticatedSession(request: NextRequest): Promise<string> {
   await verifyRequestAppCheck(request);
   if (!["GET", "HEAD", "OPTIONS"].includes(request.method) && !verifyCsrf(request))
     throw new Error("CSRF");
   const session = request.cookies.get("sis_admin_session")?.value;
   if (!session) throw new Error("UNAUTHORIZED");
+  return session;
+}
+
+export async function requireAdmin(request: NextRequest): Promise<AdminIdentity> {
+  const session = await authenticatedSession(request);
   const decoded = await adminAuth.verifySessionCookie(session, true);
   const email = decoded.email?.toLowerCase() ?? "";
   if (!email) throw new Error("FORBIDDEN");

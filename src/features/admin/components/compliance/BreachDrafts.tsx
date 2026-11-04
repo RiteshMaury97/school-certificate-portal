@@ -24,6 +24,95 @@ function isLanguage(value: string): value is Language {
   return value === "en" || value === "hi";
 }
 
+function DraftEditor({
+  recipientId,
+  languageId,
+  draftId,
+  audience,
+  language,
+  draft,
+  copied,
+  onAudienceChange,
+  onLanguageChange,
+  onDraftChange,
+  onCopy,
+}: {
+  recipientId: string;
+  languageId: string;
+  draftId: string;
+  audience: Audience;
+  language: Language;
+  draft: string;
+  copied: boolean;
+  onAudienceChange: (value: Audience) => void;
+  onLanguageChange: (value: Language) => void;
+  onDraftChange: (value: string) => void;
+  onCopy: () => void;
+}) {
+  return (
+    <>
+      <div className="flex flex-wrap gap-2">
+        <label htmlFor={recipientId} className="text-sm">
+          Recipient *
+        </label>
+        <select
+          id={recipientId}
+          required
+          aria-required="true"
+          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2"
+          value={audience}
+          onChange={(event) => {
+            if (isAudience(event.target.value)) onAudienceChange(event.target.value);
+          }}
+        >
+          <option value="board">Data Protection Board</option>
+          <option value="people">Affected people</option>
+        </select>
+        <label htmlFor={languageId} className="text-sm">
+          Language *
+        </label>
+        <select
+          id={languageId}
+          required
+          aria-required="true"
+          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2"
+          value={language}
+          onChange={(event) => {
+            if (isLanguage(event.target.value)) onLanguageChange(event.target.value);
+          }}
+        >
+          <option value="en">English</option>
+          <option value="hi">Hindi</option>
+        </select>
+      </div>
+      <label className="block text-sm font-medium" htmlFor={draftId}>
+        Draft text *
+      </label>
+      <textarea
+        id={draftId}
+        aria-label="Draft notification text"
+        required
+        aria-required="true"
+        minLength={10}
+        maxLength={10000}
+        className="min-h-64 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-sm"
+        value={draft}
+        onChange={(event) => {
+          onDraftChange(event.target.value);
+        }}
+      />
+      <button
+        type="button"
+        aria-label="Copy notification draft"
+        className="min-h-10 rounded-lg border border-[var(--border)] px-4 text-sm"
+        onClick={onCopy}
+      >
+        {copied ? "Copied" : "Copy draft"}
+      </button>
+    </>
+  );
+}
+
 export default function BreachDrafts({ incident }: { incident: Incident }) {
   const recipientId = useId();
   const languageId = useId();
@@ -103,66 +192,23 @@ export default function BreachDrafts({ incident }: { incident: Incident }) {
           Have the school advisor review the wording before use.
         </p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <label htmlFor={recipientId} className="text-sm">
-          Recipient *
-        </label>
-        <select
-          id={recipientId}
-          required
-          aria-required="true"
-          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2"
-          value={audience}
-          onChange={(event) => {
-            if (isAudience(event.target.value)) setAudience(event.target.value);
-          }}
-        >
-          <option value="board">Data Protection Board</option>
-          <option value="people">Affected people</option>
-        </select>
-        <label htmlFor={languageId} className="text-sm">
-          Language *
-        </label>
-        <select
-          id={languageId}
-          required
-          aria-required="true"
-          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2"
-          value={language}
-          onChange={(event) => {
-            if (isLanguage(event.target.value)) setLanguage(event.target.value);
-          }}
-        >
-          <option value="en">English</option>
-          <option value="hi">Hindi</option>
-        </select>
-      </div>
-      <label className="block text-sm font-medium" htmlFor={draftId}>
-        Draft text *
-      </label>
-      <textarea
-        id={draftId}
-        aria-label="Draft notification text"
-        required
-        aria-required="true"
-        minLength={10}
-        maxLength={10000}
-        className="min-h-64 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-sm"
-        value={draft}
-        onChange={(event) => {
-          setEditedDraft({ key: draftKey, value: event.target.value });
+      <DraftEditor
+        recipientId={recipientId}
+        languageId={languageId}
+        draftId={draftId}
+        audience={audience}
+        language={language}
+        draft={draft}
+        copied={copied}
+        onAudienceChange={setAudience}
+        onLanguageChange={setLanguage}
+        onDraftChange={(value) => {
+          setEditedDraft({ key: draftKey, value });
         }}
-      />
-      <button
-        type="button"
-        aria-label="Copy notification draft"
-        className="min-h-10 rounded-lg border border-[var(--border)] px-4 text-sm"
-        onClick={() => {
+        onCopy={() => {
           void copyDraft();
         }}
-      >
-        {copied ? "Copied" : "Copy draft"}
-      </button>
+      />
     </section>
   );
 }

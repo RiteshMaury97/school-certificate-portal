@@ -50,22 +50,33 @@ export default async function responsiveReport() {
   await writeFile(path.join(root, "summary.md"), summary);
 }
 
-function isAuditRow(value: unknown): value is AuditRow {
-  if (typeof value !== "object" || value === null) return false;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isTheme(value: unknown): value is AuditRow["theme"] {
+  return value === "light" || value === "dark" || value === "contrast";
+}
+
+function isChecks(value: unknown): value is AuditRow["checks"] {
   return (
-    "route" in value &&
+    isRecord(value) &&
+    Object.values(value).every((check) => typeof check === "boolean" || check === null)
+  );
+}
+
+function isStringList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item: unknown) => typeof item === "string");
+}
+
+function isAuditRow(value: unknown): value is AuditRow {
+  if (!isRecord(value)) return false;
+  return (
     typeof value.route === "string" &&
-    "viewport" in value &&
     typeof value.viewport === "string" &&
-    "theme" in value &&
-    (value.theme === "light" || value.theme === "dark" || value.theme === "contrast") &&
-    "fixture" in value &&
+    isTheme(value.theme) &&
     typeof value.fixture === "string" &&
-    "checks" in value &&
-    typeof value.checks === "object" &&
-    value.checks !== null &&
-    "failures" in value &&
-    Array.isArray(value.failures) &&
-    value.failures.every((failure) => typeof failure === "string")
+    isChecks(value.checks) &&
+    isStringList(value.failures)
   );
 }

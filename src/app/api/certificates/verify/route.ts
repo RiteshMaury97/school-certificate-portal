@@ -16,6 +16,7 @@ import {
   isPubliclyDownloadableStatus,
 } from "@/shared/certificate-lifecycle";
 
+import type { DocumentSnapshot } from "firebase-admin/firestore";
 import type { NextRequest} from "next/server";
 
 export const runtime = "nodejs";
@@ -104,121 +105,97 @@ async function audit(request: NextRequest, outcome: string): Promise<void> {
     () => { console.error("Certificate verification audit write failed"); },
   );
 }
-export async function POST(request: NextRequest) {
-  try {
-    await verifyRequestAppCheck(request);
-    const body: unknown = await request.json().catch(() => null);
-    const parsed = inputSchema.safeParse(body);
-    if (!parsed.success) {
-      const allowed = await consumeVerificationBudget(request);
-      await audit(request, allowed ? "invalid_request" : "rate_limited");
-      await delayFailedLookup();
-      return response(failed);
-    }
-    const input = parsed.data;
-    const hash = createCertificateNumberHash(input.certificateNumber);
-    if (!(await consumeVerificationBudget(request, hash))) {
-      await audit(request, "rate_limited");
-      await delayFailedLookup();
-      return response(failed);
-    }
-    const remoteIp = requesterIp(request);
-    if (!(await verifyTurnstile(input.turnstileToken, remoteIp))) {
-      await audit(request, "turnstile_failed");
-      await delayFailedLookup();
-      return response(failed);
-    }
-    const index = await db.collection("certificateNumberIndex").doc(hash).get();
-    if (!index.exists) {
-      await audit(request, "no_match");
-      await delayFailedLookup();
-      return response(failed);
-    }
-    const indexedSession = String(index.get("session") ?? "");
-    if (input.session !== indexedSession) {
-      await audit(request, "no_match");
-      await delayFailedLookup();
-      return response(failed);
-    }
-    const certificateId = String(index.get("certificateId") ?? "");
-    if (!certificateId) {
-      await audit(request, "no_match");
-      await delayFailedLookup();
-      return response(failed);
-    }
-    const certificateRef = db.collection("certificates").doc(certificateId);
-    const certificate = await certificateRef.get();
-    if (!certificate.exists) {
-      await audit(request, "no_match");
-      await delayFailedLookup();
-      return response(failed);
-    }
-    const studentId = String(certificate.get("studentId") ?? "");
-    const student = studentId
-      ? await db.collection("students").doc(studentId).get()
-      : null;
-    if (!student?.exists || student.get("erasurePending") === true) {
-      await audit(request, "no_match");
-      await delayFailedLookup();
-      return response(failed);
-    }
-    const lifecycleStatus = String(certificate.get("status") ?? "");
-    if (lifecycleStatus === "superseded") {
-      const newerId = String(certificate.get("supersededBy") ?? "");
-      const newer = newerId
-        ? await db.collection("certificates").doc(newerId).get()
-        : null;
-      const outcome = publicVerificationOutcome(
-        "superseded",
-        newer?.exists
-          ? decryptCertificateNumber(newer.get("certificateNumberEncrypted"))
-          : "",
-      );
-      if (outcome.status === "not-found") {
-        await audit(request, "no_match");
-        await delayFailedLookup();
-        return response(failed);
-      }
-      await audit(request, "superseded");
-      return response(outcome);
-    }
-    if (lifecycleStatus === "revoked") {
-      await audit(request, "revoked");
-      return response(publicVerificationOutcome("revoked"));
-    }
-    if (
-      !isPubliclyDownloadableStatus(lifecycleStatus) ||
-      certificate.get("published") === false
-    ) {
-      await audit(request, "no_match");
-      await delayFailedLookup();
-      return response(failed);
-    }
-    const studentName = String(student.get("studentName") ?? "");
-    const certificateType = String(certificate.get("type") ?? "");
-    const session = String(certificate.get("session") ?? "");
-    const issueDate = String(certificate.get("issueDate") ?? "");
-    if (!studentName || !certificateType || !session || !issueDate) {
-      await audit(request, "no_match");
-      await delayFailedLookup();
-      return response(failed);
-    }
-    await audit(request, "valid");
-    return response({
+async function failedResponse(request: NextRequest, outcome: string) {
+  await audit(request, outcome);
+  await delayFailedLookup();
+  return response(failed);
+}
+
+async function findCertificateAndStudent(hash: string, session: string) {
+  const index = await db.collection("certificateNumberIndex").doc(hash).get();
+  if (!index.exists || String(index.get("session") ?? "") !== session) return null;
+  const certificateId = String(index.get("certificateId") ?? "");
+  if (!certificateId) return null;
+  const certificate = await db.collection("certificates").doc(certificateId).get();
+  if (!certificate.exists) return null;
+  const studentId = String(certificate.get("studentId") ?? "");
+  const student = studentId ? await db.collection("students").doc(studentId).get() : null;
+  if (!student?.exists || student.get("erasurePending") === true) return null;
+  return { certificate, student };
+}
+
+async function lifecycleResponse(
+  request: NextRequest,
+  certificate: DocumentSnapshot,
+  student: DocumentSnapshot,
+  input: z.infer<typeof inputSchema>,
+) {
+  const lifecycleStatus = String(certificate.get("status") ?? "");
+  if (lifecycleStatus === "superseded") {
+    const newerId = String(certificate.get("supersededBy") ?? "");
+    const newer = newerId ? await db.collection("certificates").doc(newerId).get() : null;
+    const outcome = publicVerificationOutcome(
+      "superseded",
+      newer?.exists ? decryptCertificateNumber(newer.get("certificateNumberEncrypted")) : "",
+    );
+    if (outcome.status === "not-found") return failedResponse(request, "no_match");
+    await audit(request, "superseded");
+    return response(outcome);
+  }
+  if (lifecycleStatus === "revoked") {
+    await audit(request, "revoked");
+    return response(publicVerificationOutcome("revoked"));
+  }
+  if (!isPubliclyDownloadableStatus(lifecycleStatus) || certificate.get("published") === false)
+    return failedResponse(request, "no_match");
+  return publishedCertificateResponse(request, certificate, student, input);
+}
+
+async function publishedCertificateResponse(
+  request: NextRequest,
+  certificate: DocumentSnapshot,
+  student: DocumentSnapshot,
+  input: z.infer<typeof inputSchema>,
+) {
+  const studentName = String(student.get("studentName") ?? "");
+  const certificateType = String(certificate.get("type") ?? "");
+  const session = String(certificate.get("session") ?? "");
+  const issueDate = String(certificate.get("issueDate") ?? "");
+  if (!studentName || !certificateType || !session || !issueDate)
+    return failedResponse(request, "no_match");
+  await audit(request, "valid");
+  const settings = await db.collection("siteSettings").doc("main").get();
+  return response({
       valid: true,
       message: "Valid certificate",
       certificateType,
       certificateNumber: input.certificateNumber,
       session,
       issueDate,
-      schoolName:
-        String((await db.collection("siteSettings").doc("main").get()).get("schoolName")).trim() || "Satyam International School",
+      schoolName: String(settings.get("schoolName")).trim() || "Satyam International School",
       studentName: maskStudentName(studentName),
       verifiedOn: new Date().toISOString(),
     });
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    await verifyRequestAppCheck(request);
+    const parsed = inputSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      const allowed = await consumeVerificationBudget(request);
+      return failedResponse(request, allowed ? "invalid_request" : "rate_limited");
+    }
+    const input = parsed.data;
+    const hash = createCertificateNumberHash(input.certificateNumber);
+    if (!(await consumeVerificationBudget(request, hash)))
+      return failedResponse(request, "rate_limited");
+    if (!(await verifyTurnstile(input.turnstileToken, requesterIp(request))))
+      return failedResponse(request, "turnstile_failed");
+    const result = await findCertificateAndStudent(hash, input.session);
+    if (!result) return failedResponse(request, "no_match");
+    return lifecycleResponse(request, result.certificate, result.student, input);
   } catch {
-    await audit(request, "internal_error");
-    await delayFailedLookup();
-    return response(failed);
+    return failedResponse(request, "internal_error");
   }
 }

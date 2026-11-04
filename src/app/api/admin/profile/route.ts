@@ -85,6 +85,64 @@ function validPersonName(value: string) {
   return value.length >= 2 && value.length <= 80 && /^[\p{L}\p{M} .'-]+$/u.test(value);
 }
 
+function validateIdentity(profile: Profile): string | null {
+  if (!validPersonName(profile.name))
+    return "Enter a name using 2 to 80 letters, spaces, periods, apostrophes or hyphens.";
+  for (const [field, label] of [
+    ["preferredName", "Preferred name"],
+    ["reportingManager", "Reporting manager"],
+    ["emergencyContactName", "Emergency contact name"],
+  ] as const) {
+    if (profile[field] && !validPersonName(profile[field]))
+      return `${label} must use 2 to 80 letters, spaces, periods, apostrophes or hyphens.`;
+  }
+  if (
+    profile.gender &&
+    !["female", "male", "nonbinary", "prefer-not-to-say", "self-described"].includes(
+      profile.gender,
+    )
+  )
+    return "Choose a valid gender option.";
+  if (!validDate(profile.dateOfBirth) || !validDate(profile.joiningDate))
+    return "Enter dates in YYYY-MM-DD format.";
+  return null;
+}
+
+function validateContact(profile: Profile): string | null {
+  if (
+    profile.alternateEmail &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.alternateEmail)
+  )
+    return "Enter a valid alternate email address.";
+  for (const [field, label] of [
+    ["primaryPhone", "Primary phone"],
+    ["secondaryPhone", "Secondary phone"],
+    ["emergencyContactPhone", "Emergency contact phone"],
+  ] as const) {
+    if (profile[field] && !isValidPhoneNumber(profile[field]))
+      return `${label} must be a 10-digit Indian mobile number or an international number in E.164 format.`;
+  }
+  if (
+    profile.photoDataUrl &&
+    !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(profile.photoDataUrl)
+  )
+    return "Upload a supported profile photo.";
+  return null;
+}
+
+function validatePreferences(profile: Profile): string | null {
+  if (!["en", "hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"].includes(profile.preferredLanguage))
+    return "Choose a supported language.";
+  if (!["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"].includes(profile.dateFormat))
+    return "Choose a supported date format.";
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: profile.timeZone });
+  } catch {
+    return "Enter a valid time zone.";
+  }
+  return null;
+}
+
 function readProfile(value: unknown): Profile {
   const profile = { ...emptyProfile };
   if (!isRecord(value)) return profile;
@@ -160,47 +218,10 @@ export async function PATCH(request: NextRequest) {
       profile[field] = value;
     }
 
-    if (!validPersonName(profile.name))
-      return NextResponse.json(
-        { error: "Enter a name using 2 to 80 letters, spaces, periods, apostrophes or hyphens." },
-        { status: 400 },
-      );
-    for (const [field, label] of [["preferredName", "Preferred name"], ["reportingManager", "Reporting manager"], ["emergencyContactName", "Emergency contact name"]] as const) {
-      if (profile[field] && !validPersonName(profile[field]))
-        return NextResponse.json({ error: `${label} must use 2 to 80 letters, spaces, periods, apostrophes or hyphens.` }, { status: 400 });
-    }
-    if (
-      profile.gender &&
-      !["female", "male", "nonbinary", "prefer-not-to-say", "self-described"].includes(
-        profile.gender,
-      )
-    )
-      return NextResponse.json({ error: "Choose a valid gender option." }, { status: 400 });
-    if (!validDate(profile.dateOfBirth) || !validDate(profile.joiningDate))
-      return NextResponse.json({ error: "Enter dates in YYYY-MM-DD format." }, { status: 400 });
-    if (profile.alternateEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.alternateEmail))
-      return NextResponse.json(
-        { error: "Enter a valid alternate email address." },
-        { status: 400 },
-      );
-    for (const [field, label] of [["primaryPhone", "Primary phone"], ["secondaryPhone", "Secondary phone"], ["emergencyContactPhone", "Emergency contact phone"]] as const) {
-      if (profile[field] && !isValidPhoneNumber(profile[field]))
-        return NextResponse.json({ error: `${label} must be a 10-digit Indian mobile number or an international number in E.164 format.` }, { status: 400 });
-    }
-    if (
-      profile.photoDataUrl &&
-      !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(profile.photoDataUrl)
-    )
-      return NextResponse.json({ error: "Upload a supported profile photo." }, { status: 400 });
-    if (!["en", "hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"].includes(profile.preferredLanguage))
-      return NextResponse.json({ error: "Choose a supported language." }, { status: 400 });
-    if (!["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"].includes(profile.dateFormat))
-      return NextResponse.json({ error: "Choose a supported date format." }, { status: 400 });
-    try {
-      new Intl.DateTimeFormat("en", { timeZone: profile.timeZone });
-    } catch {
-      return NextResponse.json({ error: "Enter a valid time zone." }, { status: 400 });
-    }
+    const validationError =
+      validateIdentity(profile) ?? validateContact(profile) ?? validatePreferences(profile);
+    if (validationError)
+      return NextResponse.json({ error: validationError }, { status: 400 });
 
     await db
       .collection("admins")

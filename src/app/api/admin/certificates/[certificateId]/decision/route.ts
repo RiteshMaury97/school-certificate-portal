@@ -17,6 +17,52 @@ import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type DecisionInput = { decision: "approve" | "reject"; reason: string };
+
+function parseDecisionInput(value: unknown): DecisionInput | { error: string } {
+  if (!value || typeof value !== "object" || !("decision" in value))
+    return { error: "Choose approve or reject." };
+  const decision = typeof value.decision === "string" ? value.decision : "";
+  const reason = "reason" in value && typeof value.reason === "string" ? value.reason.trim() : "";
+  const detailsMatch = "detailsMatch" in value && value.detailsMatch === true;
+  if (decision !== "approve" && decision !== "reject")
+    return { error: "Invalid decision." };
+  if (decision === "reject" && (reason.length < 10 || reason.length > 1000))
+    return { error: "Enter a rejection reason of at least 10 characters." };
+  if (decision === "approve" && !detailsMatch)
+    return { error: "Confirm that the details match the document before approval." };
+  return { decision, reason };
+}
+
+function decisionErrorResponse(error: unknown): NextResponse | null {
+  if (!(error instanceof Error)) return null;
+  if (error.message === "NOT_FOUND")
+    return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
+  if (error.message === "NOT_PENDING")
+    return NextResponse.json({ error: "This certificate is no longer pending." }, { status: 409 });
+  if (error.message === "MALWARE_SCAN_NOT_CLEAN")
+    return NextResponse.json(
+      { error: "This certificate cannot be approved until a clean security scan is recorded." },
+      { status: 409 },
+    );
+  if (error.message === "SELF_APPROVAL")
+    return NextResponse.json(
+      { error: "The uploader cannot approve or reject their own upload." },
+      { status: 403 },
+    );
+  if (error.message === "REPLACED_CERTIFICATE_UNAVAILABLE")
+    return NextResponse.json(
+      { error: "The original published certificate is no longer eligible for replacement." },
+      { status: 409 },
+    );
+  if (error.message === "UPLOADER_UNKNOWN")
+    return NextResponse.json(
+      { error: "Uploader identity is missing. Reconcile this legacy record before approval." },
+      { status: 409 },
+    );
+  return null;
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ certificateId: string }> },
@@ -24,34 +70,10 @@ export async function POST(
   try {
     const actor = await requireRoles(request, ["approver", "admin"]);
     const { certificateId } = await context.params;
-    const body: unknown = await request.json();
-    if (!body || typeof body !== "object" || !("decision" in body))
-      return NextResponse.json(
-        { error: "Choose approve or reject." },
-        { status: 400 },
-      );
-    const decision = typeof body.decision === "string" ? body.decision : "";
-    const reason =
-      "reason" in body && typeof body.reason === "string"
-        ? body.reason.trim()
-        : "";
-    const detailsMatch = "detailsMatch" in body && body.detailsMatch === true;
-    if (decision !== "approve" && decision !== "reject")
-      return NextResponse.json({ error: "Invalid decision." }, { status: 400 });
-    if (decision === "reject" && (reason.length < 10 || reason.length > 1000))
-      return NextResponse.json(
-        {
-          error: "Enter a rejection reason of at least 10 characters.",
-        },
-        { status: 400 },
-      );
-    if (decision === "approve" && !detailsMatch)
-      return NextResponse.json(
-        {
-          error: "Confirm that the details match the document before approval.",
-        },
-        { status: 400 },
-      );
+    const input = parseDecisionInput(await request.json());
+    if ("error" in input)
+      return NextResponse.json({ error: input.error }, { status: 400 });
+    const { decision, reason } = input;
     if (decision === "approve") await ensurePublicSessions();
     const ref = db.collection("certificates").doc(certificateId);
     const result = await db.runTransaction(async (tx) => {
@@ -155,45 +177,6 @@ export async function POST(
       );
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    if (error instanceof Error && error.message === "NOT_FOUND")
-      return NextResponse.json(
-        { error: "Certificate not found." },
-        { status: 404 },
-      );
-    if (error instanceof Error && error.message === "NOT_PENDING")
-      return NextResponse.json(
-        { error: "This certificate is no longer pending." },
-        { status: 409 },
-      );
-    if (error instanceof Error && error.message === "MALWARE_SCAN_NOT_CLEAN")
-      return NextResponse.json(
-        { error: "This certificate cannot be approved until a clean security scan is recorded." },
-        { status: 409 },
-      );
-    if (error instanceof Error && error.message === "SELF_APPROVAL")
-      return NextResponse.json(
-        { error: "The uploader cannot approve or reject their own upload." },
-        { status: 403 },
-      );
-    if (
-      error instanceof Error &&
-      error.message === "REPLACED_CERTIFICATE_UNAVAILABLE"
-    )
-      return NextResponse.json(
-        {
-          error:
-            "The original published certificate is no longer eligible for replacement.",
-        },
-        { status: 409 },
-      );
-    if (error instanceof Error && error.message === "UPLOADER_UNKNOWN")
-      return NextResponse.json(
-        {
-          error:
-            "Uploader identity is missing. Reconcile this legacy record before approval.",
-        },
-        { status: 409 },
-      );
-    return apiError(error);
+    return decisionErrorResponse(error) ?? apiError(error);
   }
 }

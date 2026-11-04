@@ -8,6 +8,7 @@ import { watermarkCertificate } from "@/server/watermark";
 import { isPubliclyDownloadableStatus } from "@/shared/certificate-lifecycle";
 import { UPLOAD_MAX_BYTES } from "@/shared/upload-limits";
 
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
@@ -34,6 +35,66 @@ function safeDispositionName(originalName: string, extension: string): string {
   );
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
+
+async function findDownloadableCertificate(
+  certId: string,
+  claims: NonNullable<ReturnType<typeof verifyStudentAccessToken>>,
+): Promise<QueryDocumentSnapshot | null> {
+  const matches = await db
+    .collection("certificates")
+    .where("publicId", "==", certId)
+    .limit(2)
+    .get();
+  if (matches.size !== 1) return null;
+  const certificateDoc = matches.docs.at(0);
+  if (!certificateDoc) return null;
+  const certificate = certificateDoc.data();
+  if (!isPubliclyDownloadableStatus(certificate.status) || certificate.published === false)
+    return null;
+  const studentId = String(certificate.studentId ?? "");
+  if (!studentAccessTokenOwnsStudent(claims, studentId)) return null;
+  const student = studentId ? await db.collection("students").doc(studentId).get() : null;
+  return student?.exists && student.get("erasurePending") !== true ? certificateDoc : null;
+}
+
+function certificateExtension(mimeType: string): string {
+  if (mimeType === "application/pdf") return ".pdf";
+  if (mimeType === "image/jpeg") return ".jpg";
+  if (mimeType === "image/png") return ".png";
+  return "";
+}
+
+function streamResponse(
+  watermarked: Buffer,
+  mimeType: string,
+  disposition: string,
+): NextResponse {
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const chunkSize = 64 * 1024;
+      for (let offset = 0; offset < watermarked.byteLength; offset += chunkSize) {
+        controller.enqueue(
+          new Uint8Array(
+            watermarked.subarray(offset, Math.min(offset + chunkSize, watermarked.byteLength)),
+          ),
+        );
+      }
+      controller.close();
+    },
+  });
+  return new NextResponse(body, {
+    status: 200,
+    headers: {
+      "Content-Type": mimeType,
+      "Content-Disposition": disposition,
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
+      "Referrer-Policy": "no-referrer",
+    },
+  });
+}
+
 export async function GET(request: NextRequest, context: { params: Promise<{ certId: string }> }) {
   try {
     const token = request.nextUrl.searchParams.get("token") ?? "";
@@ -43,32 +104,12 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cer
     const { certId } = await context.params;
     if (!/^[A-Za-z0-9_-]{20,80}$/.test(certId)) return unavailable();
 
-    const matches = await db
-      .collection("certificates")
-      .where("publicId", "==", certId)
-      .limit(2)
-      .get();
-    if (matches.size !== 1) return unavailable();
-
-    const certificateDoc = matches.docs.at(0);
+    const certificateDoc = await findDownloadableCertificate(certId, claims);
     if (!certificateDoc) return unavailable();
     const certificate = certificateDoc.data();
-    if (!isPubliclyDownloadableStatus(certificate.status) || certificate.published === false)
-      return unavailable();
-    const studentId = String(certificate.studentId ?? "");
-    if (!studentAccessTokenOwnsStudent(claims, studentId)) return unavailable();
-    const student = studentId ? await db.collection("students").doc(studentId).get() : null;
-    if (!student?.exists || student.get("erasurePending") === true) return unavailable();
 
     const mimeType = String(certificate.mimeType ?? "");
-    const extension =
-      mimeType === "application/pdf"
-        ? ".pdf"
-        : mimeType === "image/jpeg"
-          ? ".jpg"
-          : mimeType === "image/png"
-            ? ".png"
-            : "";
+    const extension = certificateExtension(mimeType);
     if (!extension) return unavailable();
 
     const r2Key = String(certificate.r2Key ?? "");
@@ -88,30 +129,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cer
       { ref: certificateDoc.ref, session: String(certificate.session) },
     ]);
 
-    const body = new ReadableStream<Uint8Array>({
-      start(controller) {
-        const chunkSize = 64 * 1024;
-        for (let offset = 0; offset < watermarked.byteLength; offset += chunkSize) {
-          controller.enqueue(
-            new Uint8Array(
-              watermarked.subarray(offset, Math.min(offset + chunkSize, watermarked.byteLength)),
-            ),
-          );
-        }
-        controller.close();
-      },
-    });
-    return new NextResponse(body, {
-      status: 200,
-      headers: {
-        "Content-Type": mimeType,
-        "Content-Disposition": disposition,
-        "Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff",
-        "Content-Security-Policy": "default-src 'none'; sandbox",
-        "Referrer-Policy": "no-referrer",
-      },
-    });
+    return streamResponse(watermarked, mimeType, disposition);
   } catch {
     console.error("Protected certificate stream failed");
     return unavailable();

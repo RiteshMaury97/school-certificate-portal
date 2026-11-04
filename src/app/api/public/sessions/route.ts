@@ -9,6 +9,14 @@ export const dynamic = "force-dynamic";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
+function addSession(sessions: Set<string>, value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  const normalized = normalizeAcademicSession(value);
+  if (!normalized) return false;
+  sessions.add(normalized);
+  return true;
+}
+
 export async function GET() {
   try {
     // Builds the compact index on first use so a fresh database never shows an error.
@@ -19,23 +27,11 @@ export async function GET() {
     ]);
     const stored: unknown = snapshot.get("sessions");
     const sessions = new Set<string>();
-    if (Array.isArray(stored)) {
-      for (const value of stored) {
-        if (typeof value === "string") {
-          const normalized = normalizeAcademicSession(value);
-          if (normalized) sessions.add(normalized);
-        }
-      }
-    }
+    if (Array.isArray(stored)) stored.forEach((value: unknown) => addSession(sessions, value));
     for (const doc of catalog.docs) {
       if (doc.get("isActive") === false) continue;
       for (const value of [doc.get("label"), doc.get("name"), doc.id]) {
-        if (typeof value !== "string") continue;
-        const normalized = normalizeAcademicSession(value);
-        if (normalized) {
-          sessions.add(normalized);
-          break;
-        }
+        if (addSession(sessions, value)) break;
       }
     }
     return NextResponse.json(

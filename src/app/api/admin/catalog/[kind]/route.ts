@@ -13,6 +13,11 @@ type Kind = (typeof allowed)[number];
 function collection(kind: string): Kind | null {
   return allowed.find((candidate) => candidate === kind) ?? null;
 }
+function resolveCatalogLabel(name: Kind, requestedLabel: string): string | null {
+  const sessionLabel = name === "sessions" ? normalizeAcademicSession(requestedLabel) : null;
+  if (name === "sessions" && !sessionLabel) return null;
+  return sessionLabel ?? requestedLabel;
+}
 export async function GET(request: NextRequest, context: { params: Promise<{ kind: string }> }) {
   try {
     await requireRoles(request, ["uploader", "approver", "admin"]);
@@ -43,15 +48,14 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ki
     if (!parsed.success)
       return NextResponse.json({ error: "Enter a valid catalog name." }, { status: 400 });
     const requestedLabel = parsed.data.label ?? parsed.data.name;
-    const sessionLabel = name === "sessions" ? normalizeAcademicSession(requestedLabel) : null;
-    if (name === "sessions" && !sessionLabel)
+    const label = resolveCatalogLabel(name, requestedLabel);
+    if (!label)
       return NextResponse.json(
         { error: "Use an academic session like 2026-27 or 2026-2027." },
         { status: 400 },
       );
-    const label = sessionLabel ?? requestedLabel;
     const id = String(
-      (name === "sessions" ? sessionLabel : parsed.data.id) ??
+      (name === "sessions" ? label : parsed.data.id) ??
         (name === "certificateTypes" || name === "classes" ? certificateTypeSlug(label) : label),
     );
     await db.collection(name).doc(id).set(

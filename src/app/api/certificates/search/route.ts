@@ -192,164 +192,95 @@ async function retrieveStudent(
   });
 }
 
+async function failedLookup(
+  request: NextRequest,
+  outcome: "failed" | "no_match" | "invalid_request" | "rate_limited" | "turnstile_failed",
+  consumeBudget = false,
+) {
+  if (consumeBudget) await consumeSearchBudget(request);
+  if (outcome === "failed" || outcome === "no_match")
+    await recordLookupMiss(request).catch(() => null);
+  await audit(request, outcome);
+  await delayFailedLookup();
+  return genericResponse();
+}
+
+async function disambiguationCandidate(
+  body: Record<string, unknown>,
+  searchKey: string,
+): Promise<QueryDocumentSnapshot | null> {
+  const parsedAnswer = studentDisambiguationSchema.safeParse(body);
+  if (!parsedAnswer.success) return null;
+  const candidates = await db.collection("students").where("searchKey", "==", searchKey).get();
+  const eligible = candidates.docs.filter((document) => document.get("erasurePending") !== true);
+  if (eligible.length < 2) return null;
+  const answerHash = safeIdentifierHash(parsedAnswer.data.disambiguationValue);
+  if (!answerHash) return null;
+  type Candidate = {
+    document: QueryDocumentSnapshot;
+    dateOfBirthDisambiguationKey?: unknown;
+    admissionNumberDisambiguationKey?: unknown;
+  };
+  const selected = selectUniqueDisambiguationMatch<Candidate>(
+    eligible.map((document) => ({ ...document.data(), document })),
+    answerHash,
+  );
+  return selected?.document ?? null;
+}
+
+async function resolveChallenge(
+  request: NextRequest,
+  body: Record<string, unknown>,
+): Promise<NextResponse | null> {
+  if (typeof body.challengeToken !== "string") return null;
+  const challenge = verifyDisambiguationChallengeToken(body.challengeToken, request);
+  if (!challenge) return failedLookup(request, "failed", true);
+  if (!(await consumeSearchBudget(request, challenge.sk)))
+    return failedLookup(request, "failed");
+  if (!(await consumeDisambiguationAttempt(challenge.nonce)))
+    return failedLookup(request, "failed");
+  const selected = await disambiguationCandidate(body, challenge.sk);
+  if (!selected) return failedLookup(request, "failed");
+  await completeDisambiguationChallenge(challenge.nonce);
+  await audit(request, "resolved");
+  return retrieveStudent(request, selected, String(selected.get("session") ?? ""));
+}
+
+async function searchStudent(
+  request: NextRequest,
+  body: Record<string, unknown>,
+): Promise<NextResponse> {
+  const parsed = studentLookupSchema.safeParse(body);
+  if (!parsed.success) return failedLookup(request, "invalid_request", true);
+  const input = parsed.data;
+  const searchKey = createSearchKey(input);
+  if (!(await consumeSearchBudget(request, searchKey)))
+    return failedLookup(request, "rate_limited");
+  if (!(await verifyTurnstile(input.turnstileToken, requesterIp(request))))
+    return failedLookup(request, "turnstile_failed");
+  const candidates = await db.collection("students").where("searchKey", "==", searchKey).get();
+  const eligible = candidates.docs.filter((document) => document.get("erasurePending") !== true);
+  const matchKind = classifySearchMatchCount(eligible.length);
+  if (matchKind === "none") return failedLookup(request, "no_match");
+  if (matchKind === "ambiguous") {
+    await audit(request, "ambiguous");
+    const challengeToken = issueDisambiguationChallenge(searchKey, hashRequesterIp(request));
+    return noStoreJson({ needsMoreInfo: true, challengeToken });
+  }
+  const student = eligible.at(0);
+  if (!student) return failedLookup(request, "no_match");
+  return retrieveStudent(request, student, input.session);
+}
+
 export async function POST(request: NextRequest) {
   try {
-    if (!requesterIp(request)) return NextResponse.json({ error: "Service temporarily unavailable." }, { status: 503 });
+    if (!requesterIp(request))
+      return NextResponse.json({ error: "Service temporarily unavailable." }, { status: 503 });
     await verifyRequestAppCheck(request);
     const raw: unknown = await request.json().catch(() => null);
-    if (!isRecord(raw)) {
-      await consumeSearchBudget(request);
-      await audit(request, "invalid_request");
-      await delayFailedLookup();
-      return genericResponse();
-    }
-    const body = raw;
-
-    // Second stage: the signed challenge is bound to both the original search key and requester IP.
-    if (typeof body.challengeToken === "string") {
-      const challenge = verifyDisambiguationChallengeToken(
-        body.challengeToken,
-        request,
-      );
-      if (!challenge) {
-        await consumeSearchBudget(request);
-        await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => null);
-        await delayFailedLookup();
-        return genericResponse();
-      }
-      if (!(await consumeSearchBudget(request, challenge.sk))) {
-        await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => null);
-        await delayFailedLookup();
-        return genericResponse();
-      }
-      const allowed = await consumeDisambiguationAttempt(challenge.nonce);
-      if (!allowed) {
-        await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => null);
-        await delayFailedLookup();
-        return genericResponse();
-      }
-      const parsedAnswer = studentDisambiguationSchema.safeParse(body);
-      if (!parsedAnswer.success) {
-        await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => null);
-        await delayFailedLookup();
-        return genericResponse();
-      }
-      const candidateSnapshot = await db
-        .collection("students")
-        .where("searchKey", "==", challenge.sk)
-        .get();
-      const eligibleCandidates = candidateSnapshot.docs.filter(
-        (document) => document.get("erasurePending") !== true,
-      );
-      if (eligibleCandidates.length < 2) {
-        await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => null);
-        await delayFailedLookup();
-        return genericResponse();
-      }
-      const answer = parsedAnswer.data.disambiguationValue;
-      const dobHash = safeIdentifierHash(answer);
-      const admissionHash = safeIdentifierHash(answer);
-      type Candidate = {
-        document: QueryDocumentSnapshot;
-        dateOfBirthDisambiguationKey?: unknown;
-        admissionNumberDisambiguationKey?: unknown;
-      };
-      const candidates: Candidate[] = eligibleCandidates.map((document) => ({
-        ...document.data(),
-        document,
-      }));
-      const selected =
-        dobHash !== null && admissionHash !== null
-          ? selectUniqueDisambiguationMatch<Candidate>(candidates, dobHash)
-          : null;
-      if (!selected) {
-        await audit(request, "failed");
-        await recordLookupMiss(request).catch(() => null);
-        await delayFailedLookup();
-        return genericResponse();
-      }
-      await completeDisambiguationChallenge(challenge.nonce);
-      await audit(request, "resolved");
-      const selectedDocument = candidateSnapshot.docs.find(
-        (document) => document.id === selected.document.id,
-      );
-      if (!selectedDocument) {
-        await audit(request, "failed");
-        await delayFailedLookup();
-        return genericResponse();
-      }
-      const session = String(selectedDocument.get("session") ?? "");
-      return await retrieveStudent(request, selectedDocument, session);
-    }
-
-    const parsed = studentLookupSchema.safeParse(body);
-    if (!parsed.success) {
-      await consumeSearchBudget(request);
-      await audit(request, "invalid_request");
-      await delayFailedLookup();
-      return genericResponse();
-    }
-    const input = parsed.data;
-    const searchKey = createSearchKey(input);
-    if (!(await consumeSearchBudget(request, searchKey))) {
-      await audit(request, "rate_limited");
-      await delayFailedLookup();
-      return genericResponse();
-    }
-    const remoteIp = requesterIp(request);
-    if (!(await verifyTurnstile(input.turnstileToken, remoteIp))) {
-      await audit(request, "turnstile_failed");
-      await delayFailedLookup();
-      return genericResponse();
-    }
-    const candidateSnapshot = await db
-      .collection("students")
-      .where("searchKey", "==", searchKey)
-      .get();
-    const eligibleCandidates = candidateSnapshot.docs.filter(
-      (document) => document.get("erasurePending") !== true,
-    );
-    const matchCount = eligibleCandidates.length;
-    const matchKind = classifySearchMatchCount(matchCount);
-    if (matchKind === "none") {
-      await recordLookupMiss(request).catch(() => null);
-      await audit(request, "no_match");
-      await delayFailedLookup();
-      return genericResponse();
-    }
-    if (matchKind === "ambiguous") {
-      await audit(request, "ambiguous");
-      const challengeToken = issueDisambiguationChallenge(
-        searchKey,
-        hashRequesterIp(request),
-      );
-      return noStoreJson({ needsMoreInfo: true, challengeToken });
-    }
-    const studentSnapshot = { docs: eligibleCandidates };
-    if (studentSnapshot.docs.length > 1) {
-      await audit(request, "ambiguous");
-      return noStoreJson({
-        needsMoreInfo: true,
-        challengeToken: issueDisambiguationChallenge(
-          searchKey,
-          hashRequesterIp(request),
-        ),
-      });
-    }
-    if (studentSnapshot.docs.length !== 1) {
-      await recordLookupMiss(request).catch(() => null);
-      await audit(request, "no_match");
-      await delayFailedLookup();
-      return genericResponse();
-    }
-    const student = studentSnapshot.docs.at(0);
-    if (!student) return genericResponse();
-    return await retrieveStudent(request, student, input.session);
+    if (!isRecord(raw)) return failedLookup(request, "invalid_request", true);
+    const challengeResponse = await resolveChallenge(request, raw);
+    return challengeResponse ?? (await searchStudent(request, raw));
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error

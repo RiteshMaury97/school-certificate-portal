@@ -34,6 +34,56 @@ type AdminHeaderProps = {
   onProfile: MouseEventHandler<HTMLButtonElement>;
 };
 
+function ProfileMenu({
+  onProfile,
+  onSessions,
+  revokeAllSessions,
+  logout,
+}: Pick<AdminHeaderProps, "onProfile" | "onSessions" | "revokeAllSessions" | "logout">) {
+  return (
+    <details className="relative">
+      <summary
+        aria-label="Administrator profile menu"
+        title="Profile menu"
+        className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--on-primary)_40%,transparent)] px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+        <UserRound size={18} aria-hidden="true" />
+        <span className="hidden sm:inline">Profile</span>
+        <span aria-hidden="true">▾</span>
+      </summary>
+      <div className="absolute right-0 z-50 mt-2 min-w-56 rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-2 text-[var(--text)] shadow-xl">
+        <button
+          type="button"
+          onClick={onProfile}
+          className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
+        >
+          My profile
+        </button>
+        <button
+          onClick={onSessions}
+          className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
+        >
+          Sessions &amp; sign-ins
+        </button>
+        <button
+          onClick={() => {
+            revokeAllSessions();
+          }}
+          className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-[var(--danger)] hover:bg-[var(--surface-2)]"
+        >
+          Sign out of all devices
+        </button>
+        <button
+          onClick={logout}
+          className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
+        >
+          Sign out
+        </button>
+      </div>
+    </details>
+  );
+}
+
 export default function AdminHeader({
   tab,
   role,
@@ -130,46 +180,12 @@ export default function AdminHeader({
               <Moon size={18} aria-hidden="true" />
             )}
           </button>
-          <details className="relative">
-            <summary
-              aria-label="Administrator profile menu"
-              title="Profile menu"
-              className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--on-primary)_40%,transparent)] px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-            >
-              <UserRound size={18} aria-hidden="true" />
-              <span className="hidden sm:inline">Profile</span>
-              <span aria-hidden="true">▾</span>
-            </summary>
-            <div className="absolute right-0 z-50 mt-2 min-w-56 rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-2 text-[var(--text)] shadow-xl">
-              <button
-                type="button"
-                onClick={onProfile}
-                className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
-              >
-                My profile
-              </button>
-              <button
-                onClick={onSessions}
-                className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
-              >
-                Sessions &amp; sign-ins
-              </button>
-              <button
-                onClick={() => {
-                  revokeAllSessions();
-                }}
-                className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm text-[var(--danger)] hover:bg-[var(--surface-2)]"
-              >
-                Sign out of all devices
-              </button>
-              <button
-                onClick={logout}
-                className="block min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--surface-2)]"
-              >
-                Sign out
-              </button>
-            </div>
-          </details>
+          <ProfileMenu
+            onProfile={onProfile}
+            onSessions={onSessions}
+            revokeAllSessions={revokeAllSessions}
+            logout={logout}
+          />
         </div>
       </div>
     </header>

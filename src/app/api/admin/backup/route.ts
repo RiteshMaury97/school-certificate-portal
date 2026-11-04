@@ -20,6 +20,40 @@ import {
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+async function purgeExpiredBackups(
+  client: S3Client,
+  bucket: string,
+  objectKey: string,
+  cutoff: number,
+): Promise<number> {
+  let continuationToken: string | undefined;
+  let purged = 0;
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: "scheduled/",
+        ContinuationToken: continuationToken,
+        MaxKeys: 500,
+      }),
+    );
+    for (const object of page.Contents ?? []) {
+      if (
+        object.Key &&
+        object.Key !== objectKey &&
+        object.LastModified &&
+        object.LastModified.getTime() < cutoff
+      ) {
+        await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: object.Key }));
+        purged++;
+      }
+    }
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return purged;
+}
+
 async function performBackup(trigger: string, actorUid?: string) {
   const bucket = process.env.BACKUP_R2_BUCKET;
   if (!bucket || bucket === process.env.R2_BUCKET)
@@ -52,34 +86,7 @@ async function performBackup(trigger: string, actorUid?: string) {
     Math.min(365, Number(settings.get("backupRotationDays") ?? 30)),
   );
   const cutoff = Date.now() - rotationDays * 24 * 60 * 60_000;
-  let continuationToken: string | undefined;
-  let purged = 0;
-  do {
-    const page = await client.send(
-      new ListObjectsV2Command({
-        Bucket: bucket,
-        Prefix: "scheduled/",
-        ContinuationToken: continuationToken,
-        MaxKeys: 500,
-      }),
-    );
-    for (const object of page.Contents ?? []) {
-      if (
-        object.Key &&
-        object.Key !== objectKey &&
-        object.LastModified &&
-        object.LastModified.getTime() < cutoff
-      ) {
-        await client.send(
-          new DeleteObjectCommand({ Bucket: bucket, Key: object.Key }),
-        );
-        purged++;
-      }
-    }
-    continuationToken = page.IsTruncated
-      ? page.NextContinuationToken
-      : undefined;
-  } while (continuationToken);
+  const purged = await purgeExpiredBackups(client, bucket, objectKey, cutoff);
   const log = await db
     .collection("backupLogs")
     .add({
@@ -135,4 +142,3 @@ export async function POST(request: NextRequest) {
     return apiError(error);
   }
 }
-

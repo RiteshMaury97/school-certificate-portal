@@ -60,17 +60,9 @@ export type Incident = {
   notificationExceptionReason?: string;
   responseTargetHours?: number;
 };
-export function parseIncident(value: Record<string, unknown>): Incident | null {
-  if (typeof value.id !== "string") return null;
+
+function incidentDetails(value: Record<string, unknown>): Partial<Incident> {
   return {
-    id: value.id,
-    title: typeof value.title === "string" ? value.title : "Legacy breach record",
-    summary: typeof value.summary === "string" ? value.summary : "",
-    discoveredAt: typeof value.discoveredAt === "string" ? value.discoveredAt : null,
-    severity: typeof value.severity === "string" ? value.severity : "medium",
-    status: typeof value.status === "string" ? value.status : "reported",
-    affectedPrincipalsEstimate:
-      typeof value.affectedPrincipalsEstimate === "number" ? value.affectedPrincipalsEstimate : 0,
     ...(typeof value.occurredAt === "string" || value.occurredAt === null
       ? { occurredAt: value.occurredAt }
       : {}),
@@ -94,6 +86,11 @@ export function parseIncident(value: Record<string, unknown>): Incident | null {
       ? { likelyConsequences: value.likelyConsequences }
       : {}),
     ...(typeof value.incidentLead === "string" ? { incidentLead: value.incidentLead } : {}),
+  };
+}
+
+function incidentNotifications(value: Record<string, unknown>): Partial<Incident> {
+  return {
     ...(typeof value.boardNotifiedAt === "string" || value.boardNotifiedAt === null
       ? { boardNotifiedAt: value.boardNotifiedAt }
       : {}),
@@ -106,6 +103,11 @@ export function parseIncident(value: Record<string, unknown>): Incident | null {
     ...(typeof value.boardNotificationNotRequiredReason === "string" ? { boardNotificationNotRequiredReason: value.boardNotificationNotRequiredReason } : {}),
     ...(typeof value.affectedPeopleNotificationNotRequiredReason === "string" ? { affectedPeopleNotificationNotRequiredReason: value.affectedPeopleNotificationNotRequiredReason } : {}),
     ...(typeof value.boardDetailedReportNotRequiredReason === "string" ? { boardDetailedReportNotRequiredReason: value.boardDetailedReportNotRequiredReason } : {}),
+  };
+}
+
+function incidentResolution(value: Record<string, unknown>): Partial<Incident> {
+  return {
     ...(typeof value.closedAt === "string" || value.closedAt === null
       ? { closedAt: value.closedAt }
       : {}),
@@ -120,6 +122,23 @@ export function parseIncident(value: Record<string, unknown>): Incident | null {
     ...(typeof value.responseTargetHours === "number"
       ? { responseTargetHours: value.responseTargetHours }
       : {}),
+  };
+}
+
+export function parseIncident(value: Record<string, unknown>): Incident | null {
+  if (typeof value.id !== "string") return null;
+  return {
+    id: value.id,
+    title: typeof value.title === "string" ? value.title : "Legacy breach record",
+    summary: typeof value.summary === "string" ? value.summary : "",
+    discoveredAt: typeof value.discoveredAt === "string" ? value.discoveredAt : null,
+    severity: typeof value.severity === "string" ? value.severity : "medium",
+    status: typeof value.status === "string" ? value.status : "reported",
+    affectedPrincipalsEstimate:
+      typeof value.affectedPrincipalsEstimate === "number" ? value.affectedPrincipalsEstimate : 0,
+    ...incidentDetails(value),
+    ...incidentNotifications(value),
+    ...incidentResolution(value),
   };
 }
 export type Update = {

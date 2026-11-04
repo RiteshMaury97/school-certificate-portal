@@ -82,34 +82,37 @@ function validateDateRange(start: string | null, end: string | null): string | n
   return null;
 }
 
-async function createExport(request: NextRequest, adminUid: string): Promise<NextResponse> {
-  const params = request.nextUrl.searchParams;
-  const format = params.get("format");
-  const id = params.get("id");
-  const start = params.get("start");
-  const end = params.get("end");
-  if (format !== "csv" && format !== "pdf")
-    return NextResponse.json({ error: "Choose PDF or CSV." }, { status: 400 });
-  const dateError = validateDateRange(start, end);
-  if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
-  let incidents: ExportIncident[];
-  let updates: ExportUpdate[] = [];
+async function loadExportData(
+  id: string | null,
+  start: string | null,
+  end: string | null,
+): Promise<
+  | { incidents: ExportIncident[]; updates: ExportUpdate[] }
+  | { error: NextResponse }
+> {
   if (id) {
     const single = await loadSingleIncident(id);
-    if (!single) return NextResponse.json({ error: "Incident not found." }, { status: 404 });
-    incidents = [single.incident];
-    updates = single.updates;
-  } else {
-    incidents = await allIncidents(start, end);
-    if (!incidents.length)
-      return NextResponse.json(
+    if (!single)
+      return { error: NextResponse.json({ error: "Incident not found." }, { status: 404 }) };
+    return { incidents: [single.incident], updates: single.updates };
+  }
+  const incidents = await allIncidents(start, end);
+  if (!incidents.length)
+    return {
+      error: NextResponse.json(
         { error: "No incidents found for this date range." },
         { status: 404 },
-      );
-  }
-  await writeAuditLog(request, adminUid, "breach.exported", id ?? "register", undefined, {
-    changedFields: [format, ...(start ? ["start"] : []), ...(end ? ["end"] : [])],
-  });
+      ),
+    };
+  return { incidents, updates: [] };
+}
+
+async function formatExport(
+  format: "csv" | "pdf",
+  id: string | null,
+  incidents: ExportIncident[],
+  updates: ExportUpdate[],
+): Promise<NextResponse> {
   if (format === "csv")
     return csvResponse(
       breachCsv(incidents, updates),
@@ -122,6 +125,24 @@ async function createExport(request: NextRequest, adminUid: string): Promise<Nex
     "",
   ]);
   return pdfResponse(lines, id ? `incident-${id}.pdf` : "breach-register.pdf");
+}
+
+async function createExport(request: NextRequest, adminUid: string): Promise<NextResponse> {
+  const params = request.nextUrl.searchParams;
+  const format = params.get("format");
+  const id = params.get("id");
+  const start = params.get("start");
+  const end = params.get("end");
+  if (format !== "csv" && format !== "pdf")
+    return NextResponse.json({ error: "Choose PDF or CSV." }, { status: 400 });
+  const dateError = validateDateRange(start, end);
+  if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
+  const data = await loadExportData(id, start, end);
+  if ("error" in data) return data.error;
+  await writeAuditLog(request, adminUid, "breach.exported", id ?? "register", undefined, {
+    changedFields: [format, ...(start ? ["start"] : []), ...(end ? ["end"] : [])],
+  });
+  return formatExport(format, id, data.incidents, data.updates);
 }
 
 async function pdfResponse(lines: string[], filename: string): Promise<NextResponse> {
