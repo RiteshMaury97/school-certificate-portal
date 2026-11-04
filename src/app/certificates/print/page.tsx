@@ -1,11 +1,7 @@
 import PrintView from "@/features/certificates/PrintView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Print certificates",
-  "Print view of certificate records.",
-  { index: false },
-);
+export const metadata = seoMetadata("/certificates/print");
 
 export default function Page() {
   return <PrintView />;

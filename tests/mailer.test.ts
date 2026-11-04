@@ -174,7 +174,7 @@ describe("email link origin independence", () => {
     const messages = mocks.sendMail.mock.calls.map((call) => call[0]);
     const rendered = JSON.stringify(messages);
     expect(rendered).toContain("https://new-school.example/admin/login");
-    expect(rendered).toContain("https://new-school.example/sis-logo.png");
+    expect(rendered).toContain("cid:sis-logo@school-portal");
     expect(rendered).not.toContain("sischool.in");
     expect(rendered).not.toContain("old-school.example");
     const senders = messages.map((message) =>

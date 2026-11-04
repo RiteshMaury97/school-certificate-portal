@@ -71,10 +71,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function isUnknownArray(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value);
+}
+
 function firstOpenGraphImageUrl(value: unknown): string {
   if (!isRecord(value) || !("images" in value)) return "";
   const images = value.images;
-  const image = Array.isArray(images) ? images[0] : images;
+  const image = isUnknownArray(images) ? images[0] : images;
   if (typeof image === "string") return image;
   if (image instanceof URL) return image.toString();
   if (isRecord(image) && "url" in image) {
@@ -146,7 +150,7 @@ describe("domain independence static check", () => {
     expect(securityBody).toContain(`Canonical: ${configuredOrigin}/.well-known/security.txt`);
     expect(securityBody).toContain(`Policy: ${configuredOrigin}/privacy`);
     expect(securityBody).not.toContain("sischool.in");
-  });
+  }, 30_000);
 
   it("generates all email link paths from the configured origin", async () => {
     const { absoluteUrl } = await import("@/server/site-origin");

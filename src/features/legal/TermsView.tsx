@@ -139,7 +139,7 @@ export default function TermsPage() {
         <>
           <p>
             Use of the portal also involves the processing described in the{" "}
-            <a className="font-semibold text-[var(--text)] underline underline-offset-2" href="/privacy">
+            <a className="font-semibold text-[var(--text)]" href="/privacy">
               Privacy Policy
             </a>
             . The School processes personal data for certificate retrieval and related security and
@@ -191,7 +191,7 @@ export default function TermsPage() {
             <br />
             Email:{" "}
             <a
-              className="font-semibold text-[var(--text)] underline underline-offset-2"
+              className="font-semibold text-[var(--text)]"
               href={`mailto:${email}`}
             >
               {email}

@@ -42,7 +42,10 @@ const validProductionEnvironment = {
 
 describe("server environment validator", () => {
   it("lists missing production variable names without exposing values", () => {
-    const result = validateServerEnvironment({ NODE_ENV: "production", API_PRIVATE_VALUE: "do-not-leak" });
+    const result = validateServerEnvironment({
+      NODE_ENV: "production",
+      API_PRIVATE_VALUE: "do-not-leak",
+    });
     expect(result.valid).toBe(false);
     expect(result.missing).toContain("SITE_URL");
     expect(JSON.stringify(result)).not.toContain("do-not-leak");

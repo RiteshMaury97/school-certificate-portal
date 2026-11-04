@@ -518,7 +518,7 @@ export default function AdminPage() {
                 <div className="rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-5 sm:p-6">
                   <Link
                     href="/admin/students"
-                    className="text-xs font-semibold text-[var(--primary)] hover:underline"
+                    className="text-xs font-semibold text-[var(--primary)]"
                   >
                     ← Back to students
                   </Link>
@@ -757,7 +757,7 @@ export default function AdminPage() {
             )}
             <p className="mt-6 text-xs text-[var(--text-muted)]">
               All admin actions are server-authorized, CSRF-protected, and audited.{" "}
-              <Link href="/" className="underline">
+              <Link href="/">
                 Public portal
               </Link>
             </p>

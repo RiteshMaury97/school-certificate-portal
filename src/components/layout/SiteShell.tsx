@@ -81,7 +81,7 @@ function AnnouncementBanner({
               href={announcement.linkUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-2 font-semibold underline underline-offset-4"
+              className="ml-2 font-semibold"
             >
               View announcement details
             </a>
@@ -205,6 +205,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
         schoolCode={settings.schoolCode}
         email={settings.email}
         phone={settings.phone}
+        website={settings.website}
         officeHours={settings.officeHours}
         lastUpdated={settings.lastUpdated}
         statusPageUrl={settings.statusPageUrl}

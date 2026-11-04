@@ -20,11 +20,13 @@ describe("required form controls", () => {
     const failures: string[] = [];
     async function walk(directory: string): Promise<string[]> {
       const entries = await readdir(directory, { withFileTypes: true });
-      const nested = await Promise.all(entries.map(async (entry) => {
-        const file = path.join(directory, entry.name);
-        if (entry.isDirectory()) return walk(file);
-        return /\.(?:tsx|jsx)$/.test(entry.name) ? [file] : [];
-      }));
+      const nested = await Promise.all(
+        entries.map(async (entry) => {
+          const file = path.join(directory, entry.name);
+          if (entry.isDirectory()) return walk(file);
+          return /\.(?:tsx|jsx)$/.test(entry.name) ? [file] : [];
+        }),
+      );
       return nested.flat();
     }
     for (const file of await walk("src")) {
@@ -35,11 +37,15 @@ describe("required form controls", () => {
         if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
           const tag = node.tagName.getText(ast);
           if (["input", "select", "textarea"].includes(tag)) {
-            const attrs = node.attributes.properties.map((property) => property.getText(ast)).join(" ");
-            const has = (name: string) => node.attributes.properties.some(
-              (property) => ts.isJsxAttribute(property) && property.name.getText(ast) === name,
-            );
-            const exempt = /(?:search|filter)/i.test(attrs) ||
+            const attrs = node.attributes.properties
+              .map((property) => property.getText(ast))
+              .join(" ");
+            const has = (name: string) =>
+              node.attributes.properties.some(
+                (property) => ts.isJsxAttribute(property) && property.name.getText(ast) === name,
+              );
+            const exempt =
+              /(?:search|filter)/i.test(attrs) ||
               (/type\s*=\s*["']checkbox["']/.test(attrs) && !/consent/i.test(attrs)) ||
               /(?:optional|conditionally|phoneOptIn)/i.test(attrs) ||
               /(?:note|comment)/i.test(attrs) ||

@@ -1,10 +1,7 @@
 import PrivacyView from "@/features/legal/PrivacyView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Privacy Policy",
-  "Privacy information for Satyam International School digital services.",
-);
+export const metadata = seoMetadata("/privacy");
 
 export default function Page() {
   return <PrivacyView />;

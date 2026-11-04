@@ -13,7 +13,7 @@ export default function PageFooter() {
         <p>
           Need help? Contact{" "}
           <a
-            className="font-medium text-[var(--primary)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+            className="font-medium text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
             href={`mailto:${email}`}
           >
             {email}
@@ -25,13 +25,13 @@ export default function PageFooter() {
         <span aria-hidden="true">·</span>
         <nav aria-label="Legal links" className="flex gap-3">
           <Link
-            className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
             href="/privacy"
           >
             Privacy Policy
           </Link>
           <Link
-            className="underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
             href="/terms"
           >
             Terms &amp; Conditions

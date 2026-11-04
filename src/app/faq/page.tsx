@@ -1,10 +1,7 @@
 import FaqView from "@/features/faq/FaqView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Frequently Asked Questions",
-  "Answers to common questions about school certificates and services.",
-);
+export const metadata = seoMetadata("/faq");
 
 export default function Page() {
   return <FaqView />;

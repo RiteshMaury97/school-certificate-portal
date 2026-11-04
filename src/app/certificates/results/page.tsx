@@ -1,11 +1,7 @@
 import ResultsView from "@/features/certificates/ResultsView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Certificates found",
-  "Secure certificate search results.",
-  { index: false },
-);
+export const metadata = seoMetadata("/certificates/results");
 
 export default function Page() {
   return <ResultsView />;

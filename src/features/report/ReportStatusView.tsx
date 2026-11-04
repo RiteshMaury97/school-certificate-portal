@@ -171,7 +171,7 @@ export default function ReportStatusView({ initialReference = "" }: { initialRef
         </form>
         <Link
           href="/"
-          className="mt-5 inline-block text-sm font-semibold text-[var(--primary)] underline"
+          className="mt-5 inline-block text-sm font-semibold text-[var(--primary)]"
         >
           Return to the portal
         </Link>

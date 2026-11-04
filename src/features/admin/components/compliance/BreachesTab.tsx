@@ -45,7 +45,7 @@ export default function BreachesTab({ role, breaches, loaded, act, api, load }: 
             an append-only decision history. Never include personal details of affected people.
           </p>
           <a
-            className="mt-3 inline-block text-sm underline"
+            className="mt-3 inline-block text-sm"
             href="/api/admin/breaches/response-plan"
             target="_blank"
             rel="noreferrer"

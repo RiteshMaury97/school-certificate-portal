@@ -1,10 +1,7 @@
 import InformationView from "@/features/info/InformationView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Report a wrong record",
-  "Request a review of an incorrect school record.",
-);
+export const metadata = seoMetadata("/report-wrong-record");
 
 export default function Page() {
   return <InformationView kind="report" />;

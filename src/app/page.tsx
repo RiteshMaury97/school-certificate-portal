@@ -1,10 +1,7 @@
 import HomeView from "@/features/home/HomeView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Home",
-  "Student certificate access, certificate verification and official school support for Satyam International School in Zamania, Ghazipur.",
-);
+export const metadata = seoMetadata("/");
 
 export default function Page() {
   return <HomeView />;

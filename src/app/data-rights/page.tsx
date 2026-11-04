@@ -1,10 +1,7 @@
 import InformationView from "@/features/info/InformationView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Data protection and rights",
-  "Learn about access, correction, erasure and consent withdrawal requests.",
-);
+export const metadata = seoMetadata("/data-rights");
 
 export default function Page() {
   return <InformationView kind="rights" />;

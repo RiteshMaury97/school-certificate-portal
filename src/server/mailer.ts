@@ -1,5 +1,6 @@
 import "server-only";
 
+import { join } from "node:path";
 import nodemailer from "nodemailer";
 
 import { assertServerEnvironment } from "@/server/env";
@@ -14,7 +15,20 @@ export type MailInput = {
   subject: string;
   text?: string;
   html?: string;
+  attachments?: SendMailOptions["attachments"];
 };
+
+const SCHOOL_LOGO_CID = "sis-logo@school-portal";
+
+function schoolLogoAttachment(): NonNullable<SendMailOptions["attachments"]>[number] {
+  return {
+    filename: "sis-logo.png",
+    path: join(process.cwd(), "public", "android-chrome-192x192.png"),
+    contentType: "image/png",
+    contentDisposition: "inline",
+    cid: SCHOOL_LOGO_CID,
+  };
+}
 
 const DAILY_RECIPIENT_LIMIT = 500;
 const WARN_RECIPIENT_LIMIT = 400;
@@ -115,7 +129,7 @@ function replyToAddress(value: string | undefined): string | undefined {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) ? address : undefined;
 }
 
-export async function sendMail({ to, subject, text, html, replyTo }: MailInput): Promise<void> {
+export async function sendMail({ to, subject, text, html, replyTo, attachments }: MailInput): Promise<void> {
   const recipients = (Array.isArray(to) ? to : [to])
     .map((address) => cleanHeader(address))
     .filter(Boolean);
@@ -136,6 +150,7 @@ export async function sendMail({ to, subject, text, html, replyTo }: MailInput):
     subject: safeSubject,
     ...(text ? { text } : {}),
     ...(html ? { html } : {}),
+    ...(attachments?.length ? { attachments } : {}),
   };
   await smtp.sendMail(options);
 }
@@ -166,17 +181,16 @@ export async function sendAdminOtpEmail(input: {
   const contactDetails = [input.address?.trim(), input.phone?.trim(), input.email?.trim()].filter(
     (value): value is string => Boolean(value),
   );
-  const logoUrl = absoluteUrl("/sis-logo.png");
   const portalUrl = absoluteUrl("/admin/login");
   const safeTagline = escapeHtml(tagline);
   const safeDetails = details.map(escapeHtml);
   const safeContactDetails = contactDetails.map(escapeHtml);
-  const safeLogoUrl = escapeHtml(logoUrl);
   const safePortalUrl = escapeHtml(portalUrl);
   const safeRecipient = escapeHtml(input.to);
   const message: MailInput = {
     to: input.to,
     subject: `${cleanHeader(name)} | Administrator sign-in code`,
+    attachments: [schoolLogoAttachment()],
     text: [
       name,
       tagline,
@@ -195,7 +209,7 @@ export async function sendAdminOtpEmail(input: {
     ]
       .filter(Boolean)
       .join("\n"),
-    html: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f3f5f4;color:#1b2925;font-family:Arial,Helvetica,sans-serif"><div style="display:none;max-height:0;overflow:hidden;opacity:0">Your ${safeName} administrator sign-in code expires in 5 minutes.</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f5f4;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #e0e7e3;border-radius:16px;overflow:hidden"><tr><td style="padding:26px 32px;background:#123d32;color:#ffffff"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td style="vertical-align:middle;padding-right:16px"><img src="${safeLogoUrl}" width="60" height="60" alt="${safeName} logo" style="display:block;width:60px;height:60px;object-fit:contain;background:#ffffff;border-radius:12px;padding:5px"></td><td style="vertical-align:middle"><div style="font-size:18px;line-height:1.35;font-weight:700">${safeName}</div>${tagline ? `<div style="margin-top:5px;color:#d4e5de;font-size:13px;line-height:1.4">${safeTagline}</div>` : ""}</td></tr></table></td></tr><tr><td style="padding:32px"><p style="margin:0 0 8px;color:#28745e;font-size:12px;font-weight:700;letter-spacing:1.4px">SECURE ACCOUNT ACCESS</p><h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;color:#1b2925">Administrator sign-in code</h1><p style="margin:0 0 22px;color:#56645e;font-size:15px;line-height:1.6">Use this one-time code to finish signing in to the ${safeName} administration portal.</p><div style="margin:0 0 20px;padding:22px 16px;border:1px solid #dce8e2;border-radius:12px;background:#f6faf8;text-align:center"><div style="margin-bottom:8px;color:#56645e;font-size:12px;font-weight:600;letter-spacing:1px">YOUR VERIFICATION CODE</div><div style="color:#123d32;font-family:Arial,Helvetica,sans-serif;font-size:34px;font-weight:700;letter-spacing:9px;line-height:1.3">${safeCode}</div></div><p style="margin:0 0 18px;color:#56645e;font-size:14px;line-height:1.6">This code expires in <strong style="color:#1b2925">5 minutes</strong> and can be used only once.</p><div style="margin:0 0 22px;padding:14px 16px;border-left:4px solid #d28a24;border-radius:4px;background:#fff8eb;color:#614719;font-size:13px;line-height:1.6"><strong>Keep this code private.</strong> ${safeName} will never ask you to share it by phone, email, or message.</div><p style="margin:0 0 8px;color:#56645e;font-size:13px;line-height:1.6">Requested for <strong style="color:#1b2925">${safeRecipient}</strong></p><p style="margin:0 0 24px;color:#56645e;font-size:13px;line-height:1.6">If you did not request this code, ignore this email and secure your account by resetting your password.</p><a href="${safePortalUrl}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#123d32;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700">Open administrator sign-in</a></td></tr>${safeDetails.length ? `<tr><td style="padding:0 32px 20px;color:#56645e;font-size:12px;line-height:1.7">${safeDetails.join("<br>")}</td></tr>` : ""}<tr><td style="padding:20px 32px;border-top:1px solid #e7ece9;background:#fafcfb;color:#718078;font-size:11px;line-height:1.7">${safeContactDetails.length ? `${safeContactDetails.join(" · ")}<br>` : ""}This is an automated security email. Please do not reply with your verification code.</td></tr></table><p style="margin:14px 0 0;color:#8b9690;font-size:11px;line-height:1.5">${safeName} · Administrator account security</p></td></tr></table></body></html>`,
+    html: `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f3f5f4;color:#1b2925;font-family:Arial,Helvetica,sans-serif"><div style="display:none;max-height:0;overflow:hidden;opacity:0">Your ${safeName} administrator sign-in code expires in 5 minutes.</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f5f4;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #e0e7e3;border-radius:16px;overflow:hidden"><tr><td style="padding:26px 32px;background:#123d32;color:#ffffff"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td style="vertical-align:middle;padding-right:16px"><img src="cid:${SCHOOL_LOGO_CID}" width="60" height="60" alt="${safeName} logo" style="display:block;width:60px;height:60px;object-fit:contain;background:#ffffff;border-radius:12px;padding:5px"></td><td style="vertical-align:middle"><div style="font-size:18px;line-height:1.35;font-weight:700">${safeName}</div>${tagline ? `<div style="margin-top:5px;color:#d4e5de;font-size:13px;line-height:1.4">${safeTagline}</div>` : ""}</td></tr></table></td></tr><tr><td style="padding:32px"><p style="margin:0 0 8px;color:#28745e;font-size:12px;font-weight:700;letter-spacing:1.4px">SECURE ACCOUNT ACCESS</p><h1 style="margin:0 0 12px;font-size:24px;line-height:1.3;color:#1b2925">Administrator sign-in code</h1><p style="margin:0 0 22px;color:#56645e;font-size:15px;line-height:1.6">Use this one-time code to finish signing in to the ${safeName} administration portal.</p><div style="margin:0 0 20px;padding:22px 16px;border:1px solid #dce8e2;border-radius:12px;background:#f6faf8;text-align:center"><div style="margin-bottom:8px;color:#56645e;font-size:12px;font-weight:600;letter-spacing:1px">YOUR VERIFICATION CODE</div><div style="color:#123d32;font-family:Arial,Helvetica,sans-serif;font-size:34px;font-weight:700;letter-spacing:9px;line-height:1.3">${safeCode}</div></div><p style="margin:0 0 18px;color:#56645e;font-size:14px;line-height:1.6">This code expires in <strong style="color:#1b2925">5 minutes</strong> and can be used only once.</p><div style="margin:0 0 22px;padding:14px 16px;border-left:4px solid #d28a24;border-radius:4px;background:#fff8eb;color:#614719;font-size:13px;line-height:1.6"><strong>Keep this code private.</strong> ${safeName} will never ask you to share it by phone, email, or message.</div><p style="margin:0 0 8px;color:#56645e;font-size:13px;line-height:1.6">Requested for <strong style="color:#1b2925">${safeRecipient}</strong></p><p style="margin:0 0 24px;color:#56645e;font-size:13px;line-height:1.6">If you did not request this code, ignore this email and secure your account by resetting your password.</p><a href="${safePortalUrl}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#123d32;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700">Open administrator sign-in</a></td></tr>${safeDetails.length ? `<tr><td style="padding:0 32px 20px;color:#56645e;font-size:12px;line-height:1.7">${safeDetails.join("<br>")}</td></tr>` : ""}<tr><td style="padding:20px 32px;border-top:1px solid #e7ece9;background:#fafcfb;color:#718078;font-size:11px;line-height:1.7">${safeContactDetails.length ? `${safeContactDetails.join(" · ")}<br>` : ""}This is an automated security email. Please do not reply with your verification code.</td></tr></table><p style="margin:14px 0 0;color:#8b9690;font-size:11px;line-height:1.5">${safeName} · Administrator account security</p></td></tr></table></body></html>`,
   };
 
   try {
@@ -247,7 +261,7 @@ export async function sendAdminInvitationEmail(input: {
     (value): value is string => Boolean(value),
   );
   const portalUrl = absoluteUrl("/admin/login");
-  const logoUrl = absoluteUrl("/sis-logo.png");
+  const safeLogoUrl = `cid:${SCHOOL_LOGO_CID}`;
   const safeName = escapeHtml(name);
   const safeRecipientName = escapeHtml(recipientName);
   const safeRole = escapeHtml(roleLabel);
@@ -255,7 +269,6 @@ export async function sendAdminInvitationEmail(input: {
   const safePassword = escapeHtml(input.temporaryPassword);
   const safeVerificationLink = escapeHtml(input.verificationLink);
   const safePortalUrl = escapeHtml(portalUrl);
-  const safeLogoUrl = escapeHtml(logoUrl);
   const safeTagline = escapeHtml(input.tagline?.trim() ?? "");
   const safeDetails = details.map(escapeHtml);
   const safeContacts = contacts.map(escapeHtml);
@@ -263,6 +276,7 @@ export async function sendAdminInvitationEmail(input: {
   await sendMail({
     to: input.to,
     subject: `${cleanHeader(name)} | Your administrator invitation`,
+    attachments: [schoolLogoAttachment()],
     text: [
       `Hello${recipientName ? ` ${recipientName}` : ""},`,
       "",

@@ -120,7 +120,7 @@ export default function ContactView() {
               </dt>
               <dd className="mt-1 break-all text-[var(--text)]">
                 <a
-                  className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
+                  className="inline-flex items-center gap-1.5"
                   href={website}
                   target="_blank"
                   rel="noopener noreferrer"

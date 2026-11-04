@@ -95,7 +95,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             Postal address: {address}. General contact:{" "}
-            <a className="font-semibold text-[var(--text)] underline" href={`mailto:${email}`}>
+            <a className="font-semibold text-[var(--text)]" href={`mailto:${email}`}>
               {email}
             </a>
             .
@@ -284,7 +284,7 @@ export default function PrivacyPage() {
             <br />
             <strong>Email:</strong>{" "}
             <a
-              className="font-semibold text-[var(--text)] underline"
+              className="font-semibold text-[var(--text)]"
               href={`mailto:${officerEmail}`}
             >
               {officerEmail}
@@ -371,7 +371,7 @@ export default function PrivacyPage() {
         <>
           <p>
             Contact {school} at{" "}
-            <a className="font-semibold text-[var(--text)] underline" href={`mailto:${email}`}>
+            <a className="font-semibold text-[var(--text)]" href={`mailto:${email}`}>
               {email}
             </a>{" "}
             or {address}. This policy may be updated to reflect changes in the portal, law or School

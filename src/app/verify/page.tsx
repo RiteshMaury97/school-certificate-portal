@@ -1,10 +1,7 @@
 import VerifyView from "@/features/verify/VerifyView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Verify a Certificate",
-  "Verify a certificate issued by Satyam International School.",
-);
+export const metadata = seoMetadata("/verify");
 
 export default function Page() {
   return <VerifyView />;

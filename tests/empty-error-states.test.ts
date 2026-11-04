@@ -51,7 +51,10 @@ describe("empty and error state contracts", () => {
 
   it("uses an actionable empty state for the admin student list", async () => {
     const list = await readFile("src/features/admin/components/students/StudentsList.tsx", "utf8");
-    const form = await readFile("src/features/admin/components/students/StudentCreatePanel.tsx", "utf8");
+    const form = await readFile(
+      "src/features/admin/components/students/StudentCreatePanel.tsx",
+      "utf8",
+    );
     expect(list).toContain('title="No data found"');
     expect(list).toContain("Add student");
     expect(form).toContain("student-create-form");

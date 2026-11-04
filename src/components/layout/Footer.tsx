@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Facebook, Instagram, Link2, Linkedin, Twitter, Youtube } from "lucide-react";
 
 import Logo from "@/components/ui/Logo";
 import { useT } from "@/i18n/locale-provider";
@@ -18,6 +19,7 @@ type Props = {
   schoolCode?: string | undefined;
   email?: string | undefined;
   phone?: string | undefined;
+  website?: string | undefined;
   officeHours?: string | undefined;
   lastUpdated?: string | undefined;
   statusPageUrl?: string | undefined;
@@ -26,7 +28,7 @@ type Props = {
 };
 
 const linkClass =
-  "transition-colors hover:text-[var(--primary)] hover:underline hover:underline-offset-4";
+  "text-[var(--text-muted)] transition-colors hover:text-[var(--primary)]";
 
 function SchoolLogo() {
   return <Logo size={40} className="h-10 w-10 rounded-full bg-white object-contain p-0.5" />;
@@ -60,6 +62,7 @@ function SchoolIdentity({
   boardName,
   schoolCode,
   statusPageUrl,
+  socialLinks,
 }: Pick<
   Props,
   | "schoolName"
@@ -69,23 +72,26 @@ function SchoolIdentity({
   | "boardName"
   | "schoolCode"
   | "statusPageUrl"
+  | "socialLinks"
 >) {
   const t = useT();
   const cleanAddress = address?.trim() ?? "";
   const displayAddress = cleanAddress.length > 0 ? cleanAddress : SCHOOL_INFO.address;
 
   return (
-    <section className="min-w-0">
-      <div className="flex items-center gap-2.5">
-        <SchoolLogo />
+    <section className="footer-column min-w-0">
+      <div className="flex items-center gap-3">
+        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] shadow-sm">
+          <SchoolLogo />
+        </div>
         <div className="min-w-0">
           <h2
             translate="no"
-            className="whitespace-normal break-words text-sm font-bold uppercase tracking-wide"
+            className="whitespace-normal break-words text-sm font-extrabold uppercase tracking-[0.08em]"
           >
             {schoolName}
           </h2>
-          <p className="mt-0.5 text-[9px] uppercase tracking-wide text-[var(--text-muted)]">
+          <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
             {[affiliation, boardName]
               .filter(Boolean)
               .join("\u00b7")
@@ -93,11 +99,12 @@ function SchoolIdentity({
           </p>
         </div>
       </div>
-      <p className="mt-4 text-xs font-semibold text-[var(--text)]">{tagline}</p>
-      <p className="mt-4 whitespace-pre-line text-xs leading-5 text-[var(--text-muted)]">
-        {displayAddress}
-      </p>
+      <p className="mt-4 text-sm leading-6 text-[var(--text-muted)]">{tagline}</p>
+      <address className="mt-5 not-italic">
+        <p className="whitespace-pre-line text-sm leading-6 text-[var(--text)]">{displayAddress}</p>
+      </address>
       <SchoolStatus schoolCode={schoolCode} statusPageUrl={statusPageUrl} />
+      <SocialLinks links={socialLinks} />
     </section>
   );
 }
@@ -115,9 +122,9 @@ function SiteMapLinks({ group }: { group: SiteMapGroup }) {
   if (pages.length === 0) return null;
 
   return (
-    <nav aria-label={t(groupTranslationKeys[group])}>
-      <h2 className="text-sm font-bold">{t(groupTranslationKeys[group])}</h2>
-      <ul className="mt-3 space-y-2 text-xs text-[var(--text-muted)]">
+    <nav aria-label={t(groupTranslationKeys[group])} className="footer-column">
+      <h2 className="text-sm font-bold tracking-tight">{t(groupTranslationKeys[group])}</h2>
+      <ul className="mt-4 space-y-3 text-sm text-[var(--text-muted)]">
         {pages.map((page) => (
           <li key={page.path}>
             <Link className={linkClass} href={page.path}>
@@ -144,10 +151,11 @@ function SupportLinks({
   phone,
   officeHours,
   email,
-}: Pick<Props, "onReport" | "phone" | "officeHours" | "email">) {
+  website,
+}: Pick<Props, "onReport" | "phone" | "officeHours" | "email" | "website">) {
   const t = useT();
   return (
-    <section>
+    <section className="footer-column">
       <SiteMapLinks group="Help and support" />
       {onReport && (
         <button
@@ -158,22 +166,57 @@ function SupportLinks({
           {t("footer.reportWrongRecord")} <span aria-hidden="true">→</span>
         </button>
       )}
-      <div className="mt-3 space-y-2 text-xs text-[var(--text-muted)]">
+      <div className="mt-4 space-y-3 text-sm text-[var(--text-muted)]">
         <p>{t("footer.needHelp")}</p>
-        {phone?.trim() && (
-          <p>
-            <a className="font-semibold text-[var(--text)] hover:underline" href={`tel:${phone}`}>
-              {phone}
-            </a>
-          </p>
-        )}
-        {officeHours?.trim() && <p>{officeHours}</p>}
-        {email?.trim() && (
-          <p>
-            <a className="break-all hover:underline" href={`mailto:${email}`}>
-              {email}
-            </a>
-          </p>
+        {(phone?.trim() || email?.trim() || website?.trim() || officeHours?.trim()) && (
+          <address className="not-italic">
+            <h3 className="mb-2 text-xs font-bold text-[var(--text)]">
+              {t("footer.contactSchool")}
+            </h3>
+            <dl className="space-y-2.5 text-xs leading-5">
+              {phone?.trim() && (
+                <div>
+                  <dt className="font-semibold text-[var(--text)]">Phone</dt>
+                  <dd>
+                    <a className={linkClass} href={`tel:${phone.replace(/[^\d+]/g, "")}`}>
+                      {phone}
+                    </a>
+                  </dd>
+                </div>
+              )}
+              {email?.trim() && (
+                <div>
+                  <dt className="font-semibold text-[var(--text)]">Email</dt>
+                  <dd>
+                    <a className={`${linkClass} break-all`} href={`mailto:${email}`}>
+                      {email}
+                    </a>
+                  </dd>
+                </div>
+              )}
+              {website?.trim() && (
+                <div>
+                  <dt className="font-semibold text-[var(--text)]">Official website</dt>
+                  <dd>
+                    <a
+                      className={`${linkClass} break-all`}
+                      href={website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {website.replace(/^https?:\/\//i, "").replace(/\/$/, "")}
+                    </a>
+                  </dd>
+                </div>
+              )}
+              {officeHours?.trim() && (
+                <div>
+                  <dt className="font-semibold text-[var(--text)]">Office hours</dt>
+                  <dd>{officeHours}</dd>
+                </div>
+              )}
+            </dl>
+          </address>
         )}
       </div>
     </section>
@@ -186,20 +229,41 @@ function LegalLinks() {
 
 function SocialLinks({ links }: { links: Props["socialLinks"] }) {
   const t = useT();
-  const visibleLinks = links?.filter((item) => item.label.trim() && item.url.trim()) ?? [];
-  if (!visibleLinks.length) return null;
+  const visibleSocialLinks = links?.filter((item) => item.label.trim() && item.url.trim()) ?? [];
+  if (!visibleSocialLinks.length) return null;
 
   return (
-    <nav aria-label="Social links" className="sm:col-span-2 lg:col-span-4">
-      <h2 className="text-sm font-bold">{t("footer.connect")}</h2>
-      <ul className="mt-2 flex flex-wrap gap-4 text-xs text-[var(--text-muted)]">
-        {visibleLinks.map((item, index) => (
-          <li key={`${item.label}-${String(index)}`}>
-            <a href={item.url} target="_blank" rel="noopener noreferrer" className={linkClass}>
-              {item.label}
-            </a>
-          </li>
-        ))}
+    <nav aria-label="Social media links" className="footer-column mt-6">
+      <h2 className="text-xs font-medium text-[var(--text-muted)]">{t("footer.connect")}</h2>
+      <ul className="mt-3 flex flex-wrap gap-2.5">
+        {visibleSocialLinks.map((item, index) => {
+          const label = item.label.toLowerCase();
+          const Icon = label.includes("facebook")
+            ? Facebook
+            : label.includes("instagram")
+              ? Instagram
+              : label.includes("linkedin")
+                ? Linkedin
+                : label.includes("youtube")
+                  ? Youtube
+                  : label.includes("twitter") || label === "x"
+                    ? Twitter
+                    : Link2;
+          return (
+            <li key={`${item.label}-${String(index)}`}>
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={item.label}
+                title={item.label}
+                className="grid size-9 place-items-center rounded-full border border-white/15 bg-white/[0.07] text-white transition-colors hover:border-white/35 hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                <Icon aria-hidden="true" size={16} strokeWidth={2.2} />
+              </a>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
@@ -209,7 +273,7 @@ function FooterAttribution({ schoolName, lastUpdated }: Pick<Props, "schoolName"
   const t = useT();
   return (
     <div className="border-t border-[var(--border)]">
-      <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-[10px] text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+      <div className="flex w-full flex-col gap-2 px-5 py-4 text-[10px] text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12 xl:px-16">
         <span>
           © {new Date().getFullYear()} {schoolName}. {t("footer.allRightsReserved")}
         </span>
@@ -233,6 +297,7 @@ export default function Footer({
   schoolCode,
   email,
   phone,
+  website,
   officeHours,
   lastUpdated,
   statusPageUrl,
@@ -240,8 +305,12 @@ export default function Footer({
   onReport,
 }: Props) {
   return (
-    <footer className="border-t border-[var(--border)] bg-[var(--surface)] text-[var(--text)]">
-      <div className="mx-auto grid max-w-6xl gap-9 px-4 py-9 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.35fr_1fr_1.2fr_1fr] lg:gap-12 lg:px-8 lg:py-10">
+    <footer className="public-footer relative mx-2 my-2 overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-xl">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--primary)]/50 to-transparent"
+      />
+      <div className="relative grid w-full gap-10 px-6 py-10 sm:grid-cols-2 sm:px-8 lg:grid-cols-[1.6fr_0.85fr_1.15fr_1fr] lg:gap-10 lg:px-10 lg:py-12 xl:px-14">
         <SchoolIdentity
           schoolName={schoolName}
           tagline={tagline}
@@ -250,11 +319,17 @@ export default function Footer({
           boardName={boardName}
           schoolCode={schoolCode}
           statusPageUrl={statusPageUrl}
+          socialLinks={socialLinks}
         />
         <QuickLinks />
-        <SupportLinks onReport={onReport} phone={phone} officeHours={officeHours} email={email} />
+        <SupportLinks
+          onReport={onReport}
+          phone={phone}
+          officeHours={officeHours}
+          email={email}
+          website={website}
+        />
         <LegalLinks />
-        <SocialLinks links={socialLinks} />
       </div>
       <FooterAttribution schoolName={schoolName} lastUpdated={lastUpdated} />
     </footer>

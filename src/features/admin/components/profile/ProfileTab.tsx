@@ -386,7 +386,7 @@ export default function ProfileTab({
                         <button
                           type="button"
                           onClick={() => { update("photoDataUrl", ""); }}
-                          className="ml-3 text-sm text-[var(--danger)] hover:underline"
+                          className="ml-3 text-sm text-[var(--danger)]"
                         >
                           Remove
                         </button>

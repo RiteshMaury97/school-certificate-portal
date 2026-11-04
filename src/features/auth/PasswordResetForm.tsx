@@ -62,7 +62,7 @@ export default function PasswordResetForm({
       <button
         type="button"
         onClick={onCancel}
-        className="min-h-10 w-full text-sm font-medium text-[var(--primary)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+        className="min-h-10 w-full text-sm font-medium text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
       >
         Return to Administrator Login
       </button>

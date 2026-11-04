@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { absoluteUrl, getAllowedOrigins } from "./server/site-origin";
 import { getRequestOrigin } from "./server/request-origin";
+import { absoluteUrl, getAllowedOrigins } from "./server/site-origin";
 import { isAllowedRequestOrigin } from "./shared/origin-policy";
 
 import type { NextRequest } from "next/server";
@@ -76,9 +76,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function maintenanceModeEnabled(request: NextRequest): Promise<boolean> {
+async function maintenanceModeEnabled(): Promise<boolean> {
   if (maintenanceCache && maintenanceCache.expiresAt > Date.now()) return maintenanceCache.enabled;
-  maintenanceRead ??= readMaintenanceMode(request).finally(() => {
+  maintenanceRead ??= readMaintenanceMode().finally(() => {
     maintenanceRead = null;
   });
   const enabled = await maintenanceRead;
@@ -86,7 +86,7 @@ async function maintenanceModeEnabled(request: NextRequest): Promise<boolean> {
   return enabled;
 }
 
-async function readMaintenanceMode(request: NextRequest): Promise<boolean> {
+async function readMaintenanceMode(): Promise<boolean> {
   try {
     const response = await fetch(absoluteUrl("/api/public/site-settings"), {
       cache: "no-store",
@@ -270,6 +270,7 @@ function isMaintenanceExempt(path: string): boolean {
     path.startsWith("/api/admin/") ||
     path === "/maintenance" ||
     path === "/offline" ||
+    isMetadataRoute(path) ||
     path === "/api/health" ||
     path.startsWith("/api/cron/") ||
     path === "/api/public/site-settings" ||
@@ -280,6 +281,10 @@ function isMaintenanceExempt(path: string): boolean {
   );
 }
 
+function isMetadataRoute(path: string): boolean {
+  return path === "/sitemap.xml" || path === "/robots.txt";
+}
+
 async function maintenanceResponse(
   request: NextRequest,
   path: string,
@@ -288,11 +293,7 @@ async function maintenanceResponse(
 ): Promise<NextResponse | null> {
   const isApi = path.startsWith("/api/");
   const isPageRead = !isApi && ["GET", "HEAD"].includes(request.method);
-  if (
-    isMaintenanceExempt(path) ||
-    (!isPageRead && !isApi) ||
-    !(await maintenanceModeEnabled(request))
-  )
+  if (isMaintenanceExempt(path) || (!isPageRead && !isApi) || !(await maintenanceModeEnabled()))
     return null;
 
   const blocked = isApi
@@ -384,7 +385,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|api/internal/admin-location-check).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/internal/admin-location-check).*)"],
 };

@@ -1,10 +1,7 @@
 import ContactView from "@/features/info/ContactView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Contact and support",
-  "Contact Satyam International School for support.",
-);
+export const metadata = seoMetadata("/contact");
 
 export default function Page() {
   return <ContactView />;

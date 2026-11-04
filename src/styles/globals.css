@@ -177,6 +177,14 @@
   }
 }
 
+/* Keep link presentation consistent across public and admin interfaces. */
+a,
+a:hover,
+a:focus,
+a:active {
+  text-decoration: none !important;
+}
+
 @font-face {
   font-family: "Noto Sans Devanagari";
   src: url("/fonts/NotoSansDevanagari-Regular.ttf") format("truetype");
@@ -424,7 +432,85 @@ html[data-locale="hi"] {
   }
 }
 
+.site-frame:has(.sitemap-hero) a,
+.site-frame:has(.sitemap-hero) a:hover,
+.site-frame:has(.sitemap-hero) a:focus {
+  text-decoration: none !important;
+}
+
+.public-footer {
+  --surface: #0b1d3d;
+  --surface-2: #12294c;
+  --text: #f3f6fc;
+  --text-muted: #a8b5ce;
+  --border: rgb(176 195 228 / 16%);
+  --divider: rgb(176 195 228 / 20%);
+  --primary: #ffffff;
+  --focus: #ffffff;
+  background-color: #071735;
+  background-image:
+    linear-gradient(rgb(176 195 228 / 3%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(176 195 228 / 3%) 1px, transparent 1px),
+    radial-gradient(ellipse at 12% 0%, rgb(37 75 132 / 24%), transparent 46%);
+  background-size: 42px 42px, 42px 42px, auto;
+}
+
 @media (prefers-reduced-motion: no-preference) {
+  .sitemap-hero {
+    animation: fade-up 600ms var(--ease-out) both;
+  }
+  .sitemap-hero-mark {
+    animation: scale-in 700ms 120ms var(--ease-out) both;
+  }
+  .sitemap-hero-glow {
+    animation: breathe 7s ease-in-out 300ms infinite;
+  }
+  .sitemap-card {
+    animation: fade-up 600ms var(--ease-out) both;
+  }
+  .sitemap-card:nth-child(2) {
+    animation-delay: 100ms;
+  }
+  .sitemap-card:nth-child(3) {
+    animation-delay: 180ms;
+  }
+  .sitemap-card:nth-child(4) {
+    animation-delay: 260ms;
+  }
+  .sitemap-entry {
+    animation: fade-up 450ms var(--ease-out) both;
+    animation-delay: var(--entry-delay, 150ms);
+  }
+
+  .public-footer .footer-column {
+    animation: fade-up 650ms var(--ease-out) both;
+  }
+  .public-footer .footer-column:nth-child(2) {
+    animation-delay: 90ms;
+  }
+  .public-footer .footer-column:nth-child(3) {
+    animation-delay: 170ms;
+  }
+  .public-footer .footer-column:nth-child(4) {
+    animation-delay: 250ms;
+  }
+  .public-footer .footer-column:nth-child(5) {
+    animation-delay: 330ms;
+  }
+  .public-footer section:first-child > div:first-child {
+    transition: transform 240ms ease, box-shadow 240ms ease;
+  }
+  .public-footer section:first-child > div:first-child:hover {
+    transform: translateY(-3px) rotate(-3deg);
+    box-shadow: 0 10px 24px rgb(0 0 0 / 10%);
+  }
+  .public-footer button {
+    transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease;
+  }
+  .public-footer button:hover {
+    transform: translateY(-2px);
+  }
+
   html {
     scroll-behavior: smooth;
   }
@@ -561,6 +647,10 @@ html[data-locale="hi"] {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  .sitemap-card:hover,
+  .sitemap-hero-mark:hover {
+    transform: none !important;
   }
   /* A static (non-animated) busy indicator remains visible. */
   button[aria-busy="true"]::after {

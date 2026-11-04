@@ -245,7 +245,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             </p>
             <Link
               href={`/report-status?reference=${encodeURIComponent(reference)}`}
-              className="mt-3 inline-block text-sm font-semibold underline"
+              className="mt-3 inline-block text-sm font-semibold"
             >
               Check report status
             </Link>
@@ -266,7 +266,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 href="/privacy"
                 target="_blank"
                 rel="noreferrer"
-                className="font-semibold underline"
+                className="font-semibold"
               >
                 "See our Privacy Policy"
               </Link>

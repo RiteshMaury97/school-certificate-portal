@@ -228,7 +228,7 @@ export default function ContactEnquiriesTab({ enquiries, notes, setNotes, update
                       </p>
                       <a
                         href={email === "—" ? undefined : `mailto:${email}`}
-                        className="mt-1 inline-flex items-center gap-1.5 break-all text-sm font-medium text-[var(--primary)] hover:underline"
+                        className="mt-1 inline-flex items-center gap-1.5 break-all text-sm font-medium text-[var(--primary)]"
                       >
                         <Mail size={13} aria-hidden="true" />
                         {email}

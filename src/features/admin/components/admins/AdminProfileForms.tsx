@@ -392,7 +392,7 @@ export function EditProfileForm({
     >
       <div className="mb-3 flex items-center justify-between">
         <h4 className="font-semibold text-[var(--text)]">Edit staff profile</h4>
-        <button type="button" onClick={onClose} className="text-xs underline">
+        <button type="button" onClick={onClose} className="text-xs">
           Cancel
         </button>
       </div>

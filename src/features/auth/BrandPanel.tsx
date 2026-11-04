@@ -24,7 +24,7 @@ function ContactList({ className, contacts }: { className?: string; contacts: Co
             <span className="mr-2 text-[var(--on-primary)]/85">{label}:</span>
             {href ? (
               <a
-                className="font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--on-primary)]"
+                className="font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--on-primary)]"
                 href={href}
                 {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               >
@@ -81,13 +81,12 @@ export default function BrandPanel() {
           </p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--on-primary)]/90">
             <a
-              className="underline-offset-4 hover:underline"
               href={`tel:${SCHOOL_INFO.phone.replaceAll(" ", "")}`}
             >
               {SCHOOL_INFO.phone}
             </a>
             {email && (
-              <a className="underline-offset-4 hover:underline" href={`mailto:${email}`}>
+              <a href={`mailto:${email}`}>
                 {email}
               </a>
             )}

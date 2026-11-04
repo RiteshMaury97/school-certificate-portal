@@ -81,7 +81,7 @@ export default function InformationPage({ kind }: { kind: Kind }) {
               </Link>
               <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 border-t border-[var(--border)] pt-6">
                 {page.links.map((link) => (
-                  <Link key={link.href} href={link.href} className="text-sm font-semibold text-[var(--text)] underline decoration-[var(--border)] underline-offset-4 hover:decoration-current">
+                  <Link key={link.href} href={link.href} className="text-sm font-semibold text-[var(--text)]">
                     {link.label}
                   </Link>
                 ))}
@@ -127,7 +127,7 @@ export default function InformationPage({ kind }: { kind: Kind }) {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-semibold text-[var(--text)] underline"
+              className="text-sm font-semibold text-[var(--text)]"
             >
               {link.label}
             </Link>

@@ -1,10 +1,7 @@
 import FinderView from "@/features/certificates/FinderView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Find My Certificates",
-  "Find and securely access certificates issued by Satyam International School.",
-);
+export const metadata = seoMetadata("/certificates");
 
 export default function Page() {
   return <FinderView />;

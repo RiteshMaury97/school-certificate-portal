@@ -36,10 +36,12 @@ export type SiteMapPage = {
   inHtmlSitemap: boolean;
   priority: 0 | 0.4 | 0.5 | 0.6 | 0.7 | 0.8 | 0.9 | 1;
   changeFrequency: "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
+  lastModified?: string;
 };
 
 export const SITEMAP_PAGE_PATH = "/sitemap";
 export const XML_SITEMAP_PATH = `${SITEMAP_PAGE_PATH}.xml`;
+const POLICY_VERSION_DATE = "2026-10-01";
 
 export const SITE_MAP = [
   {
@@ -61,7 +63,7 @@ export const SITE_MAP = [
     indexable: true,
     inXmlSitemap: true,
     inHtmlSitemap: true,
-    priority: 0.9,
+    priority: 0.8,
     changeFrequency: "weekly",
   },
   {
@@ -83,7 +85,7 @@ export const SITE_MAP = [
     indexable: true,
     inXmlSitemap: true,
     inHtmlSitemap: true,
-    priority: 0.7,
+    priority: 0.6,
     changeFrequency: "monthly",
   },
   {
@@ -94,7 +96,7 @@ export const SITE_MAP = [
     indexable: true,
     inXmlSitemap: true,
     inHtmlSitemap: true,
-    priority: 0.7,
+    priority: 0.6,
     changeFrequency: "monthly",
   },
   {
@@ -105,7 +107,7 @@ export const SITE_MAP = [
     indexable: true,
     inXmlSitemap: true,
     inHtmlSitemap: true,
-    priority: 0.6,
+    priority: 0.5,
     changeFrequency: "monthly",
   },
   {
@@ -129,6 +131,7 @@ export const SITE_MAP = [
     inHtmlSitemap: true,
     priority: 0.5,
     changeFrequency: "yearly",
+    lastModified: POLICY_VERSION_DATE,
   },
   {
     path: "/terms",
@@ -140,6 +143,7 @@ export const SITE_MAP = [
     inHtmlSitemap: true,
     priority: 0.5,
     changeFrequency: "yearly",
+    lastModified: POLICY_VERSION_DATE,
   },
   {
     path: "/privacy",
@@ -151,6 +155,7 @@ export const SITE_MAP = [
     inHtmlSitemap: true,
     priority: 0.5,
     changeFrequency: "yearly",
+    lastModified: POLICY_VERSION_DATE,
   },
   {
     path: SITEMAP_PAGE_PATH,
@@ -177,7 +182,11 @@ export const ROBOTS_DISALLOW_PATHS = [
   "/admin/",
   "/api",
   "/api/",
-  ...NO_INDEX_ROUTE_PATHS,
+  "/maintenance",
+  "/certificates/results",
+  "/certificates/print",
+  "/report-status",
+  "/offline.html",
 ] as const;
 
 export const SITE_MAP_GROUPS: readonly SiteMapGroup[] = [

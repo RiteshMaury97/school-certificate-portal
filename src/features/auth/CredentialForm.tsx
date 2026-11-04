@@ -111,7 +111,7 @@ export default function CredentialForm({
           <button
             type="button"
             onClick={onForgotPassword}
-            className="inline-flex min-h-8 items-center text-xs font-medium text-[var(--primary)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+            className="inline-flex min-h-8 items-center text-xs font-medium text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
           >
             Forgot password?
           </button>

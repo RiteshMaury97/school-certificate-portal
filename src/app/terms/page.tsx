@@ -1,10 +1,7 @@
 import TermsView from "@/features/legal/TermsView";
-import { pageMetadata } from "@/lib/page-metadata";
+import { seoMetadata } from "@/shared/seo";
 
-export const metadata = pageMetadata(
-  "Terms and Conditions",
-  "Terms governing use of school digital services.",
-);
+export const metadata = seoMetadata("/terms");
 
 export default function Page() {
   return <TermsView />;

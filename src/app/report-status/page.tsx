@@ -1,6 +1,7 @@
+import { seoMetadata } from "@/shared/seo";
 import ReportStatusView from "@/features/report/ReportStatusView";
 
-export const metadata = { title: "Check report status", robots: { index: false, follow: false } };
+export const metadata = seoMetadata("/report-status");
 
 export default async function ReportStatusPage({
   searchParams,

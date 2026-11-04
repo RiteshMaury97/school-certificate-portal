@@ -635,7 +635,7 @@ export default function FinderPage() {
                     href="/privacy"
                     target="_blank"
                     rel="noreferrer"
-                    className="font-semibold underline"
+                    className="font-semibold"
                   >
                     "See our Privacy Policy"
                   </Link>
@@ -650,7 +650,7 @@ export default function FinderPage() {
                     href="/privacy"
                     target="_blank"
                     rel="noreferrer"
-                    className="font-semibold underline"
+                    className="font-semibold"
                   >
                     Privacy page
                   </Link>
@@ -685,7 +685,7 @@ export default function FinderPage() {
                       href="/privacy"
                       target="_blank"
                       rel="noreferrer"
-                      className="font-semibold text-[var(--text)] underline underline-offset-2 hover:text-[var(--text)]"
+                      className="font-semibold text-[var(--text)] hover:text-[var(--text)]"
                     >
                       Privacy Notice
                     </Link>
@@ -836,7 +836,7 @@ export default function FinderPage() {
               </p>
               <Link
                 href="/privacy"
-                className="mt-3 inline-flex items-center text-[10px] font-semibold text-[var(--primary)] underline underline-offset-2"
+                className="mt-3 inline-flex items-center text-[10px] font-semibold text-[var(--primary)]"
               >
                 Read the privacy notice
               </Link>
