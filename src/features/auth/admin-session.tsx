@@ -1,5 +1,13 @@
 "use client";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 
@@ -31,6 +39,44 @@ type SessionBody = {
 
 let sessionRequest: Promise<AdminSessionState> | null = null;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function readSessionBody(value: unknown): SessionBody {
+  if (!isRecord(value)) return {};
+  const body = value;
+  const role = body.role;
+  return {
+    ...(typeof body.authenticated === "boolean" ? { authenticated: body.authenticated } : {}),
+    ...(typeof body.uid === "string" ? { uid: body.uid } : {}),
+    ...(typeof body.email === "string" ? { email: body.email } : {}),
+    ...(role === "uploader" || role === "approver" || role === "admin" || role === "superadmin"
+      ? { role }
+      : {}),
+    ...(typeof body.hardExpiresAt === "number" ? { hardExpiresAt: body.hardExpiresAt } : {}),
+    ...(typeof body.error === "string" ? { error: body.error } : {}),
+  };
+}
+
+function stateFromSessionResponse(
+  status: number,
+  ok: boolean,
+  body: SessionBody,
+): AdminSessionState {
+  if (status === 401 || (ok && body.authenticated === false)) return { status: "unauthenticated" };
+  if (!ok || !body.authenticated || !body.uid || !body.email || !body.role)
+    return {
+      status: "error",
+      message: body.error ?? "The administrator session could not be verified.",
+    };
+  return {
+    status: "authenticated",
+    admin: { uid: body.uid, email: body.email, role: body.role },
+    hardExpiresAt: body.hardExpiresAt ?? 0,
+  };
+}
+
 function fetchSession(): Promise<AdminSessionState> {
   sessionRequest ??= readSession().finally(() => {
     sessionRequest = null;
@@ -45,19 +91,14 @@ async function readSession(): Promise<AdminSessionState> {
       credentials: "same-origin",
       headers: await appCheckHeaders(),
     });
-    const body = (await response.json().catch(() => ({}))) as SessionBody;
-    if (response.status === 401 || (response.ok && body.authenticated === false))
-      return { status: "unauthenticated" };
-    if (!response.ok || !body.authenticated || !body.uid || !body.email || !body.role)
-      return {
-        status: "error",
-        message: body.error ?? "The administrator session could not be verified.",
-      };
-    return {
-      status: "authenticated",
-      admin: { uid: body.uid, email: body.email, role: body.role },
-      hardExpiresAt: body.hardExpiresAt ?? 0,
-    };
+    let json: unknown;
+    try {
+      json = await response.json();
+    } catch {
+      json = null;
+    }
+    const body = readSessionBody(json);
+    return stateFromSessionResponse(response.status, response.ok, body);
   } catch {
     return { status: "error", message: "Check your connection and try again." };
   }
@@ -70,7 +111,6 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let live = true;
-    setState({ status: "loading" });
     void fetchSession().then((next) => {
       if (live) setState(next);
     });
@@ -79,7 +119,10 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     };
   }, [attempt]);
 
-  const retry = useCallback(() => { setAttempt((value) => value + 1); }, []);
+  const retry = useCallback(() => {
+    setState({ status: "loading" });
+    setAttempt((value) => value + 1);
+  }, []);
   const value = useMemo(() => ({ state, retry }), [state, retry]);
   return <AdminSessionContext.Provider value={value}>{children}</AdminSessionContext.Provider>;
 }

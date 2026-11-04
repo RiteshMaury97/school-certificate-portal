@@ -33,6 +33,59 @@ function validBody(
   );
 }
 
+function isVerifiedAdmin(input: {
+  emailVerified: boolean;
+  email: string;
+  adminExists: boolean;
+  storedEmail: unknown;
+  storedMustChangePassword: unknown;
+  decodedMustChangePassword: unknown;
+  status: unknown;
+  role: unknown;
+  decodedRole: unknown;
+}): boolean {
+  const activeStatus = new Set(["active", "invited"]).has(String(input.status));
+  const supportedRole = new Set(["uploader", "approver", "admin", "superadmin"]).has(
+    String(input.role),
+  );
+  return (
+    input.emailVerified &&
+    input.email.length > 0 &&
+    input.adminExists &&
+    input.storedMustChangePassword !== true &&
+    input.decodedMustChangePassword !== true &&
+    activeStatus &&
+    typeof input.storedEmail === "string" &&
+    input.storedEmail.trim().toLowerCase() === input.email &&
+    supportedRole &&
+    input.decodedRole === input.role
+  );
+}
+
+async function otpResultResponse(input: {
+  result: { valid: boolean; attemptsRemaining: number };
+  request: NextRequest;
+  uid: string;
+  email: string;
+  challengeId: string;
+}): Promise<NextResponse> {
+  if (input.result.valid) {
+    await writeAuditLog(input.request, input.uid, "otp.verified", input.challengeId);
+    return NextResponse.json({ verified: true }, { headers: { "Cache-Control": "no-store" } });
+  }
+  const failure = await recordAdminOtpFailure(input.email, input.request);
+  await writeAuditLog(input.request, input.uid, "otp.failed", input.challengeId);
+  if (failure.locked)
+    await writeAuditLog(input.request, input.uid, "otp.locked", input.challengeId);
+  return NextResponse.json(
+    {
+      error: "The code is invalid or expired.",
+      remainingAttempts: input.result.attemptsRemaining,
+    },
+    { status: failure.locked ? 423 : 400 },
+  );
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     if (!requesterIp(request))
@@ -49,20 +102,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const decoded = await adminAuth.verifyIdToken(body.idToken, true);
     const email = decoded.email?.trim().toLowerCase() ?? "";
     const admin = await db.collection("admins").doc(decoded.uid).get();
-    const role = admin.get("role");
-    if (
-      !decoded.email_verified ||
-      !email ||
-      !admin.exists ||
-      admin.get("mustChangePassword") === true ||
-      decoded.mustChangePassword === true ||
-      !["active", "invited"].includes(String(admin.get("status"))) ||
-      String(admin.get("email") ?? "")
-        .trim()
-        .toLowerCase() !== email ||
-      !["uploader", "approver", "admin", "superadmin"].includes(String(role)) ||
-      decoded.role !== role
-    )
+    const role: unknown = admin.get("role");
+    const storedEmail: unknown = admin.get("email");
+    const storedMustChangePassword: unknown = admin.get("mustChangePassword");
+    const status: unknown = admin.get("status");
+    if (!isVerifiedAdmin({
+      emailVerified: decoded.email_verified,
+      email,
+      adminExists: admin.exists,
+      storedEmail,
+      storedMustChangePassword,
+      decodedMustChangePassword: decoded.mustChangePassword,
+      status,
+      role,
+      decodedRole: decoded.role,
+    }))
       return NextResponse.json({ error: "The code is invalid or expired." }, { status: 403 });
     const location = await enforceAdminLocation({ request, adminUid: decoded.uid });
     if (!location.allowed)
@@ -81,20 +135,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }),
     );
 
-    if (result.valid) {
-      await writeAuditLog(request, decoded.uid, "otp.verified", body.challengeId);
-      return NextResponse.json({ verified: true }, { headers: { "Cache-Control": "no-store" } });
-    }
-    const failure = await recordAdminOtpFailure(email, request);
-    await writeAuditLog(request, decoded.uid, "otp.failed", body.challengeId);
-    if (failure.locked) await writeAuditLog(request, decoded.uid, "otp.locked", body.challengeId);
-    return NextResponse.json(
-      {
-        error: "The code is invalid or expired.",
-        remainingAttempts: result.attemptsRemaining,
-      },
-      { status: failure.locked ? 423 : 400 },
-    );
+    return await otpResultResponse({
+      result,
+      request,
+      uid: decoded.uid,
+      email,
+      challengeId: body.challengeId,
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "APP_CHECK") {
       return NextResponse.json({ error: "App verification failed." }, { status: 403 });

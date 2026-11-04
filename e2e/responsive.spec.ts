@@ -99,7 +99,7 @@ async function measure(page: Page, route: string) {
     const logoOut = logo ? logo.getBoundingClientRect().right > (logo.parentElement?.getBoundingClientRect().right ?? width) + 1 : false;
     const hasViewportMeta = Boolean(document.querySelector('meta[name="viewport"]'));
     const readRules = (rules: CSSRuleList): string[] => [...rules].flatMap((rule) => {
-      const nested = "cssRules" in rule ? (rule as CSSGroupingRule).cssRules : null;
+      const nested = rule instanceof CSSGroupingRule ? rule.cssRules : null;
       return [rule.cssText, ...(nested ? readRules(nested) : [])];
     });
     const cssRules = [...document.styleSheets].flatMap((sheet) => {

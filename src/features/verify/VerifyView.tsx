@@ -31,6 +31,57 @@ type Verification =
     }
   | { valid: false; status: "revoked"; message: string };
 const genericFailure = "No matching certificate found";
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function readValidVerification(
+  value: Record<string, unknown>,
+): Extract<Verification, { valid: true }> | null {
+  if (
+    value.message !== "Valid certificate" ||
+    typeof value.certificateType !== "string" ||
+    typeof value.certificateNumber !== "string" ||
+    typeof value.session !== "string" ||
+    typeof value.issueDate !== "string" ||
+    typeof value.schoolName !== "string" ||
+    typeof value.studentName !== "string" ||
+    typeof value.verifiedOn !== "string"
+  ) return null;
+  return {
+    valid: true,
+    message: "Valid certificate",
+    certificateType: value.certificateType,
+    certificateNumber: value.certificateNumber,
+    session: value.session,
+    issueDate: value.issueDate,
+    schoolName: value.schoolName,
+    studentName: value.studentName,
+    verifiedOn: value.verifiedOn,
+  };
+}
+
+function readFailedVerification(
+  value: Record<string, unknown>,
+): Exclude<Verification, { valid: true }> | null {
+  if (typeof value.message !== "string") return null;
+  if (value.status === "superseded" && typeof value.newCertificateNumber === "string")
+    return {
+      valid: false,
+      status: "superseded",
+      message: value.message,
+      newCertificateNumber: value.newCertificateNumber,
+    };
+  if (value.status === "revoked")
+    return { valid: false, status: "revoked", message: value.message };
+  return null;
+}
+
+function readVerification(value: unknown): Verification | null {
+  if (!isRecord(value) || typeof value.valid !== "boolean") return null;
+  return value.valid ? readValidVerification(value) : readFailedVerification(value);
+}
+
 function displayDate(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -106,7 +157,7 @@ export default function VerifyPage() {
     }
     let cancelled = false;
     const scriptId = "cloudflare-turnstile-script";
-    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+    const existing = document.querySelector<HTMLScriptElement>(`script#${scriptId}`);
     const render = () => {
       if (cancelled || !captchaRef.current || !window.turnstile || widgetId.current) return;
       try {
@@ -194,12 +245,10 @@ export default function VerifyPage() {
         cache: "no-store",
       });
       const data: unknown = await response.json();
-      if (!response.ok || typeof data !== "object" || data === null)
+      const verification = readVerification(data);
+      if (!response.ok || !verification)
         throw new Error("verification");
-      if ("valid" in data && data.valid === true) setResult(data as Verification);
-      else if ("status" in data && (data.status === "superseded" || data.status === "revoked"))
-        setResult(data as Verification);
-      else setFailed(true);
+      setResult(verification);
     } catch {
       setNetworkError(true);
     } finally {

@@ -1,9 +1,20 @@
+import { Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
 import { apiError, requireRoles } from "@/server/security";
 
 import type { NextRequest} from "next/server";
+
+function toOptionalString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function toTimestampIso(value: unknown): string | null {
+  if (value instanceof Date) return value.toISOString();
+  return value instanceof Timestamp ? value.toDate().toISOString() : null;
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(
@@ -19,15 +30,18 @@ export async function GET(
       .limit(100)
       .get();
     const events = snap.docs
-      .map((doc) => ({
-        id: doc.id,
-        action: doc.get("action"),
-        actorUid: doc.get("actorUid"),
-        timestamp: doc.get("timestamp")?.toDate?.().toISOString?.() ?? null,
-      }))
-      .sort((a, b) =>
-        String(a.timestamp ?? "").localeCompare(String(b.timestamp ?? "")),
-      );
+      .map((doc) => {
+        const action: unknown = doc.get("action");
+        const actorUid: unknown = doc.get("actorUid");
+        const timestamp: unknown = doc.get("timestamp");
+        return {
+          id: doc.id,
+          action: toOptionalString(action),
+          actorUid: toOptionalString(actorUid),
+          timestamp: toTimestampIso(timestamp),
+        };
+      })
+      .sort((a, b) => (a.timestamp ?? "").localeCompare(b.timestamp ?? ""));
     return NextResponse.json(
       { events },
       { headers: { "Cache-Control": "no-store" } },

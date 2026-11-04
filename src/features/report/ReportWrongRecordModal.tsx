@@ -12,6 +12,30 @@ function validPhone(value: string): boolean {
   return /^[+\d().\s-]+$/.test(normalized) && digits.length >= 8 && digits.length <= 15;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function reportValidationError(input: {
+  sessions: string[];
+  session: string;
+  contactMethod: "email" | "phone";
+  contact: string;
+  phoneOptIn: boolean;
+  phoneNumber: string;
+  consent: boolean;
+  token: string;
+}): string | null {
+  if (!input.sessions.includes(input.session)) return "Select a valid passing session.";
+  if (input.contactMethod === "phone" && !validPhone(input.contact))
+    return "Enter a valid phone number with 8 to 15 digits.";
+  if (input.phoneOptIn && !validPhone(input.phoneNumber))
+    return "Enter a valid phone number or turn off phone follow-up.";
+  if (!input.consent || !input.token)
+    return "Please provide consent and complete security verification.";
+  return null;
+}
+
 export default function ReportWrongRecordModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [session, setSession] = useState("");
@@ -121,7 +145,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
       }
     };
     const id = "cloudflare-turnstile-script";
-    const existing = document.getElementById(id) as HTMLScriptElement | null;
+    const existing = document.querySelector<HTMLScriptElement>(`script#${id}`);
     if (window.turnstile) render();
     else if (existing) existing.addEventListener("load", render, { once: true });
     else {
@@ -145,20 +169,18 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (!sessions.includes(session)) {
-      setError("Select a valid passing session.");
-      return;
-    }
-    if (contactMethod === "phone" && !validPhone(contact)) {
-      setError("Enter a valid phone number with 8 to 15 digits.");
-      return;
-    }
-    if (phoneOptIn && !validPhone(phoneNumber)) {
-      setError("Enter a valid phone number or turn off phone follow-up.");
-      return;
-    }
-    if (!consent || !token) {
-      setError("Please provide consent and complete security verification.");
+    const validationError = reportValidationError({
+      sessions,
+      session,
+      contactMethod,
+      contact,
+      phoneOptIn,
+      phoneNumber,
+      consent,
+      token,
+    });
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setBusy(true);
@@ -183,13 +205,10 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
         }),
         cache: "no-store",
       });
-      const data = (await response.json()) as {
-        referenceId?: string;
-        emailCopySent?: boolean;
-        error?: string;
-      };
-      if (!response.ok || !data.referenceId)
-        throw new Error(data.error ?? "Unable to submit your report.");
+      const data: unknown = await response.json();
+      const message = isRecord(data) && typeof data.error === "string" ? data.error : undefined;
+      if (!response.ok || !isRecord(data) || typeof data.referenceId !== "string")
+        throw new Error(message ?? "Unable to submit your report.");
       setReference(data.referenceId);
       setEmailCopySent(data.emailCopySent === true);
     } catch (e) {

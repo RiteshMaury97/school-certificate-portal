@@ -12,6 +12,30 @@ type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
   url: string,
   init?: RequestInit,
 ) => Promise<T>;
+
+function createSaveAnnouncement(
+  api: Api,
+  act: (fn: () => Promise<void>) => Promise<void>,
+  setToast: Dispatch<SetStateAction<string>>,
+  announcement: AnnouncementState,
+): (event: SubmitEvent<HTMLFormElement>) => Promise<void> {
+  return async (event) => {
+    event.preventDefault();
+    await act(async () => {
+      await api("/api/admin/announcements", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...announcement,
+          startAt: new Date(announcement.startAt).toISOString(),
+          endAt: new Date(announcement.endAt).toISOString(),
+        }),
+      });
+      setToast("Announcement saved.");
+    });
+  };
+}
+
 export function useSiteSettingsAdmin(
   api: Api,
   act: (fn: () => Promise<void>) => Promise<void>,
@@ -30,6 +54,7 @@ export function useSiteSettingsAdmin(
   const [adminLocationExceptions, setAdminLocationExceptions] = useState<Record<string, unknown>[]>(
     [],
   );
+  const saveAnnouncement = createSaveAnnouncement(api, act, setToast, announcement);
   async function saveFaqs() {
     await act(async () => {
       await api("/api/admin/faqs", {
@@ -50,10 +75,16 @@ export function useSiteSettingsAdmin(
           const [label, ...rest] = line.split("|");
           return { label: (label ?? "").trim(), url: rest.join("|").trim() };
         });
-      const localizedFields = (name: "tagline" | "principalMessage") =>
-        Object.fromEntries(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"]
-          .map((locale) => [locale, branding[`${name}_i18n_${locale}`]?.trim() ?? ""])
-          .filter(([, value]) => value));
+      const localizedFields = (name: "tagline" | "principalMessage") => {
+        const locales = ["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const;
+        const entries: [string, string][] = locales
+          .map((locale): [string, string] => [
+            locale,
+            branding[`${name}_i18n_${locale}`]?.trim() ?? "",
+          ])
+          .filter(([, value]) => value.length > 0);
+        return Object.fromEntries(entries);
+      };
       await api("/api/admin/site-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -98,21 +129,6 @@ export function useSiteSettingsAdmin(
     setToast("Temporary location exception added.");
   }
 
-  async function saveAnnouncement(e: SubmitEvent<HTMLFormElement>) {
-    e.preventDefault();
-    await act(async () => {
-      await api("/api/admin/announcements", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...announcement,
-          startAt: new Date(announcement.startAt).toISOString(),
-          endAt: new Date(announcement.endAt).toISOString(),
-        }),
-      });
-      setToast("Announcement saved.");
-    });
-  }
   return {
     retentionYears,
     setRetentionYears,

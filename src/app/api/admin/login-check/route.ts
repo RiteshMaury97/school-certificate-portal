@@ -9,7 +9,21 @@ import { requesterIp } from "@/server/request-origin";
 import { hashRequesterIp, verifyRequestAppCheck, sameOrigin } from "@/server/security";
 import { recordDailySecurityMetric } from "@/server/security-summary";
 
+import type { DocumentReference, DocumentSnapshot } from "firebase-admin/firestore";
 import type { NextRequest } from "next/server";
+
+function isLoginCheckBody(
+  value: unknown,
+): value is { email: string; action: "check" | "failure" } {
+  if (typeof value !== "object" || value === null || !("email" in value) || !("action" in value))
+    return false;
+  return (
+    typeof value.email === "string" &&
+    value.email.length <= 254 &&
+    (value.action === "check" || value.action === "failure")
+  );
+}
+
 export const runtime = "nodejs";
 const key = () => {
   const value = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
@@ -26,6 +40,82 @@ async function notifySuperadmins(email: string, count: number) {
       text: `Repeated sign-in failures detected. Attempts: ${String(count)}. Account: ${email}.`,
     }).catch(() => null);
 }
+
+async function allowFailureAttempt(ipHash: string, now: number): Promise<boolean> {
+  const ipRef = db
+    .collection("abuseCounters")
+    .doc(`admin_login_fail_${ipHash}_${String(Math.floor(now / 60_000))}`);
+  return db.runTransaction(async (tx) => {
+    const state = await tx.get(ipRef);
+    const count = Number(state.get("count") ?? 0);
+    if (count >= 20) return false;
+    tx.set(
+      ipRef,
+      {
+        count: count + 1,
+        updatedAt: FieldValue.serverTimestamp(),
+        expiresAt: new Date(now + 2 * 60_000),
+      },
+      { merge: true },
+    );
+    return true;
+  });
+}
+
+async function checkLockStatus(
+  ref: DocumentReference,
+  now: number,
+): Promise<NextResponse> {
+  const snap = await ref.get();
+  const lockedUntil = Number(snap.get("lockedUntil") ?? 0);
+  if (lockedUntil > now)
+    return NextResponse.json(
+      { locked: true, retryAfterSeconds: Math.ceil((lockedUntil - now) / 1000) },
+      { status: 423 },
+    );
+  if (lockedUntil > 0)
+    await ref.set(
+      {
+        count: 0,
+        lockedUntil: 0,
+        windowStartedAt: now,
+        updatedAt: FieldValue.serverTimestamp(),
+        expiresAt: new Date(now + 24 * 60 * 60_000),
+      },
+      { merge: true },
+    );
+  return NextResponse.json({ locked: false });
+}
+
+async function recordFailure(
+  ref: DocumentReference,
+  email: string,
+  ipHash: string,
+  now: number,
+): Promise<NextResponse> {
+  const snap: DocumentSnapshot = await ref.get();
+  const previousCount = Number(snap.get("count") ?? 0);
+  const nextCount = previousCount + 1;
+  const lock = nextCount >= 5;
+  await ref.set(
+    {
+      count: nextCount,
+      windowStartedAt: Number(snap.get("windowStartedAt") ?? now),
+      lockedUntil: lock ? now + 15 * 60_000 : Number(snap.get("lockedUntil") ?? 0),
+      lastIpHash: ipHash,
+      updatedAt: FieldValue.serverTimestamp(),
+      expiresAt: new Date(now + 24 * 60 * 60_000),
+    },
+    { merge: true },
+  );
+  await recordDailySecurityMetric("failedSignIns");
+  if (lock && previousCount < 5) {
+    await recordDailySecurityMetric("lockouts");
+    await notifySuperadmins(email, nextCount);
+  }
+  return NextResponse.json({ recorded: true, locked: lock });
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!requesterIp(request))
@@ -36,15 +126,8 @@ export async function POST(request: NextRequest) {
     await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
-    const body = (await request.json()) as {
-      email?: unknown;
-      action?: unknown;
-    };
-    if (
-      typeof body.email !== "string" ||
-      body.email.length > 254 ||
-      !["check", "failure"].includes(String(body.action))
-    )
+    const body: unknown = await request.json();
+    if (!isLoginCheckBody(body))
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     const email = body.email.trim().toLowerCase();
     const knownAdmin = await db.collection("admins").where("email", "==", email).limit(1).get();
@@ -54,71 +137,16 @@ export async function POST(request: NextRequest) {
     const ref = db.collection("adminLoginFailures").doc(emailHash);
     const now = Date.now();
     if (body.action === "failure") {
-      const ipRef = db
-        .collection("abuseCounters")
-        .doc(`admin_login_fail_${ipHash}_${String(Math.floor(now / 60_000))}`);
-      const allowed = await db.runTransaction(async (tx) => {
-        const state = await tx.get(ipRef);
-        const count = Number(state.get("count") ?? 0);
-        if (count >= 20) return false;
-        tx.set(
-          ipRef,
-          {
-            count: count + 1,
-            updatedAt: FieldValue.serverTimestamp(),
-            expiresAt: new Date(now + 2 * 60_000),
-          },
-          { merge: true },
-        );
-        return true;
-      });
+      const allowed = await allowFailureAttempt(ipHash, now);
       if (!allowed)
         return NextResponse.json(
           { error: "Too many sign-in attempts. Try again shortly." },
           { status: 429 },
         );
     }
-    const snap = await ref.get();
-    const lockedUntil = Number(snap.get("lockedUntil") ?? 0);
-    if (body.action === "check") {
-      if (lockedUntil > now)
-        return NextResponse.json(
-          {
-            locked: true,
-            retryAfterSeconds: Math.ceil((lockedUntil - now) / 1000),
-          },
-          { status: 423 },
-        );
-      if (lockedUntil > 0 && lockedUntil <= now)
-        await ref.set(
-          {
-            count: 0,
-            lockedUntil: 0,
-            windowStartedAt: now,
-            updatedAt: FieldValue.serverTimestamp(),
-            expiresAt: new Date(now + 24 * 60 * 60_000),
-          },
-          { merge: true },
-        );
-      return NextResponse.json({ locked: false });
-    }
-    const nextCount = Number(snap.get("count") ?? 0) + 1;
-    const lock = nextCount >= 5;
-    await ref.set(
-      {
-        count: nextCount,
-        windowStartedAt: Number(snap.get("windowStartedAt") ?? now),
-        lockedUntil: lock ? now + 15 * 60_000 : lockedUntil,
-        lastIpHash: ipHash,
-        updatedAt: FieldValue.serverTimestamp(),
-        expiresAt: new Date(now + 24 * 60 * 60_000),
-      },
-      { merge: true },
-    );
-    await recordDailySecurityMetric("failedSignIns");
-    if (lock && Number(snap.get("count") ?? 0) < 5) await recordDailySecurityMetric("lockouts");
-    if (lock && Number(snap.get("count") ?? 0) < 5) await notifySuperadmins(email, nextCount);
-    return NextResponse.json({ recorded: true, locked: lock });
+    return body.action === "check"
+      ? await checkLockStatus(ref, now)
+      : await recordFailure(ref, email, ipHash, now);
   } catch (error) {
     const message =
       error instanceof Error

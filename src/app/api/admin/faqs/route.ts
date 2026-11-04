@@ -7,6 +7,11 @@ import { apiError, requireAdmin, writeAuditLog } from "@/server/security";
 import { readText } from "@/shared/safe-values";
 
 import type { NextRequest} from "next/server";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const schema = z
@@ -38,16 +43,16 @@ export async function GET(request: NextRequest) {
         { status: 403 },
       );
     const s = await db.collection("siteSettings").doc("main").get();
+    const storedFaqs: unknown = s.get("faqs");
+    const faqs = Array.isArray(storedFaqs) ? storedFaqs.filter(isRecord) : [];
     return NextResponse.json(
       {
-        faqs: Array.isArray(s.get("faqs"))
-          ? (s.get("faqs") as Record<string, unknown>[]).slice(0, 30).map((item) => ({
+        faqs: faqs.slice(0, 30).map((item) => ({
               questionEn: readText(item.questionEn).slice(0, 180),
               answerEn: readText(item.answerEn).slice(0, 1500),
               question_i18n: item.question_i18n ?? {},
               answer_i18n: item.answer_i18n ?? {},
             }))
-          : [],
       },
       { headers: { "Cache-Control": "no-store" } },
     );
@@ -63,7 +68,8 @@ export async function PATCH(request: NextRequest) {
         { error: "Superadmin access required." },
         { status: 403 },
       );
-    const parsed = schema.safeParse((await request.json()).faqs);
+    const body: unknown = await request.json();
+    const parsed = schema.safeParse(isRecord(body) ? body.faqs : undefined);
     if (!parsed.success)
       return NextResponse.json(
         { error: "Check the FAQ content." },

@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 import { formString } from "@/app/api/_lib/form-data";
@@ -14,6 +14,12 @@ import { absoluteUrl, getAllowedOrigins } from "@/server/site-origin";
 import { isAllowedRequestOrigin } from "@/shared/origin-policy";
 
 import type { NextRequest} from "next/server";
+
+function toEpochMillis(value: unknown): number | null {
+  if (value instanceof Date) return value.getTime();
+  return value instanceof Timestamp ? value.toMillis() : null;
+}
+
 export const runtime = "nodejs";
 const tokenRef = (token: string) => {
   const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
@@ -27,8 +33,9 @@ async function consume(token: string) {
   let uid = "";
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    const expires = snap.get("expiresAt")?.toDate?.()?.getTime?.() ?? 0;
-    const value = snap.get("uid");
+    const expiresAt: unknown = snap.get("expiresAt");
+    const expires = toEpochMillis(expiresAt) ?? 0;
+    const value: unknown = snap.get("uid");
     if (
       !snap.exists ||
       typeof value !== "string" ||
@@ -49,9 +56,10 @@ export async function GET(request: NextRequest) {
       303,
     );
   try {
-    const ref = tokenRef(token),
-      snap = await ref.get(),
-      expires = snap.get("expiresAt")?.toDate?.()?.getTime?.() ?? 0;
+    const ref = tokenRef(token);
+    const snap = await ref.get();
+    const expiresAt: unknown = snap.get("expiresAt");
+    const expires = toEpochMillis(expiresAt) ?? 0;
     if (!snap.exists || snap.get("usedAt") || Date.now() > expires)
       return NextResponse.redirect(
         absoluteUrl("/admin/login?security=expired"),
