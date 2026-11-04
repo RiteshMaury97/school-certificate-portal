@@ -45,8 +45,8 @@ import { useBulkImport } from "./hooks/useBulkImport";
 import { useCertificateIntake } from "./hooks/useCertificateIntake";
 import { useCertificateRecords } from "./hooks/useCertificateRecords";
 import { useSiteSettingsAdmin } from "./hooks/useSiteSettingsAdmin";
-import { getVisibleTabs } from "./utils/admin-tab-access";
 import ReauthModal from "./ReauthModal";
+import { getVisibleTabs } from "./utils/admin-tab-access";
 
 import type { CatalogKind, CatalogOption } from "./types/admin-state.types";
 import type { Cert, Tab } from "./types/admin.types";

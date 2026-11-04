@@ -43,6 +43,143 @@ function keyFromDate(date: Date): string {
   return `${String(date.getFullYear()).padStart(4, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function inputValue(selectedDate: string, time: string, includeTime: boolean): string {
+  if (!selectedDate) return "";
+  return includeTime ? `${selectedDate}T${time}` : selectedDate;
+}
+
+type CalendarPopupProps = {
+  id: string;
+  label: string;
+  selectedDate: string;
+  time: string;
+  includeTime: boolean;
+  min?: string;
+  max?: string;
+  visibleMonth: Date;
+  days: Date[];
+  onChange: (value: string) => void;
+  onChooseDay: (day: Date) => void;
+  onClose: () => void;
+  onChangeMonth: (offset: number) => void;
+};
+
+function CalendarPopup({
+  id,
+  label,
+  selectedDate,
+  time,
+  includeTime,
+  min,
+  max,
+  visibleMonth,
+  days,
+  onChange,
+  onChooseDay,
+  onClose,
+  onChangeMonth,
+}: CalendarPopupProps) {
+  return (
+    <div
+      id={`${id}-calendar`}
+      role="dialog"
+      aria-label={`${label} calendar`}
+      className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-3 text-[var(--text)] shadow-xl"
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          aria-label="Previous month"
+          onClick={() => { onChangeMonth(-1); }}
+          className="grid size-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+        >
+          <ChevronLeft size={16} aria-hidden="true" />
+        </button>
+        <div aria-live="polite" className="text-sm font-semibold">
+          {monthFormat.format(visibleMonth)}
+        </div>
+        <button
+          type="button"
+          aria-label="Next month"
+          onClick={() => { onChangeMonth(1); }}
+          className="grid size-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+        >
+          <ChevronRight size={16} aria-hidden="true" />
+        </button>
+      </div>
+      <div role="grid" aria-label={monthFormat.format(visibleMonth)} className="grid grid-cols-7 gap-1 text-center">
+        {weekDays.map((day, index) => (
+          <div key={`${day}-${String(index)}`} role="columnheader" className="py-1 text-[10px] font-medium text-[var(--text-muted)]">
+            {day}
+          </div>
+        ))}
+        {days.map((day) => {
+          const key = keyFromDate(day);
+          const outsideMonth = day.getMonth() !== visibleMonth.getMonth();
+          const isSelected = key === selectedDate;
+          const unavailable = (min !== undefined && key < min) || (max !== undefined && key > max);
+          return (
+            <button
+              key={key}
+              type="button"
+              role="gridcell"
+              aria-label={dateFormat.format(day)}
+              aria-selected={isSelected}
+              disabled={unavailable}
+              onClick={() => { onChooseDay(day); }}
+              className={`mx-auto grid size-9 place-items-center rounded-lg text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--primary)] ${
+                isSelected
+                  ? "bg-[var(--primary)] font-semibold text-[var(--on-primary)]"
+                  : outsideMonth
+                    ? "text-[var(--text-muted)]/55 hover:bg-[var(--surface-2)]"
+                    : "hover:bg-[var(--surface-2)]"
+              } disabled:pointer-events-none disabled:opacity-30`}
+            >
+              {day.getDate()}
+            </button>
+          );
+        })}
+      </div>
+      {includeTime && (
+        <label htmlFor={`${id}-time`} className="mt-3 flex items-center justify-between border-t border-[var(--divider)] pt-3 text-xs font-medium text-[var(--text-muted)]">
+          Time
+          <input
+            id={`${id}-time`}
+            aria-label={`${label} time`}
+            type="time"
+            value={time}
+            onChange={(event) => { onChange(`${selectedDate || keyFromDate(new Date())}T${event.target.value}`); }
+            }
+            className="rounded-lg border border-[var(--divider)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+            required
+          />
+        </label>
+      )}
+      <div className="mt-3 flex items-center justify-between border-t border-[var(--divider)] pt-2">
+        <button
+          type="button"
+          onClick={() => {
+            onChange("");
+            if (!includeTime) onClose();
+          }}
+          className="rounded-md px-2 py-1.5 text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+        >
+          Clear
+        </button>
+        {includeTime && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-[var(--on-primary)] hover:opacity-90"
+          >
+            Done
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function DatePicker({
   id,
   label,
@@ -100,12 +237,13 @@ export function DatePicker({
       <button
         id={id}
         type="button"
+        role="combobox"
         disabled={disabled}
         aria-label={label}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={dialogId}
-        aria-required={required || undefined}
+        aria-required={required}
         data-empty={!selectedDate}
         onClick={() => {
           if (parsedSelected)
@@ -125,112 +263,32 @@ export function DatePicker({
       </button>
 
       <input
+        type="hidden"
+        id={`${id}-value`}
         aria-hidden="true"
         tabIndex={-1}
-        required={required} aria-required={required}
-        value={selectedDate ? (includeTime ? `${selectedDate}T${time}` : selectedDate) : ""}
-        onChange={() => undefined}
+        value={inputValue(selectedDate, time, includeTime)}
         className="pointer-events-none absolute h-px w-px opacity-0"
-        />
+      />
 
       {open && (
-        <div
-          id={dialogId}
-          role="dialog"
-          aria-label={`${label} calendar`}
-          className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-3 text-[var(--text)] shadow-xl"
-        >
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              aria-label="Previous month"
-              onClick={() => setVisibleMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-              className="grid size-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-            >
-              <ChevronLeft size={16} aria-hidden="true" />
-            </button>
-            <div aria-live="polite" className="text-sm font-semibold">
-              {monthFormat.format(visibleMonth)}
-            </div>
-            <button
-              type="button"
-              aria-label="Next month"
-              onClick={() => setVisibleMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))}
-              className="grid size-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-            >
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
-          </div>
-          <div role="grid" aria-label={monthFormat.format(visibleMonth)} className="grid grid-cols-7 gap-1 text-center">
-            {weekDays.map((day, index) => (
-              <div key={`${day}-${index}`} role="columnheader" className="py-1 text-[10px] font-medium text-[var(--text-muted)]">
-                {day}
-              </div>
-            ))}
-            {days.map((day) => {
-              const key = keyFromDate(day);
-              const outsideMonth = day.getMonth() !== visibleMonth.getMonth();
-              const isSelected = key === selectedDate;
-              const unavailable = (min && key < min) || (max && key > max);
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="gridcell"
-                  aria-label={dateFormat.format(day)}
-                  aria-selected={isSelected}
-                  disabled={Boolean(unavailable)}
-                  onClick={() => chooseDay(day)}
-                  className={`mx-auto grid size-9 place-items-center rounded-lg text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--primary)] ${
-                    isSelected
-                      ? "bg-[var(--primary)] font-semibold text-[var(--on-primary)]"
-                      : outsideMonth
-                        ? "text-[var(--text-muted)]/55 hover:bg-[var(--surface-2)]"
-                        : "hover:bg-[var(--surface-2)]"
-                  } disabled:pointer-events-none disabled:opacity-30`}
-                >
-                  {day.getDate()}
-                </button>
-              );
-            })}
-          </div>
-          {includeTime && (
-            <label className="mt-3 flex items-center justify-between border-t border-[var(--divider)] pt-3 text-xs font-medium text-[var(--text-muted)]">
-              Time
-              <input
-                aria-label={`${label} time`}
-                type="time"
-                value={time}
-                onChange={(event) => {
-                  if (selectedDate) onChange(`${selectedDate}T${event.target.value}`);
-                  else onChange(`${keyFromDate(new Date())}T${event.target.value}`);
-                }}
-                className="rounded-lg border border-[var(--divider)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-              required aria-required="true" />
-            </label>
-          )}
-          <div className="mt-3 flex items-center justify-between border-t border-[var(--divider)] pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                onChange("");
-                if (!includeTime) setOpen(false);
-              }}
-              className="rounded-md px-2 py-1.5 text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
-            >
-              Clear
-            </button>
-            {includeTime && (
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-xs font-semibold text-[var(--on-primary)] hover:opacity-90"
-              >
-                Done
-              </button>
-            )}
-          </div>
-        </div>
+        <CalendarPopup
+          id={id}
+          label={label}
+          selectedDate={selectedDate}
+          time={time}
+          includeTime={includeTime}
+          min={min}
+          max={max}
+          visibleMonth={visibleMonth}
+          days={days}
+          onChange={onChange}
+          onChooseDay={chooseDay}
+          onClose={() => { setOpen(false); }}
+          onChangeMonth={(offset) => {
+            setVisibleMonth((month) => new Date(month.getFullYear(), month.getMonth() + offset, 1));
+          }}
+        />
       )}
     </div>
   );

@@ -2,20 +2,69 @@ import { randomBytes } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-
 import { adminAuth, db } from "@/server/firebase-admin";
 import { sendAdminInvitationEmail } from "@/server/mailer";
+import { requireAdmin, requireSensitiveReauth, writeAuditLog, apiError } from "@/server/security";
 import { absoluteUrl } from "@/server/site-origin";
-import {
-  requireAdmin,
-  requireSensitiveReauth,
-  writeAuditLog,
-  apiError,
-} from "@/server/security";
 import { adminInviteProfileSchema, adminInviteSchema } from "@/shared/validation";
 
-import type { NextRequest} from "next/server";
+import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
+function ignoreCleanupFailure(error: unknown): void {
+  if (error instanceof Error) console.warn("Could not clean up failed administrator invitation", error.message);
+}
+
+function isAdminRole(value: unknown): value is "uploader" | "approver" | "admin" | "superadmin" {
+  return value === "uploader" || value === "approver" || value === "admin" || value === "superadmin";
+}
+
+type AdminUpdate = {
+  uid: string;
+  disabled?: boolean;
+  role?: "uploader" | "approver" | "admin" | "superadmin";
+  profile?: unknown;
+};
+
+function parseAdminUpdate(value: unknown): AdminUpdate | null {
+  if (typeof value !== "object" || value === null || !("uid" in value) || typeof value.uid !== "string") return null;
+  const input = value;
+  if ("disabled" in input && typeof input.disabled !== "boolean") return null;
+  if ("role" in input && !isAdminRole(input.role)) return null;
+  return {
+    uid: input.uid,
+    ...(typeof input.disabled === "boolean" ? { disabled: input.disabled } : {}),
+    ...(isAdminRole(input.role) ? { role: input.role } : {}),
+    ...("profile" in input ? { profile: input.profile } : {}),
+  };
+}
+
+async function applyAdminUpdate(input: {
+  actorUid: string;
+  update: AdminUpdate;
+  profile: ReturnType<typeof adminInviteProfileSchema.safeParse> | null;
+}): Promise<void> {
+  const { actorUid, update, profile } = input;
+  const changes: Record<string, unknown> = { updatedAt: new Date(), updatedBy: actorUid };
+  if (typeof update.disabled === "boolean") {
+    await adminAuth.updateUser(update.uid, { disabled: update.disabled });
+    changes.status = update.disabled ? "disabled" : "active";
+  }
+  if (update.role) {
+    const target = await adminAuth.getUser(update.uid);
+    await adminAuth.setCustomUserClaims(update.uid, { ...target.customClaims, role: update.role });
+    changes.role = update.role;
+  }
+  if (profile?.success) {
+    const current = await db.collection("admins").doc(update.uid).get();
+    const currentProfile: unknown = current.get("profile");
+    changes.profile = {
+      ...(typeof currentProfile === "object" && currentProfile !== null ? currentProfile : {}),
+      ...profile.data,
+    };
+    changes.profileUpdatedAt = new Date();
+  }
+  await db.collection("admins").doc(update.uid).update(changes);
+}
 async function superadmin(request: NextRequest) {
   const actor = await requireAdmin(request);
   if (actor.role !== "superadmin") throw new Error("FORBIDDEN");
@@ -79,7 +128,8 @@ export async function POST(request: NextRequest) {
         url: absoluteUrl("/admin/login"),
       });
       const site = await db.collection("siteSettings").doc("main").get();
-      const schoolName = String(site.get("schoolName") ?? "").trim() || "Satyam International School";
+      const schoolName =
+        String(site.get("schoolName") ?? "").trim() || "Satyam International School";
       await sendAdminInvitationEmail({
         to: email,
         role,
@@ -97,8 +147,12 @@ export async function POST(request: NextRequest) {
       });
     } catch (error) {
       await Promise.all([
-        adminAuth.deleteUser(user.uid).catch(() => {}),
-        db.collection("admins").doc(user.uid).delete().catch(() => {}),
+        adminAuth.deleteUser(user.uid).catch(ignoreCleanupFailure),
+        db
+          .collection("admins")
+          .doc(user.uid)
+          .delete()
+          .catch(ignoreCleanupFailure),
       ]);
       throw error;
     }
@@ -112,77 +166,31 @@ export async function PATCH(request: NextRequest) {
   try {
     const actor = await superadmin(request);
     await requireSensitiveReauth(request, actor);
-    const body: unknown = await request.json();
-    if (
-      !body ||
-      typeof body !== "object" ||
-      !("uid" in body) ||
-      typeof body.uid !== "string"
-    )
-      return NextResponse.json(
-        { error: "Invalid administrator update." },
-        { status: 400 },
-      );
-    const uid = body.uid;
-    const disabled = "disabled" in body ? body.disabled : undefined;
-    const role = "role" in body ? body.role : undefined;
-    const hasProfile = "profile" in body;
-    const profileResult = hasProfile ? adminInviteProfileSchema.safeParse(body.profile) : null;
+    const update = parseAdminUpdate(await request.json());
+    if (!update)
+      return NextResponse.json({ error: "Invalid administrator update." }, { status: 400 });
+    const hasProfile = "profile" in update;
+    const profileResult = hasProfile ? adminInviteProfileSchema.safeParse(update.profile) : null;
     if (hasProfile && !profileResult?.success)
       return NextResponse.json({ error: "Enter valid staff profile details." }, { status: 400 });
-    if (disabled !== undefined && typeof disabled !== "boolean")
-      return NextResponse.json({ error: "Invalid status." }, { status: 400 });
-    if (
-      role !== undefined &&
-      !(role === "uploader" || role === "approver" || role === "admin" || role === "superadmin")
-    )
-      return NextResponse.json({ error: "Invalid role." }, { status: 400 });
-    if (disabled === undefined && role === undefined && !hasProfile)
-      return NextResponse.json(
-        { error: "No changes supplied." },
-        { status: 400 },
-      );
-    if (uid === actor.uid && disabled === true)
-      return NextResponse.json(
-        { error: "You cannot disable your own account." },
-        { status: 400 },
-      );
-    if (uid === actor.uid && role)
-      return NextResponse.json(
-        { error: "You cannot change your own role." },
-        { status: 400 },
-      );
-    const updates: Record<string, unknown> = {
-      updatedAt: new Date(),
-      updatedBy: actor.uid,
-    };
-    if (typeof disabled === "boolean") {
-      await adminAuth.updateUser(uid, { disabled });
-      updates.status = disabled ? "disabled" : "active";
-    }
-    if (role) {
-      const target = await adminAuth.getUser(uid);
-      await adminAuth.setCustomUserClaims(uid, {
-        ...target.customClaims,
-        role,
-      });
-      updates.role = role;
-    }
-    if (profileResult?.success) {
-      const current = await db.collection("admins").doc(uid).get();
-      const currentProfile = current.get("profile");
-      updates.profile = {
-        ...(currentProfile && typeof currentProfile === "object" ? currentProfile : {}),
-        ...profileResult.data,
-      };
-      updates.profileUpdatedAt = new Date();
-    }
-    await db.collection("admins").doc(uid).update(updates);
+    if (update.disabled === undefined && update.role === undefined && !hasProfile)
+      return NextResponse.json({ error: "No changes supplied." }, { status: 400 });
+    if (update.uid === actor.uid && update.disabled === true)
+      return NextResponse.json({ error: "You cannot disable your own account." }, { status: 400 });
+    if (update.uid === actor.uid && update.role)
+      return NextResponse.json({ error: "You cannot change your own role." }, { status: 400 });
+    await applyAdminUpdate({ actorUid: actor.uid, update, profile: profileResult });
     await writeAuditLog(
       request,
       actor.uid,
-      hasProfile ? "admin.profile_edit" : role ? "admin.role_change" : disabled ? "admin.disable" : "admin.enable",
-      uid,
+      hasProfile
+        ? "admin.profile_edit"
+        : update.role
+          ? "admin.role_change"
+          : update.disabled
+            ? "admin.disable"
+            : "admin.enable",
+      update.uid,
     );
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -203,11 +211,19 @@ export async function DELETE(request: NextRequest) {
 
     const targetRef = db.collection("admins").doc(uid);
     const target = await targetRef.get();
-    if (!target.exists) return NextResponse.json({ error: "Administrator account not found." }, { status: 404 });
+    if (!target.exists)
+      return NextResponse.json({ error: "Administrator account not found." }, { status: 404 });
     if (target.get("role") === "superadmin" && target.get("status") === "active") {
-      const activeSuperadmins = await db.collection("admins").where("role", "==", "superadmin").where("status", "==", "active").get();
+      const activeSuperadmins = await db
+        .collection("admins")
+        .where("role", "==", "superadmin")
+        .where("status", "==", "active")
+        .get();
       if (activeSuperadmins.size <= 1)
-        return NextResponse.json({ error: "You cannot delete the last active superadmin." }, { status: 400 });
+        return NextResponse.json(
+          { error: "You cannot delete the last active superadmin." },
+          { status: 400 },
+        );
     }
 
     await adminAuth.deleteUser(uid);

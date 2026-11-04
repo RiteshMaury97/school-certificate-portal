@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties } from "react";
+
 
 import SiteShell from "@/components/layout/SiteShell";
 import { useT } from "@/i18n/locale-provider";
 import { SITE_MAP, SITE_MAP_GROUPS } from "@/shared/site-map";
+
+import type { CSSProperties } from "react";
 
 const groupTranslationKeys = {
   School: "siteMap.groups.school",

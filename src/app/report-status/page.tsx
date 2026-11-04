@@ -1,5 +1,5 @@
-import { seoMetadata } from "@/shared/seo";
 import ReportStatusView from "@/features/report/ReportStatusView";
+import { seoMetadata } from "@/shared/seo";
 
 export const metadata = seoMetadata("/report-status");
 

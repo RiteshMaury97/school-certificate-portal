@@ -7,8 +7,12 @@ import IconButton from "@/components/ui/IconButton";
 
 import { useTheme } from "./ThemeProvider";
 
+function unsubscribeFromHydration(): void {
+  // The hydration snapshot has no external subscription source.
+}
+
 function subscribeToHydration(): () => void {
-  return () => undefined;
+  return unsubscribeFromHydration;
 }
 
 function getHydratedSnapshot(): boolean {

@@ -3,8 +3,8 @@ import { createCipheriv, randomBytes, scryptSync } from "node:crypto";
 
 import { FieldPath } from "firebase-admin/firestore";
 
-import { db } from "@/server/firebase-admin";
 import { assertServerEnvironment } from "@/server/env";
+import { db } from "@/server/firebase-admin";
 
 export type ExportFormat = "json" | "csv";
 

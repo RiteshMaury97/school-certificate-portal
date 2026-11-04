@@ -4,8 +4,8 @@ import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 
 import { FieldValue } from "firebase-admin/firestore";
 
-import { db } from "./firebase-admin";
 import { assertServerEnvironment } from "./env";
+import { db } from "./firebase-admin";
 import { hashRequesterIp } from "./security";
 import { recordDailySecurityMetric } from "./security-summary";
 

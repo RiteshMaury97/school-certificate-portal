@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState, type FocusEvent } from "react";
-import { z } from "zod";
+import { useCallback, useMemo, useState } from "react";
+
+import type { z } from "zod";
 
 type Errors = Record<string, string>;
 
@@ -32,7 +33,7 @@ export function useFormValidation<T extends z.ZodType>(schema: T, values: unknow
     return false;
   }, [schema, values]);
 
-  const onBlur = useCallback((key: string) => (_event: FocusEvent<HTMLElement>) => {
+  const onBlur = useCallback((key: string) => () => {
     setTouched((current) => new Set(current).add(key));
   }, []);
 

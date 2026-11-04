@@ -4,8 +4,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
 import { requesterIp } from "@/server/request-origin";
-import { contactEnquirySchema as schema } from "@/shared/validation";
 import { consumeSearchBudget, hashRequesterIp, verifyRequestAppCheck, writeAuditLog } from "@/server/security";
+import { contactEnquirySchema as schema } from "@/shared/validation";
 
 import type { NextRequest } from "next/server";
 

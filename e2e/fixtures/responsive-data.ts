@@ -36,8 +36,12 @@ export function studentsFor(scenario: ResponsiveScenario): ResponsiveStudent[] {
   const count = scenario === "worst" ? 500 : 3;
   return Array.from({ length: count }, (_, index) => ({
     id: `student-${String(index).padStart(4, "0")}`,
-    admissionNo: scenario === "worst" ? `ADM-${String(index).padStart(6, "0")}` : `10${index + 1}`,
-    studentName: scenario === "worst" ? longName : (["Rahul Kumar", "Aarav Patel", "Sana Khan"][index % 3] ?? "Rahul Kumar"),
+    admissionNo:
+      scenario === "worst" ? `ADM-${String(index).padStart(6, "0")}` : `10${String(index + 1)}`,
+    studentName:
+      scenario === "worst"
+        ? longName
+        : (["Rahul Kumar", "Aarav Patel", "Sana Khan"][index % 3] ?? "Rahul Kumar"),
     fatherName: scenario === "worst" ? longName : "Amit Kumar",
     motherName: scenario === "worst" ? longName : "Sunita Kumar",
     email: scenario === "worst" ? longEmail : `student${String(index + 1)}@example.test`,
@@ -53,12 +57,18 @@ export function certificatesFor(scenario: ResponsiveScenario): ResponsiveCertifi
   return Array.from({ length: count }, (_, index) => ({
     id: `certificate-${String(index).padStart(4, "0")}`,
     studentId: `student-${String(index).padStart(4, "0")}`,
-    studentName: scenario === "worst" ? longName : (["Rahul Kumar", "Aarav Patel", "Sana Khan"][index % 3] ?? "Rahul Kumar"),
+    studentName:
+      scenario === "worst"
+        ? longName
+        : (["Rahul Kumar", "Aarav Patel", "Sana Khan"][index % 3] ?? "Rahul Kumar"),
     admissionNo: `ADM-${String(index + 1).padStart(6, "0")}`,
     email: scenario === "worst" ? longEmail : `student${String(index + 1)}@example.test`,
     session: "2025-26",
     type: "Marksheet",
-    certificateNumber: scenario === "worst" ? longCertificateNumber : `CERT-2025-${String(index + 1).padStart(4, "0")}`,
+    certificateNumber:
+      scenario === "worst"
+        ? longCertificateNumber
+        : `CERT-2025-${String(index + 1).padStart(4, "0")}`,
     issueDate: "2026-04-15",
     fileName: "marksheet.pdf",
     status: "pending",
@@ -77,11 +87,16 @@ export function siteSettingsFor(scenario: ResponsiveScenario) {
     affiliationNumber: "123456",
     schoolCode: "SI-001",
     principalName: scenario === "worst" ? longName : "Principal Test",
-    principalMessage: scenario === "worst" ? "यह विद्यालय छात्रों के उज्ज्वल भविष्य के लिए समर्पित है। ".repeat(8) : "Welcome to our school.",
+    principalMessage:
+      scenario === "worst"
+        ? "यह विद्यालय छात्रों के उज्ज्वल भविष्य के लिए समर्पित है। ".repeat(8)
+        : "Welcome to our school.",
     principalPhotoUrl: "",
     announcement: { type: "info", textEn: "Admissions information", linkUrl: "" },
     socialLinks: [],
     lastUpdated: "31 October 2026",
-    faqs: [{ questionEn: "How do I find certificates?", answerEn: "Use the certificate search page." }],
+    faqs: [
+      { questionEn: "How do I find certificates?", answerEn: "Use the certificate search page." },
+    ],
   };
 }

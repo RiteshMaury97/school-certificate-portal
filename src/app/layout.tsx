@@ -5,9 +5,9 @@ import { Suspense } from "react";
 import AppProviders from "@/components/providers/AppProviders";
 import { Toaster } from "@/components/ui/toast";
 import { SCHOOL_INFO } from "@/lib/school-info";
-import { SITE_SEO } from "@/shared/seo";
 import { absoluteUrl, getSiteOrigin } from "@/server/site-origin";
 import { getCachedSiteSettings } from "@/server/site-settings-cache";
+import { SITE_SEO } from "@/shared/seo";
 
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";

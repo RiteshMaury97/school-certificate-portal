@@ -345,7 +345,9 @@ export async function POST(request: NextRequest) {
       await delayFailedLookup();
       return genericResponse();
     }
-    return retrieveStudent(request, studentSnapshot.docs[0]!, input.session);
+    const student = studentSnapshot.docs.at(0);
+    if (!student) return genericResponse();
+    return retrieveStudent(request, student, input.session);
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error

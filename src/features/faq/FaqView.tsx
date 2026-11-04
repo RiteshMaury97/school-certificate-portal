@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
 import SiteShell from "@/components/layout/SiteShell";
-import { useLocale, useT } from "@/i18n/locale-provider";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -15,6 +14,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { useLocale, useT } from "@/i18n/locale-provider";
 type Faq = {
   questionEn: string;
   answerEn: string;

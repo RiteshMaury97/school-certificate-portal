@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const file = form.get("file");
     let rawMapping: unknown = {};
     try {
-      rawMapping = JSON.parse(String(form.get("mapping") ?? "{}"));
+      rawMapping = JSON.parse(formString(form, "mapping") || "{}");
     } catch {
       return NextResponse.json({ error: "Mapping JSON is invalid." }, { status: 400 });
     }
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     const intentional = formString(form, "confirmDuplicateHash") === "true";
-    const duplicateReason = String(form.get("duplicateHashReason") ?? "").trim();
+    const duplicateReason = formString(form, "duplicateHashReason").trim();
     if (duplicateDecision === "warn-cross-record" && (!intentional || duplicateReason.length < 10))
       return NextResponse.json(
         {
@@ -143,7 +143,14 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 },
       );
-    const stored = await uploadCertificate(file, map.session, map.certificateType, student.id, admin.uid, request);
+    const stored = await uploadCertificate({
+      file,
+      session: map.session,
+      certificateType: map.certificateType,
+      studentId: student.id,
+      uploaderUid: admin.uid,
+      request,
+    });
     const ref = db.collection("certificates").doc(randomUUID());
     try {
       await createCertificateNumberIndex(map.certificateNumber, ref.id, map.session);

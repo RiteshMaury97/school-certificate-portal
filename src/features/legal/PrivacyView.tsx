@@ -1,16 +1,16 @@
 "use client";
 import { useState } from "react";
 
-import { appCheckHeaders } from "@/lib/firebase-client";
-import { usePublicSiteSettings } from "@/lib/use-site-settings";
 import { FormErrorSummary } from "@/components/forms/FormErrorSummary";
 import { useFormValidation } from "@/components/forms/useFormValidation";
+import LegalPageLayout from "@/components/layout/LegalPageLayout";
+import { appCheckHeaders } from "@/lib/firebase-client";
+import { usePublicSiteSettings } from "@/lib/use-site-settings";
 import { dataRightsRequestSchema } from "@/shared/validation";
 
 import type { LegalSection } from "@/components/layout/LegalPageLayout";
 import type { SubmitEvent } from "react";
 
-import LegalPageLayout from "@/components/layout/LegalPageLayout";
 
 const region = process.env.NEXT_PUBLIC_DATA_HOSTING_REGION || "{{HOSTING_REGION}}";
 const version = process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION || "2026-10";
@@ -21,12 +21,9 @@ export default function PrivacyPage() {
   const address = settings.address?.trim() || "";
   const email = settings.email?.trim() || "";
   const officer = settings.grievanceOfficerName?.trim() || "";
-  const officerEmail = settings.grievanceOfficerEmail?.trim() || "";
-  const officerPhone = settings.grievanceOfficerPhone?.trim() || "";
   const updated = settings.lastUpdated?.trim() || "No data found";
   const retentionYears =
     settings.retentionYears ?? Number(process.env.NEXT_PUBLIC_RETENTION_YEARS || 7);
-  const retentionText = `${retentionYears} years`;
   const backupRotationDays = settings.backupRotationDays ?? 30;
   const [requestType, setRequestType] = useState("");
   const [requesterName, setRequesterName] = useState("");
@@ -328,11 +325,11 @@ export default function PrivacyPage() {
             <strong>Grievance Officer / Data Protection contact:</strong> {officer}
             <br />
             <strong>Email:</strong>
-            <a className="font-semibold text-[var(--text)]" href={`mailto:$sischoolzam@gmail.com`}>
-              sischoolzam@gmail.com
+            <a className="font-semibold text-[var(--text)]" href={`mailto:${settings.grievanceOfficerEmail?.trim() || email}`}>
+              {settings.grievanceOfficerEmail?.trim() || email}
             </a>
             <br />
-            <strong>Phone:</strong> +91 9336950476
+            <strong>Phone:</strong> {settings.grievanceOfficerPhone?.trim() || "Contact the School office"}
             <br />
             <strong>Postal address:</strong> Lodipur Zamania Ghazipur (U.P.),232329
           </p>

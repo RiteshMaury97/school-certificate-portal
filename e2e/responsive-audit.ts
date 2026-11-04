@@ -1,5 +1,3 @@
-import type { Page, Route } from "@playwright/test";
-
 import {
   certificatesFor,
   siteSettingsFor,
@@ -7,21 +5,61 @@ import {
   type ResponsiveScenario,
 } from "./fixtures/responsive-data";
 
+import type { Page, Route } from "@playwright/test";
+
 export const responsiveRoutes = [
-  "/", "/certificates", "/certificates/results", "/certificates/print", "/verify",
-  "/faq", "/contact", "/report-wrong-record", "/data-rights", "/terms", "/privacy",
-  "/offline", "/maintenance", "/this-page-does-not-exist", "/admin/login", "/admin",
-  "/admin/students", "/admin/students/add", "/admin/students/import", "/admin/certificates",
-  "/admin/certificates/upload", "/admin/approvals", "/admin/sessions", "/admin/audit",
-  "/admin/timeline", "/admin/tickets", "/admin/contacts", "/admin/breaches",
-  "/admin/settings", "/admin/announcements", "/admin/faqs", "/admin/admins",
-  "/admin/profile", "/admin/account-sessions",
+  "/",
+  "/certificates",
+  "/certificates/results",
+  "/certificates/print",
+  "/verify",
+  "/faq",
+  "/contact",
+  "/report-wrong-record",
+  "/data-rights",
+  "/terms",
+  "/privacy",
+  "/offline",
+  "/maintenance",
+  "/this-page-does-not-exist",
+  "/admin/login",
+  "/admin",
+  "/admin/students",
+  "/admin/students/add",
+  "/admin/students/import",
+  "/admin/certificates",
+  "/admin/certificates/upload",
+  "/admin/approvals",
+  "/admin/sessions",
+  "/admin/audit",
+  "/admin/timeline",
+  "/admin/tickets",
+  "/admin/contacts",
+  "/admin/breaches",
+  "/admin/settings",
+  "/admin/announcements",
+  "/admin/faqs",
+  "/admin/admins",
+  "/admin/profile",
+  "/admin/account-sessions",
 ] as const;
 
 export const viewports = [
-  [320, 568], [360, 640], [375, 667], [390, 844], [412, 915], [430, 932],
-  [667, 375], [844, 390], [768, 1024], [820, 1180], [1024, 768], [1280, 800],
-  [1440, 900], [1920, 1080], [2560, 1440],
+  [320, 568],
+  [360, 640],
+  [375, 667],
+  [390, 844],
+  [412, 915],
+  [430, 932],
+  [667, 375],
+  [844, 390],
+  [768, 1024],
+  [820, 1180],
+  [1024, 768],
+  [1280, 800],
+  [1440, 900],
+  [1920, 1080],
+  [2560, 1440],
 ] as const;
 
 export const themes = ["light", "dark", "contrast"] as const;
@@ -43,17 +81,42 @@ function scenarioForRoute(path: string): ResponsiveScenario {
   return "normal";
 }
 
-function apiResponse(path: string, scenario: ResponsiveScenario): Record<string, unknown> {
-  const students = studentsFor(scenario);
-  const certificates = certificatesFor(scenario);
-  const catalog = { items: scenario === "empty" ? [] : [{ id: "2025-26", label: "2025-26" }] };
-  if (path.endsWith("/admin/session"))
-    return { authenticated: true, uid: "responsive-audit-admin", email: "responsive.audit@example.test", role: "superadmin", hardExpiresAt: Date.now() + 3_600_000 };
-  if (path.endsWith("/public/site-settings")) return { settings: siteSettingsFor(scenario) };
-  if (path.endsWith("/public/sessions")) return { sessions: scenario === "empty" ? [] : ["2025-26"] };
-  if (path.endsWith("/public/classes")) return { classes: scenario === "empty" ? [] : ["Class 10"] };
-  if (path.endsWith("/certificates/search"))
-    return {
+type ApiResponseBuilder = (
+  scenario: ResponsiveScenario,
+  students: ReturnType<typeof studentsFor>,
+  certificates: ReturnType<typeof certificatesFor>,
+) => Record<string, unknown>;
+
+const apiResponseHandlers: [(path: string) => boolean, ApiResponseBuilder][] = [
+  [
+    (path) => path.endsWith("/admin/session"),
+    () => ({
+      authenticated: true,
+      uid: "responsive-audit-admin",
+      email: "responsive.audit@example.test",
+      role: "superadmin",
+      hardExpiresAt: Date.now() + 3_600_000,
+    }),
+  ],
+  [
+    (path) => path.endsWith("/public/site-settings"),
+    (scenario) => ({ settings: siteSettingsFor(scenario) }),
+  ],
+  [
+    (path) => path.endsWith("/public/sessions"),
+    (scenario) => ({
+      sessions: scenario === "empty" ? [] : ["2025-26"],
+    }),
+  ],
+  [
+    (path) => path.endsWith("/public/classes"),
+    (scenario) => ({
+      classes: scenario === "empty" ? [] : ["Class 10"],
+    }),
+  ],
+  [
+    (path) => path.endsWith("/certificates/search"),
+    (scenario, _students, certificates) => ({
       found: true,
       studentName: scenario === "worst" ? "Aarav VeryLongStudentName".repeat(3) : "Rahul Kumar",
       className: "Class 10",
@@ -69,26 +132,76 @@ function apiResponse(path: string, scenario: ResponsiveScenario): Record<string,
         certificateNumber: certificate.certificateNumber,
         mimeType: "application/pdf",
       })),
-    };
-  if (path.endsWith("/admin/students/list")) return { students };
-  if (path.endsWith("/admin/students")) return { students };
-  if (path.endsWith("/admin/certificates")) return { certificates };
-  if (path.endsWith("/admin/dashboard")) return { stats: { students: students.length, certificates: certificates.length, pending: certificates.length } };
-  if (path.includes("/admin/catalog/")) return catalog;
-  if (path.endsWith("/admin/audit")) return { logs: [] };
-  if (path.endsWith("/admin/timeline")) return { events: [] };
-  if (path.endsWith("/admin/rights")) return { requests: [] };
-  if (path.endsWith("/admin/breaches")) return { breaches: [] };
-  if (path.endsWith("/admin/breaches/summary")) return { summary: {} };
-  if (path.endsWith("/admin/reports")) return { reports: [] };
-  if (path.endsWith("/admin/contact-enquiries")) return { enquiries: [] };
-  if (path.endsWith("/admin/faqs")) return { faqs: siteSettingsFor(scenario).faqs };
-  if (path.endsWith("/admin/users")) return { admins: [] };
-  if (path.endsWith("/admin/site-settings")) return { settings: siteSettingsFor(scenario), recentLocationBlocks: [] };
-  if (path.endsWith("/admin/profile")) return { profile: {}, account: {} };
-  if (path.endsWith("/admin/sessions")) return { sessions: [], recentLogins: [] };
-  if (path.endsWith("/public/search")) return { certificates };
-  return { ok: true, items: [], certificates: [], students: [], reports: [], requests: [], breaches: [], enquiries: [], events: [], logs: [] };
+    }),
+  ],
+  [
+    (path) => path.endsWith("/admin/students/list") || path.endsWith("/admin/students"),
+    (_scenario, students) => ({ students }),
+  ],
+  [
+    (path) => path.endsWith("/admin/certificates"),
+    (_scenario, _students, certificates) => ({ certificates }),
+  ],
+  [
+    (path) => path.endsWith("/admin/dashboard"),
+    (_scenario, students, certificates) => ({
+      stats: {
+        students: students.length,
+        certificates: certificates.length,
+        pending: certificates.length,
+      },
+    }),
+  ],
+  [
+    (path) => path.includes("/admin/catalog/"),
+    (scenario) => ({
+      items: scenario === "empty" ? [] : [{ id: "2025-26", label: "2025-26" }],
+    }),
+  ],
+  [(path) => path.endsWith("/admin/audit"), () => ({ logs: [] })],
+  [(path) => path.endsWith("/admin/timeline"), () => ({ events: [] })],
+  [(path) => path.endsWith("/admin/rights"), () => ({ requests: [] })],
+  [(path) => path.endsWith("/admin/breaches"), () => ({ breaches: [] })],
+  [(path) => path.endsWith("/admin/breaches/summary"), () => ({ summary: {} })],
+  [(path) => path.endsWith("/admin/reports"), () => ({ reports: [] })],
+  [(path) => path.endsWith("/admin/contact-enquiries"), () => ({ enquiries: [] })],
+  [
+    (path) => path.endsWith("/admin/faqs"),
+    (scenario) => ({ faqs: siteSettingsFor(scenario).faqs }),
+  ],
+  [(path) => path.endsWith("/admin/users"), () => ({ admins: [] })],
+  [
+    (path) => path.endsWith("/admin/site-settings"),
+    (scenario) => ({
+      settings: siteSettingsFor(scenario),
+      recentLocationBlocks: [],
+    }),
+  ],
+  [(path) => path.endsWith("/admin/profile"), () => ({ profile: {}, account: {} })],
+  [(path) => path.endsWith("/admin/sessions"), () => ({ sessions: [], recentLogins: [] })],
+  [
+    (path) => path.endsWith("/public/search"),
+    (_scenario, _students, certificates) => ({ certificates }),
+  ],
+];
+
+function apiResponse(path: string, scenario: ResponsiveScenario): Record<string, unknown> {
+  const students = studentsFor(scenario);
+  const certificates = certificatesFor(scenario);
+  const handler = apiResponseHandlers.find(([matches]) => matches(path));
+  if (handler) return handler[1](scenario, students, certificates);
+  return {
+    ok: true,
+    items: [],
+    certificates: [],
+    students: [],
+    reports: [],
+    requests: [],
+    breaches: [],
+    enquiries: [],
+    events: [],
+    logs: [],
+  };
 }
 
 async function routeApi(route: Route, scenario: ResponsiveScenario) {
@@ -101,13 +214,25 @@ export async function mockResponsiveApis(page: Page, scenario: ResponsiveScenari
   await page.unrouteAll({ behavior: "wait" });
   await page.route("**/api/**", (route) => routeApi(route, scenario));
   await page.route("**/firebaseappcheck.googleapis.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token: "e2e-app-check-token", ttl: "3600s" }) }),
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ token: "e2e-app-check-token", ttl: "3600s" }),
+    }),
   );
   await page.route("**/identitytoolkit.googleapis.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ idToken: "e2e-token" }) }),
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ idToken: "e2e-token" }),
+    }),
   );
   await page.route("**/securetoken.googleapis.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ access_token: "e2e-token" }) }),
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ access_token: "e2e-token" }),
+    }),
   );
   await page.route("**/firebasestorage.googleapis.com/**", (route) =>
     route.fulfill({ status: 200, body: "" }),
@@ -120,8 +245,12 @@ export async function mockResponsiveApis(page: Page, scenario: ResponsiveScenari
           options.callback?.("responsive-audit-turnstile-token");
           return "responsive-audit";
         },
-        reset: () => undefined,
-        remove: () => undefined,
+        reset: () => {
+          // The test mock has no external widget state to reset.
+        },
+        remove: () => {
+          // The test mock does not create a DOM widget to remove.
+        },
       },
     });
   });

@@ -1,7 +1,5 @@
 import { Bell, Menu, Moon, Monitor, Sun, UserRound, X } from "lucide-react";
 
-import IncidentSummaryBadge from "./IncidentSummaryBadge";
-import { tabLabels } from "../../config/admin-navigation";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -10,6 +8,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+
+import IncidentSummaryBadge from "./IncidentSummaryBadge";
+import { tabLabels } from "../../config/admin-navigation";
 
 import type { Tab } from "../../types/admin.types";
 import type { Role } from "../../types/admin.types";

@@ -1,16 +1,15 @@
 "use client";
+import LegalPageLayout from "@/components/layout/LegalPageLayout";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import type { LegalSection } from "@/components/layout/LegalPageLayout";
 
-import LegalPageLayout from "@/components/layout/LegalPageLayout";
 
 const version = process.env.NEXT_PUBLIC_TERMS_VERSION || "1.0";
 
 export default function TermsPage() {
   const settings = usePublicSiteSettings();
   const school = settings.schoolName?.trim() || "Satyam International School";
-  const address = settings.address?.trim() || "";
   const email = settings.email?.trim() || "";
   const jurisdiction = settings.jurisdiction?.trim() || "";
   const updated = settings.lastUpdated?.trim() || "No data found";

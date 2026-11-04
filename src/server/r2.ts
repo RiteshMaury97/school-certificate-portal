@@ -14,8 +14,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { PDFDocument, PDFArray, PDFDict, PDFName, PDFRef } from "pdf-lib";
 import sharp from "sharp";
 
-import { db } from "@/server/firebase-admin";
 import { assertServerEnvironment } from "@/server/env";
+import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
 import { MalwareScanError, scanForMalware } from "@/server/malware-scan";
 import { writeAuditLog } from "@/server/security";
@@ -25,6 +25,10 @@ import type { NextRequest } from "next/server";
 
 const MAX_FILE_BYTES = UPLOAD_MAX_BYTES;
 type SupportedMimeType = "application/pdf" | "image/jpeg" | "image/png";
+
+function ignoreAuditFailure(error: unknown): void {
+  if (error instanceof Error) console.warn("Could not record malware scan audit event", error.message);
+}
 
 function required(name: string): string {
   assertServerEnvironment();
@@ -218,14 +222,75 @@ export type R2Upload = {
   scannerVersion: string;
   signatureDatabaseDate: string;
 };
-export async function uploadCertificate(
-  file: File,
-  session: string,
-  certificateType: string,
-  studentId?: string,
-  uploaderUid?: string,
-  request?: NextRequest,
-): Promise<R2Upload> {
+type UploadCertificateInput = {
+  file: File;
+  session: string;
+  certificateType: string;
+  studentId?: string;
+  uploaderUid?: string;
+  request?: NextRequest;
+};
+
+type MalwareScanResult = {
+  scanStatus: "clean" | "error";
+  scannedAt: Date | null;
+  scannerVersion: string;
+  signatureDatabaseDate: string;
+};
+
+async function rejectInfectedCertificate(
+  input: UploadCertificateInput,
+  signature: string,
+  sha256: string,
+): Promise<never> {
+  if (input.request)
+    await writeAuditLog(input.request, input.uploaderUid ?? "unknown", "certificate.malware_infected", sha256, input.studentId, {
+      details: { signature, sha256 },
+    });
+  await emailMalwareDetection(input.file.name, signature, sha256);
+  throw new Error("Malware detected; upload blocked");
+}
+
+async function scanUploadedCertificate(
+  input: UploadCertificateInput,
+  buffer: Buffer,
+  sha256: string,
+): Promise<MalwareScanResult> {
+  const { request, uploaderUid, studentId } = input;
+  try {
+    const malware = await scanForMalware(buffer);
+    if (malware?.status === "infected")
+      return await rejectInfectedCertificate(input, malware.signature, sha256);
+    if (!malware) {
+      if (process.env.NODE_ENV === "production") throw new MalwareScanError();
+      return { scanStatus: "error", scannedAt: null, scannerVersion: "", signatureDatabaseDate: "" };
+    }
+    return {
+      scanStatus: "clean",
+      scannedAt: new Date(),
+      scannerVersion: malware.version.version,
+      signatureDatabaseDate: malware.version.signatureDatabaseDate,
+    };
+  } catch (error) {
+    if (error instanceof MalwareScanError) throw error;
+    if (error instanceof Error && error.message === "Malware detected; upload blocked") throw error;
+    if (request)
+      await writeAuditLog(request, uploaderUid ?? "unknown", "certificate.malware_scan_error", sha256, studentId, {
+        details: { message: "Security scan unavailable, try again", sha256 },
+      }).catch(ignoreAuditFailure);
+    if (process.env.NODE_ENV === "production") throw new MalwareScanError();
+    return { scanStatus: "error", scannedAt: null, scannerVersion: "", signatureDatabaseDate: "" };
+  }
+}
+
+export async function uploadCertificate({
+  file,
+  session,
+  certificateType,
+  studentId,
+  uploaderUid,
+  request,
+}: UploadCertificateInput): Promise<R2Upload> {
   if (file.size <= 0 || file.size > MAX_FILE_BYTES)
     throw new Error("Certificate must be between 1 byte and 4 MB");
   validateSession(session);
@@ -233,43 +298,14 @@ export async function uploadCertificate(
   if (buffer.byteLength !== file.size) throw new Error("File size validation failed");
   const detected = await validateCertificateFile(buffer, file.name, file.type);
   const sha256 = createHash("sha256").update(buffer).digest("hex");
-  let scanStatus: "clean" | "error" = "error";
-  let scannedAt: Date | null = null;
-  let scannerVersion = "";
-  let signatureDatabaseDate = "";
-  try {
-    const malware = await scanForMalware(buffer);
-    if (malware?.status === "infected") {
-      if (request)
-        await writeAuditLog(request, uploaderUid ?? "unknown", "certificate.malware_infected", sha256, studentId, {
-          details: { signature: malware.signature, sha256 },
-        });
-      await emailMalwareDetection(file.name, malware.signature, sha256);
-      throw new Error("MALWARE_DETECTED");
-    }
-    if (malware) {
-      scanStatus = "clean";
-      scannedAt = new Date();
-      scannerVersion = malware.version.version;
-      signatureDatabaseDate = malware.version.signatureDatabaseDate;
-    }
-  } catch (error) {
-    const infected = error instanceof Error && error.message === "MALWARE_DETECTED";
-    const message = infected ? "Malware detected; upload blocked" : "Security scan unavailable, try again";
-    if (infected) throw new Error(message);
-    if (request)
-      await writeAuditLog(request, uploaderUid ?? "unknown", "certificate.malware_scan_error", sha256, studentId, {
-        details: { message, sha256 },
-      }).catch(() => undefined);
-    throw new MalwareScanError();
-  }
-  if (scanStatus !== "clean" && process.env.NODE_ENV === "production") {
-    if (request)
-      await writeAuditLog(request, uploaderUid ?? "unknown", "certificate.malware_scan_error", sha256, studentId, {
-        details: { message: "scanner disabled", sha256 },
-      });
-    throw new MalwareScanError();
-  }
+  const scan = await scanUploadedCertificate({
+    file,
+    session,
+    certificateType,
+    studentId,
+    uploaderUid,
+    request,
+  }, buffer, sha256);
   const slug = certificateTypeSlug(certificateType);
   const r2Key = `certificates/${session}/${slug}/${randomUUID()}${detected.extension}`;
   await client().send(
@@ -288,10 +324,7 @@ export async function uploadCertificate(
     mimeType: detected.mimeType,
     sha256,
     fileName: file.name.replace(/[\\/\0\u202a-\u202e\u2066-\u2069\x00-\x1f\x7f]/g, "").slice(0, 255),
-    scanStatus,
-    scannedAt,
-    scannerVersion,
-    signatureDatabaseDate,
+    ...scan,
   };
 }
 
@@ -303,7 +336,7 @@ async function emailMalwareDetection(fileName: string, signature: string, sha256
     to: recipients,
     subject: "Malware blocked in certificate upload",
     text: `ClamAV blocked an uploaded certificate. File name: ${fileName}. Signature: ${signature}. SHA-256: ${sha256}. The file was not written to R2.`,
-  }).catch(() => console.error("Malware detection email could not be sent."));
+  }).catch(() => { console.error("Malware detection email could not be sent."); });
 }
 export async function readR2Object(r2Key: string): Promise<Buffer> {
   validateCertificateKey(r2Key);

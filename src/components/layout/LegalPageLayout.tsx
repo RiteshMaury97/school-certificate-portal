@@ -39,7 +39,7 @@ function LegalHeader({
           &quot;Version&quot; {version}
         </span>
         <span className="rounded-full bg-[var(--surface-2)] px-3 py-1.5">
-          Last updated : 04/11/2026
+          Last updated: {updated}
         </span>
         <button
           type="button"

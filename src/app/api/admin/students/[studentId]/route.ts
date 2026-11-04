@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
+
 import { removeCertificateNumberIndex } from "@/server/certificate-index";
 import { db } from "@/server/firebase-admin";
 import {
@@ -26,7 +27,178 @@ import { normalizeAcademicSession } from "@/shared/academic-session";
 import { studentUpdateSchema } from "@/shared/validation";
 
 import type { NextRequest} from "next/server";
+import type { z } from "zod";
+import type { z } from "zod";
 export const runtime = "nodejs";
+
+function getChangedStudentFields(
+  data: z.output<typeof studentUpdateSchema>,
+  snapshot: FirebaseFirestore.DocumentSnapshot,
+): string[] {
+  const fieldKeys = [
+    "studentName",
+    "fatherName",
+    "motherName",
+    "admissionNumber",
+    "dateOfBirth",
+    "className",
+    "scholarNumber",
+    "session",
+  ] as const;
+  return fieldKeys
+    .filter((key) => {
+      const rawBefore: unknown = key === "admissionNumber"
+        ? snapshot.get("admissionNumber") ?? snapshot.get("admissionNo")
+        : snapshot.get(key);
+      const storedValue = typeof rawBefore === "string" ? rawBefore : "";
+      const before = ["scholarNumber", "dateOfBirth", "admissionNumber"].includes(key)
+        ? storedValue ? decryptStudentIdentifier(storedValue) : ""
+        : storedValue;
+      return before !== data[key];
+    })
+    .map((key) => key === "admissionNumber" ? "admission number" : key === "dateOfBirth" ? "date of birth" : key);
+}
+
+async function validateLinkedCertificateSessions(
+  studentId: string,
+  requestedSession: string,
+  currentSession: string,
+): Promise<boolean> {
+  const linked = await db.collection("certificates").where("studentId", "==", studentId).get();
+  if (!linked.size || requestedSession === currentSession) return true;
+  return linked.docs.every((certificate) => {
+    const value: unknown = certificate.get("session");
+    return normalizeAcademicSession(typeof value === "string" ? value : "") === requestedSession;
+  });
+}
+
+async function hasDuplicateScholarNumber(
+  studentId: string,
+  data: z.output<typeof studentUpdateSchema>,
+): Promise<boolean> {
+  const lookupKey = scholarLookupHmac(data.scholarNumber, data.className, data.session);
+  const matches = await db.collection("students").where("scholarLookupKey", "==", lookupKey).get();
+  return matches.docs.some((document) => document.id !== studentId);
+}
+
+async function hasDuplicateStudentIdentity(
+  studentId: string,
+  searchKey: string,
+  dateOfBirthKey: string,
+  admissionNumberKey: string,
+): Promise<{ missingDisambiguator: boolean; duplicate: boolean }> {
+  const matches = await db.collection("students").where("searchKey", "==", searchKey).get();
+  const others = matches.docs.filter((document) => document.id !== studentId);
+  return {
+    missingDisambiguator: others.length > 0 && !dateOfBirthKey && !admissionNumberKey,
+    duplicate: others.some((document) =>
+      studentIdentityMatches(document.data(), dateOfBirthKey, admissionNumberKey),
+    ),
+  };
+}
+
+async function validateStudentUpdate(
+  input: {
+    studentId: string;
+    data: z.output<typeof studentUpdateSchema>;
+    snapshot: FirebaseFirestore.DocumentSnapshot;
+  },
+): Promise<{ ok: false; response: NextResponse } | {
+  ok: true;
+  searchKey: string;
+  dateOfBirth: string;
+  admissionNumber: string;
+  dateOfBirthKey: string;
+  admissionNumberKey: string;
+} > {
+  const { studentId, data, snapshot } = input;
+  const storedSession: unknown = snapshot.get("session");
+  const currentSession = normalizeAcademicSession(
+    typeof storedSession === "string" ? storedSession : "",
+  );
+  if (!(await validateLinkedCertificateSessions(
+    studentId,
+    normalizeAcademicSession(data.session),
+    currentSession,
+  )))
+    return { ok: false, response: NextResponse.json(
+      { error: "This student has linked certificates in another session. Update the certificates to the same session before changing the student session." },
+      { status: 409 },
+    ) };
+  if (await hasDuplicateScholarNumber(studentId, data))
+    return { ok: false, response: NextResponse.json(
+      { error: "That scholar number is already assigned in this class and session." },
+      { status: 409 },
+    ) };
+  const searchKey = createSearchKey(data);
+  const dateOfBirth = data.dateOfBirth ?? "";
+  const storedAdmission: unknown = snapshot.get("admissionNo");
+  const admissionNumber = data.admissionNumber ?? (typeof storedAdmission === "string" ? storedAdmission : "");
+  const dateOfBirthKey = dateOfBirth ? studentIdentifierHmac(dateOfBirth) : "";
+  const admissionNumberKey = admissionNumber ? studentIdentifierHmac(admissionNumber) : "";
+  const identityCheck = await hasDuplicateStudentIdentity(
+    studentId,
+    searchKey,
+    dateOfBirthKey,
+    admissionNumberKey,
+  );
+  if (identityCheck.missingDisambiguator)
+    return { ok: false, response: NextResponse.json(
+      { error: "Duplicate name combination detected: add a date of birth or admission number so students can be told apart." },
+      { status: 409 },
+    ) };
+  if (identityCheck.duplicate)
+    return { ok: false, response: NextResponse.json(
+      { error: "The supplied date of birth or admission number is already assigned to another matching student." },
+      { status: 409 },
+    ) };
+  return {
+    ok: true,
+    searchKey,
+    dateOfBirth,
+    admissionNumber,
+    dateOfBirthKey,
+    admissionNumberKey,
+  };
+}
+
+function buildStudentUpdate(
+  input: {
+    data: z.output<typeof studentUpdateSchema>;
+    adminUid: string;
+    searchKey: string;
+    scholarLookupKey: string;
+    admissionNumber: string;
+    dateOfBirth: string;
+    dateOfBirthKey: string;
+    admissionNumberKey: string;
+  },
+): Record<string, unknown> {
+  const { data, adminUid, searchKey, scholarLookupKey, admissionNumber, dateOfBirth, dateOfBirthKey, admissionNumberKey } = input;
+  const update: Record<string, unknown> = {
+    studentName: data.studentName,
+    fatherName: data.fatherName,
+    motherName: data.motherName,
+    className: data.className,
+    scholarNumber: encryptStudentIdentifier(data.scholarNumber),
+    scholarLookupKey,
+    session: data.session,
+    searchKey,
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedBy: adminUid,
+  };
+  if (dateOfBirth) {
+    update.dateOfBirth = encryptStudentIdentifier(dateOfBirth);
+    update.dateOfBirthDisambiguationKey = dateOfBirthKey;
+  }
+  if (admissionNumber) {
+    update.admissionNumber = encryptStudentIdentifier(admissionNumber);
+    update.admissionNumberDisambiguationKey = admissionNumberKey;
+    update.admissionNo = FieldValue.delete();
+  }
+  return update;
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ studentId: string }> },
@@ -48,121 +220,21 @@ export async function PATCH(
         { error: "Student not found." },
         { status: 404 },
       );
-    const changedFields = (Object.keys(data) as (keyof typeof data)[]).filter((key) => {
-      const rawBefore = key === "admissionNumber"
-        ? String(snapshot.get("admissionNumber") ?? snapshot.get("admissionNo") ?? "")
-        : String(snapshot.get(key) ?? "");
-      const before = key === "scholarNumber" || key === "dateOfBirth" || key === "admissionNumber"
-        ? (rawBefore ? decryptStudentIdentifier(rawBefore) : "")
-        : rawBefore;
-      return before !== String(data[key] ?? "");
-    }).map((key) => key === "admissionNumber" ? "admission number" : key === "dateOfBirth" ? "date of birth" : key);
-    const currentSession = normalizeAcademicSession(
-      String(snapshot.get("session") ?? ""),
-    );
-    const linkedCertificates = await db
-      .collection("certificates")
-      .where("studentId", "==", studentId)
-      .get();
-    const requestedSession = normalizeAcademicSession(data.session);
-    if (
-      linkedCertificates.size > 0 &&
-      requestedSession !== currentSession &&
-      linkedCertificates.docs.some(
-        (certificate) =>
-          normalizeAcademicSession(String(certificate.get("session") ?? "")) !==
-          requestedSession,
-      )
-    )
-      return NextResponse.json(
-        {
-          error:
-            "This student has linked certificates in another session. Update the certificates to the same session before changing the student session.",
-        },
-        { status: 409 },
-      );
-    const searchKey = createSearchKey(data);
-    const scholarLookupKey = scholarLookupHmac(
-      data.scholarNumber,
-      data.className,
-      data.session,
-    );
-    const scholarMatches = await db
-      .collection("students")
-      .where("scholarLookupKey", "==", scholarLookupKey)
-      .get();
-    if (scholarMatches.docs.some((document) => document.id !== studentId))
-      return NextResponse.json(
-        { error: "That scholar number is already assigned in this class and session." },
-        { status: 409 },
-      );
-    const duplicates = await db
-      .collection("students")
-      .where("searchKey", "==", searchKey)
-      .get();
-    const dateOfBirth = data.dateOfBirth || "";
-    const legacyAdmissionNumber = String(snapshot.get("admissionNo") ?? "");
-    const admissionNumber = data.admissionNumber || legacyAdmissionNumber;
-    const dateOfBirthDisambiguationKey = dateOfBirth
-      ? studentIdentifierHmac(dateOfBirth)
-      : "";
-    const admissionNumberDisambiguationKey = admissionNumber
-      ? studentIdentifierHmac(admissionNumber)
-      : "";
-    const otherDuplicates = duplicates.docs.filter(
-      (doc) => doc.id !== studentId,
-    );
-    if (
-      otherDuplicates.length &&
-      !dateOfBirthDisambiguationKey &&
-      !admissionNumberDisambiguationKey
-    )
-      return NextResponse.json(
-        {
-          error:
-            "Duplicate name combination detected: add a date of birth or admission number so students can be told apart.",
-        },
-        { status: 409 },
-      );
-    if (
-      otherDuplicates.some((doc) =>
-        studentIdentityMatches(
-          doc.data(),
-          dateOfBirthDisambiguationKey,
-          admissionNumberDisambiguationKey,
-        ),
-      )
-    )
-      return NextResponse.json(
-        {
-          error:
-            "The supplied date of birth or admission number is already assigned to another matching student.",
-        },
-        { status: 409 },
-      );
-    const update: Record<string, unknown> = {
-      studentName: data.studentName,
-      fatherName: data.fatherName,
-      motherName: data.motherName,
-      className: data.className,
-      scholarNumber: encryptStudentIdentifier(data.scholarNumber),
-      scholarLookupKey,
-      session: data.session,
+    const changedFields = getChangedStudentFields(data, snapshot);
+    const validation = await validateStudentUpdate({ studentId, data, snapshot });
+    if (!validation.ok) return validation.response;
+    const { searchKey, dateOfBirth, admissionNumber, dateOfBirthKey: dateOfBirthDisambiguationKey, admissionNumberKey: admissionNumberDisambiguationKey } = validation;
+    const scholarLookupKey = scholarLookupHmac(data.scholarNumber, data.className, data.session);
+    const update = buildStudentUpdate({
+      data,
+      adminUid: admin.uid,
       searchKey,
-      updatedAt: FieldValue.serverTimestamp(),
-      updatedBy: admin.uid,
-      ...(admissionNumber ? { admissionNo: FieldValue.delete() } : {}),
-    };
-    if (dateOfBirth) {
-      update.dateOfBirth = encryptStudentIdentifier(dateOfBirth);
-      update.dateOfBirthDisambiguationKey = dateOfBirthDisambiguationKey;
-    }
-    if (admissionNumber) {
-      update.admissionNumber = encryptStudentIdentifier(admissionNumber);
-      update.admissionNumberDisambiguationKey =
-        admissionNumberDisambiguationKey;
-      update.admissionNo = FieldValue.delete();
-    }
+      scholarLookupKey,
+      admissionNumber,
+      dateOfBirth,
+      dateOfBirthKey: dateOfBirthDisambiguationKey,
+      admissionNumberKey: admissionNumberDisambiguationKey,
+    });
     await ref.update(update);
     await writeAuditLog(
       request,

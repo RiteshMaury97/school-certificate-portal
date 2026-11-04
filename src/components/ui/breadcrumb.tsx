@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { ChevronRight, MoreHorizontal } from "lucide-react";
+import Link from "next/link";
 
 import type { ComponentProps, ReactNode } from "react";
 

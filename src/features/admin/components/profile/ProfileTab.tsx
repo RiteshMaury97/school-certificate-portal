@@ -4,6 +4,7 @@ import { Camera, Check, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useState, type ChangeEvent, type SubmitEvent, type ReactNode } from "react";
 
 import { DatePicker } from "@/components/ui/DatePicker";
+
 import type { Role } from "../../types/admin.types";
 
 type Profile = {
@@ -376,6 +377,7 @@ export default function ProfileTab({
                       <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-sm font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]">
                         <Camera size={16} aria-hidden="true" /> Upload profile photo
                         <input
+                          aria-label="Upload profile photo"
                           type="file"
                           accept="image/*"
                           onChange={(event) => void updatePhoto(event)}
@@ -404,6 +406,7 @@ export default function ProfileTab({
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Full name *">
                       <input
+                        aria-label="Full name"
                         required aria-required="true"
                         minLength={2}
                         maxLength={80}
@@ -415,6 +418,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Preferred name">
                       <input
+                        aria-label="Preferred name"
                         maxLength={80}
                         value={profile.preferredName}
                         onChange={(event) => { update("preferredName", event.target.value); }}
@@ -424,6 +428,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Employee / Staff ID">
                       <input
+                        aria-label="Employee / Staff ID"
                         maxLength={50}
                         value={profile.staffId}
                         onChange={(event) => { update("staffId", event.target.value); }}
@@ -432,6 +437,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Gender">
                       <select
+                        aria-label="Gender"
                         value={profile.gender}
                         onChange={(event) => { update("gender", event.target.value); }}
                         className={inputClass}
@@ -462,6 +468,7 @@ export default function ProfileTab({
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Job title / Position">
                       <input
+                        aria-label="Job title / Position"
                         maxLength={120}
                         value={profile.position}
                         onChange={(event) => { update("position", event.target.value); }}
@@ -471,6 +478,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Department">
                       <input
+                        aria-label="Department"
                         maxLength={120}
                         value={profile.department}
                         onChange={(event) => { update("department", event.target.value); }}
@@ -480,6 +488,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Staff designation">
                       <input
+                        aria-label="Staff designation"
                         maxLength={120}
                         value={profile.designation}
                         onChange={(event) => { update("designation", event.target.value); }}
@@ -488,6 +497,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Campus / Branch">
                       <input
+                        aria-label="Campus / Branch"
                         maxLength={120}
                         value={profile.campus}
                         onChange={(event) => { update("campus", event.target.value); }}
@@ -505,6 +515,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Reporting manager">
                       <input
+                        aria-label="Reporting manager"
                         maxLength={100}
                         value={profile.reportingManager}
                         onChange={(event) => { update("reportingManager", event.target.value); }}
@@ -513,6 +524,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Office location" className="sm:col-span-2">
                       <input
+                        aria-label="Office location"
                         maxLength={160}
                         value={profile.officeLocation}
                         onChange={(event) => { update("officeLocation", event.target.value); }}
@@ -530,6 +542,7 @@ export default function ProfileTab({
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Official email">
                       <input
+                        aria-label="Official email"
                         readOnly
                         value={email}
                         className={`${inputClass} cursor-not-allowed opacity-75`}
@@ -540,6 +553,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Personal / alternate email">
                       <input
+                        aria-label="Personal or alternate email"
                         type="email"
                         maxLength={254}
                         value={profile.alternateEmail}
@@ -549,6 +563,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Primary phone number">
                       <input
+                        aria-label="Primary phone number"
                         type="tel"
                         inputMode="tel"
                         autoComplete="tel"
@@ -562,6 +577,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Secondary phone number">
                       <input
+                        aria-label="Secondary phone number"
                         type="tel"
                         inputMode="tel"
                         autoComplete="tel"
@@ -575,6 +591,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Address" className="sm:col-span-2">
                       <textarea
+                        aria-label="Address"
                         rows={3}
                         maxLength={500}
                         value={profile.address}
@@ -675,6 +692,7 @@ export default function ProfileTab({
                   <div className="mt-3 space-y-3">
                     <Field label="Contact name">
                       <input
+                        aria-label="Emergency contact name"
                         minLength={2}
                         maxLength={80}
                         pattern="[\\p{L}\\p{M} .'-]+"
@@ -685,6 +703,7 @@ export default function ProfileTab({
                     </Field>
                     <Field label="Contact phone">
                       <input
+                        aria-label="Emergency contact phone"
                         type="tel"
                         inputMode="tel"
                         autoComplete="tel"
@@ -707,6 +726,7 @@ export default function ProfileTab({
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field label="Preferred language">
                   <select
+                    aria-label="Preferred language"
                     value={profile.preferredLanguage}
                     onChange={(event) => { update("preferredLanguage", event.target.value); }}
                     className={inputClass}
@@ -724,6 +744,7 @@ export default function ProfileTab({
                 </Field>
                 <Field label="Time zone">
                   <select
+                    aria-label="Time zone"
                     value={profile.timeZone}
                     onChange={(event) => { update("timeZone", event.target.value); }}
                     className={inputClass}
@@ -737,6 +758,7 @@ export default function ProfileTab({
                 </Field>
                 <Field label="Date format">
                   <select
+                    aria-label="Date format"
                     value={profile.dateFormat}
                     onChange={(event) => { update("dateFormat", event.target.value); }}
                     className={inputClass}
@@ -812,6 +834,7 @@ function Toggle({
   return (
     <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--divider)] bg-[var(--bg)] p-3">
       <input
+        aria-label={label}
         type="checkbox"
         checked={checked}
         onChange={(event) => { onChange(event.target.checked); }}

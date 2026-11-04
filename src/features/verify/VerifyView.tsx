@@ -1,15 +1,15 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
 import { BadgeCheck, FileCheck2, Fingerprint, LoaderCircle, ShieldCheck } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
+import SiteShell from "@/components/layout/SiteShell";
+import { useT } from "@/i18n/locale-provider";
 import { appCheckHeaders } from "@/lib/firebase-client";
 
 import type { SubmitEvent} from "react";
 
-import SiteShell from "@/components/layout/SiteShell";
-import { useT } from "@/i18n/locale-provider";
 
 type Verification =
   | {
@@ -259,7 +259,7 @@ export default function VerifyPage() {
                   id={`${formId}-session`}
                   required aria-required="true"
                   value={session}
-                  onChange={(event) => setSession(event.target.value)}
+                  onChange={(event) => { setSession(event.target.value); }}
                   disabled={sessionsLoading || sessionsLoadError || sessions.length === 0}
                   aria-label="Academic session (required)"
                   className="mt-2 min-h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3 text-base font-normal outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
@@ -332,6 +332,15 @@ export default function VerifyPage() {
         {failed && !loading && (
           <div className="mt-6">
             <EmptyState title={genericFailure} />
+          </div>
+        )}
+        {networkError && !loading && (
+          <div className="mt-6" role="alert">
+            <ErrorState
+              title="Verification could not be completed"
+              description="Check your connection and try again."
+              onRetry={() => formRef.current?.requestSubmit()}
+            />
           </div>
         )}
         {result && !loading && (

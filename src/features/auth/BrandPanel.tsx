@@ -3,6 +3,7 @@ import { Globe, Mail, MapPin, Phone } from "lucide-react";
 import Logo from "@/components/ui/Logo";
 import { SCHOOL_INFO } from "@/lib/school-info";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
+
 import { OFFICIAL_WEBSITE } from "../../../config/school";
 
 type ContactItem = {

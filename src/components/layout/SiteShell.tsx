@@ -123,7 +123,10 @@ function SchoolMetadata({ settings }: { settings: PublicSiteSettings }) {
 
 function PrincipalMessage({ settings }: { settings: PublicSiteSettings }) {
   const { locale } = useLocale();
-  const message = settings.principalMessage_i18n?.[locale]?.trim() || settings.principalMessage?.trim();
+  const message = [
+    settings.principalMessage_i18n?.[locale]?.trim(),
+    settings.principalMessage?.trim(),
+  ].find((value) => Boolean(value));
   if (!message) return null;
 
   return (
@@ -163,7 +166,10 @@ export default function SiteShell({ children }: { children: ReactNode }) {
   useServiceWorkerMaintenance();
 
   const announcement = settings.announcement;
-  const announcementText = announcement?.text_i18n?.[locale]?.trim() || announcement?.textEn.trim();
+  const localizedAnnouncement = announcement?.text_i18n?.[locale]?.trim();
+  const announcementText = [localizedAnnouncement, announcement?.textEn.trim()].find(
+    (value) => Boolean(value),
+  );
   const schoolName = displaySchoolName(settings.schoolName);
 
   return (

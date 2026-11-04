@@ -10,10 +10,78 @@ import type { AdminSessionState } from "@/features/auth/admin-session";
 
 type Api = <T extends Record<string, unknown> = Record<string, unknown>>(url: string, init?: RequestInit) => Promise<T>;
 type Props = { sessionState: AdminSessionState; api: Api; onLogin: () => void };
+function ignoreRequestFailure(error: unknown): void {
+  if (error instanceof Error) console.warn("Session refresh failed", error.message);
+}
+function readHardExpiry(value: unknown): number | null {
+  if (typeof value !== "object" || value === null || !("hardExpiresAt" in value)) return null;
+  return typeof value.hardExpiresAt === "number" ? value.hardExpiresAt : null;
+}
+function useSessionExpiryTimers(
+  email: string,
+  logout: () => Promise<void>,
+  setIdleWarning: (value: boolean) => void,
+): void {
+  useEffect(() => {
+    if (!email) return;
+    let lastActivity = Date.now();
+    let lastScheduled = 0;
+    let warningTimer: ReturnType<typeof setTimeout> | null = null;
+    let logoutTimer: ReturnType<typeof setTimeout> | null = null;
+    let hardExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+    const clear = () => {
+      if (warningTimer !== null) clearTimeout(warningTimer);
+      if (logoutTimer !== null) clearTimeout(logoutTimer);
+    };
+    const schedule = () => {
+      clear();
+      setIdleWarning(false);
+      lastActivity = Date.now();
+      lastScheduled = lastActivity;
+      warningTimer = setTimeout(() => setIdleWarning(true), ADMIN_IDLE_WARNING_MS);
+      logoutTimer = setTimeout(() => void logout(), ADMIN_IDLE_TIMEOUT_MS);
+    };
+    const activity = () => {
+      lastActivity = Date.now();
+      if (Date.now() - lastScheduled > 5_000) schedule();
+    };
+    const externalActivity = () => schedule();
+    const events = ["pointerdown", "keydown", "mousemove", "scroll", "touchstart"];
+    for (const event of events) window.addEventListener(event, activity, { passive: true });
+    window.addEventListener("sis-session-activity", externalActivity);
+    schedule();
+    const refreshSession = async () => {
+      const response = await fetch("/api/admin/session", {
+        headers: await appCheckHeaders(),
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        await logout();
+        return;
+      }
+      const hardExpiry = readHardExpiry(await response.json());
+      if (hardExpiry !== null) {
+        if (hardExpiryTimer !== null) clearTimeout(hardExpiryTimer);
+        hardExpiryTimer = setTimeout(() => void logout(), Math.max(0, hardExpiry - Date.now()));
+      }
+    };
+    const pingTimer = setInterval(() => {
+      if (Date.now() - lastActivity < 20_000) void refreshSession().catch(ignoreRequestFailure);
+    }, 15_000);
+    void refreshSession().catch(ignoreRequestFailure);
+    return () => {
+      clear();
+      if (hardExpiryTimer !== null) clearTimeout(hardExpiryTimer);
+      clearInterval(pingTimer);
+      for (const event of events) window.removeEventListener(event, activity);
+      window.removeEventListener("sis-session-activity", externalActivity);
+    };
+  }, [email, logout, setIdleWarning]);
+}
 export function useAdminSessionLifecycle({ sessionState, api, onLogin }: Props) {
-  const [uid, setUid] = useState("");
-  const [role, setRole] = useState<Role>("uploader");
-  const [email, setEmail] = useState("");
+  const uid = sessionState.status === "authenticated" ? sessionState.admin.uid : "";
+  const email = sessionState.status === "authenticated" ? sessionState.admin.email : "";
+  const role: Role = sessionState.status === "authenticated" ? sessionState.admin.role : "uploader";
   const [idleWarning, setIdleWarning] = useState(false);
   const [sessions, setSessions] = useState<Record<string, unknown>[]>([]);
   const [recentLogins, setRecentLogins] = useState<Record<string, unknown>[]>([]);
@@ -33,79 +101,7 @@ export function useAdminSessionLifecycle({ sessionState, api, onLogin }: Props) 
     }
     onLogin();
   }, [onLogin]);
-  useEffect(() => {
-    // Identity comes from the shared, server-verified session (see AdminGate).
-    if (sessionState.status !== "authenticated") return;
-    setUid(sessionState.admin.uid);
-    setEmail(sessionState.admin.email);
-    setRole(sessionState.admin.role);
-  }, [sessionState]);
-  useEffect(() => {
-    if (!email) return;
-    let lastActivity = Date.now(),
-      lastScheduled = 0,
-      warningTimer: ReturnType<typeof setTimeout> | undefined,
-      logoutTimer: ReturnType<typeof setTimeout> | undefined,
-      pingTimer: ReturnType<typeof setInterval> | undefined,
-      hardExpiryTimer: ReturnType<typeof setTimeout> | undefined;
-    const clear = () => {
-      if (warningTimer) clearTimeout(warningTimer);
-      if (logoutTimer) clearTimeout(logoutTimer);
-    };
-    const schedule = () => {
-      clear();
-      setIdleWarning(false);
-      lastActivity = Date.now();
-      lastScheduled = lastActivity;
-      warningTimer = setTimeout(() => { setIdleWarning(true); }, ADMIN_IDLE_WARNING_MS);
-      logoutTimer = setTimeout(() => {
-        void logout();
-      }, ADMIN_IDLE_TIMEOUT_MS);
-    };
-    const activity = () => {
-      lastActivity = Date.now();
-      if (Date.now() - lastScheduled > 5_000) schedule();
-    };
-    const externalActivity = () => { schedule(); };
-    const events = ["pointerdown", "keydown", "mousemove", "scroll", "touchstart"];
-    for (const event of events) window.addEventListener(event, activity, { passive: true });
-    window.addEventListener("sis-session-activity", externalActivity);
-    schedule();
-    const refreshSession = async () => {
-      const headers = await appCheckHeaders();
-      const response = await fetch("/api/admin/session", {
-        headers,
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        await logout();
-        return;
-      }
-      const data = (await response.json()) as { hardExpiresAt?: number };
-      if (typeof data.hardExpiresAt === "number") {
-        if (hardExpiryTimer) clearTimeout(hardExpiryTimer);
-        hardExpiryTimer = setTimeout(
-          () => {
-            void logout();
-          },
-          Math.max(0, data.hardExpiresAt - Date.now()),
-        );
-      }
-    };
-    void refreshSession().catch(() => {});
-    pingTimer = setInterval(() => {
-      if (Date.now() - lastActivity < 20_000) {
-        void refreshSession().catch(() => {});
-      }
-    }, 15_000);
-    return () => {
-      clear();
-      if (hardExpiryTimer) clearTimeout(hardExpiryTimer);
-      if (pingTimer) clearInterval(pingTimer);
-      for (const event of events) window.removeEventListener(event, activity);
-      window.removeEventListener("sis-session-activity", externalActivity);
-    };
-  }, [email, logout]);
+  useSessionExpiryTimers(email, logout, setIdleWarning);
   async function staySignedIn() {
     try {
       const headers = await appCheckHeaders();
@@ -113,7 +109,7 @@ export function useAdminSessionLifecycle({ sessionState, api, onLogin }: Props) 
         headers,
         cache: "no-store",
       });
-      if (!response.ok) throw new Error();
+      if (!response.ok) throw new Error("Session refresh failed");
       setIdleWarning(false);
       window.dispatchEvent(new Event("sis-session-activity"));
     } catch {

@@ -4,9 +4,11 @@ import { createHmac, randomInt, randomBytes, timingSafeEqual } from "node:crypto
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { requireRequesterIp } from "./request-origin";
+import { getAllowedOrigins } from "@/server/site-origin";
+
 import { assertServerEnvironment } from "./env";
 import { adminAuth, adminAppCheck, db, describeFirebaseError } from "./firebase-admin";
+import { requireRequesterIp } from "./request-origin";
 import {
   bindStudentId,
   createCertificateNumberHash as makeCertificateNumberHash,
@@ -23,7 +25,6 @@ import {
   type DisambiguationClaims,
 } from "./student-pii";
 import { isAllowedRequestOrigin } from "../shared/origin-policy";
-import { getAllowedOrigins } from "@/server/site-origin";
 import { hasAnyRole as hasRole } from "../shared/role-policy";
 import { ADMIN_HARD_SESSION_LIMIT_MS, isAdminSessionExpired } from "../shared/session-policy";
 

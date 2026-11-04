@@ -4,7 +4,6 @@ import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
-import { wrongRecordReportSchema } from "@/shared/validation";
 import { sendMail } from "@/server/mailer";
 import { requesterIp } from "@/server/request-origin";
 import {
@@ -13,6 +12,7 @@ import {
   verifyRequestAppCheck,
   writeAuditLog,
 } from "@/server/security";
+import { wrongRecordReportSchema } from "@/shared/validation";
 
 import type { NextRequest} from "next/server";
 export const runtime = "nodejs";

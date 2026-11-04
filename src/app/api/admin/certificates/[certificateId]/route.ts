@@ -76,10 +76,10 @@ export async function PATCH(
       }
       throw error;
     }
-    const { certificateNumber: _number, ...metadata } = parsed.data;
+    const { certificateNumber, ...metadata } = parsed.data;
     await ref.update({
       ...metadata,
-      certificateNumberEncrypted: encryptCertificateNumber(parsed.data.certificateNumber),
+      certificateNumberEncrypted: encryptCertificateNumber(certificateNumber),
       updatedBy: admin.uid,
       updatedAt: new Date(),
     });
@@ -171,7 +171,7 @@ export async function PUT(
         { status: 409 },
       );
     const intentional = formString(form, "confirmDuplicateHash") === "true";
-    const duplicateReason = String(form.get("duplicateHashReason") ?? "").trim();
+    const duplicateReason = formString(form, "duplicateHashReason").trim();
     if (duplicateDecision === "warn-cross-record" && (!intentional || duplicateReason.length < 10))
       return NextResponse.json(
         {
@@ -181,7 +181,14 @@ export async function PUT(
         },
         { status: 409 },
       );
-    const stored = await uploadCertificate(file, parsed.data.session, parsed.data.type, studentId, admin.uid, request);
+    const stored = await uploadCertificate({
+      file,
+      session: parsed.data.session,
+      certificateType: parsed.data.type,
+      studentId,
+      uploaderUid: admin.uid,
+      request,
+    });
     const replacementRef = db.collection("certificates").doc(randomUUID());
     try {
       await createCertificateNumberIndex(

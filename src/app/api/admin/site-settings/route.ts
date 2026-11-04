@@ -1,12 +1,12 @@
 import { FieldValue } from "firebase-admin/firestore";
-import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { db } from "@/server/firebase-admin";
-import { PUBLIC_SITE_SETTINGS_TAG } from "@/server/site-settings-cache";
 import { isValidCidr, normalizeAdminLocationPolicy } from "@/server/admin-location";
+import { db } from "@/server/firebase-admin";
 import { apiError, requireAdmin, writeAuditLog } from "@/server/security";
+import { PUBLIC_SITE_SETTINGS_TAG } from "@/server/site-settings-cache";
 
 import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
@@ -16,12 +16,19 @@ const url = z
   .trim()
   .max(1000)
   .refine((value) => !value || /^https:\/\//i.test(value), "Use an HTTPS URL");
-const localeText = z.object({
-  hi: z.string().max(1800).optional(), bn: z.string().max(1800).optional(),
-  mr: z.string().max(1800).optional(), gu: z.string().max(1800).optional(),
-  pa: z.string().max(1800).optional(), ta: z.string().max(1800).optional(),
-  te: z.string().max(1800).optional(), ur: z.string().max(1800).optional(),
-}).optional().default({});
+const localeText = z
+  .object({
+    hi: z.string().max(1800).optional(),
+    bn: z.string().max(1800).optional(),
+    mr: z.string().max(1800).optional(),
+    gu: z.string().max(1800).optional(),
+    pa: z.string().max(1800).optional(),
+    ta: z.string().max(1800).optional(),
+    te: z.string().max(1800).optional(),
+    ur: z.string().max(1800).optional(),
+  })
+  .optional()
+  .default({});
 const schema = z.object({
   schoolName: z.string().trim().min(1).max(160),
   tagline: z.string().trim().max(240),

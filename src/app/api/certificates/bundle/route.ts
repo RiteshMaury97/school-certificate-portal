@@ -47,7 +47,8 @@ export async function GET(request: NextRequest) {
     for (const id of ids) {
       const found = await db.collection("certificates").where("publicId", "==", id).limit(1).get();
       if (found.empty) continue;
-      const doc = found.docs[0]!;
+      const doc = found.docs.at(0);
+      if (!doc) continue;
       const d = doc.data();
       const studentId = String(d.studentId ?? "");
       if (!studentId || !studentAccessTokenOwnsStudent(claims, studentId)) continue;

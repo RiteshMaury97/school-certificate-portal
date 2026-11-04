@@ -75,10 +75,9 @@ const serverEnvironmentSchema = z
       ? env.VERCEL_ENV === "production"
       : env.NODE_ENV === "production" && env.NEXT_PHASE !== "phase-production-build";
     const preview = env.VERCEL_ENV === "preview";
-    const issue = (name: string, message: string) =>
-      context.addIssue({ code: "custom", path: [name], message });
+    const issue = (name: string, message: string) => { context.addIssue({ code: "custom", path: [name], message }); };
     const requireNames = (names: string[]) => {
-      for (const name of names) if (!env[name as keyof typeof env]) issue(name, "is required");
+      for (const name of names) if (!env[name]) issue(name, "is required");
     };
 
     const secretNames = [
@@ -266,7 +265,7 @@ const serverEnvironmentSchema = z
 export type ServerEnvironmentResult = {
   valid: boolean;
   deployment: string;
-  checks: Array<{ name: string; passed: boolean; message: string }>;
+  checks: { name: string; passed: boolean; message: string }[];
   missing: string[];
   errors: string[];
 };

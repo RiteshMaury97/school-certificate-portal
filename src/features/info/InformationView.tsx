@@ -1,6 +1,6 @@
 "use client";
-import Link from "next/link";
 import { ArrowRight, Check, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 
 import SiteShell from "@/components/layout/SiteShell";
 import { useT } from "@/i18n/locale-provider";

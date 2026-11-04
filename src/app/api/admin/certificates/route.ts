@@ -109,7 +109,14 @@ async function storeCertificateRecord(
   duplicateReason: string,
 ) {
   const { studentId, session, type, certificateNumber, issueDate } = details;
-  const stored = await uploadCertificate(file, session, type, studentId, admin.uid, request);
+  const stored = await uploadCertificate({
+    file,
+    session,
+    certificateType: type,
+    studentId,
+    uploaderUid: admin.uid,
+    request,
+  });
   const ref = db.collection("certificates").doc(randomUUID());
   try {
     await createCertificateNumberIndex(certificateNumber, ref.id, session);

@@ -274,6 +274,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             <label className="block text-sm font-semibold">
               {"Student name *"}
               <input
+                aria-label="Student name"
                 translate="no"
                 required aria-required="true"
                 minLength={2}
@@ -322,6 +323,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             <label className="block text-sm font-semibold">
               {"What is wrong? *"}
               <textarea
+                aria-label="What is wrong with the record?"
                 translate="no"
                 required aria-required="true"
                 minLength={10}
@@ -340,9 +342,10 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] p-3 text-sm">
                   <input
+                    aria-label="Contact by email"
                     type="radio"
                     name="contact-method"
-                    required aria-required="true"
+                    required
                     checked={contactMethod === "email"}
                     onChange={() => {
                       setContactMethod("email");
@@ -355,9 +358,10 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 </label>
                 <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] p-3 text-sm">
                   <input
+                    aria-label="Contact by phone"
                     type="radio"
                     name="contact-method"
-                    required aria-required="true"
+                    required
                     checked={contactMethod === "phone"}
                     onChange={() => {
                       setContactMethod("phone");
@@ -374,6 +378,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                   ? "Contact email (required)"
                   : "Contact phone (required)"}
                 <input
+                  aria-label={contactMethod === "email" ? "Contact email" : "Contact phone"}
                   translate="no"
                   required aria-required="true"
                   type={contactMethod === "email" ? "email" : "tel"}
@@ -393,6 +398,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             <label className="block text-sm font-semibold">
               Email address for your report copy (required)
               <input
+                aria-label="Email address for report copy"
                 translate="no"
                 required aria-required="true"
                 type="email"
@@ -408,6 +414,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 <div>
                   <label className="flex items-start gap-2 text-sm leading-5">
                     <input
+                      aria-label="I agree to provide a phone number for follow-up"
                       type="checkbox"
                       checked={phoneOptIn}
                       onChange={(e) => {
@@ -425,6 +432,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                         (optional follow-up, required when opted in)
                       </span>
                       <input
+                        aria-label="Phone number for optional follow-up"
                         type="tel"
                         inputMode="tel"
                         maxLength={24}
@@ -449,6 +457,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             </fieldset>
             <label className="flex items-start gap-2 text-sm leading-5">
               <input
+                aria-label="I confirm that I am the student or authorized representative"
                 translate="no"
                 type="checkbox"
                 required aria-required="true"

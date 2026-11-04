@@ -4,12 +4,12 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
-import { getAllowedOrigins } from "@/server/site-origin";
 import {
   hashRequesterIp,
   verifyRequestAppCheck,
   writeAuditLog,
 } from "@/server/security";
+import { getAllowedOrigins } from "@/server/site-origin";
 import { isAllowedRequestOrigin } from "@/shared/origin-policy";
 import { dataRightsRequestSchema } from "@/shared/validation";
 

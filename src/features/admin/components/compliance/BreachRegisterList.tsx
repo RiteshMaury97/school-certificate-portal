@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { DatePicker } from "@/components/ui/DatePicker";
+
 import { formatIst, statusOptions, type Filters, type Incident } from "./breach-types";
 import { inputClass, warning } from "./BreachFields";
 
@@ -122,8 +123,8 @@ function FilterBar({ props }: { props: Props }) {
             <option key={s}>{s}</option>
           ))}
         </select>
-        <label className="text-xs text-[var(--text-muted)]">From<DatePicker id="incident-from" label="From date" value={props.filters.start} onChange={(value) => change("start", value)} className="mt-1.5" /></label>
-        <label className="text-xs text-[var(--text-muted)]">To<DatePicker id="incident-to" label="To date" value={props.filters.end} onChange={(value) => change("end", value)} className="mt-1.5" /></label>
+        <label className="text-xs text-[var(--text-muted)]">From<DatePicker id="incident-from" label="From date" value={props.filters.start} onChange={(value) => { change("start", value); }} className="mt-1.5" /></label>
+        <label className="text-xs text-[var(--text-muted)]">To<DatePicker id="incident-to" label="To date" value={props.filters.end} onChange={(value) => { change("end", value); }} className="mt-1.5" /></label>
       </div>
     </div>
   );

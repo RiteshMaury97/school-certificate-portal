@@ -16,7 +16,9 @@ const jsxA11yRules = {
   ...jsxA11y.configs.strict.rules,
 };
 const jsxA11yErrors = Object.fromEntries(
-  Object.keys(jsxA11yRules).map((rule) => [rule, "error"]),
+  Object.keys(jsxA11yRules)
+    .filter((rule) => rule !== "label-has-for")
+    .map((rule) => [rule, "error"]),
 );
 
 export default defineConfig([
@@ -73,14 +75,11 @@ export default defineConfig([
       "no-eval": "error",
       "no-implied-eval": "error",
       "no-new-func": "error",
-      "eqeqeq": ["error", "always", { null: "ignore" }],
+      eqeqeq: ["error", "always", { null: "ignore" }],
       complexity: ["error", 12],
       "max-depth": ["error", 3],
       "max-params": ["error", 4],
-      "max-lines": [
-        "error",
-        { max: 600, skipBlankLines: true, skipComments: true },
-      ],
+      "max-lines": ["error", { max: 600, skipBlankLines: true, skipComments: true }],
       "max-lines-per-function": [
         "error",
         { max: 120, skipBlankLines: true, skipComments: true, IIFEs: true },
@@ -110,6 +109,7 @@ export default defineConfig([
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       ...jsxA11yErrors,
+      "jsx-a11y/label-has-for": "off",
       ...next.configs.recommended.rules,
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
@@ -133,13 +133,7 @@ export default defineConfig([
       "import/order": [
         "error",
         {
-          groups: [
-            "builtin",
-            "external",
-            "internal",
-            ["parent", "sibling", "index"],
-            "type",
-          ],
+          groups: ["builtin", "external", "internal", ["parent", "sibling", "index"], "type"],
           "newlines-between": "always",
           alphabetize: { order: "asc", caseInsensitive: true },
         },
@@ -164,10 +158,7 @@ export default defineConfig([
       complexity: ["error", 12],
       "max-depth": ["error", 3],
       "max-params": ["error", 4],
-      "max-lines": [
-        "error",
-        { max: 600, skipBlankLines: true, skipComments: true },
-      ],
+      "max-lines": ["error", { max: 600, skipBlankLines: true, skipComments: true }],
       "max-lines-per-function": [
         "error",
         { max: 120, skipBlankLines: true, skipComments: true, IIFEs: true },

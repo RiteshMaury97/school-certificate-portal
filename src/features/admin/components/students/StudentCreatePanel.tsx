@@ -103,7 +103,7 @@ export default function StudentCreatePanel(props: Props) {
                   id={`student-${key}`}
                   label={label}
                   value={form[key]}
-                  onChange={(value) => setForm((current) => ({ ...current, [key]: value }))}
+                  onChange={(value) => { setForm((current) => ({ ...current, [key]: value })); }}
                   className="mt-1.5"
                 />
               ) : <input

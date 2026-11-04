@@ -1,27 +1,26 @@
 "use client";
 
-import Link from "next/link";
-import type { ReactNode } from "react";
 import {
   ArrowLeftRight,
   Clock,
-  Facebook,
+  AtSign,
+  Camera,
+  CirclePlay,
   HeartPulse,
-  Instagram,
   Languages,
   Mail,
   MapPin,
   MessageCircle,
   Phone,
-  Twitter,
-  Youtube,
+  Users,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
+
 
 import Logo from "@/components/ui/Logo";
 import { useT } from "@/i18n/locale-provider";
 import { SITE_MAP } from "@/shared/site-map";
-import type { SiteMapPage } from "@/shared/site-map";
+
 import {
   ADDRESS,
   AFFILIATION,
@@ -38,6 +37,10 @@ import {
   SOCIAL_URLS,
   TAGLINE,
 } from "../../../config/school";
+
+import type { SiteMapPage } from "@/shared/site-map";
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 const cardClass =
   "flex h-full min-w-0 flex-col rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition-colors duration-200 hover:bg-white/[0.055]";
@@ -96,11 +99,11 @@ function FooterNavigation({
 
 function SocialCard() {
   const socialLinks = [
-    { label: "Facebook", url: SOCIAL_URLS.facebook, Icon: Facebook },
-    { label: "Instagram", url: SOCIAL_URLS.instagram, Icon: Instagram },
-    { label: "YouTube", url: SOCIAL_URLS.youtube, Icon: Youtube },
+    { label: "Facebook", url: SOCIAL_URLS.facebook, Icon: Users },
+    { label: "Instagram", url: SOCIAL_URLS.instagram, Icon: Camera },
+    { label: "YouTube", url: SOCIAL_URLS.youtube, Icon: CirclePlay },
     { label: "WhatsApp", url: SOCIAL_URLS.whatsapp, Icon: MessageCircle },
-    { label: "X / Twitter", url: SOCIAL_URLS.twitter, Icon: Twitter },
+    { label: "X / Twitter", url: SOCIAL_URLS.twitter, Icon: AtSign },
   ];
   const hasConfiguredLinks = socialLinks.some(({ url }) => url.trim().length > 0);
   const visibleLinks = hasConfiguredLinks
@@ -144,8 +147,19 @@ function LegalLinks() {
   return SITE_MAP.filter((page) => page.group === "Legal and privacy" && page.inHtmlSitemap);
 }
 
-export default function Footer() {
+function FooterLinkGrid() {
   const t = useT();
+  return (
+    <>
+      <FooterNavigation title={t("footer.quickLinks")} ariaLabel={t("footer.quickLinks")} pages={SchoolLinks()} />
+      <FooterNavigation title={t("siteMap.groups.helpAndSupport")} ariaLabel={t("siteMap.groups.helpAndSupport")} pages={HelpLinks()} />
+      <FooterNavigation title={t("siteMap.groups.legalAndPrivacy")} ariaLabel={t("siteMap.groups.legalAndPrivacy")} pages={LegalLinks()} />
+      <SocialCard />
+    </>
+  );
+}
+
+export default function Footer() {
   const boardDetails = [AFFILIATION, BOARD].filter((value) => value.trim()).join(" · ");
   const validPhone = !PHONE.includes("X");
 
@@ -257,22 +271,7 @@ export default function Footer() {
         </section>
 
         {/* Row 2: navigation and social links */}
-        <FooterNavigation
-          title={t("footer.quickLinks")}
-          ariaLabel={t("footer.quickLinks")}
-          pages={SchoolLinks()}
-        />
-        <FooterNavigation
-          title={t("siteMap.groups.helpAndSupport")}
-          ariaLabel={t("siteMap.groups.helpAndSupport")}
-          pages={HelpLinks()}
-        />
-        <FooterNavigation
-          title={t("siteMap.groups.legalAndPrivacy")}
-          ariaLabel={t("siteMap.groups.legalAndPrivacy")}
-          pages={LegalLinks()}
-        />
-        <SocialCard />
+        <FooterLinkGrid />
       </div>
       <div className="border-t border-[var(--border)] bg-[var(--surface)]/70 px-5 py-4 sm:px-8 lg:px-10 xl:px-14">
         <div className="flex flex-col gap-2 text-[10px] text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between">

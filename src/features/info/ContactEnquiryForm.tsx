@@ -223,7 +223,6 @@ export default function ContactEnquiryForm() {
       captchaError={captchaError}
       error={error}
       busy={busy}
-      token={token}
       inputClass={inputClass}
       fieldErrors={validation.errors}
       onFieldBlur={validation.onBlur}
@@ -257,7 +256,6 @@ type ContactFormViewProps = {
   captchaError: string;
   error: string;
   busy: boolean;
-  token: string;
   inputClass: string;
   onSubmit: (event: React.SubmitEvent<HTMLFormElement>) => void;
   fieldErrors: Record<string, string>;
@@ -287,7 +285,6 @@ function ContactFormView({
   captchaError,
   error,
   busy,
-  token,
   inputClass,
   fieldErrors,
   onFieldBlur,

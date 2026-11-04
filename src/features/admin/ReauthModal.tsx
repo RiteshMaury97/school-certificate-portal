@@ -51,32 +51,34 @@ export default function ReauthModal({ email, onComplete, onCancel }: { email: st
       const result = await post("/api/admin/reauth", { idToken, challengeId }, true);
       if (!result.response.ok || typeof result.data !== "object" || result.data === null || !("grant" in result.data) || typeof result.data.grant !== "string") throw new Error(errorMessage(result.data, "Recent credential and email-code verification are required."));
       onComplete(result.data.grant);
-      await signOut(auth).catch(() => {});
+      await signOut(auth).catch((signOutError: unknown) => {
+        console.error("Could not clear the temporary re-authentication session.", signOutError);
+      });
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Verification failed."); }
     finally { setBusy(false); }
   };
   return <div role="presentation" className="fixed inset-0 z-[100] grid place-items-center bg-[var(--text)]/50 p-4">
     <section role="dialog" aria-modal="true" aria-labelledby="reauth-title" className="w-full max-w-md space-y-4 rounded-xl border border-[var(--divider)] bg-[var(--surface)] p-6 text-[var(--text)] shadow-xl">
-      <h2 id="reauth-title" className="text-lg font-semibold">Confirm it�s you</h2>
+      <h2 id="reauth-title" className="text-lg font-semibold">Confirm itÃƒÂ¯Ã‚Â¿Ã‚Â½s you</h2>
       {stage === "credential" ? <>
         <p className="text-sm text-[var(--text-muted)]">Confirm your administrator account before receiving a one-time email code.</p>
         <p className="text-xs text-[var(--text-muted)]">* required</p>
-        <label className="block text-sm">Verification method *
-          <select aria-label="Verification method" required aria-required="true" value={method} onChange={(event) => { setMethod(event.target.value as typeof method); }} className="mt-1 min-h-11 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3">
+        <label htmlFor="reauth-method" className="block text-sm">Verification method *
+          <select id="reauth-method" required value={method} onChange={(event) => { setMethod(event.target.value === "google" ? "google" : "password"); }} className="mt-1 min-h-11 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3">
             <option value="password">Email and password</option><option value="google">Google</option>
           </select>
         </label>
-        {method === "password" && <label className="block text-sm">Password *
-          <input aria-label="Password" autoFocus type="password" autoComplete="current-password" required aria-required="true" minLength={1} maxLength={128} value={password} onChange={(event) => { setPassword(event.target.value); }} className="mt-1 min-h-11 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3" />
+        {method === "password" && <label htmlFor="reauth-password" className="block text-sm">Password *
+          <input id="reauth-password" aria-label="Password" type="password" autoComplete="current-password" required minLength={1} maxLength={128} value={password} onChange={(event) => { setPassword(event.target.value); }} className="mt-1 min-h-11 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3" />
         </label>}
-        <button disabled={busy || (method === "password" && !password)} onClick={() => void finishCredential()} className="min-h-11 w-full rounded bg-[var(--primary)] px-4 font-semibold text-[var(--on-primary)]">{busy ? "Checking�" : "Continue"}</button>
+        <button aria-label="Continue re-authentication" disabled={busy || (method === "password" && !password)} onClick={() => void finishCredential()} className="min-h-11 w-full rounded bg-[var(--primary)] px-4 font-semibold text-[var(--on-primary)]">{busy ? "CheckingÃƒÂ¯Ã‚Â¿Ã‚Â½" : "Continue"}</button>
       </> : <>
         <p className="text-sm text-[var(--text-muted)]">Enter the six-digit code sent to your administrator email.</p>
         <p className="text-xs text-[var(--text-muted)]">* required</p>
-        <label className="block text-sm">Email code *
-          <input aria-label="Six-digit email code" autoFocus type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required aria-required="true" value={code} onChange={(event) => { setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); }} className="mt-1 min-h-12 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3 text-center text-xl tracking-[0.35em]" />
+        <label htmlFor="reauth-code" className="block text-sm">Email code *
+          <input id="reauth-code" aria-label="Six-digit email code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required value={code} onChange={(event) => { setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); }} className="mt-1 min-h-12 w-full rounded border border-[var(--divider)] bg-[var(--surface)] px-3 text-center text-xl tracking-[0.35em]" />
         </label>
-        <button disabled={busy || code.length !== 6} onClick={() => void verify()} className="min-h-11 w-full rounded bg-[var(--primary)] px-4 font-semibold text-[var(--on-primary)]">{busy ? "Verifying�" : "Verify"}</button>
+        <button aria-label="Verify email code" disabled={busy || code.length !== 6} onClick={() => void verify()} className="min-h-11 w-full rounded bg-[var(--primary)] px-4 font-semibold text-[var(--on-primary)]">{busy ? "VerifyingÃƒÂ¯Ã‚Â¿Ã‚Â½" : "Verify"}</button>
       </>}
       {error && <p role="alert" className="rounded bg-[var(--surface-2)] p-3 text-sm">{error}</p>}
       <button disabled={busy} onClick={() => { void signOut(auth).finally(onCancel); }} className="min-h-11 w-full rounded border border-[var(--divider)] px-4 text-sm">Cancel</button>

@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+
 import { confirmAction } from "@/shared/admin-dialogs";
 
 import type { CatalogKind, CatalogOption } from "../../types/admin-state.types";
@@ -86,7 +87,8 @@ export default function CatalogTab({
   load,
 }: CatalogTabProps) {
   const [page, setPage] = useState(0);
-  const section = sections.find((item) => item.kind === catalogKind) ?? sections[0]!;
+  const section = sections.find((item) => item.kind === catalogKind) ?? sections.at(0);
+  if (!section) return null;
   const Icon = section.icon;
   const pageCount = Math.max(1, Math.ceil(catalog.length / pageSize));
   const visibleItems = useMemo(

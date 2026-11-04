@@ -4,8 +4,8 @@ import { useEffect, useId, useMemo, useState } from "react";
 
 import { generateBreachDraft } from "@/shared/breach-drafts";
 
-import type { DraftContact } from "@/shared/breach-drafts";
 import type { Incident } from "./breach-types";
+import type { DraftContact } from "@/shared/breach-drafts";
 
 type Contact = Required<DraftContact>;
 type Audience = "board" | "people";

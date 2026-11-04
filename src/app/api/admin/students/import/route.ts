@@ -75,7 +75,8 @@ function csvRows(text: string): string[][] {
   let cell = "";
   let quoted = false;
   for (let i = 0; i < text.length; i++) {
-    const ch = text[i]!;
+    const ch = text[i];
+    if (ch === undefined) continue;
     if (ch === '"' && quoted && text[i + 1] === '"') {
       cell += '"';
       i++;
@@ -175,7 +176,8 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
 
-    const headerRow = rows[0]!;
+    const headerRow = rows.at(0);
+    if (!headerRow) return NextResponse.json({ error: "The file needs a header row." }, { status: 400 });
     const headers = headerRow.cells.map(headerKey);
     const headerErrors: string[] = [];
     const fieldIndexes = new Map<string, number>();
@@ -451,7 +453,8 @@ export async function POST(request: NextRequest) {
           : {}),
       };
       if (identified.length === 1) {
-        const existing = identified[0]!;
+        const existing = identified.at(0);
+        if (!existing) continue;
         await existing.ref.update({
           ...common,
           importedFromExcel: true,

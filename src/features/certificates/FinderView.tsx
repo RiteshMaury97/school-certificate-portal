@@ -21,8 +21,8 @@ import { useCertificateFlow } from "@/features/certificates/CertificateFlowProvi
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { studentLookupSchema } from "@/shared/validation";
 
-import type { SubmitEvent } from "react";
 import type { StudentResult } from "@/types";
+import type { SubmitEvent } from "react";
 
 type FormValues = {
   studentName: string;
@@ -479,8 +479,8 @@ export default function FinderPage() {
                         value={form.className}
                         aria-invalid={Boolean(touched.className && fieldErrors.className)}
                         aria-describedby={`${formId}-${key}-help ${formId}-${key}-error`}
-                        onBlur={() => setTouched((v) => ({ ...v, className: true }))}
-                        onChange={(event) => update("className", event.target.value)}
+                        onBlur={() => { setTouched((v) => ({ ...v, className: true })); }}
+                        onChange={(event) => { update("className", event.target.value); }}
                         disabled={classesLoading || classes.length === 0}
                         className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--text)] outline-none transition focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-70"
                       >
@@ -673,7 +673,7 @@ export default function FinderPage() {
                     aria-required="true"
                     aria-invalid={Boolean(touched.consent && fieldErrors.consent)}
                     aria-describedby={`${formId}-consent-error`}
-                    onBlur={() => setTouched((value) => ({ ...value, consent: true }))}
+                    onBlur={() => { setTouched((value) => ({ ...value, consent: true })); }}
                     className="mt-1 h-4 w-4 shrink-0 accent-[var(--primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
                   />
                   <span>

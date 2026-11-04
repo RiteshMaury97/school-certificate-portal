@@ -174,8 +174,11 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     const reuseExisting = identifiedMatches.length === 1;
+    const existingMatch = identifiedMatches.at(0) ?? matching.docs.at(0);
+    if (reuseExisting && !existingMatch)
+      return NextResponse.json({ error: "Student match is no longer available." }, { status: 409 });
     const studentRef = reuseExisting
-      ? (identifiedMatches[0] ?? matching.docs[0]!).ref
+      ? existingMatch.ref
       : db.collection("students").doc(randomUUID());
     const typeSlug = slugify(data.certificateType);
     if (!typeSlug)
@@ -222,7 +225,14 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     const certificateNumberEncrypted = encryptCertificateNumber(data.certificateNumber);
-    const stored = await uploadCertificate(file, data.session, data.certificateType, studentRef.id, admin.uid, request);
+    const stored = await uploadCertificate({
+      file,
+      session: data.session,
+      certificateType: data.certificateType,
+      studentId: studentRef.id,
+      uploaderUid: admin.uid,
+      request,
+    });
     const now = FieldValue.serverTimestamp();
     try {
       if (!reuseExisting) {

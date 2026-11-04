@@ -14,9 +14,10 @@ import {
 } from "@/components/ui/breadcrumb";
 import { useT } from "@/i18n/locale-provider";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
-import { OFFICIAL_WEBSITE } from "../../../config/school";
 
 import ContactEnquiryForm from "./ContactEnquiryForm";
+import { OFFICIAL_WEBSITE } from "../../../config/school";
+
 
 function settingOr(value: string | undefined, fallback: string): string {
   const cleaned = value?.trim();

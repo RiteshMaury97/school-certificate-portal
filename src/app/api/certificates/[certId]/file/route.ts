@@ -50,7 +50,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cer
       .get();
     if (matches.size !== 1) return unavailable();
 
-    const certificateDoc = matches.docs[0]!;
+    const certificateDoc = matches.docs.at(0);
+    if (!certificateDoc) return unavailable();
     const certificate = certificateDoc.data();
     if (!isPubliclyDownloadableStatus(certificate.status) || certificate.published === false)
       return unavailable();

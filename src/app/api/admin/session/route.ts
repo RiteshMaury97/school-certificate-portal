@@ -9,7 +9,6 @@ import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
 import { escapeHtml, sendMail } from "@/server/mailer";
 import { getRequestOrigin, requesterIp } from "@/server/request-origin";
-import { absoluteUrl } from "@/server/site-origin";
 import {
   adminSessionCookieOptions,
   createCsrfToken,
@@ -20,6 +19,7 @@ import {
   verifyCsrf,
   hashRequesterIp,
 } from "@/server/security";
+import { absoluteUrl } from "@/server/site-origin";
 import { ADMIN_HARD_SESSION_LIMIT_MS, isAdminSessionExpired } from "@/shared/session-policy";
 
 import type { NextRequest } from "next/server";
@@ -151,13 +151,15 @@ export async function POST(request: NextRequest) {
     const deviceHash = digest(`${ua}|${deviceId}`);
     const requestOrigin = getRequestOrigin(request);
     const rawCity = requestOrigin.city;
-    const city = rawCity ? (() => {
-      try {
-        return decodeURIComponent(rawCity).slice(0, 80);
-      } catch {
-        return rawCity.slice(0, 80);
-      }
-    })() : "";
+    const city = rawCity
+      ? (() => {
+          try {
+            return decodeURIComponent(rawCity).slice(0, 80);
+          } catch {
+            return rawCity.slice(0, 80);
+          }
+        })()
+      : "";
     const country = (requestOrigin.country ?? "").slice(0, 8);
     const deviceRef = db.collection("adminDevices").doc(`${decoded.uid}_${deviceHash}`);
     const loginLocationRef = db.collection("adminLoginLocations").doc(decoded.uid);
@@ -218,7 +220,9 @@ export async function POST(request: NextRequest) {
           usedAt: null,
           createdAt: now,
         });
-      const link = absoluteUrl(`/api/admin/session/revoke-all?token=${encodeURIComponent(actionToken)}`);
+      const link = absoluteUrl(
+        `/api/admin/session/revoke-all?token=${encodeURIComponent(actionToken)}`,
+      );
       const escapeMap: Record<string, string> = {
         "&": "&amp;",
         "<": "&lt;",

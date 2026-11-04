@@ -1,9 +1,9 @@
 import { BadgeCheck, Clock3, FileText, ShieldCheck, Upload, UserRound } from "lucide-react";
 
-import { appCheckHeaders } from "@/lib/firebase-client";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { confirmAction, requestInput } from "@/shared/admin-dialogs";
+import { appCheckHeaders } from "@/lib/firebase-client";
 import { normalizeAcademicSession } from "@/shared/academic-session";
+import { confirmAction, requestInput } from "@/shared/admin-dialogs";
 import {
   MAX_BULK_FILES,
   MAX_CSV_BYTES,
@@ -155,7 +155,8 @@ export default function CertificatesTab(props: Props) {
                   id="certificate-student"
                   aria-label="Student"
                   translate="no"
-                  required aria-required="true"
+                  required
+                  aria-required="true"
                   value={selectedStudent}
                   onChange={(e) => {
                     setSelectedStudent(e.target.value);
@@ -179,7 +180,8 @@ export default function CertificatesTab(props: Props) {
                   id="certificate-session"
                   aria-label="Session"
                   translate="no"
-                  required aria-required="true"
+                  required
+                  aria-required="true"
                   value={selectedStudentSession ?? form.session}
                   disabled={Boolean(selectedStudentSession)}
                   onChange={(e) => {
@@ -214,7 +216,8 @@ export default function CertificatesTab(props: Props) {
                   id="certificate-type"
                   aria-label="Certificate type"
                   translate="no"
-                  required aria-required="true"
+                  required
+                  aria-required="true"
                   value={form.certificateType}
                   onChange={(e) => {
                     setForm((v) => ({
@@ -241,7 +244,8 @@ export default function CertificatesTab(props: Props) {
                   id="certificate-number"
                   aria-label="Certificate number"
                   translate="no"
-                  required aria-required="true"
+                  required
+                  aria-required="true"
                   value={form.certificateNumber}
                   onChange={(e) => {
                     setForm((v) => ({
@@ -278,7 +282,8 @@ export default function CertificatesTab(props: Props) {
                   aria-label="Finished certificate file"
                   translate="no"
                   type="file"
-                  required aria-required="true"
+                  required
+                  aria-required="true"
                   accept=".pdf,.jpg,.jpeg,.png"
                   onChange={(e) => {
                     setFiles(e.target.files ? Array.from(e.target.files) : []);
@@ -500,7 +505,9 @@ export default function CertificatesTab(props: Props) {
                             await load();
                           });
                       }}
-                    required aria-required="true" />
+                      required
+                      aria-required="true"
+                    />
                   </label>
                 )}
                 {role !== "uploader" && c.status === "published" && (
