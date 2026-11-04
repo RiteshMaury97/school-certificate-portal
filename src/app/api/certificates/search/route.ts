@@ -282,7 +282,7 @@ export async function POST(request: NextRequest) {
         return genericResponse();
       }
       const session = String(selectedDocument.get("session") ?? "");
-      return retrieveStudent(request, selectedDocument, session);
+      return await retrieveStudent(request, selectedDocument, session);
     }
 
     const parsed = studentLookupSchema.safeParse(body);
@@ -347,7 +347,7 @@ export async function POST(request: NextRequest) {
     }
     const student = studentSnapshot.docs.at(0);
     if (!student) return genericResponse();
-    return retrieveStudent(request, student, input.session);
+    return await retrieveStudent(request, student, input.session);
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error

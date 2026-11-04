@@ -84,12 +84,14 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
-        <script
+        <Script
           id="theme-init"
           nonce={nonce}
-          dangerouslySetInnerHTML={{ __html: themeInit }}
+          strategy="beforeInteractive"
           suppressHydrationWarning
-        />
+        >
+          {themeInit}
+        </Script>
       </head>
       <body>
         <a className="skip-link" href="#main-content">

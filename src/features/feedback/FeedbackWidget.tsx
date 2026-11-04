@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { appCheckHeaders } from "@/lib/firebase-client";
 
 type Choice = boolean | null;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export default function FeedbackWidget({ page = "/" }: { page?: string }) {
   const [choice, setChoice] = useState<Choice>(null);
   const [comment, setComment] = useState("");
@@ -14,14 +18,14 @@ export default function FeedbackWidget({ page = "/" }: { page?: string }) {
   const captcha = useRef<HTMLDivElement>(null);
   const widget = useRef<string | null>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+  const displayedError =
+    choice !== null && !siteKey
+      ? "Security verification is not configured. Feedback is temporarily unavailable."
+      : error;
 
   useEffect(() => {
     if (choice === null) return;
-    if (!siteKey) {
-      setError("Security verification is not configured. Feedback is temporarily unavailable.");
-      return;
-    }
-    if (!captcha.current) return;
+    if (!siteKey || !captcha.current) return;
     let cancelled = false;
     const render = () => {
       if (cancelled || !captcha.current || !window.turnstile || widget.current) return;
@@ -44,7 +48,7 @@ export default function FeedbackWidget({ page = "/" }: { page?: string }) {
       }
     };
     const id = "cloudflare-turnstile-script";
-    const existing = document.getElementById(id) as HTMLScriptElement | null;
+    const existing = document.querySelector<HTMLScriptElement>(`script#${id}`);
     if (window.turnstile) render();
     else if (existing) existing.addEventListener("load", render, { once: true });
     else {
@@ -82,10 +86,14 @@ export default function FeedbackWidget({ page = "/" }: { page?: string }) {
         }),
         cache: "no-store",
       });
-      const data = (await response.json().catch(() => ({}))) as {
-        error?: string;
-      };
-      if (!response.ok) throw new Error(data.error ?? "Feedback could not be submitted.");
+      let data: unknown;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
+      }
+      const message = isRecord(data) && typeof data.error === "string" ? data.error : undefined;
+      if (!response.ok) throw new Error(message ?? "Feedback could not be submitted.");
       setSent(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Feedback could not be submitted.");
@@ -172,9 +180,9 @@ export default function FeedbackWidget({ page = "/" }: { page?: string }) {
               </button>
             </>
           )}
-          {error && (
+          {displayedError && (
             <p role="alert" className="mt-2 text-sm text-[var(--danger)]">
-              {error}
+              {displayedError}
             </p>
           )}
         </>

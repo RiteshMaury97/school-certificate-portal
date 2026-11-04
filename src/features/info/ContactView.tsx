@@ -118,8 +118,7 @@ export default function ContactView() {
               </span>
             </a>
           ) : null}
-          {website ? (
-            <a
+          <a
               href={website}
               target="_blank"
               rel="noopener noreferrer"
@@ -139,8 +138,7 @@ export default function ContactView() {
                   {website.replace(/^https?:\/\//i, "").replace(/\/+$/, "")}
                 </span>
               </span>
-            </a>
-          ) : null}
+          </a>
           <a
             href={mapUrl}
             target="_blank"

@@ -1,4 +1,5 @@
 ﻿import {
+  useEffect,
   useState,
   type Dispatch,
   type SubmitEvent,
@@ -35,6 +36,19 @@ type Props = {
   }) => Promise<void>;
 };
 export default function BrandingTab(props: Props) {
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    const initialUpdate = window.setTimeout(() => {
+      setNow(Date.now());
+    }, 0);
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 60_000);
+    return () => {
+      window.clearTimeout(initialUpdate);
+      window.clearInterval(interval);
+    };
+  }, []);
   const {
     branding,
     setBranding,
@@ -375,7 +389,7 @@ export default function BrandingTab(props: Props) {
         </form>
         <ul className="mt-4 space-y-2 text-sm">
           {adminLocationExceptions
-            .filter((item) => Date.parse(readText(item.expiresAt)) > Date.now())
+            .filter((item) => now > 0 && Date.parse(readText(item.expiresAt)) > now)
             .map((item) => (
               <li key={readText(item.id)} className="rounded border p-3">
                 {item.country
@@ -392,7 +406,7 @@ export default function BrandingTab(props: Props) {
         <ul className="mt-3 space-y-2 text-sm">
           {recentLocationBlocks.length ? (
             recentLocationBlocks.map((item, index) => (
-              <li key={`${readText(item.action)}-${index}`} className="rounded border p-3">
+              <li key={`${readText(item.action)}-${String(index)}`} className="rounded border p-3">
                 {readText(item.action)} Â· {readText(item.country)} Â·{" "}
                 {item.at ? new Date(readText(item.at)).toLocaleString() : "time unavailable"}
               </li>

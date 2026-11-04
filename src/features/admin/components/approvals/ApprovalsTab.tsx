@@ -1,4 +1,6 @@
-﻿import EmptyState from "@/components/feedback/EmptyState";
+import Image from "next/image";
+
+import EmptyState from "@/components/feedback/EmptyState";
 
 import type { CertificatePreviewMap } from "../../types/admin-state.types";
 import type { Cert } from "../../types/admin.types";
@@ -102,7 +104,14 @@ export default function ApprovalsTab({
                   return preview.mimeType === "application/pdf" ? (
                     <iframe title={`Preview ${c.fileName}`} src={preview.url} referrerPolicy="no-referrer" className="h-[520px] w-full rounded" />
                   ) : (
-                    <img src={preview.url} alt={`Certificate preview for ${c.studentName ?? "student"}`} className="max-h-[520px] max-w-full object-contain" />
+                    <Image
+                      src={preview.url}
+                      alt={`Certificate preview for ${c.studentName ?? "student"}`}
+                      width={1200}
+                      height={800}
+                      unoptimized
+                      className="max-h-[520px] max-w-full object-contain"
+                    />
                   );
                 })() : (
                   <p className="grid min-h-56 place-items-center text-sm text-[var(--text-muted)]">Preview is private and is not cached.</p>

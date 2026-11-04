@@ -260,17 +260,15 @@ export default function HomePage() {
                 {email}
               </a>
             )}
-            {website && (
-              <a
-                className="inline-flex items-center gap-1.5 break-all text-[var(--text)] hover:text-[var(--primary)]"
-                href={website}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Globe size={13} aria-hidden="true" />
-                Visit website
-              </a>
-            )}
+            <a
+              className="inline-flex items-center gap-1.5 break-all text-[var(--text)] hover:text-[var(--primary)]"
+              href={website}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Globe size={13} aria-hidden="true" />
+              Visit website
+            </a>
           </div>
           <Link
             href="/contact"

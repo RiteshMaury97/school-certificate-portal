@@ -69,7 +69,7 @@ export default function VerifyPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/public/sessions", { cache: "no-store" })
+    void fetch("/api/public/sessions", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Unable to load sessions");
         const data: unknown = await response.json();
@@ -148,7 +148,7 @@ export default function VerifyPage() {
   }, [effectiveSiteKey, captchaRetry]);
 
   useEffect(() => {
-    const shouldNoIndex = Boolean(result || failed);
+    const shouldNoIndex = Boolean(result ?? failed);
     let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
     const original = meta?.content;
     if (shouldNoIndex) {
@@ -229,7 +229,13 @@ export default function VerifyPage() {
             <h2 className="text-xl font-bold text-[var(--text)]">Certificate details</h2>
             <p className="mt-1 text-sm text-[var(--text-muted)]">Enter both details exactly as they appear on the certificate.</p>
           </div>
-          <form ref={formRef} onSubmit={submit} noValidate>
+          <form
+            ref={formRef}
+            onSubmit={(event) => {
+              void submit(event);
+            }}
+            noValidate
+          >
             <div className="grid gap-5 sm:grid-cols-2">
               <label
                 htmlFor={`${formId}-number`}

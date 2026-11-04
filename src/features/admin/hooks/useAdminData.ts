@@ -51,6 +51,34 @@ type Props = {
   setRecentLocationBlocks: Dispatch<SetStateAction<Record<string, unknown>[]>>;
   setAdminLocationExceptions: Dispatch<SetStateAction<Record<string, unknown>[]>>;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function displayValue(value: unknown): string {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+    ? String(value)
+    : "";
+}
+
+function stringMap(value: unknown): Record<string, string> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  );
+}
+
+function socialLinkLines(value: unknown): string {
+  if (!Array.isArray(value)) return "";
+  return value
+    .filter(
+      (item): item is { label: string; url: string } =>
+        isRecord(item) && typeof item.label === "string" && typeof item.url === "string",
+    )
+    .map((item) => `${item.label}|${item.url}`)
+    .join("\n");
+}
 export function useAdminData({
   tab,
   api,
@@ -93,11 +121,11 @@ export function useAdminData({
   const load = useCallback(async () => {
     if (tab === "dashboard") {
       const d = await api<{ stats: Record<string, unknown> }>("/api/admin/dashboard");
-      setStats(d.stats ?? {});
+      setStats(d.stats);
     }
     if (tab === "approvals") {
       const d = await api<{ certificates: Cert[] }>("/api/admin/certificates?status=pending");
-      setPending((d.certificates ?? []).filter((x) => x.status === "pending"));
+      setPending(d.certificates.filter((x) => x.status === "pending"));
     }
     if (tab === "students" || tab === "studentImport" || tab === "studentAdd") {
       const [sessions, types, classes] = await Promise.all([
@@ -112,9 +140,9 @@ export function useAdminData({
         ),
       ]);
       if (tab !== "studentAdd") await loadStudents();
-      setSessionOptions(sessions.items ?? []);
-      setTypeOptions(types.items ?? []);
-      setClassOptions(classes.items ?? []);
+      setSessionOptions(sessions.items);
+      setTypeOptions(types.items);
+      setClassOptions(classes.items);
     }
     if (tab === "certificates") {
       const [d, sessions, types] = await Promise.all([
@@ -127,15 +155,15 @@ export function useAdminData({
         ),
         loadStudents(),
       ]);
-      setCerts(d.certificates ?? []);
-      setSessionOptions(sessions.items ?? []);
-      setTypeOptions(types.items ?? []);
+      setCerts(d.certificates);
+      setSessionOptions(sessions.items);
+      setTypeOptions(types.items);
     }
     if (tab === "catalog") {
       const d = await api<{
         items: { id: string; label?: string; name?: string }[];
       }>(`/api/admin/catalog/${catalogKind}`);
-      setCatalog(d.items ?? []);
+      setCatalog(d.items);
     }
     if (tab === "audit") {
       const params = new URLSearchParams();
@@ -145,35 +173,35 @@ export function useAdminData({
       const d = await api<{ logs: Record<string, unknown>[] }>(
         `/api/admin/audit?${params.toString()}`,
       );
-      setLogs(d.logs ?? []);
+      setLogs(d.logs);
     }
     if (tab === "rights") {
       setRightsLoaded(false);
       const d = await api<{ requests: Record<string, unknown>[] }>("/api/admin/rights?status=open");
-      setRights(d.requests ?? []);
+      setRights(d.requests);
       setRightsLoaded(true);
     }
     if (tab === "breaches") {
       setBreachesLoaded(false);
       const d = await api<{ breaches: Record<string, unknown>[] }>("/api/admin/breaches");
-      setBreaches(d.breaches ?? []);
+      setBreaches(d.breaches);
       setBreachesLoaded(true);
     }
     if (tab === "reports") {
       setReportsLoaded(false);
       const d = await api<{ reports: Record<string, unknown>[] }>("/api/admin/reports");
-      setReports(d.reports ?? []);
+      setReports(d.reports);
       setReportsLoaded(true);
     }
     if (tab === "contacts") {
       const d = await api<{ enquiries: Record<string, unknown>[] }>("/api/admin/contact-enquiries");
-      setContactEnquiries(d.enquiries ?? []);
+      setContactEnquiries(d.enquiries);
     }
     if (tab === "timeline") {
       const d = await api<{ events: Record<string, unknown>[] }>(
         `/api/admin/timeline${timelineStudentId ? `?studentId=${encodeURIComponent(timelineStudentId)}` : ""}`,
       );
-      setTimeline(d.events ?? []);
+      setTimeline(d.events);
     }
     if (tab === "faqs" && role === "superadmin") {
       const d = await api<{
@@ -182,47 +210,48 @@ export function useAdminData({
           answerEn: string;
         }[];
       }>("/api/admin/faqs");
-      if (d.faqs?.length) setFaqs(d.faqs);
+      if (d.faqs.length) setFaqs(d.faqs);
     }
     if (tab === "admins" && role === "superadmin") {
       const d = await api<{ admins: Record<string, unknown>[] }>("/api/admin/users");
-      setAdmins(d.admins ?? []);
+      setAdmins(d.admins);
     }
     if (tab === "branding" && role === "superadmin") {
       const d = await api<{
         settings: Record<string, unknown>;
         recentLocationBlocks: Record<string, unknown>[];
       }>("/api/admin/site-settings");
-      const x = d.settings ?? {};
+      const x = d.settings;
       setAllowedAdminCountries(
         Array.isArray(x.allowedAdminCountries) ? x.allowedAdminCountries.join(", ") : "IN",
       );
       setAdminIpAllowlist(Array.isArray(x.adminIpAllowlist) ? x.adminIpAllowlist.join("\n") : "");
-      setAdminLocationEnforcementMode(String(x.adminLocationEnforcementMode ?? "block"));
-      setRecentLocationBlocks(d.recentLocationBlocks ?? []);
+      setAdminLocationEnforcementMode(
+        typeof x.adminLocationEnforcementMode === "string"
+          ? x.adminLocationEnforcementMode
+          : "block",
+      );
+      setRecentLocationBlocks(d.recentLocationBlocks);
       setAdminLocationExceptions(
         Array.isArray(x.adminLocationExceptions)
-          ? (x.adminLocationExceptions as Record<string, unknown>[])
+          ? x.adminLocationExceptions.filter(isRecord)
           : [],
       );
       setMaintenanceMode(x.maintenanceMode === true);
-      setRetentionYears(String(x.retentionYears ?? 7));
-      setBackupRotationDays(String(x.backupRotationDays ?? 30));
+      setRetentionYears(displayValue(x.retentionYears) || "7");
+      setBackupRotationDays(displayValue(x.backupRotationDays) || "30");
       setBranding((v) => ({
         ...v,
         ...Object.fromEntries(
-          Object.keys(v).map((k) => [
-            k,
-            k.includes("_i18n_")
-              ? String((x[k.startsWith("tagline_") ? "tagline_i18n" : "principalMessage_i18n"] as Record<string, unknown> | undefined)?.[k.slice(k.lastIndexOf("_") + 1)] ?? "")
-              : k === "socialLinks"
-              ? Array.isArray(x[k])
-                ? (x[k] as { label: string; url: string }[])
-                    .map((a) => `${a.label}|${a.url}`)
-                    .join("\n")
-                : ""
-              : String(x[k] ?? ""),
-          ]),
+          Object.keys(v).map((k) => {
+            if (k.includes("_i18n_")) {
+              const group = x[k.startsWith("tagline_") ? "tagline_i18n" : "principalMessage_i18n"];
+              const locale = k.slice(k.lastIndexOf("_") + 1);
+              return [k, isRecord(group) ? displayValue(group[locale]) : ""];
+            }
+            if (k === "socialLinks") return [k, socialLinkLines(x[k])];
+            return [k, displayValue(x[k])];
+          }),
         ),
       }));
     }
@@ -231,7 +260,7 @@ export function useAdminData({
       (role === "superadmin" || role === "approver")
     ) {
       const d = await api<{ announcement: Record<string, unknown> }>("/api/admin/announcements");
-      const a = d.announcement ?? {};
+      const a = d.announcement;
       const local = (value: unknown) => {
         if (typeof value !== "string" || !value) return "";
         const date = new Date(value);
@@ -243,9 +272,9 @@ export function useAdminData({
       setAnnouncement({
         enabled: a.enabled === true,
         type: a.type === "warning" ? "warning" : "info",
-        textEn: String(a.textEn ?? ""),
-        text_i18n: typeof a.text_i18n === "object" && a.text_i18n !== null ? a.text_i18n as Record<string, string> : {},
-        linkUrl: String(a.linkUrl ?? ""),
+        textEn: displayValue(a.textEn),
+        text_i18n: stringMap(a.text_i18n),
+        linkUrl: displayValue(a.linkUrl),
         startAt: local(a.startAt),
         endAt: local(a.endAt),
       });
@@ -264,6 +293,30 @@ export function useAdminData({
     setReportsLoaded,
     setRightsLoaded,
     setBreachesLoaded,
+    setStats,
+    setPending,
+    setSessionOptions,
+    setTypeOptions,
+    setClassOptions,
+    setCerts,
+    setCatalog,
+    setLogs,
+    setRights,
+    setBreaches,
+    setReports,
+    setTimeline,
+    setFaqs,
+    setAdmins,
+    setMaintenanceMode,
+    setRetentionYears,
+    setBackupRotationDays,
+    setBranding,
+    setAnnouncement,
+    setAllowedAdminCountries,
+    setAdminIpAllowlist,
+    setAdminLocationEnforcementMode,
+    setRecentLocationBlocks,
+    setAdminLocationExceptions,
   ]);
   return load;
 }

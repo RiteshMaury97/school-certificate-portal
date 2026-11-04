@@ -14,7 +14,7 @@ export default async function responsiveReport() {
     if (Array.isArray(parsed)) rows.push(...parsed.filter(isAuditRow));
   }
   if (rows.length === 0) return;
-  const labels = viewports.map(([width, height]) => `${width}×${height}`);
+  const labels = viewports.map(([width, height]) => `${String(width)}×${String(height)}`);
   const header = `| Route | Fixture | ${labels.join(" | ")} |`;
   const separator = `|---|---|${labels.map(() => "---").join("|")}|`;
   const table = responsiveRoutes.map((route) => {

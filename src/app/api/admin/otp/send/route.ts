@@ -16,7 +16,6 @@ import {
   adminOtpRecipient,
 } from "@/server/admin-otp";
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
-import { readErrorCode } from "@/shared/safe-values";
 import { sendAdminOtpEmail } from "@/server/mailer";
 import { requesterIp } from "@/server/request-origin";
 import {
@@ -25,6 +24,7 @@ import {
   verifyRequestAppCheck,
   writeAuditLog,
 } from "@/server/security";
+import { readErrorCode } from "@/shared/safe-values";
 
 import type { NextRequest } from "next/server";
 
@@ -131,10 +131,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const accountMinute = db.collection("abuseCounters").doc(`otp_account_cooldown_${decoded.uid}`);
     const accountHour = db
       .collection("abuseCounters")
-      .doc(`otp_account_hour_${decoded.uid}_${Math.floor(now / 3_600_000)}`);
+      .doc(`otp_account_hour_${decoded.uid}_${String(Math.floor(now / 3_600_000))}`);
     const ipHour = db
       .collection("abuseCounters")
-      .doc(`otp_ip_hour_${ipHash}_${Math.floor(now / 3_600_000)}`);
+      .doc(`otp_ip_hour_${ipHash}_${String(Math.floor(now / 3_600_000))}`);
     const blockedForSeconds = await db.runTransaction(async (transaction) => {
       const [minuteSnap, hourSnap, ipSnap, previous] = await Promise.all([
         transaction.get(accountMinute),

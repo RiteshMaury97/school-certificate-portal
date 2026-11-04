@@ -22,6 +22,23 @@ type Faq = {
   answer_i18n?: Record<string, string>;
 };
 
+function isFaq(value: unknown): value is Faq {
+  if (typeof value !== "object" || value === null) return false;
+  return (
+    "questionEn" in value && typeof value.questionEn === "string" &&
+    "answerEn" in value && typeof value.answerEn === "string"
+  );
+}
+
+function readFaqs(value: unknown): Faq[] {
+  if (typeof value !== "object" || value === null || !("settings" in value)) return [];
+  const settings = value.settings;
+  if (typeof settings !== "object" || settings === null || !("faqs" in settings)) return [];
+  return Array.isArray(settings.faqs)
+    ? settings.faqs.filter(isFaq).filter((item) => item.questionEn.trim() && item.answerEn.trim())
+    : [];
+}
+
 const categories = [
   "All questions",
   "Finding a record",
@@ -73,21 +90,15 @@ export default function FaqPage() {
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    fetch("/api/public/site-settings", { cache: "no-store" })
+    void fetch("/api/public/site-settings", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Unable to load FAQ");
-        return response.json();
+        const data: unknown = await response.json();
+        return readFaqs(data);
       })
       .then((data) => {
         if (active) {
-          setFaqs(
-            Array.isArray(data.settings?.faqs)
-              ? (data.settings.faqs as Faq[]).filter(
-                  (item) => item.questionEn?.trim() && item.answerEn?.trim(),
-                )
-              : [],
-          );
+          setFaqs(data);
           setLoadError(false);
         }
       })
@@ -195,7 +206,7 @@ export default function FaqPage() {
               <span className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-[10px] font-semibold text-[var(--primary)]">
                 {loading
                   ? "Loading"
-                  : `${visibleFaqs.length} ${visibleFaqs.length === 1 ? "answer" : "answers"}`}
+                  : `${String(visibleFaqs.length)} ${visibleFaqs.length === 1 ? "answer" : "answers"}`}
               </span>
             </div>
             {loading ? (
@@ -208,6 +219,7 @@ export default function FaqPage() {
               <div className="mt-4">
                 <ErrorState
                   onRetry={() => {
+                    setLoading(true);
                     setRetry((value) => value + 1);
                   }}
                 />
@@ -216,11 +228,11 @@ export default function FaqPage() {
               <div className="divide-y divide-[var(--divider)]">
                 {visibleFaqs.map((item, index) => (
                   <details
-                    key={`${item.questionEn}-${index}`}
+                    key={`${item.questionEn}-${String(index)}`}
                     className="group py-4 first:pt-5 last:pb-1"
                   >
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus)]">
-                      <span>{item.question_i18n?.[locale] || item.questionEn}</span>
+                      <span>{item.question_i18n?.[locale]?.length ? item.question_i18n[locale] : item.questionEn}</span>
                       <span
                         aria-hidden="true"
                         className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--surface-2)] text-base font-normal text-[var(--primary)] transition-transform group-open:rotate-45"
@@ -229,7 +241,7 @@ export default function FaqPage() {
                       </span>
                     </summary>
                     <p className="mt-3 max-w-3xl text-xs leading-6 text-[var(--text-muted)]">
-                      {item.answer_i18n?.[locale] || item.answerEn}
+                      {item.answer_i18n?.[locale]?.length ? item.answer_i18n[locale] : item.answerEn}
                     </p>
                   </details>
                 ))}

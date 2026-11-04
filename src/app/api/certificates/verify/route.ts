@@ -95,7 +95,7 @@ function maskStudentName(value: string): string {
     .map((part) =>
       part.length <= 1
         ? `${part[0] ?? ""}*`
-        : `${part[0]}${"*".repeat(Math.max(3, part.length - 1))}`,
+        : `${String(part[0])}${"*".repeat(Math.max(3, part.length - 1))}`,
     )
     .join(" ");
 }
@@ -212,9 +212,7 @@ export async function POST(request: NextRequest) {
       session,
       issueDate,
       schoolName:
-        String(
-          (await db.collection("siteSettings").doc("main").get()).get("schoolName") ?? "",
-        ).trim() || "Satyam International School",
+        String((await db.collection("siteSettings").doc("main").get()).get("schoolName")).trim() || "Satyam International School",
       studentName: maskStudentName(studentName),
       verifiedOn: new Date().toISOString(),
     });

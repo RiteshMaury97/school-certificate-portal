@@ -48,7 +48,7 @@ async function measure(page: Page, route: string) {
       const label = `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ""}.${typeof element.className === "string" ? element.className.split(/\s+/).slice(0, 2).join(".") : ""}`;
       if (!intentionalScroller(element) && (rect.left < -1 || rect.right > width + 1)) outside.push(label);
       const style = getComputedStyle(element);
-      const text = element.children.length === 0 ? element.textContent?.trim() ?? "" : "";
+      const text = element.children.length === 0 ? element.textContent.trim() : "";
       if (text && /(hidden|clip)/.test(`${style.overflow} ${style.textOverflow}`) && element.scrollWidth > element.clientWidth + 1) clipped.push(label);
       if (text && /[\p{L}\p{N}_-]{35,}/u.test(text) && style.overflowWrap !== "anywhere" && style.wordBreak !== "break-all" && style.whiteSpace !== "normal" && !intentionalScroller(element)) longUnwrapped.push(label);
       if (element instanceof HTMLImageElement) {
@@ -59,7 +59,7 @@ async function measure(page: Page, route: string) {
     const interactive = elements.filter((element) => element.matches("button,a,input,select,textarea,[role=button]"));
     const smallControls = interactive.flatMap((element) => {
       const rect = element.getBoundingClientRect();
-      return rect.width < 44 || rect.height < 44 ? [`${element.tagName.toLowerCase()}:${(element.textContent ?? "").trim().slice(0, 24)}`] : [];
+      return rect.width < 44 || rect.height < 44 ? [`${element.tagName.toLowerCase()}:${element.textContent.trim().slice(0, 24)}`] : [];
     });
     const overlaps: string[] = [];
     for (let left = 0; left < interactive.length; left += 1) {
@@ -188,7 +188,7 @@ for (const route of responsiveRoutes) {
           document.documentElement.dataset.theme = activeTheme === "dark" ? "dark" : "light";
         }, theme);
         const measured = await measure(page, route);
-        rows.push({ route, viewport: `${width}x${height}`, theme, fixture, ...measured });
+        rows.push({ route, viewport: `${String(width)}x${String(height)}`, theme, fixture, ...measured });
         await page.screenshot({
           path: path.join(reportRoot, "screenshots", safeName(route), `${String(width)}x${String(height)}-${theme}.png`),
           fullPage: true,
@@ -246,7 +246,7 @@ test("WebKit responsive smoke: every route, viewport and theme", async ({ page, 
       for (const theme of themes) {
         await page.emulateMedia({ colorScheme: theme === "dark" ? "dark" : "light", forcedColors: theme === "contrast" ? "active" : "none" });
         const dimensions = await page.evaluate(() => ({ content: document.scrollingElement?.scrollWidth ?? 0, viewport: document.documentElement.clientWidth }));
-        expect(dimensions.content, `${route} ${width}x${height} ${theme}`).toBeLessThanOrEqual(dimensions.viewport);
+        expect(dimensions.content, `${route} ${String(width)}x${String(height)} ${theme}`).toBeLessThanOrEqual(dimensions.viewport);
       }
     }
   }

@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
       );
     if (rows.length - 1 > MAX_CSV_ROWS)
       return NextResponse.json(
-        { error: `Import no more than ${MAX_CSV_ROWS} student rows at a time.` },
+        { error: `Import no more than ${String(MAX_CSV_ROWS)} student rows at a time.` },
         { status: 400 },
       );
 
@@ -187,22 +187,22 @@ export async function POST(request: NextRequest) {
       const positions = headers
         .map((header, index) => (accepted.has(header) ? index : -1))
         .filter((index) => index >= 0);
-      if (positions.length > 1) headerErrors.push(`Use only one column for ${fieldLabels[field]}.`);
+      if (positions.length > 1) headerErrors.push(`Use only one column for ${String(fieldLabels[field])}.`);
       if (positions[0] !== undefined) fieldIndexes.set(field, positions[0]);
     }
     for (const field of requiredFields)
       if (!fieldIndexes.has(field))
-        headerErrors.push(`Missing required column: ${fieldLabels[field]}.`);
+        headerErrors.push(`Missing required column: ${String(fieldLabels[field])}.`);
     const knownHeaders = new Set<string>(
       Object.values(importFields).flatMap((values) => [...values]),
     );
     for (const [index, header] of headers.entries())
       if (header && !knownHeaders.has(header))
-        headerErrors.push(`Unexpected column "${headerRow.cells[index]}".`);
+        headerErrors.push(`Unexpected column "${String(headerRow.cells[index])}".`);
     if (headerErrors.length)
       return NextResponse.json(
         {
-          error: `Fix the Excel header row ${headerRow.row}: ${headerErrors.join(" ")}`,
+          error: `Fix the Excel header row ${String(headerRow.row)}: ${headerErrors.join(" ")}`,
         },
         { status: 400 },
       );
@@ -238,10 +238,14 @@ export async function POST(request: NextRequest) {
           fieldErrors: [],
         };
         for (let index = headerRow.cells.length; index < cells.length; index++)
-          if (cells[index]) addFieldError(row, `Column ${index + 1}`, "Unexpected cell value.");
+          if (cells[index]) addFieldError(row, `Column ${String(index + 1)}`, "Unexpected cell value.");
 
         const classValue = values.className ?? "";
-        if (!activeClasses.has(classValue) || !classValue || classValue !== classValue.trim())
+        if (
+          !activeClasses.has(classValue) ||
+          classValue.length === 0 ||
+          classValue !== classValue.trim()
+        )
           addFieldError(
             row,
             "className",
@@ -408,7 +412,7 @@ export async function POST(request: NextRequest) {
         .get();
       if (scholarMatches.docs.some((doc) => doc.get("searchKey") !== key))
         throw new Error(
-          `Scholar number on import row ${item.row} is already assigned in this class and session.`,
+          `Scholar number on import row ${String(item.row)} is already assigned in this class and session.`,
         );
       const dob = data.dateOfBirth || "";
       const admission = data.admissionNumber || data.admissionNo || "";
@@ -424,13 +428,13 @@ export async function POST(request: NextRequest) {
           ))
       )
         throw new Error(
-          `Duplicate name combination detected on import row ${item.row}: add a date of birth or admission number so students can be told apart.`,
+          `Duplicate name combination detected on import row ${String(item.row)}: add a date of birth or admission number so students can be told apart.`,
         );
       const identified = matches.docs.filter((doc) =>
         studentIdentityMatches(doc.data(), dobKey, admissionKey),
       );
       if (identified.length > 1)
-        throw new Error(`Import row ${item.row} matches multiple existing students.`);
+        throw new Error(`Import row ${String(item.row)} matches multiple existing students.`);
       const common = {
         studentName: data.studentName,
         fatherName: data.fatherName,

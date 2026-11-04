@@ -36,7 +36,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   useEffect(() => {
     let active = true;
-    fetch("/api/public/sessions", { cache: "no-store" })
+    void fetch("/api/public/sessions", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("sessions");
         const data: unknown = await response.json();
@@ -257,7 +257,12 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
             </button>
           </div>
         ) : (
-          <form onSubmit={submit} className="mt-5 space-y-4">
+          <form
+            onSubmit={(event) => {
+              void submit(event);
+            }}
+            className="mt-5 space-y-4"
+          >
             <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 text-sm leading-6 text-[var(--text)]">
               Many records belong to students under 18. If the student is a minor, a parent or
               guardian should use this portal or be present. The school processes this data only to
@@ -470,9 +475,9 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
               <span>
                 I am the student, or the parent/guardian of the student. I confirm that the School
                 may use these details to review this report. (
-                {
-                I consent to the school using these details to investigate and respond to this report, and emailing a copy to the address provided. I confirm the information is accurate to the best of my knowledge.
-                }
+                I consent to the school using these details to investigate and respond to this
+                report, and emailing a copy to the address provided. I confirm the information is
+                accurate to the best of my knowledge.
                 )
               </span>
             </label>

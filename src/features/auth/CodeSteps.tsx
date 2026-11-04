@@ -13,9 +13,11 @@ export function EmailCodeStep({ busy, email, onVerify, onCancel, onResend, resen
   const [code, setCode] = useState("");
   const [remaining, setRemaining] = useState(resendAfterSeconds);
   useEffect(() => {
-    setRemaining(resendAfterSeconds);
+    const reset = window.setTimeout(() => {
+      setRemaining(resendAfterSeconds);
+    }, 0);
     const timer = window.setInterval(() => { setRemaining((value) => Math.max(0, value - 1)); }, 1000);
-    return () => { window.clearInterval(timer); };
+    return () => { window.clearTimeout(reset); window.clearInterval(timer); };
   }, [resendAfterSeconds]);
   const submit = (event: SubmitEvent<HTMLFormElement>) => { event.preventDefault(); onVerify(code); };
   const masked = email.replace(/^(.).+(@.+)$/, "$1***$2");
@@ -29,7 +31,7 @@ export function EmailCodeStep({ busy, email, onVerify, onCancel, onResend, resen
     </ul>
     <button disabled={busy || code.length !== 6} aria-busy={busy} className={primary}>{busy ? "Verifying…" : "Verify & Continue"}</button>
     <button type="button" disabled={busy || remaining > 0} onClick={() => { setCode(""); onResend(); }} className={secondary}>
-      {remaining > 0 ? `Resend code in ${remaining}s` : "Resend code"}
+      {remaining > 0 ? `Resend code in ${String(remaining)}s` : "Resend code"}
     </button>
     <button type="button" onClick={onCancel} className={secondary}>Use a different account</button>
   </form>;

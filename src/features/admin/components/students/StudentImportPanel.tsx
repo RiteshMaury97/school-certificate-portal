@@ -253,7 +253,7 @@ export default function StudentImportPanel({
                       {row.fieldErrors.length ? (
                         <ul className="space-y-1 text-[var(--danger)]">
                           {row.fieldErrors.map((error, index) => (
-                            <li key={`${error.column}-${index}`}>
+                            <li key={`${error.column}-${String(index)}`}>
                               <span className="font-semibold">{error.column}:</span> {error.message}
                             </li>
                           ))}

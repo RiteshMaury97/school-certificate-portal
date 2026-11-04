@@ -113,7 +113,9 @@ async function schoolName(): Promise<string> {
   } catch {
     /* Fall back to configured mail identity when site settings are unavailable. */
   }
-  return process.env.GMAIL_FROM_NAME?.trim() || "Satyam International School";
+  const configuredName = process.env.GMAIL_FROM_NAME?.trim();
+  if (!configuredName || configuredName.length === 0) return "Satyam International School";
+  return configuredName;
 }
 
 function senderAddress(): string {

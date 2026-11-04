@@ -6,7 +6,7 @@ import type { z } from "zod";
 
 type Errors = Record<string, string>;
 
-export function useFormValidation<T extends z.ZodType>(schema: T, values: unknown) {
+export function useFormValidation(schema: z.ZodType, values: unknown) {
   const [submitted, setSubmitted] = useState(false);
   const [touched, setTouched] = useState<Set<string>>(() => new Set());
   const result = useMemo(() => schema.safeParse(values), [schema, values]);

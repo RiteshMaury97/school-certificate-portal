@@ -1,6 +1,7 @@
 "use client";
 
 import { Camera, Check, KeyRound, ShieldCheck, UserRound } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useState, type ChangeEvent, type SubmitEvent, type ReactNode } from "react";
 
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -117,9 +118,10 @@ function Section({
 function fileAsDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => { typeof reader.result === "string"
-        ? resolve(reader.result)
-        : reject(new Error("Could not read the profile photo.")); };
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("Could not read the profile photo."));
+    };
     reader.onerror = () => { reject(new Error("Could not read the profile photo.")); };
     reader.readAsDataURL(file);
   });
@@ -192,7 +194,7 @@ export default function ProfileTab({
           const loadedProfile = { ...emptyProfile, ...result.profile };
           setProfile(loadedProfile);
           setSavedProfile(loadedProfile);
-          setAccount(result.account ?? {});
+          setAccount(result.account);
         }
       })
       .catch((error: unknown) => {
@@ -350,11 +352,16 @@ export default function ProfileTab({
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--surface-2)]">
               <div
                 className="h-full rounded-full bg-[var(--success)] transition-[width]"
-                style={{ width: `${completion}%` }}
+                style={{ width: `${String(completion)}%` }}
               />
             </div>
           </section>
-          <form onSubmit={saveProfile} className="space-y-5">
+          <form
+            onSubmit={(event) => {
+              void saveProfile(event);
+            }}
+            className="space-y-5"
+          >
             <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_260px]">
               <div className="space-y-5">
                 <Section
@@ -364,9 +371,12 @@ export default function ProfileTab({
                   <div className="mb-5 flex flex-wrap items-center gap-4">
                     <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border border-[var(--border)] bg-[var(--surface-2)] text-2xl font-bold text-[var(--primary)]">
                       {profile.photoDataUrl ? (
-                        <img
+                        <Image
                           src={profile.photoDataUrl}
                           alt="Your profile"
+                          width={80}
+                          height={80}
+                          unoptimized
                           className="h-full w-full object-cover"
                         />
                       ) : (

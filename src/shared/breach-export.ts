@@ -33,7 +33,7 @@ export function breachCsv(incidents: ExportIncident[], updates: ExportUpdate[] =
 
 function formatValue(value: unknown): string {
   if (Array.isArray(value)) return value.map((item) => formatValue(item)).join("; ");
-  if (typeof value === "object" && value !== null) return JSON.stringify(value) ?? "";
+  if (typeof value === "object" && value !== null) return JSON.stringify(value);
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
     return String(value);
   return "";

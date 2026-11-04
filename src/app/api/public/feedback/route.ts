@@ -49,7 +49,7 @@ async function consumeFeedbackBudget(ipHash: string): Promise<boolean> {
   const now = Date.now();
   const ref = db
     .collection("abuseCounters")
-    .doc(`feedback_${ipHash}_${Math.floor(now / 3_600_000)}`);
+    .doc(`feedback_${ipHash}_${String(Math.floor(now / 3_600_000))}`);
   return db.runTransaction(async (tx) => {
     const current = await tx.get(ref);
     const count = Number(current.get("count") ?? 0);

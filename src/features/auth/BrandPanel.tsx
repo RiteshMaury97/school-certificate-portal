@@ -55,17 +55,13 @@ export default function BrandPanel() {
       Icon: Phone,
     },
     ...(email ? [{ label: "Email", value: email, href: `mailto:${email}`, Icon: Mail }] : []),
-    ...(website
-      ? [
-          {
-            label: "Website",
-            value: "Visit Official Website",
-            href: website,
-            Icon: Globe,
-            external: true,
-          },
-        ]
-      : []),
+    {
+      label: "Website",
+      value: "Visit Official Website",
+      href: website,
+      Icon: Globe,
+      external: true,
+    },
   ];
   return (
     <aside className="bg-gradient-to-br from-[var(--primary)] to-[var(--primary-hover)] px-5 py-5 text-[var(--on-primary)] sm:px-8 lg:flex lg:min-h-dvh lg:items-center lg:px-12 lg:py-12 xl:px-16">

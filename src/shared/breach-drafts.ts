@@ -14,7 +14,7 @@ export type DraftContact = { name?: string; email?: string; phone?: string };
 
 function text(value: string | undefined, fallback: string): string {
   const normalized = value?.trim();
-  return normalized ? normalized : fallback;
+  return normalized && normalized.length > 0 ? normalized : fallback;
 }
 
 function date(value: string | null | undefined, language: "en" | "hi"): string {

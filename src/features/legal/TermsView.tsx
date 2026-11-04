@@ -5,14 +5,19 @@ import { usePublicSiteSettings } from "@/lib/use-site-settings";
 import type { LegalSection } from "@/components/layout/LegalPageLayout";
 
 
-const version = process.env.NEXT_PUBLIC_TERMS_VERSION || "1.0";
+const version = process.env.NEXT_PUBLIC_TERMS_VERSION ?? "1.0";
+
+function configuredText(value: string | undefined, fallback: string): string {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : fallback;
+}
 
 export default function TermsPage() {
   const settings = usePublicSiteSettings();
-  const school = settings.schoolName?.trim() || "Satyam International School";
-  const email = settings.email?.trim() || "";
-  const jurisdiction = settings.jurisdiction?.trim() || "";
-  const updated = settings.lastUpdated?.trim() || "No data found";
+  const school = configuredText(settings.schoolName, "Satyam International School");
+  const email = configuredText(settings.email, "");
+  const jurisdiction = configuredText(settings.jurisdiction, "");
+  const updated = configuredText(settings.lastUpdated, "No data found");
   const sections: LegalSection[] = [
     {
       id: "acceptance",

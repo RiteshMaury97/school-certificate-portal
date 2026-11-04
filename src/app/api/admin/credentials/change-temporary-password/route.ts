@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
-import { readErrorCode } from "@/shared/safe-values";
 import { sameOrigin, verifyRequestAppCheck, writeAuditLog } from "@/server/security";
+import { readErrorCode } from "@/shared/safe-values";
 
 import type { NextRequest } from "next/server";
 

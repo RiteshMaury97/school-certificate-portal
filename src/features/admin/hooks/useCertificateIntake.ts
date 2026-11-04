@@ -142,7 +142,6 @@ async function submitCertificates(e: SubmitEvent<HTMLFormElement>, input: Certif
     throw new Error("Choose a PDF, JPG or PNG file.");
   if (firstFile.size === 0 || firstFile.size > 4 * 1024 * 1024)
     throw new Error("Choose a file between 1 byte and 4 MB.");
-  let uploaded = false;
   await input.act(async () => {
     const body = new FormData();
     body.append("studentId", input.selectedStudent);
@@ -167,9 +166,8 @@ async function submitCertificates(e: SubmitEvent<HTMLFormElement>, input: Certif
     input.setDuplicateHashReason("");
     input.setDuplicateHashWarning("");
     await input.load();
-    uploaded = true;
+    input.setToast("Uploaded");
   });
-  if (uploaded) input.setToast("Uploaded");
 }
 
 export function useCertificateIntake({ api, act, setToast, tab, load }: Props) {

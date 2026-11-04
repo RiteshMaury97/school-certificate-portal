@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     allowed.getColumn(3).width = 32;
     if (classes.length) {
       workbook.definedNames.add(
-        `'Allowed Values'!$A$2:$A$${classes.length + 1}`,
+        `'Allowed Values'!$A$2:$A$${String(classes.length + 1)}`,
         "ClassNames",
       );
       sheetWithValidations.dataValidations.add("E2:E501", {
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
     }
     if (sessions.length) {
       workbook.definedNames.add(
-        `'Allowed Values'!$C$2:$C$${sessions.length + 1}`,
+        `'Allowed Values'!$C$2:$C$${String(sessions.length + 1)}`,
         "AcademicSessions",
       );
       sheetWithValidations.dataValidations.add("F2:F501", {

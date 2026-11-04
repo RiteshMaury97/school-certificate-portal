@@ -36,6 +36,53 @@ type FormValues = {
 type SessionResponse = { sessions: string[] };
 type ClassResponse = { classes: string[] };
 
+function isFormField(value: PropertyKey): value is keyof FormValues {
+  return (
+    value === "studentName" ||
+    value === "fatherName" ||
+    value === "motherName" ||
+    value === "className" ||
+    value === "scholarNumber" ||
+    value === "session" ||
+    value === "consent"
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function readStringListResponse(value: unknown, key: "sessions" | "classes"): string[] | null {
+  if (!isRecord(value)) return null;
+  const items = value[key];
+  return Array.isArray(items) && items.every((item) => typeof item === "string")
+    ? items
+    : null;
+}
+
+function isStudentResult(value: unknown): value is StudentResult {
+  if (!isRecord(value) || !Array.isArray(value.certificates)) return false;
+  if (
+    typeof value.studentName !== "string" ||
+    typeof value.className !== "string" ||
+    typeof value.session !== "string" ||
+    typeof value.accessToken !== "string" ||
+    typeof value.tokenExpiresIn !== "number"
+  ) return false;
+  return value.certificates.every((certificate: unknown) => {
+    if (!isRecord(certificate)) return false;
+    return (
+      typeof certificate.certId === "string" &&
+      typeof certificate.title === "string" &&
+      typeof certificate.type === "string" &&
+      typeof certificate.session === "string" &&
+      (typeof certificate.issueDate === "string" || certificate.issueDate === null) &&
+      typeof certificate.certificateNumber === "string" &&
+      typeof certificate.mimeType === "string"
+    );
+  });
+}
+
 export default function FinderPage() {
   const router = useRouter();
   const { setResult: shareResult } = useCertificateFlow();
@@ -52,8 +99,8 @@ export default function FinderPage() {
   const [sessions, setSessions] = useState<string[]>([]);
   const [classes, setClasses] = useState<string[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
-  const [sessionsLoading, setSessionsLoading] = useState(true);
-  const [sessionsLoadError, setSessionsLoadError] = useState(false);
+  const [sessionsLoading, setSessionsLoading] = useState<boolean>(true);
+  const [sessionsLoadError, setSessionsLoadError] = useState<boolean>(false);
   const [sessionsRetry, setSessionsRetry] = useState(0);
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaReady, setCaptchaReady] = useState(false);
@@ -80,14 +127,14 @@ export default function FinderPage() {
   if (!lookupValidation.success) {
     for (const issue of lookupValidation.error.issues) {
       const key = issue.path[0];
-      if (typeof key === "string" && key in form) {
-        fieldErrors[key as keyof FormValues] ??= issue.message;
+      if (typeof key === "string" && isFormField(key)) {
+        fieldErrors[key] ??= issue.message;
       }
     }
   }
   const visibleFieldErrors: Record<string, string> = {};
   for (const [key, message] of Object.entries(fieldErrors)) {
-    if (touched[key as keyof FormValues] && message) visibleFieldErrors[key] = message;
+    if (isFormField(key) && touched[key] && message) visibleFieldErrors[key] = message;
   }
   const captchaRef = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
@@ -95,10 +142,13 @@ export default function FinderPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/public/sessions", { cache: "no-store" })
+    void fetch("/api/public/sessions", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Unable to load sessions");
-        return response.json() as Promise<SessionResponse>;
+        const data: unknown = await response.json();
+        const sessions = readStringListResponse(data, "sessions");
+        if (!sessions) throw new Error("Invalid sessions response");
+        return { sessions } satisfies SessionResponse;
       })
       .then((data) => {
         if (!cancelled) {
@@ -119,10 +169,13 @@ export default function FinderPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/public/classes", { cache: "no-store" })
+    void fetch("/api/public/classes", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Unable to load classes");
-        return response.json() as Promise<ClassResponse>;
+        const data: unknown = await response.json();
+        const classes = readStringListResponse(data, "classes");
+        if (!classes) throw new Error("Invalid classes response");
+        return { classes } satisfies ClassResponse;
       })
       .then((data) => {
         if (!cancelled) setClasses(data.classes);
@@ -145,7 +198,7 @@ export default function FinderPage() {
     }
     let cancelled = false;
     const scriptId = "cloudflare-turnstile-script";
-    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
+    const existing = document.querySelector<HTMLScriptElement>(`script#${scriptId}`);
     const renderWidget = () => {
       if (cancelled || !captchaRef.current || !window.turnstile || widgetId.current) return;
       try {
@@ -276,9 +329,9 @@ export default function FinderPage() {
         setNotFound(true);
         setChallengeToken("");
         setDisambiguationValue("");
-      } else if ("found" in data && data.found === true) {
-        setResult(data as unknown as StudentResult);
-        shareResult(data as unknown as StudentResult);
+      } else if ("found" in data && data.found === true && isStudentResult(data)) {
+        setResult(data);
+        shareResult(data);
         navigatingToResults = true;
         router.push("/certificates/results");
         setChallengeToken("");

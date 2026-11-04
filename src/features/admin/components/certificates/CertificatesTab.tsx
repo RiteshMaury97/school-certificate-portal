@@ -3,8 +3,8 @@ import { BadgeCheck, Clock3, FileText, ShieldCheck, Upload, UserRound } from "lu
 import { DatePicker } from "@/components/ui/DatePicker";
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { normalizeAcademicSession } from "@/shared/academic-session";
-import { readText } from "@/shared/safe-values";
 import { confirmAction, requestInput } from "@/shared/admin-dialogs";
+import { readText } from "@/shared/safe-values";
 import {
   MAX_BULK_FILES,
   MAX_CSV_BYTES,
@@ -392,7 +392,7 @@ export default function CertificatesTab(props: Props) {
                 <p className="mt-1 text-xs text-[var(--text-muted)]">
                   {c.type} <span className="px-1">·</span> {c.session}
                   <span className="px-1">·</span> Certificate{" "}
-                  {c.certificateNumber || "number protected"}
+                  {c.certificateNumber?.length ? c.certificateNumber : "number protected"}
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
                   <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 font-semibold capitalize text-[var(--text)]">
@@ -428,7 +428,7 @@ export default function CertificatesTab(props: Props) {
                           required: true,
                         });
                         if (issueDate)
-                          act(async () => {
+                          void act(async () => {
                             await api(`/api/admin/certificates/${c.id}`, {
                               method: "PATCH",
                               headers: {
@@ -466,7 +466,7 @@ export default function CertificatesTab(props: Props) {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file)
-                          act(async () => {
+                          void act(async () => {
                             const certificateNumber = await requestInput({
                               title: "Replace certificate",
                               description:
@@ -534,7 +534,7 @@ export default function CertificatesTab(props: Props) {
                             "Revoke certificate",
                           )
                         )
-                          act(async () => {
+                          void act(async () => {
                             await api(`/api/admin/certificates/${c.id}/revoke`, {
                               method: "POST",
                               headers: {
@@ -573,7 +573,7 @@ export default function CertificatesTab(props: Props) {
                         "Delete certificate",
                       ).then((accepted) => {
                         if (accepted)
-                          act(async () => {
+                          void act(async () => {
                             await api(`/api/admin/certificates/${c.id}`, {
                               method: "DELETE",
                             });

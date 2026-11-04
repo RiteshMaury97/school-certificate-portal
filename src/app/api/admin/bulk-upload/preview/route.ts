@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     const rows = parseCsv(await csv.text());
     if (rows.length < 2 || rows.length - 1 > MAX_CSV_ROWS)
       return NextResponse.json(
-        { error: `Mapping CSV needs headers and 1 to ${MAX_CSV_ROWS} rows.` },
+        { error: `Mapping CSV needs headers and 1 to ${String(MAX_CSV_ROWS)} rows.` },
         { status: 400 },
       );
     const headerRow = rows[0];
@@ -105,8 +105,7 @@ export async function POST(request: NextRequest) {
       const row = values.find(
         (v) =>
           (v.filename ?? v.file ?? "") === file.name ||
-          (pattern &&
-            (v.admissionnumber ?? v.admissionno ?? "") === pattern[1] &&
+          ((v.admissionnumber ?? v.admissionno ?? "") === pattern?.[1] &&
             ((!v.certificatetype && !v.type) ||
               safeTypeSlug(v.certificatetype ?? v.type ?? "") ===
                 safeTypeSlug((pattern[2] ?? "").replace(/[-_]+/g, " ")))),

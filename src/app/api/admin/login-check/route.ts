@@ -23,7 +23,7 @@ async function notifySuperadmins(email: string, count: number) {
     await sendMail({
       to: recipients,
       subject: "School Portal: repeated administrator sign-in failures",
-      text: `Repeated sign-in failures detected. Attempts: ${count}. Account: ${email}.`,
+      text: `Repeated sign-in failures detected. Attempts: ${String(count)}. Account: ${email}.`,
     }).catch(() => null);
 }
 export async function POST(request: NextRequest) {
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (body.action === "failure") {
       const ipRef = db
         .collection("abuseCounters")
-        .doc(`admin_login_fail_${ipHash}_${Math.floor(now / 60_000)}`);
+        .doc(`admin_login_fail_${ipHash}_${String(Math.floor(now / 60_000))}`);
       const allowed = await db.runTransaction(async (tx) => {
         const state = await tx.get(ipRef);
         const count = Number(state.get("count") ?? 0);

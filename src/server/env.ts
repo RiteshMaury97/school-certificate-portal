@@ -131,7 +131,7 @@ const serverEnvironmentSchema = z
     }
 
     const hasFirebaseCredentials = Boolean(
-      serviceAccount || (env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY),
+      serviceAccount ?? (env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY),
     );
     if (env.FIREBASE_CLIENT_EMAIL && !env.FIREBASE_PRIVATE_KEY)
       issue("FIREBASE_PRIVATE_KEY", "is required when FIREBASE_CLIENT_EMAIL is set");

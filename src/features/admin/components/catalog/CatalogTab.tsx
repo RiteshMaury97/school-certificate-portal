@@ -9,7 +9,7 @@ import {
   School,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { confirmAction } from "@/shared/admin-dialogs";
 
@@ -88,18 +88,15 @@ export default function CatalogTab({
 }: CatalogTabProps) {
   const [page, setPage] = useState(0);
   const section = sections.find((item) => item.kind === catalogKind) ?? sections.at(0);
-  if (!section) return null;
-  const Icon = section.icon;
   const pageCount = Math.max(1, Math.ceil(catalog.length / pageSize));
+  const visiblePage = Math.min(page, pageCount - 1);
   const visibleItems = useMemo(
-    () => catalog.slice(page * pageSize, (page + 1) * pageSize),
-    [catalog, page],
+    () => catalog.slice(visiblePage * pageSize, (visiblePage + 1) * pageSize),
+    [catalog, visiblePage],
   );
   const canManage = role === "superadmin" || role === "admin";
-
-  useEffect(() => {
-    setPage((current) => Math.min(current, pageCount - 1));
-  }, [pageCount]);
+  if (!section) return null;
+  const Icon = section.icon;
 
   function changeSection(kind: CatalogKind) {
     setPage(0);
@@ -210,7 +207,7 @@ export default function CatalogTab({
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--surface-2)] text-[10px] font-semibold text-[var(--text-muted)]">
-                      {page * pageSize + index + 1}
+                      {visiblePage * pageSize + index + 1}
                     </span>
                     <span className="truncate text-sm font-medium text-[var(--text)]">
                       {item.label ?? item.name ?? item.id}
@@ -259,9 +256,9 @@ export default function CatalogTab({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={page === 0}
+                disabled={visiblePage === 0}
                 onClick={() => {
-                  setPage((current) => current - 1);
+                  setPage(Math.max(0, visiblePage - 1));
                 }}
                 className="grid h-8 w-8 place-items-center rounded-md border border-[var(--divider)] text-[var(--text)] disabled:opacity-40"
               >
@@ -269,13 +266,13 @@ export default function CatalogTab({
                 <span className="sr-only">Previous page</span>
               </button>
               <span className="min-w-16 text-center text-xs text-[var(--text-muted)]">
-                {page + 1} / {pageCount}
+                {visiblePage + 1} / {pageCount}
               </span>
               <button
                 type="button"
-                disabled={page + 1 >= pageCount}
+                disabled={visiblePage + 1 >= pageCount}
                 onClick={() => {
-                  setPage((current) => current + 1);
+                  setPage(visiblePage + 1);
                 }}
                 className="grid h-8 w-8 place-items-center rounded-md border border-[var(--divider)] text-[var(--text)] disabled:opacity-40"
               >
