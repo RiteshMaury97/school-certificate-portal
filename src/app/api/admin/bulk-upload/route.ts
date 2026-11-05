@@ -47,7 +47,8 @@ const mappingSchema = z
 async function findMappedStudent(map: z.infer<typeof mappingSchema>) {
   const byId = map.studentId ? await db.collection("students").doc(map.studentId).get() : null;
   if (byId) return byId;
-  const admissionValue = map.admissionNumber || map.admissionNo || "";
+  const admissionValue =
+    [map.admissionNumber, map.admissionNo].find((value) => value?.length) ?? "";
   if (!admissionValue) return null;
   const admissionKey = studentIdentifierHmac(admissionValue);
   const match = await db
@@ -222,23 +223,15 @@ export async function POST(request: NextRequest) {
     const tooLarge = rejectOversizedRequest(request);
     if (tooLarge) return tooLarge;
     const form = await request.formData();
-    const file = form.get("file");
+    const fileResult = validateBulkFile(form.get("file"));
     const mapping = parseMapping(form);
     if (mapping instanceof NextResponse) return mapping;
-    if (!(file instanceof File))
-      return NextResponse.json({ error: "File and valid mapping are required." }, { status: 400 });
-    if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
-      return NextResponse.json(
-        { error: "Each file must be no larger than 4 MB." },
-        { status: 413 },
-      );
+    if (fileResult instanceof NextResponse) return fileResult;
+    const file = fileResult;
     const quotaError = await consumeAdminUploadQuota(admin.uid, file.size);
     if (quotaError) return NextResponse.json({ error: quotaError }, { status: 429 });
-    if (mapping.fileName !== file.name)
-      return NextResponse.json(
-        { error: "The uploaded file does not match the preview mapping." },
-        { status: 400 },
-      );
+    const mappingError = responseIfMappingMismatch(file.name, mapping);
+    if (mappingError) return mappingError;
     const student = await findMappedStudent(mapping);
     if (!student?.exists)
       return NextResponse.json(
@@ -280,4 +273,21 @@ function parseMapping(form: FormData): z.infer<typeof mappingSchema> | NextRespo
   return parsed.success
     ? parsed.data
     : NextResponse.json({ error: "File and valid mapping are required." }, { status: 400 });
+}
+
+function validateBulkFile(file: FormDataEntryValue | null): File | NextResponse {
+  if (!(file instanceof File))
+    return NextResponse.json({ error: "File and valid mapping are required." }, { status: 400 });
+  if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
+    return NextResponse.json({ error: "Each file must be no larger than 4 MB." }, { status: 413 });
+  return file;
+}
+
+function responseIfMappingMismatch(fileName: string, mapping: z.infer<typeof mappingSchema>) {
+  return mapping.fileName === fileName
+    ? null
+    : NextResponse.json(
+        { error: "The uploaded file does not match the preview mapping." },
+        { status: 400 },
+      );
 }

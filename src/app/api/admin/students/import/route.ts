@@ -72,41 +72,58 @@ type PreviewRow = {
 
 function csvRows(text: string): string[][] {
   const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let quoted = false;
+  const state = { row: [] as string[], cell: "", quoted: false };
   for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (ch === undefined) continue;
-    if (ch === '"') {
-      const escapedQuote = quoted && text[i + 1] === '"';
-      if (escapedQuote) {
-        cell += '"';
-        i++;
-      } else {
-        quoted = !quoted;
-      }
-      continue;
-    }
-    if (ch === "," && !quoted) {
-      row.push(cell.trim());
-      cell = "";
-      continue;
-    }
-    const newline = ch === "\n" || ch === "\r";
-    if (newline && !quoted) {
-      if (ch === "\r" && text[i + 1] === "\n") i++;
-      row.push(cell.trim());
-      if (row.some(Boolean)) rows.push(row);
-      row = [];
-      cell = "";
-      continue;
-    }
-    cell += ch;
+    i += consumeImportCsvCharacter(text, i, state, rows);
   }
-  row.push(cell.trim());
-  if (row.some(Boolean)) rows.push(row);
+  appendImportCsvRow(rows, state.row, state.cell);
   return rows.filter((item) => !item[0]?.startsWith("#"));
+}
+
+function consumeImportCsvCharacter(
+  text: string,
+  index: number,
+  state: { row: string[]; cell: string; quoted: boolean },
+  rows: string[][],
+): number {
+  const character = text[index];
+  if (character === undefined) return 0;
+  if (character === '"') return toggleImportCsvQuote(text, index, state);
+  if (character === "," && !state.quoted) {
+    state.row.push(state.cell.trim());
+    state.cell = "";
+    return 0;
+  }
+  if (isImportCsvNewline(character, state.quoted)) {
+    appendImportCsvRow(rows, state.row, state.cell);
+    state.row = [];
+    state.cell = "";
+    return character === "\r" && text[index + 1] === "\n" ? 1 : 0;
+  }
+  state.cell += character;
+  return 0;
+}
+
+function toggleImportCsvQuote(
+  text: string,
+  index: number,
+  state: { row: string[]; cell: string; quoted: boolean },
+): number {
+  if (state.quoted && text[index + 1] === '"') {
+    state.cell += '"';
+    return 1;
+  }
+  state.quoted = !state.quoted;
+  return 0;
+}
+
+function isImportCsvNewline(character: string, quoted: boolean): boolean {
+  return !quoted && (character === "\n" || character === "\r");
+}
+
+function appendImportCsvRow(rows: string[][], row: string[], cell: string): void {
+  const completeRow = [...row, cell.trim()];
+  if (completeRow.some(Boolean)) rows.push(completeRow);
 }
 
 function cellText(cell: Cell): string {
@@ -391,11 +408,10 @@ function importedStudentFields(
 async function persistImportedStudent(input: {
   request: NextRequest;
   adminUid: string;
-  data: ImportData;
   identified: QueryDocumentSnapshot[];
   fields: ReturnType<typeof importedStudentFields>;
 }): Promise<"created" | "updated"> {
-  const { request, adminUid, data, identified, fields } = input;
+  const { request, adminUid, identified, fields } = input;
   const existing = identified.at(0);
   if (existing) {
     await existing.ref.update({
@@ -442,7 +458,7 @@ async function commitImportRow(
   if (identified.length > 1)
     throw new Error(`Import row ${String(item.row)} matches multiple existing students.`);
   const fields = importedStudentFields(data, key, scholarKey, identity);
-  return persistImportedStudent({ request, adminUid, data, identified, fields });
+  return persistImportedStudent({ request, adminUid, identified, fields });
 }
 
 function resolveHeaderIndexes(headerRow: SourceRow): Map<string, number> | NextResponse {
@@ -569,15 +585,11 @@ export async function POST(request: NextRequest) {
     const tooLarge = rejectOversizedRequest(request, MAX_CSV_BYTES);
     if (tooLarge) return tooLarge;
     const form = await request.formData();
-    const file = form.get("file");
     const action = formString(form, "action", "preview");
-    if (action !== "preview" && action !== "commit")
+    if (!isImportAction(action))
       return NextResponse.json({ error: "Choose preview or commit." }, { status: 400 });
-    if (!(file instanceof File) || file.size > MAX_CSV_BYTES)
-      return NextResponse.json(
-        { error: "Upload an Excel .xlsx or CSV file no larger than 2 MB." },
-        { status: 400 },
-      );
+    const file = importFile(form.get("file"));
+    if (file instanceof NextResponse) return file;
     const quotaError = await consumeAdminUploadQuota(admin.uid, file.size);
     if (quotaError) return NextResponse.json({ error: quotaError }, { status: 429 });
     const rows = await importRows(file);
@@ -605,4 +617,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return apiError(error);
   }
+}
+
+function isImportAction(action: string): action is "preview" | "commit" {
+  return action === "preview" || action === "commit";
+}
+
+function importFile(value: FormDataEntryValue | null): File | NextResponse {
+  if (value instanceof File && value.size <= MAX_CSV_BYTES) return value;
+  return NextResponse.json(
+    { error: "Upload an Excel .xlsx or CSV file no larger than 2 MB." },
+    { status: 400 },
+  );
 }

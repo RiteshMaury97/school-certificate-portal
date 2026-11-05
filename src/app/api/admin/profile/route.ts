@@ -80,6 +80,16 @@ function parseProfileInput(value: unknown): Profile | string {
   if (Object.keys(value).some((key) => !allowedFields.has(key)))
     return "Profile contains unsupported fields.";
   const profile = { ...emptyProfile };
+  const textError = parseTextProfile(value, profile);
+  if (textError) return textError;
+  const booleanError = parseBooleanProfile(value, profile);
+  if (booleanError) return booleanError;
+  return (
+    validateIdentity(profile) ?? validateContact(profile) ?? validatePreferences(profile) ?? profile
+  );
+}
+
+function parseTextProfile(value: Record<string, unknown>, profile: Profile): string | null {
   for (const field of TEXT_FIELDS) {
     const item = value[field] ?? emptyProfile[field];
     if (typeof item !== "string") return `Enter a valid ${field} value.`;
@@ -87,14 +97,16 @@ function parseProfileInput(value: unknown): Profile | string {
     if (trimmed.length > TEXT_LIMITS[field]) return `The ${field} field is too long.`;
     profile[field] = trimmed;
   }
+  return null;
+}
+
+function parseBooleanProfile(value: Record<string, unknown>, profile: Profile): string | null {
   for (const field of BOOLEAN_FIELDS) {
     const item = value[field] ?? emptyProfile[field];
     if (typeof item !== "boolean") return `Enter a valid ${field} setting.`;
     profile[field] = item;
   }
-  return (
-    validateIdentity(profile) ?? validateContact(profile) ?? validatePreferences(profile) ?? profile
-  );
+  return null;
 }
 
 function validDate(value: string) {

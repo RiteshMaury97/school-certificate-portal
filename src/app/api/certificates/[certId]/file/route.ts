@@ -64,11 +64,7 @@ function certificateExtension(mimeType: string): string {
   return "";
 }
 
-function streamResponse(
-  watermarked: Buffer,
-  mimeType: string,
-  disposition: string,
-): NextResponse {
+function streamResponse(watermarked: Buffer, mimeType: string, disposition: string): NextResponse {
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       const chunkSize = 64 * 1024;
@@ -100,38 +96,36 @@ export async function GET(request: NextRequest, context: { params: Promise<{ cer
     const token = request.nextUrl.searchParams.get("token") ?? "";
     const claims = verifyStudentAccessToken(token, request);
     if (!claims) return unavailable();
-
     const { certId } = await context.params;
     if (!/^[A-Za-z0-9_-]{20,80}$/.test(certId)) return unavailable();
-
-    const certificateDoc = await findDownloadableCertificate(certId, claims);
-    if (!certificateDoc) return unavailable();
-    const certificate = certificateDoc.data();
-
-    const mimeType = String(certificate.mimeType ?? "");
-    const extension = certificateExtension(mimeType);
-    if (!extension) return unavailable();
-
-    const r2Key = String(certificate.r2Key ?? "");
-    if (!r2Key || Number(certificate.size ?? 0) > UPLOAD_MAX_BYTES) return unavailable();
-
-    const original = await readR2Object(r2Key);
-    const settings = await db.collection("siteSettings").doc("main").get();
-    const schoolName =
-      String(settings.get("schoolName") ?? "").trim() || "Satyam International School";
-    const watermarked = await watermarkCertificate(original, mimeType, schoolName);
-    const originalName = String(certificate.fileName ?? `certificate${extension}`);
-    const disposition = safeDispositionName(originalName, extension);
-
-    // Count only the explicit file-download endpoint. Do not persist requester,
-    // IP address, user-agent, token or device information with download metrics.
-    await recordCertificateDownloads([
-      { ref: certificateDoc.ref, session: String(certificate.session) },
-    ]);
-
-    return streamResponse(watermarked, mimeType, disposition);
+    return await serveCertificateDownload(certId, claims);
   } catch {
     console.error("Protected certificate stream failed");
     return unavailable();
   }
+}
+
+async function serveCertificateDownload(
+  certId: string,
+  claims: NonNullable<ReturnType<typeof verifyStudentAccessToken>>,
+): Promise<NextResponse> {
+  const certificateDoc = await findDownloadableCertificate(certId, claims);
+  if (!certificateDoc) return unavailable();
+  const certificate = certificateDoc.data();
+  const mimeType = String(certificate.mimeType ?? "");
+  const extension = certificateExtension(mimeType);
+  const r2Key = String(certificate.r2Key ?? "");
+  if (!extension || !r2Key || Number(certificate.size ?? 0) > UPLOAD_MAX_BYTES)
+    return unavailable();
+  const original = await readR2Object(r2Key);
+  const settings = await db.collection("siteSettings").doc("main").get();
+  const schoolName =
+    String(settings.get("schoolName") ?? "").trim() || "Satyam International School";
+  const watermarked = await watermarkCertificate(original, mimeType, schoolName);
+  const originalName = String(certificate.fileName ?? `certificate${extension}`);
+  const disposition = safeDispositionName(originalName, extension);
+  await recordCertificateDownloads([
+    { ref: certificateDoc.ref, session: String(certificate.session) },
+  ]);
+  return streamResponse(watermarked, mimeType, disposition);
 }

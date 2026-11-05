@@ -93,16 +93,7 @@ async function verifyOtpIdentity(
   const admin = await adminRef.get();
   const role: unknown = admin.get("role");
   const storedEmail = adminOtpRecipient({ email: admin.get("email") });
-  const validAccount =
-    decoded.email_verified &&
-    email.length > 0 &&
-    admin.exists &&
-    admin.get("mustChangePassword") !== true &&
-    decoded.mustChangePassword !== true &&
-    ["active", "invited"].includes(String(admin.get("status"))) &&
-    storedEmail === email &&
-    ["uploader", "approver", "admin", "superadmin"].includes(String(role)) &&
-    decoded.role === role;
+  const validAccount = validOtpAccount({ decoded, email, admin, role, storedEmail });
   if (!validAccount)
     return NextResponse.json({ error: "Unable to send verification code." }, { status: 403 });
   const location = await enforceAdminLocation({ request, adminUid: decoded.uid });
@@ -113,6 +104,27 @@ async function verifyOtpIdentity(
     return NextResponse.json({ error: "Unable to send verification code." }, { status: 423 });
   }
   return { decoded, storedEmail };
+}
+
+function validOtpAccount(input: {
+  decoded: Awaited<ReturnType<typeof adminAuth.verifyIdToken>>;
+  email: string;
+  admin: FirebaseFirestore.DocumentSnapshot;
+  role: unknown;
+  storedEmail: string;
+}): boolean {
+  const { decoded, email, admin, role, storedEmail } = input;
+  return (
+    decoded.email_verified &&
+    email.length > 0 &&
+    admin.exists &&
+    admin.get("mustChangePassword") !== true &&
+    decoded.mustChangePassword !== true &&
+    ["active", "invited"].includes(String(admin.get("status"))) &&
+    storedEmail === email &&
+    ["uploader", "approver", "admin", "superadmin"].includes(String(role)) &&
+    decoded.role === role
+  );
 }
 
 async function reserveOtpChallenge(input: {

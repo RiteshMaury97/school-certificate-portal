@@ -78,10 +78,11 @@ async function duplicateReplacementError(
     .digest("hex");
   const sameHash = await db.collection("certificates").where("sha256", "==", hash).get();
   const duplicateDecision = duplicateFileDecision(
-    sameHash.docs.map((doc) => ({
-      studentId: doc.get("studentId"),
-      type: doc.get("type"),
-    })),
+    sameHash.docs.map((doc) => {
+      const student: unknown = doc.get("studentId");
+      const certificateType: unknown = doc.get("type");
+      return { studentId: student, type: certificateType };
+    }),
     studentId,
     type,
   );
@@ -270,64 +271,80 @@ export async function PUT(
         { status: 409 },
       );
     const form = await request.formData();
-    const file = form.get("file");
-    if (!(file instanceof File))
-      return NextResponse.json({ error: "Select a replacement file." }, { status: 400 });
-    if (file.size <= 0 || file.size > UPLOAD_MAX_BYTES)
-      return NextResponse.json(
-        { error: "Replacement file must be no larger than 4 MB." },
-        { status: 413 },
-      );
+    const file = replacementFile(form.get("file"));
+    if (file instanceof NextResponse) return file;
     const quotaError = await consumeAdminUploadQuota(admin.uid, file.size);
     if (quotaError) return NextResponse.json({ error: quotaError }, { status: 429 });
-    const parsed = parseReplacementMetadata(form, current);
-    if (!parsed.success)
-      return NextResponse.json({ error: "Invalid replacement metadata." }, { status: 400 });
-    const studentId = String(current.get("studentId") ?? "");
-    const studentError = await replacementStudentError(
-      studentId,
-      parsed.data.session,
-      parsed.data.type,
-    );
-    if (studentError) return studentError;
-    const duplicate = await duplicateReplacementError(file, studentId, parsed.data.type, form);
-    if (duplicate.response) return duplicate.response;
-    const saved = await saveReplacement({
-      request,
-      file,
-      adminUid: admin.uid,
-      studentId,
-      certificateId,
-      metadata: parsed.data,
-      sameHash: duplicate.sameHash,
-      duplicateReason: duplicate.reason,
-    });
-    if (saved.response) return saved.response;
-    const autoPublished = await publishReplacementIfAuthorized(
-      request,
-      admin,
-      saved.replacementId,
-      certificateId,
-      studentId,
-    );
-    await writeAuditLog(
-      request,
-      admin.uid,
-      "certificate.reissue.uploaded",
-      saved.replacementId,
-      studentId,
-    );
-    return NextResponse.json(
-      {
-        ok: true,
-        replacementId: saved.replacementId,
-        status: autoPublished ? "published" : "pending",
-      },
-      { status: 201, headers: { "Cache-Control": "no-store" } },
-    );
+    return await completeReplacement({ request, admin, file, form, certificateId, current });
   } catch (error) {
     return apiError(error);
   }
+}
+
+function replacementFile(value: FormDataEntryValue | null): File | NextResponse {
+  if (!(value instanceof File))
+    return NextResponse.json({ error: "Select a replacement file." }, { status: 400 });
+  if (value.size <= 0 || value.size > UPLOAD_MAX_BYTES)
+    return NextResponse.json(
+      { error: "Replacement file must be no larger than 4 MB." },
+      { status: 413 },
+    );
+  return value;
+}
+
+async function completeReplacement(input: {
+  request: NextRequest;
+  admin: Awaited<ReturnType<typeof requireRoles>>;
+  file: File;
+  form: FormData;
+  certificateId: string;
+  current: FirebaseFirestore.DocumentSnapshot;
+}): Promise<NextResponse> {
+  const { request, admin, file, form, certificateId, current } = input;
+  const parsed = parseReplacementMetadata(form, current);
+  if (!parsed.success)
+    return NextResponse.json({ error: "Invalid replacement metadata." }, { status: 400 });
+  const studentId = String(current.get("studentId") ?? "");
+  const studentError = await replacementStudentError(
+    studentId,
+    parsed.data.session,
+    parsed.data.type,
+  );
+  if (studentError) return studentError;
+  const duplicate = await duplicateReplacementError(file, studentId, parsed.data.type, form);
+  if (duplicate.response) return duplicate.response;
+  const saved = await saveReplacement({
+    request,
+    file,
+    adminUid: admin.uid,
+    studentId,
+    certificateId,
+    metadata: parsed.data,
+    sameHash: duplicate.sameHash,
+    duplicateReason: duplicate.reason,
+  });
+  if (saved.response) return saved.response;
+  const autoPublished = await publishReplacementIfAuthorized(
+    request,
+    admin,
+    saved.replacementId,
+    certificateId,
+  );
+  await writeAuditLog(
+    request,
+    admin.uid,
+    "certificate.reissue.uploaded",
+    saved.replacementId,
+    studentId,
+  );
+  return NextResponse.json(
+    {
+      ok: true,
+      replacementId: saved.replacementId,
+      status: autoPublished ? "published" : "pending",
+    },
+    { status: 201, headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 async function publishReplacementIfAuthorized(
@@ -335,7 +352,6 @@ async function publishReplacementIfAuthorized(
   admin: Awaited<ReturnType<typeof requireRoles>>,
   replacementId: string,
   certificateId: string,
-  studentId: string,
 ): Promise<boolean> {
   const autoPublished = admin.role === "admin" || admin.role === "superadmin";
   if (!autoPublished) return false;

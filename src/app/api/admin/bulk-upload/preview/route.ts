@@ -40,7 +40,7 @@ function parseCsv(text: string): string[][] {
   let cell = "";
   let quoted = false;
   for (let i = 0; i < text.length; i++) {
-    const consumed = consumeCsvCharacter(text[i], text[i + 1], i, { rows, row, cell, quoted });
+    const consumed = consumeCsvCharacter(text[i], text[i + 1], { rows, row, cell, quoted });
     row = consumed.row;
     cell = consumed.cell;
     quoted = consumed.quoted;
@@ -54,28 +54,32 @@ function parseCsv(text: string): string[][] {
 function consumeCsvCharacter(
   character: string | undefined,
   next: string | undefined,
-  index: number,
   state: { rows: string[][]; row: string[]; cell: string; quoted: boolean },
 ): { row: string[]; cell: string; quoted: boolean; skip: number } {
-  let { row, cell, quoted } = state;
+  const { row, cell, quoted } = state;
   if (character === undefined) return { row, cell, quoted, skip: 0 };
-  if (character === '"') {
-    if (quoted && next === '"') return { row, cell: `${cell}"`, quoted, skip: 1 };
-    return { row, cell, quoted: !quoted, skip: 0 };
-  }
+  if (character === '"') return consumeQuote(next, row, cell, quoted);
   if (character === "," && !quoted) {
     row.push(cell.trim());
     return { row, cell: "", quoted, skip: 0 };
   }
-  if ((character === "\n" || character === "\r") && !quoted) {
+  if (isCsvLineBreak(character, quoted)) {
     const skip = character === "\r" && next === "\n" ? 1 : 0;
     row.push(cell.trim());
     if (row.some(Boolean)) state.rows.push(row);
-    row = [];
-    cell = "";
-    return { row, cell, quoted, skip };
+    return { row: [], cell: "", quoted, skip };
   }
   return { row, cell: cell + character, quoted, skip: 0 };
+}
+
+function consumeQuote(next: string | undefined, row: string[], cell: string, quoted: boolean) {
+  return quoted && next === '"'
+    ? { row, cell: `${cell}"`, quoted, skip: 1 }
+    : { row, cell, quoted: !quoted, skip: 0 };
+}
+
+function isCsvLineBreak(character: string, quoted: boolean): boolean {
+  return !quoted && (character === "\n" || character === "\r");
 }
 
 type MappingRow = Record<string, string>;
@@ -91,7 +95,7 @@ function matchesFilename(row: MappingRow, fileName: string): boolean {
 
 function matchesInferredMapping(row: MappingRow, pattern: RegExpExecArray | null): boolean {
   const admission = row.admissionnumber ?? row.admissionno ?? "";
-  if (!pattern || admission !== pattern[1]) return false;
+  if (pattern?.[1] !== admission) return false;
   const rowType = row.certificatetype ?? row.type ?? "";
   if (!rowType) return true;
   const inferredType = (pattern[2] ?? "").replace(/[-_]+/g, " ");
@@ -171,39 +175,51 @@ async function validateCatalog(session: string, type: string, errors: string[]):
   if (!typeDoc.exists) errors.push("Certificate type is not configured.");
 }
 
+function resolvedMapping(row: MappingRow, fileName: string) {
+  const pattern = filenamePattern(fileName);
+  const inferredType = (pattern?.[2] ?? "").replace(/[-_]+/g, " ");
+  return {
+    session: row.session ?? "",
+    type: row.certificatetype ?? row.type ?? inferredType,
+    number: row.certificatenumber ?? "",
+    date: row.issuedate ?? "",
+    admissionNo: row.admissionnumber ?? row.admissionno ?? pattern?.[1] ?? "",
+    pattern,
+  };
+}
+
+function validateBasicFields(session: string, type: string, date: string, errors: string[]): void {
+  if (!/^\d{4}-\d{2}$/.test(session)) errors.push("Invalid session.");
+  if (type.length < 2)
+    errors.push("Certificate type is required (or use admissionNo_type.pdf naming). ");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push("Issue date must be YYYY-MM-DD.");
+}
+
 async function validateMappingRow(
   row: MappingRow,
   file: PreviewFile,
   seenNumbers: Set<string>,
 ): Promise<string[]> {
-  const pattern = filenamePattern(file.name);
-  const session = row.session ?? "";
-  const type = row.certificatetype ?? row.type ?? (pattern?.[2] ?? "").replace(/[-_]+/g, " ");
-  const number = row.certificatenumber ?? "";
-  const date = row.issuedate ?? "";
-  const admissionNo = row.admissionnumber ?? row.admissionno ?? pattern?.[1] ?? "";
+  const resolved = resolvedMapping(row, file.name);
   const errors: string[] = [];
-  if (!/^\d{4}-\d{2}$/.test(session)) errors.push("Invalid session.");
-  if (type.length < 2)
-    errors.push("Certificate type is required (or use admissionNo_type.pdf naming). ");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push("Issue date must be YYYY-MM-DD.");
-  await validateNumber(number, seenNumbers, errors);
-  await validateStudent(row, admissionNo, session, errors);
-  await validateCatalog(session, type, errors);
+  validateBasicFields(resolved.session, resolved.type, resolved.date, errors);
+  await validateNumber(resolved.number, seenNumbers, errors);
+  await validateStudent(row, resolved.admissionNo, resolved.session, errors);
+  await validateCatalog(resolved.session, resolved.type, errors);
   return errors;
 }
 
 function mappedValues(fileName: string, row?: MappingRow) {
   if (!row) return null;
-  const pattern = filenamePattern(fileName);
+  const resolved = resolvedMapping(row, fileName);
   return {
     fileName,
-    admissionNo: row.admissionnumber ?? row.admissionno ?? pattern?.[1] ?? "",
+    admissionNo: resolved.admissionNo,
     studentId: row.studentid ?? "",
-    session: row.session ?? "",
-    certificateType: row.certificatetype ?? row.type ?? (pattern?.[2] ?? "").replace(/[-_]+/g, " "),
-    certificateNumber: row.certificatenumber ?? "",
-    issueDate: row.issuedate ?? "",
+    session: resolved.session,
+    certificateType: resolved.type,
+    certificateNumber: resolved.number,
+    issueDate: resolved.date,
   };
 }
 

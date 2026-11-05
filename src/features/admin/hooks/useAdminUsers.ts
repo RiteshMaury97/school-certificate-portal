@@ -17,29 +17,32 @@ type Props = {
   setError: Dispatch<SetStateAction<string>>;
   load: () => Promise<void>;
 };
+
+const emptyInviteProfile: AdminInviteProfile = {
+  name: "",
+  preferredName: "",
+  staffId: "",
+  gender: "",
+  dateOfBirth: "",
+  position: "",
+  department: "",
+  designation: "",
+  campus: "",
+  joiningDate: "",
+  reportingManager: "",
+  officeLocation: "",
+  alternateEmail: "",
+  primaryPhone: "",
+  secondaryPhone: "",
+  address: "",
+  emergencyContactName: "",
+  emergencyContactPhone: "",
+};
+
 export function useAdminUsers({ api, act, setToast, setError, load }: Props) {
   const [adminEmail, setAdminEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<AdminInviteRole>("uploader");
-  const [inviteProfile, setInviteProfile] = useState<AdminInviteProfile>({
-    name: "",
-    preferredName: "",
-    staffId: "",
-    gender: "",
-    dateOfBirth: "",
-    position: "",
-    department: "",
-    designation: "",
-    campus: "",
-    joiningDate: "",
-    reportingManager: "",
-    officeLocation: "",
-    alternateEmail: "",
-    primaryPhone: "",
-    secondaryPhone: "",
-    address: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-  });
+  const [inviteProfile, setInviteProfile] = useState<AdminInviteProfile>(emptyInviteProfile);
   async function createBackup() {
     await act(async () => {
       const d = await api<{ objectKey: string; size: number }>("/api/admin/backup", {
@@ -112,26 +115,7 @@ export function useAdminUsers({ api, act, setToast, setError, load }: Props) {
         body: JSON.stringify({ email: adminEmail, role: inviteRole, profile: inviteProfile }),
       });
       setAdminEmail("");
-      setInviteProfile({
-        name: "",
-        preferredName: "",
-        staffId: "",
-        gender: "",
-        dateOfBirth: "",
-        position: "",
-        department: "",
-        designation: "",
-        campus: "",
-        joiningDate: "",
-        reportingManager: "",
-        officeLocation: "",
-        alternateEmail: "",
-        primaryPhone: "",
-        secondaryPhone: "",
-        address: "",
-        emergencyContactName: "",
-        emergencyContactPhone: "",
-      });
+      setInviteProfile(emptyInviteProfile);
       setToast(
         `Invitation sent to ${adminEmail}. The email contains a temporary password and email verification link. They must change the password before receiving administrator access.`,
       );

@@ -26,13 +26,20 @@ async function measureLayout(page: Page, route: string) {
     const visible = (element: Element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        Number(style.opacity) !== 0 &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
     };
     const intentionalScroller = (element: Element) => {
       let parent = element.parentElement;
       while (parent && parent !== document.body) {
         const style = getComputedStyle(parent);
-        if (/(auto|scroll)/.test(style.overflowX) && parent.scrollWidth > parent.clientWidth + 1) return true;
+        if (/(auto|scroll)/.test(style.overflowX) && parent.scrollWidth > parent.clientWidth + 1)
+          return true;
         parent = parent.parentElement;
       }
       return false;
@@ -43,23 +50,45 @@ async function measureLayout(page: Page, route: string) {
     const clipped: string[] = [];
     const longUnwrapped: string[] = [];
     const imagesOut: string[] = [];
-    for (const element of [...document.body.querySelectorAll("*")].filter(visible)) {
+    const inspectElement = (element: Element) => {
       const rect = element.getBoundingClientRect();
       const style = getComputedStyle(element);
       const text = element.children.length === 0 ? element.textContent.trim() : "";
       const isOutside = rect.left < -1 || rect.right > width + 1;
-      const isClipped = /(hidden|clip)/.test(`${style.overflow} ${style.textOverflow}`) && element.scrollWidth > element.clientWidth + 1;
-      const isLong = /[\p{L}\p{N}_-]{35,}/u.test(text) && style.overflowWrap !== "anywhere" && style.wordBreak !== "break-all" && style.whiteSpace !== "normal";
-      if (isOutside && !intentionalScroller(element)) outside.push(label(element));
-      if (text && isClipped) clipped.push(label(element));
-      if (text && isLong && !intentionalScroller(element)) longUnwrapped.push(label(element));
-      if (element instanceof HTMLImageElement) {
-        const parent = element.parentElement?.getBoundingClientRect();
-        if (parent && (rect.width > parent.width + 1 || rect.height > parent.height + 1)) imagesOut.push(label(element));
-      }
-    }
+      const isClipped =
+        /(hidden|clip)/.test(`${style.overflow} ${style.textOverflow}`) &&
+        element.scrollWidth > element.clientWidth + 1;
+      const isLong =
+        /[\p{L}\p{N}_-]{35,}/u.test(text) &&
+        style.overflowWrap !== "anywhere" &&
+        style.wordBreak !== "break-all" &&
+        style.whiteSpace !== "normal";
+      inspectBounds({
+        element,
+        isOutside,
+        label,
+        results: outside,
+        hasScroller: intentionalScroller,
+      });
+      inspectText({
+        element,
+        text,
+        isClipped,
+        isLong,
+        label,
+        clippedResults: clipped,
+        longResults: longUnwrapped,
+        hasScroller: intentionalScroller,
+      });
+      inspectImage(element, rect, label, imagesOut);
+    };
+    for (const element of [...document.body.querySelectorAll("*")].filter(visible))
+      inspectElement(element);
     const logo = [...document.images].find((image) => /logo/i.test(image.alt));
-    const logoOut = logo ? logo.getBoundingClientRect().right > (logo.parentElement?.getBoundingClientRect().right ?? width) + 1 : false;
+    const logoOut = logo
+      ? logo.getBoundingClientRect().right >
+        (logo.parentElement?.getBoundingClientRect().right ?? width) + 1
+      : false;
     return {
       pageScroll: root.scrollWidth <= width,
       elementBounds: outside.length === 0,
@@ -72,6 +101,53 @@ async function measureLayout(page: Page, route: string) {
       longUnwrapped,
       imagesOut,
     };
+
+    function inspectBounds(input: {
+      element: Element;
+      isOutside: boolean;
+      label: (element: Element) => string;
+      results: string[];
+      hasScroller: (element: Element) => boolean;
+    }) {
+      const { element, isOutside, label: getLabel, results, hasScroller } = input;
+      if (isOutside && !hasScroller(element)) results.push(getLabel(element));
+    }
+
+    function inspectText(input: {
+      element: Element;
+      text: string;
+      isClipped: boolean;
+      isLong: boolean;
+      label: (element: Element) => string;
+      clippedResults: string[];
+      longResults: string[];
+      hasScroller: (element: Element) => boolean;
+    }) {
+      const {
+        element,
+        text,
+        isClipped,
+        isLong,
+        label: getLabel,
+        clippedResults,
+        longResults,
+        hasScroller,
+      } = input;
+      if (text && isClipped) clippedResults.push(getLabel(element));
+      if (text && isLong && !hasScroller(element)) longResults.push(getLabel(element));
+    }
+
+    function inspectImage(
+      element: Element,
+      rect: DOMRect,
+      getLabel: (element: Element) => string,
+      results: string[],
+    ) {
+      if (!(element instanceof HTMLImageElement)) return;
+      const parent = element.parentElement?.getBoundingClientRect();
+      if (parent && (rect.width > parent.width + 1 || rect.height > parent.height + 1))
+        results.push(getLabel(element));
+    }
   }, route);
 }
 
@@ -81,12 +157,21 @@ async function measureControls(page: Page) {
     const elements = [...document.body.querySelectorAll("*")].filter((element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
     });
-    const interactive = elements.filter((element) => element.matches("button,a,input,select,textarea,[role=button]"));
+    const interactive = elements.filter((element) =>
+      element.matches("button,a,input,select,textarea,[role=button]"),
+    );
     const smallControls = interactive.flatMap((element) => {
       const rect = element.getBoundingClientRect();
-      return rect.width < 44 || rect.height < 44 ? [`${element.tagName.toLowerCase()}:${element.textContent.trim().slice(0, 24)}`] : [];
+      return rect.width < 44 || rect.height < 44
+        ? [`${element.tagName.toLowerCase()}:${element.textContent.trim().slice(0, 24)}`]
+        : [];
     });
     const overlaps: string[] = [];
     for (let left = 0; left < interactive.length; left += 1) {
@@ -99,7 +184,8 @@ async function measureControls(page: Page) {
         const b = second.getBoundingClientRect();
         const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
         const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-        if (overlapX > 2 && overlapY > 2) overlaps.push(`${first.tagName.toLowerCase()} / ${second.tagName.toLowerCase()}`);
+        if (overlapX > 2 && overlapY > 2)
+          overlaps.push(`${first.tagName.toLowerCase()} / ${second.tagName.toLowerCase()}`);
       }
     }
     const buttonsCut = interactive.filter((element) => {
@@ -115,7 +201,12 @@ async function measureForms(page: Page) {
     const visible = (element: Element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
     };
     const forms = [...document.forms].filter(visible);
     const multiColumnForms = forms.filter((form) => {
@@ -132,18 +223,29 @@ async function measureForms(page: Page) {
 async function measureModals(page: Page) {
   return page.evaluate(() => {
     const height = document.documentElement.clientHeight;
-    const dialogs = [...document.querySelectorAll('[role="dialog"],dialog[open]')].filter((element) => {
-      const style = getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
-    });
+    const dialogs = [...document.querySelectorAll('[role="dialog"],dialog[open]')].filter(
+      (element) => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return (
+          style.display !== "none" &&
+          style.visibility !== "hidden" &&
+          rect.width > 0 &&
+          rect.height > 0
+        );
+      },
+    );
     const modalIssues = dialogs.flatMap((dialog) => {
       const rect = dialog.getBoundingClientRect();
-      const close = dialog.querySelector('button[aria-label*="close" i],button[aria-label*="cancel" i],[data-close]');
+      const close = dialog.querySelector(
+        'button[aria-label*="close" i],button[aria-label*="cancel" i],[data-close]',
+      );
       const closeRect = close?.getBoundingClientRect();
       const outside = rect.top < 0 || rect.bottom > height;
       const closeOutside = Boolean(closeRect && (closeRect.top < 0 || closeRect.bottom > height));
-      return outside || closeOutside ? ["dialog exceeds viewport or close action is unreachable"] : [];
+      return outside || closeOutside
+        ? ["dialog exceeds viewport or close action is unreachable"]
+        : [];
     });
     return { modalIssues };
   });
@@ -151,32 +253,42 @@ async function measureModals(page: Page) {
 
 async function measureStyles(page: Page) {
   return page.evaluate(() => {
-    const readRules = (rules: CSSRuleList): string[] => [...rules].flatMap((rule) => {
-      const nested = rule instanceof CSSGroupingRule ? rule.cssRules : null;
-      return [rule.cssText, ...(nested ? readRules(nested) : [])];
-    });
-    const cssRules = [...document.styleSheets].flatMap((sheet) => {
-      try { return readRules(sheet.cssRules); }
-      catch { return []; }
-    }).join("\n");
+    const readRules = (rules: CSSRuleList): string[] =>
+      [...rules].flatMap((rule) => {
+        const nested = rule instanceof CSSGroupingRule ? rule.cssRules : null;
+        return [rule.cssText, ...(nested ? readRules(nested) : [])];
+      });
+    const cssRules = [...document.styleSheets]
+      .flatMap((sheet) => {
+        try {
+          return readRules(sheet.cssRules);
+        } catch {
+          return [];
+        }
+      })
+      .join("\n");
     const tables = [...document.querySelectorAll("table")];
     const width = document.documentElement.clientWidth;
     const contained = tables.every((table) => {
       let parent = table.parentElement;
       while (parent && parent !== document.body) {
         const style = getComputedStyle(parent);
-        if (/(auto|scroll)/.test(style.overflowX) && parent.scrollWidth > parent.clientWidth + 1) return true;
+        if (/(auto|scroll)/.test(style.overflowX) && parent.scrollWidth > parent.clientWidth + 1)
+          return true;
         parent = parent.parentElement;
       }
       return table.getBoundingClientRect().width <= width + 1;
     });
     return {
       tableContainment: contained,
-      scrollPadding: Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) > 0,
+      scrollPadding:
+        Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) > 0,
       viewportMeta: Boolean(document.querySelector('meta[name="viewport"]')),
       safeAreaSupport: cssRules.includes("safe-area-inset"),
       no100vh: !/(^|[^d])100vh\b/.test(cssRules),
-      reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches && cssRules.includes("prefers-reduced-motion: reduce"),
+      reducedMotion:
+        matchMedia("(prefers-reduced-motion: reduce)").matches &&
+        cssRules.includes("prefers-reduced-motion: reduce"),
     };
   });
 }
@@ -209,12 +321,14 @@ async function measure(page: Page, route: string) {
     no100vh: styles.no100vh,
     reducedMotion: styles.reducedMotion,
   };
-  const failures = Object.entries(checks).flatMap(([name, passed]) => passed ? [] : [name]);
+  const failures = Object.entries(checks).flatMap(([name, passed]) => (passed ? [] : [name]));
   if (layout.outside.length) failures.push(`outside=${layout.outside.slice(0, 4).join(";")}`);
-  if (controls.smallControls.length) failures.push(`under44=${controls.smallControls.slice(0, 4).join(";")}`);
+  if (controls.smallControls.length)
+    failures.push(`under44=${controls.smallControls.slice(0, 4).join(";")}`);
   if (controls.overlaps.length) failures.push(`overlap=${controls.overlaps.slice(0, 3).join(";")}`);
   if (layout.clipped.length) failures.push(`clipped=${layout.clipped.slice(0, 4).join(";")}`);
-  if (layout.longUnwrapped.length) failures.push(`longString=${layout.longUnwrapped.slice(0, 3).join(";")}`);
+  if (layout.longUnwrapped.length)
+    failures.push(`longString=${layout.longUnwrapped.slice(0, 3).join(";")}`);
   if (forms.inputsUnder16) failures.push(`inputsUnder16=${String(forms.inputsUnder16)}`);
   if (forms.multiColumnForms) failures.push(`multiColumnForms=${String(forms.multiColumnForms)}`);
   failures.push(...modals.modalIssues);

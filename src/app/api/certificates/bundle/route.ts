@@ -41,34 +41,38 @@ async function appendCertificate(
 ): Promise<{ ref: DocumentReference; session: string } | null> {
   const data = doc.data();
   const mime = String(data.mimeType ?? "application/pdf");
-  const ext =
-    mime === "application/pdf"
-      ? "pdf"
-      : mime === "image/jpeg"
-        ? "jpg"
-        : mime === "image/png"
-          ? "png"
-          : "";
+  const ext = archiveExtension(mime);
   if (!ext || Number(data.size ?? 0) > UPLOAD_MAX_BYTES || !data.r2Key) return null;
   const original = await readR2Object(String(data.r2Key));
   const watermarked = await watermarkCertificate(original, mime, schoolName);
-  let pdfBytes = watermarked;
-  if (mime !== "application/pdf") {
-    const pdf = await PDFDocument.create();
-    const image =
-      mime === "image/jpeg" ? await pdf.embedJpg(watermarked) : await pdf.embedPng(watermarked);
-    const page = pdf.addPage([image.width, image.height]);
-    page.drawImage(image, {
-      x: 0,
-      y: 0,
-      width: image.width,
-      height: image.height,
-    });
-    pdfBytes = Buffer.from(await pdf.save());
-  }
+  const pdfBytes = await archivePdf(watermarked, mime);
   const filename = `${safePart(String(data.type ?? "Certificate"))}_${safePart(String(data.session ?? "Session"))}.pdf`;
   archive.append(pdfBytes, { name: filename });
   return { ref: doc.ref, session: String(data.session ?? "") };
+}
+
+function archiveExtension(mime: string): string {
+  if (mime === "application/pdf") return "pdf";
+  if (mime === "image/jpeg") return "jpg";
+  if (mime === "image/png") return "png";
+  return "";
+}
+
+async function archivePdf(watermarked: Buffer, mime: string): Promise<Buffer> {
+  if (mime === "application/pdf") return watermarked;
+  const pdf = await PDFDocument.create();
+  const image =
+    mime === "image/jpeg" ? await pdf.embedJpg(watermarked) : await pdf.embedPng(watermarked);
+  const page = pdf.addPage([image.width, image.height]);
+  page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+  return Buffer.from(await pdf.save());
+}
+
+function requestedCertificateIds(request: NextRequest): string[] | null {
+  const requestedIds = (request.nextUrl.searchParams.get("ids") ?? "").split(",");
+  if (requestedIds.length > 20) return null;
+  const ids = requestedIds.filter((id) => /^[A-Za-z0-9_-]{20,80}$/.test(id));
+  return ids.length ? ids : null;
 }
 
 export async function GET(request: NextRequest) {
@@ -79,10 +83,8 @@ export async function GET(request: NextRequest) {
     const settings = await db.collection("siteSettings").doc("main").get();
     const schoolName =
       String(settings.get("schoolName") ?? "").trim() || "Satyam International School";
-    const requestedIds = (request.nextUrl.searchParams.get("ids") ?? "").split(",");
-    if (!requestedIds.length || requestedIds.length > 20) return unavailable();
-    const ids = requestedIds.filter((id) => /^[A-Za-z0-9_-]{20,80}$/.test(id));
-    if (!ids.length) return unavailable();
+    const ids = requestedCertificateIds(request);
+    if (!ids) return unavailable();
     const docs = await findAuthorizedCertificates(ids, claims);
     if (!docs.length) return unavailable();
     const output = new PassThrough();

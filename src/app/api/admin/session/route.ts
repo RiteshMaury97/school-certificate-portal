@@ -110,16 +110,16 @@ async function authenticateLogin(
   const adminEmail: unknown = admin.get("email");
   if (
     !role ||
-    !isAuthorizedAdminAccount(
-      admin.exists,
-      admin.get("mustChangePassword"),
-      decoded.mustChangePassword,
+    !isAuthorizedAdminAccount({
+      exists: admin.exists,
+      mustChangePassword: admin.get("mustChangePassword"),
+      decodedMustChangePassword: decoded.mustChangePassword,
       status,
       email,
       adminEmail,
       role,
-      decoded.role,
-    )
+      decodedRole: decoded.role,
+    })
   )
     return NextResponse.json({ error: "This account is not authorized." }, { status: 403 });
   const location = await enforceAdminLocation({ request, adminUid: decoded.uid });
@@ -155,16 +155,26 @@ async function authenticateLogin(
   return { decoded, email, role };
 }
 
-function isAuthorizedAdminAccount(
-  exists: boolean,
-  mustChangePassword: unknown,
-  decodedMustChangePassword: unknown,
-  status: string,
-  email: string,
-  adminEmail: unknown,
-  role: AdminRole | null,
-  decodedRole: unknown,
-): boolean {
+function isAuthorizedAdminAccount(input: {
+  exists: boolean;
+  mustChangePassword: unknown;
+  decodedMustChangePassword: unknown;
+  status: string;
+  email: string;
+  adminEmail: unknown;
+  role: AdminRole | null;
+  decodedRole: unknown;
+}): boolean {
+  const {
+    exists,
+    mustChangePassword,
+    decodedMustChangePassword,
+    status,
+    email,
+    adminEmail,
+    role,
+    decodedRole,
+  } = input;
   return (
     exists &&
     mustChangePassword !== true &&
@@ -208,6 +218,7 @@ async function saveSessionRecords(input: {
   const [known, lastLocation] = await Promise.all([deviceRef.get(), loginLocationRef.get()]);
   const storedCountry: unknown = lastLocation.get("country");
   const deviceCountry: unknown = known.get("country");
+  const priorCreatedAt: unknown = known.get("createdAt");
   const priorCountry =
     typeof storedCountry === "string"
       ? storedCountry
@@ -225,7 +236,7 @@ async function saveSessionRecords(input: {
       ipHash: hashRequesterIp(request),
       lastSeenAt: FieldValue.serverTimestamp(),
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60_000),
-      createdAt: known.exists ? (known.get("createdAt") ?? now) : now,
+      createdAt: known.exists ? (priorCreatedAt ?? now) : now,
     },
     { merge: true },
   );

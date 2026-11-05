@@ -89,13 +89,14 @@ function assertReviewable(
   return uploaderUid;
 }
 
-async function replacePriorCertificate(
-  transaction: FirebaseFirestore.Transaction,
-  snap: FirebaseFirestore.DocumentSnapshot,
-  certificateId: string,
-  actorUid: string,
-  timestamp: FirebaseFirestore.FieldValue,
-): Promise<{ certificateId: string; session: string }> {
+async function replacePriorCertificate(input: {
+  transaction: FirebaseFirestore.Transaction;
+  snap: FirebaseFirestore.DocumentSnapshot;
+  certificateId: string;
+  actorUid: string;
+  timestamp: FirebaseFirestore.FieldValue;
+}): Promise<{ certificateId: string; session: string }> {
+  const { transaction, snap, certificateId, actorUid, timestamp } = input;
   const replacesId = String(snap.get("replacesId") ?? "");
   if (!replacesId) return { certificateId: "", session: "" };
   const oldRef = db.collection("certificates").doc(replacesId);
@@ -127,7 +128,13 @@ async function applyDecisionTransaction(
     const now = FieldValue.serverTimestamp();
     const replaced =
       decision === "approve"
-        ? await replacePriorCertificate(transaction, snap, certificateId, actor.uid, now)
+        ? await replacePriorCertificate({
+            transaction,
+            snap,
+            certificateId,
+            actorUid: actor.uid,
+            timestamp: now,
+          })
         : { certificateId: "", session: "" };
     const values =
       decision === "approve"
@@ -167,13 +174,14 @@ async function updatePublicSessions(result: Awaited<ReturnType<typeof applyDecis
   await adjustPublicSessions(changes).catch(async () => rebuildPublicSessions());
 }
 
-async function finishDecision(
-  request: NextRequest,
-  actorUid: string,
-  decision: DecisionInput["decision"],
-  certificateId: string,
-  result: Awaited<ReturnType<typeof applyDecisionTransaction>>,
-): Promise<void> {
+async function finishDecision(input: {
+  request: NextRequest;
+  actorUid: string;
+  decision: DecisionInput["decision"];
+  certificateId: string;
+  result: Awaited<ReturnType<typeof applyDecisionTransaction>>;
+}): Promise<void> {
+  const { request, actorUid, decision, certificateId, result } = input;
   if (decision === "approve") await updatePublicSessions(result);
   if (decision === "reject") await removeCertificateNumberIndex(certificateId);
   const action = decision === "approve" ? "certificate.approved" : "certificate.rejected";
@@ -204,7 +212,7 @@ export async function POST(
     const { decision, reason } = input;
     if (decision === "approve") await ensurePublicSessions();
     const result = await applyDecisionTransaction(certificateId, actor, decision, reason);
-    await finishDecision(request, actor.uid, decision, certificateId, result);
+    await finishDecision({ request, actorUid: actor.uid, decision, certificateId, result });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     return decisionErrorResponse(error) ?? apiError(error);
