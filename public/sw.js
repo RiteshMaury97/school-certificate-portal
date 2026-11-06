@@ -1,6 +1,6 @@
 /* Only the offline fallback document is cached for navigations. API responses,
    certificate files, search results and all other navigations are never cached. */
-const CACHE_NAME = "sis-static-v5";
+const CACHE_NAME = "sis-static-v6";
 /* Local development must never be served from a cache: stale CSS/JS made new layouts look broken. */
 const IS_DEV = ["localhost", "127.0.0.1", "[::1]"].includes(self.location.hostname);
 const OFFLINE_URL = "/offline";
@@ -45,11 +45,15 @@ self.addEventListener("fetch", event => {
   if (request.mode === "navigate") {
     event.respondWith((async () => {
       try {
-        const response = await fetch(request);
-        if (response.ok || response.status < 500) return response;
-      } catch { /* network failure: serve the one cached offline document */ }
-      const cached = await caches.match(OFFLINE_URL);
-      return cached || new Response("Offline. Please reconnect and try again.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+        // Only show the offline document when the network request fails. An
+        // HTTP 5xx is a server error and must reach the page so it can be
+        // diagnosed instead of being mislabeled as an internet outage.
+        return await fetch(request);
+      } catch {
+        /* Network failure: serve the one cached offline document. */
+        const cached = await caches.match(OFFLINE_URL);
+        return cached || new Response("Offline. Please reconnect and try again.", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+      }
     })());
     return;
   }
