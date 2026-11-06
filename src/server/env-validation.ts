@@ -103,7 +103,10 @@ function validateOrigins(
   production: boolean,
   preview: boolean,
 ) {
-  if (env.APP_ORIGIN && !isAllowedOrigin(env.APP_ORIGIN, production, preview))
+  if (
+    env.APP_ORIGIN && !env.SITE_URL && !env.VERCEL_PROJECT_PRODUCTION_URL && !env.VERCEL_URL &&
+    !isAllowedOrigin(env.APP_ORIGIN, production, preview)
+  )
     issue("APP_ORIGIN", "must be an https origin with no path or trailing slash");
   if (env.SITE_URL && !isAllowedOrigin(env.SITE_URL, production, preview))
     issue("SITE_URL", "must be an https origin with no path or trailing slash");
@@ -150,11 +153,6 @@ function validateProductionMalwareMode(env: ServerEnvironment, issue: AddIssue) 
     issue("MALWARE_SCAN_MODE", "must be required in Production");
 }
 
-function validateProductionLegacyOrigin(env: ServerEnvironment, issue: AddIssue) {
-  if (env.APP_ORIGIN && env.SITE_URL && env.APP_ORIGIN !== env.SITE_URL)
-    issue("APP_ORIGIN", "is deprecated and must match SITE_URL when both are set");
-}
-
 function validateProductionBuckets(env: ServerEnvironment, issue: AddIssue) {
   if (env.BACKUP_R2_BUCKET && env.R2_BUCKET && env.BACKUP_R2_BUCKET === env.R2_BUCKET)
     issue("BACKUP_R2_BUCKET", "must be different from R2_BUCKET");
@@ -164,7 +162,6 @@ function validateProductionRelationships(env: ServerEnvironment, issue: AddIssue
   validateProductionOrigin(env, issue);
   validateProductionCredentials(env, issue);
   validateProductionMalwareMode(env, issue);
-  validateProductionLegacyOrigin(env, issue);
   validateProductionBuckets(env, issue);
 }
 

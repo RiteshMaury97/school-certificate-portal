@@ -31,6 +31,16 @@ function trimmedEnvironmentValue(name: string): string | undefined {
   return value;
 }
 
+function isValidConfiguredOrigin(value: string | undefined): value is string {
+  if (!value) return false;
+  try {
+    validateHttpsOrigin(value, "APP_ORIGIN");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function productionOrigin(): string {
   const errors = originConfigErrors();
   if (errors.length) throw new Error(`Invalid production origin configuration: ${errors.join("; ")}`);
@@ -39,13 +49,16 @@ function productionOrigin(): string {
   const appOrigin = trimmedEnvironmentValue("APP_ORIGIN");
   const vercelHost = trimmedEnvironmentValue("VERCEL_PROJECT_PRODUCTION_URL") ??
     trimmedEnvironmentValue("VERCEL_URL");
-  const configured = siteUrl ?? appOrigin ?? (vercelHost ? `https://${vercelHost}` : undefined);
+  const configured = siteUrl ?? (isValidConfiguredOrigin(appOrigin) ? appOrigin : undefined) ??
+    (vercelHost ? `https://${vercelHost}` : undefined);
   if (!configured) {
     throw new Error(
       "Set SITE_URL or APP_ORIGIN, or provide VERCEL_PROJECT_PRODUCTION_URL for Production.",
     );
   }
-  const name = siteUrl ? "SITE_URL" : appOrigin ? "APP_ORIGIN" : "VERCEL_PROJECT_PRODUCTION_URL";
+  const name = siteUrl ? "SITE_URL" : isValidConfiguredOrigin(appOrigin)
+    ? "APP_ORIGIN"
+    : "VERCEL_PROJECT_PRODUCTION_URL";
   return validateHttpsOrigin(configured, name);
 }
 

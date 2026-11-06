@@ -63,9 +63,10 @@ describe("server environment validator", () => {
     );
   });
 
-  it("rejects an HTTP production origin", () => {
+  it("rejects an HTTP APP_ORIGIN when no canonical or Vercel origin is set", () => {
     const result = validateServerEnvironment({
       ...validProductionEnvironment,
+      SITE_URL: undefined,
       APP_ORIGIN: "http://school.example",
     });
     expect(result.errors).toContain(
@@ -75,6 +76,15 @@ describe("server environment validator", () => {
 
   it("accepts a complete production environment", () => {
     expect(validateServerEnvironment(validProductionEnvironment).valid).toBe(true);
+  });
+
+  it("prefers SITE_URL over a stale APP_ORIGIN", () => {
+    expect(
+      validateServerEnvironment({
+        ...validProductionEnvironment,
+        APP_ORIGIN: "http://localhost:3000",
+      }).valid,
+    ).toBe(true);
   });
 
   it("accepts the deprecated APP_ORIGIN alias when SITE_URL is unset", () => {
