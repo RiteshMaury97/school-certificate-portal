@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     const mustChangePassword: unknown = admin.get("mustChangePassword");
     const email = decoded.email?.toLowerCase() ?? "";
     if (!isAuthorizedPasswordChange({
-      emailVerified: decoded.email_verified,
+      emailVerified: decoded.email_verified === true,
       storedEmail,
       role,
       decodedRole: decoded.role,

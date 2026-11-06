@@ -28,7 +28,7 @@ function isHttpsUrl(value: string): boolean {
 function isLanguageCode(value: string): boolean {
   const parts = value.trim().split("-");
   if (parts.length > 2) return false;
-  const [language, region] = parts;
+  const [language = "", region] = parts;
   const hasAsciiLetters = (part: string, min: number, max: number) => {
     if (part.length < min || part.length > max) return false;
     for (const character of part.toLowerCase()) {

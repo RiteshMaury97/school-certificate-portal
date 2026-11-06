@@ -100,14 +100,28 @@ export async function GET(request: NextRequest) {
     void Promise.resolve(archive.finalize())
       .then(() => recordCertificateDownloads(included))
       .catch(() => output.destroy(new Error("Archive finalization or download metrics failed")));
-    const body = Readable.toWeb(output).pipeThrough(
-      new TransformStream<unknown, Uint8Array>({
-        transform(chunk, controller) {
-          if (!(chunk instanceof Uint8Array)) throw new Error("Invalid archive data.");
-          controller.enqueue(chunk);
-        },
-      }),
-    );
+    const archiveChunks = output[Symbol.asyncIterator]();
+    const body = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        try {
+          const { done, value } = await archiveChunks.next();
+          if (done) {
+            controller.close();
+            return;
+          }
+          if (!(value instanceof Uint8Array)) {
+            controller.error(new Error("Invalid archive data."));
+            return;
+          }
+          controller.enqueue(Uint8Array.from(value));
+        } catch (error) {
+          controller.error(error);
+        }
+      },
+      cancel(reason) {
+        output.destroy(reason instanceof Error ? reason : undefined);
+      },
+    });
     return new NextResponse(body, {
       headers: {
         "Content-Type": "application/zip",

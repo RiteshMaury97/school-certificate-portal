@@ -107,7 +107,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const storedMustChangePassword: unknown = admin.get("mustChangePassword");
     const status: unknown = admin.get("status");
     if (!isVerifiedAdmin({
-      emailVerified: decoded.email_verified,
+      emailVerified: decoded.email_verified === true,
       email,
       adminExists: admin.exists,
       storedEmail,

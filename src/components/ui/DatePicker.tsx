@@ -278,8 +278,8 @@ export function DatePicker({
           selectedDate={selectedDate}
           time={time}
           includeTime={includeTime}
-          min={min}
-          max={max}
+          {...(min !== undefined ? { min } : {})}
+          {...(max !== undefined ? { max } : {})}
           visibleMonth={visibleMonth}
           days={days}
           onChange={onChange}

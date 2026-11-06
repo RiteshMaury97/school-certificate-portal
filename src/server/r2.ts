@@ -302,9 +302,9 @@ export async function uploadCertificate({
     file,
     session,
     certificateType,
-    studentId,
-    uploaderUid,
-    request,
+    ...(studentId !== undefined ? { studentId } : {}),
+    ...(uploaderUid !== undefined ? { uploaderUid } : {}),
+    ...(request !== undefined ? { request } : {}),
   }, buffer, sha256);
   const slug = certificateTypeSlug(certificateType);
   const r2Key = `certificates/${session}/${slug}/${randomUUID()}${detected.extension}`;

@@ -138,6 +138,12 @@ function displayScalar(value: unknown, fallback = ""): string {
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   return fallback;
 }
+
+function displayTimestamp(value: unknown): string | null {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
+}
   const sessionNames = useMemo(
     () =>
       choices(
@@ -607,8 +613,8 @@ function displayScalar(value: unknown, fallback = ""): string {
                       <strong className="text-[var(--text)]">
                         {displayScalar(item.action, "Record activity")}
                       </strong>
-                      {item.timestamp
-                        ? ` Â· ${new Date(item.timestamp).toLocaleString()}`
+                      {displayTimestamp(item.timestamp)
+                        ? ` · ${displayTimestamp(item.timestamp)}`
                         : ""}
                       {item.actor ? ` Â· ${displayScalar(item.actor)}` : ""}
                       {Array.isArray(item.changedFields) && item.changedFields.length > 0 ? (

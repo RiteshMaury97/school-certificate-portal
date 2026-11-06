@@ -19,6 +19,9 @@ const groupTranslationKeys = {
 export default function SiteMapView() {
   const t = useT();
   const pages = SITE_MAP.filter((page) => page.inHtmlSitemap);
+  const entryDelayStyle = (delay: string): CSSProperties & Record<`--${string}`, string> => ({
+    "--entry-delay": delay,
+  });
 
   return (
     <SiteShell>
@@ -82,7 +85,7 @@ export default function SiteMapView() {
                   <li
                     key={page.path}
                     className="sitemap-entry"
-                    style={{ "--entry-delay": `${String(150 + pageIndex * 65)}ms` } satisfies CSSProperties & { "--entry-delay": string }}
+                    style={entryDelayStyle(`${String(150 + pageIndex * 65)}ms`)}
                   >
                     <Link
                       className="group/link flex items-start justify-between gap-4 rounded-xl border border-transparent px-3 py-3 no-underline transition duration-200 hover:border-[var(--border)] hover:bg-[var(--surface-2)] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] focus:no-underline"

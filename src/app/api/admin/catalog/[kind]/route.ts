@@ -47,7 +47,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ki
     const parsed = catalogItemSchema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json({ error: "Enter a valid catalog name." }, { status: 400 });
-    const requestedLabel = parsed.data.label ?? parsed.data.name;
+    const requestedLabel = parsed.data.label ?? parsed.data.name ?? "";
     const label = resolveCatalogLabel(name, requestedLabel);
     if (!label)
       return NextResponse.json(

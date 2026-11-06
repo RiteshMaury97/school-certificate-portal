@@ -115,7 +115,7 @@ function validOtpAccount(input: {
 }): boolean {
   const { decoded, email, admin, role, storedEmail } = input;
   return (
-    decoded.email_verified &&
+    decoded.email_verified === true &&
     email.length > 0 &&
     admin.exists &&
     admin.get("mustChangePassword") !== true &&

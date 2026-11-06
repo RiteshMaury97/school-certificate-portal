@@ -28,7 +28,6 @@ import { studentUpdateSchema } from "@/shared/validation";
 
 import type { NextRequest} from "next/server";
 import type { z } from "zod";
-import type { z } from "zod";
 export const runtime = "nodejs";
 
 function getChangedStudentFields(
@@ -115,10 +114,10 @@ async function validateStudentUpdate(
   const storedSession: unknown = snapshot.get("session");
   const currentSession = normalizeAcademicSession(
     typeof storedSession === "string" ? storedSession : "",
-  );
+  ) ?? "";
   if (!(await validateLinkedCertificateSessions(
     studentId,
-    normalizeAcademicSession(data.session),
+    normalizeAcademicSession(data.session ?? "") ?? "",
     currentSession,
   )))
     return { ok: false, response: NextResponse.json(
