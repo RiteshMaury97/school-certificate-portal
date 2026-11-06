@@ -2,6 +2,7 @@ import { validateServerEnvironment } from "@/server/env";
 
 function isProduction(): boolean {
   return (
+    process.env.NEXT_PHASE !== "phase-production-build" &&
     process.env.VERCEL_ENV !== "preview" &&
     (process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production")
   );
@@ -25,6 +26,10 @@ function validateHttpsOrigin(value: string, name: string): string {
 }
 
 export function getSiteOrigin(): string {
+  // Layout metadata is evaluated while Next collects route configuration.
+  // Deployment URLs are runtime configuration and may not be available then.
+  if (process.env.NEXT_PHASE === "phase-production-build") return "https://build.invalid";
+
   if (process.env.VERCEL_ENV === "preview") {
     const deploymentUrl = process.env.VERCEL_URL?.trim();
     if (!deploymentUrl) throw new Error("VERCEL_URL is required for Preview deployment links.");
