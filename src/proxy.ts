@@ -144,7 +144,7 @@ function isRevokedSessionReason(reason: string | undefined): boolean {
   return reason === "country_changed" || reason === "session_revoked";
 }
 
-// eslint-disable-next-line complexity
+// eslint-disable-next-line complexity -- reason: Keep production location decisions together so redirects and cookie clearing stay consistent.
 async function adminLocationGate(
   request: NextRequest,
   nonce: string,

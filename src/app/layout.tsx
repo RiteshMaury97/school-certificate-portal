@@ -77,7 +77,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** Apply the saved theme before the browser paints, without reading request headers. */
-const themeInit = `(function(){var r=document.documentElement;try{var t=localStorage.getItem("sis-theme")||"system";var d=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);r.dataset.theme=d?"dark":"light";r.style.colorScheme=d?"dark":"light";}catch(e){var p=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)").matches:false;r.dataset.theme=p?"dark":"light";r.style.colorScheme=p?"dark":"light";}})();`;
+const themeInit = `(function(){var r=document.documentElement;try{var t=localStorage.getItem("sis-theme")||"system";var d=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);r.dataset.theme=d?"dark":"light";}catch(e){var p=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)").matches:false;r.dataset.theme=p?"dark":"light";}})();`;
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;

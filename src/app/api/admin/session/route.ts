@@ -457,7 +457,7 @@ async function readSessionStatus(request: NextRequest, session: string): Promise
       !sessionRecordIsValid(sessionDoc, decoded.uid) ||
       !adminRecordIsValid(admin, decoded, role)
     ) return unauthenticatedSessionResponse();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- reason: Firestore stores this optional country field as unknown; validate its type below.
     const sessionCountry = sessionDoc.get("country");
     const location = await enforceAdminLocation({
       request,
