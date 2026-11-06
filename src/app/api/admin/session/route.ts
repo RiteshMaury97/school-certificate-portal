@@ -427,7 +427,7 @@ function adminRecordIsValid(
 
 function sessionGetError(error: unknown): NextResponse {
   if (readErrorCode(error).startsWith("auth/"))
-    return NextResponse.json({ authenticated: false }, { status: 401 });
+    return unauthenticatedSessionResponse();
   console.error("[admin/session GET]", describeFirebaseError(error));
   return NextResponse.json(
     { authenticated: false, error: "The session service is temporarily unavailable." },
@@ -435,7 +435,17 @@ function sessionGetError(error: unknown): NextResponse {
   );
 }
 
-async function readSessionStatus(session: string): Promise<NextResponse> {
+function unauthenticatedSessionResponse(): NextResponse {
+  const response = NextResponse.json(
+    { authenticated: false },
+    { status: 401, headers: { "Cache-Control": "no-store" } },
+  );
+  response.cookies.set(COOKIE, "", { ...adminSessionCookieOptions(), maxAge: 0 });
+  response.cookies.set("sis_admin_csrf", "", { ...csrfCookieOptions(), maxAge: 0 });
+  return response;
+}
+
+async function readSessionStatus(request: NextRequest, session: string): Promise<NextResponse> {
   try {
     const decoded = await adminAuth.verifySessionCookie(session, true);
     const admin = await db.collection("admins").doc(decoded.uid).get();
@@ -443,14 +453,24 @@ async function readSessionStatus(session: string): Promise<NextResponse> {
     const role = isAdminRole(roleValue) ? roleValue : null;
     const sessionDoc = await db.collection("adminSessions").doc(digest(session)).get();
     const expiry = timestampMillis(sessionDoc.get("absoluteExpiresAt"));
-    if (!sessionRecordIsValid(sessionDoc, decoded.uid))
-      return NextResponse.json({ authenticated: false }, { status: 401 });
+    if (
+      !sessionRecordIsValid(sessionDoc, decoded.uid) ||
+      !adminRecordIsValid(admin, decoded, role)
+    ) {
+      return unauthenticatedSessionResponse();
+    }
+    const sessionCountry = sessionDoc.get("country");
+    const location = await enforceAdminLocation({
+      request,
+      adminUid: decoded.uid,
+      sessionCountry: typeof sessionCountry === "string" ? sessionCountry : null,
+      sessionRef: sessionDoc.ref,
+    });
+    if (!location.allowed) return unauthenticatedSessionResponse();
     await sessionDoc.ref.update({
       lastActivityAt: new Date(),
       lastSeenAt: FieldValue.serverTimestamp(),
     });
-    if (!adminRecordIsValid(admin, decoded, role))
-      return NextResponse.json({ authenticated: false }, { status: 401 });
     return NextResponse.json(
       {
         authenticated: true,
@@ -482,7 +502,7 @@ export async function GET(request: NextRequest) {
       { status: 403 },
     );
   }
-  return readSessionStatus(session);
+  return readSessionStatus(request, session);
 }
 export async function DELETE(request: NextRequest) {
   try {

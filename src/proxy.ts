@@ -158,10 +158,10 @@ async function adminLocationGate(
   // reachable even when the location service is unavailable or the visitor
   // is outside the admin allowlist; sign-in APIs and authenticated admin
   // pages remain subject to this gate.
-  if (
-    request.nextUrl.pathname === "/admin/login" &&
-    !request.cookies.get("sis_admin_session")?.value
-  ) return null;
+  if (request.nextUrl.pathname === "/admin/login") return null;
+  // Session status is checked in the Node route, which can clear a stale
+  // cookie and enforce location policy without returning a proxy JSON error.
+  if (request.nextUrl.pathname === "/api/admin/session" && request.method === "GET") return null;
   const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
   if (secret.length < 32) return locationGateResponse(nonce, production, 503);
   try {
