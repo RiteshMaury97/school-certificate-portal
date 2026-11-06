@@ -26,10 +26,6 @@ function validateHttpsOrigin(value: string, name: string): string {
 }
 
 export function getSiteOrigin(): string {
-  // Layout metadata is evaluated while Next collects route configuration.
-  // Deployment URLs are runtime configuration and may not be available then.
-  if (process.env.NEXT_PHASE === "phase-production-build") return "https://build.invalid";
-
   if (process.env.VERCEL_ENV === "preview") {
     const deploymentUrl = process.env.VERCEL_URL?.trim();
     if (!deploymentUrl) throw new Error("VERCEL_URL is required for Preview deployment links.");
@@ -41,13 +37,18 @@ export function getSiteOrigin(): string {
   const errors = originConfigErrors();
   if (errors.length) throw new Error(`Invalid production origin configuration: ${errors.join("; ")}`);
   const siteUrl = process.env.SITE_URL?.trim();
-  const configured = siteUrl && siteUrl.length > 0 ? siteUrl : process.env.APP_ORIGIN?.trim();
+  const appOrigin = process.env.APP_ORIGIN?.trim();
+  const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || process.env.VERCEL_URL?.trim();
+  const configured = siteUrl || appOrigin || (vercelUrl ? `https://${vercelUrl}` : undefined);
   if (!configured) {
     throw new Error(
-      "SITE_URL is required in Production (APP_ORIGIN is accepted temporarily as a deprecated alias).",
+      "Set SITE_URL or APP_ORIGIN, or provide VERCEL_PROJECT_PRODUCTION_URL for Production.",
     );
   }
-  return validateHttpsOrigin(configured, process.env.SITE_URL ? "SITE_URL" : "APP_ORIGIN");
+  return validateHttpsOrigin(
+    configured,
+    siteUrl ? "SITE_URL" : appOrigin ? "APP_ORIGIN" : "VERCEL_PROJECT_PRODUCTION_URL",
+  );
 }
 
 export function absoluteUrl(path: string): string {

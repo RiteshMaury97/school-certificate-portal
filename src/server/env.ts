@@ -12,6 +12,8 @@ const serverEnvironmentFieldsSchema = z
     NODE_ENV: optionalText,
     NEXT_PHASE: optionalText,
     VERCEL_ENV: optionalText,
+    VERCEL_URL: optionalText,
+    VERCEL_PROJECT_PRODUCTION_URL: optionalText,
     APP_ORIGIN: optionalText,
     SITE_URL: optionalText,
     ADDITIONAL_ALLOWED_ORIGINS: optionalText,
@@ -92,9 +94,9 @@ export function validateServerEnvironment(
   const deployment = source.VERCEL_ENV ?? source.NODE_ENV ?? "development";
   if (parsed.success) {
     const requiredNames = deployment === "production"
-      ? [source.SITE_URL ? "SITE_URL" : "APP_ORIGIN", "FIREBASE_PROJECT_ID", "R2_BUCKET", "CRON_SECRET", "CLAMD_HOST", "MALWARE_SCAN_MODE"]
+      ? [source.SITE_URL ? "SITE_URL" : source.APP_ORIGIN ? "APP_ORIGIN" : source.VERCEL_PROJECT_PRODUCTION_URL ? "VERCEL_PROJECT_PRODUCTION_URL" : "VERCEL_URL", "FIREBASE_PROJECT_ID", "R2_BUCKET", "CRON_SECRET"]
       : deployment === "preview"
-        ? ["FIREBASE_PROJECT_ID", "R2_BUCKET", "GMAIL_USER", "GMAIL_APP_PASSWORD", "CLAMD_HOST", "MALWARE_SCAN_MODE"]
+        ? ["FIREBASE_PROJECT_ID", "R2_BUCKET", "GMAIL_USER", "GMAIL_APP_PASSWORD"]
         : [];
     return {
       valid: true,
