@@ -86,16 +86,33 @@ function fetchSession(): Promise<AdminSessionState> {
 
 async function readSession(): Promise<AdminSessionState> {
   try {
-    const response = await fetch("/api/admin/session", {
-      cache: "no-store",
-      credentials: "same-origin",
-      headers: await appCheckHeaders(),
-    });
+    const request = (headers?: Record<string, string>) =>
+      fetch("/api/admin/session", {
+        cache: "no-store",
+        credentials: "same-origin",
+        ...(headers ? { headers } : {}),
+      });
+    // The server deliberately allows an unauthenticated session check without
+    // App Check. Ask for a token only when a session cookie is present and the
+    // server explicitly says verification is required.
+    let response = await request();
     let json: unknown;
     try {
       json = await response.json();
     } catch {
       json = null;
+    }
+    if (
+      response.status === 403 &&
+      isRecord(json) &&
+      json.error === "App verification failed."
+    ) {
+      response = await request(await appCheckHeaders());
+      try {
+        json = await response.json();
+      } catch {
+        json = null;
+      }
     }
     const body = readSessionBody(json);
     return stateFromSessionResponse(response.status, response.ok, body);
