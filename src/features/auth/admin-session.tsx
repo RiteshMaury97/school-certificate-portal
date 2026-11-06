@@ -65,10 +65,17 @@ function stateFromSessionResponse(
   body: SessionBody,
 ): AdminSessionState {
   if (status === 401 || (ok && body.authenticated === false)) return { status: "unauthenticated" };
+  if (status >= 500)
+    return {
+      status: "error",
+      message: `The server is temporarily unavailable or misconfigured (status ${String(status)})`,
+    };
   if (!ok || !body.authenticated || !body.uid || !body.email || !body.role)
     return {
       status: "error",
-      message: body.error ?? "The administrator session could not be verified.",
+      message:
+        body.error ??
+        `The server is temporarily unavailable or misconfigured (status ${String(status)})`,
     };
   return {
     status: "authenticated",

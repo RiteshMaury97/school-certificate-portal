@@ -35,7 +35,7 @@ const DAILY_RECIPIENT_LIMIT = 500;
 const WARN_RECIPIENT_LIMIT = 400;
 const SMTP_TIMEOUT_MS = 10_000;
 
-let transport: nodemailer.Transporter | undefined;
+let transport: ReturnType<typeof nodemailer.createTransport> | undefined;
 
 function cleanHeader(value: string): string {
   return value.replace(/[\r\n]+/g, " ").trim();
@@ -54,7 +54,7 @@ export function escapeHtml(value: unknown): string {
   });
 }
 
-function getTransport(): nodemailer.Transporter {
+function getTransport(): ReturnType<typeof nodemailer.createTransport> {
   assertServerEnvironment();
   const user = process.env.GMAIL_USER?.trim();
   const password = process.env.GMAIL_APP_PASSWORD?.trim();

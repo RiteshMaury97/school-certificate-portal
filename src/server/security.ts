@@ -365,6 +365,7 @@ export async function verifyRequestAppCheck(request: NextRequest): Promise<void>
       return;
     }
   }
+  assertServerEnvironment();
   const token = request.headers.get("x-firebase-appcheck") ?? "";
   if (!token) throw new Error("APP_CHECK");
   try {

@@ -364,17 +364,47 @@ async function establishSession(
   return response;
 }
 
-function sessionPostError(error: unknown): NextResponse {
+function sessionRouteError(error: unknown, method: "GET" | "POST" | "DELETE"): NextResponse {
   if (error instanceof Error && error.message === "APP_CHECK")
     return NextResponse.json(
-      { error: "App verification failed. Reload the page and try again." },
+      {
+        error:
+          method === "GET"
+            ? "App verification failed."
+            : "App verification failed. Reload the page and try again.",
+      },
       { status: 403 },
     );
-  console.error("[admin/session POST]", describeFirebaseError(error));
+  if (readErrorCode(error).startsWith("auth/")) {
+    return method === "GET"
+      ? unauthenticatedSessionResponse()
+      : NextResponse.json({ error: "Authentication failed." }, { status: 401 });
+  }
+  console.error(`[admin/session ${method}]`, describeFirebaseError(error));
   return NextResponse.json(
-    { error: "Unable to establish administrator session." },
-    { status: 401 },
+    {
+      authenticated: false,
+      error: "The server is not configured correctly. Contact the site owner.",
+    },
+    { status: 503, headers: { "Cache-Control": "no-store" } },
   );
+}
+
+async function revokeSessionForLogout(request: NextRequest, session: string): Promise<void> {
+  try {
+    const decoded = await adminAuth.verifySessionCookie(session, true);
+    const sessionHash = digest(session);
+    await db
+      .collection("adminSessions")
+      .doc(sessionHash)
+      .set(
+        { revokedAt: FieldValue.serverTimestamp(), revokeReason: "sign_out" },
+        { merge: true },
+      );
+    await writeAuditLog(request, decoded.uid, "admin.logout", "session");
+  } catch (error) {
+    if (!readErrorCode(error).startsWith("auth/")) throw error;
+  }
 }
 export async function POST(request: NextRequest) {
   try {
@@ -392,7 +422,7 @@ export async function POST(request: NextRequest) {
     if (identity instanceof NextResponse) return identity;
     return await establishSession(request, bodyResult, identity);
   } catch (error) {
-    return sessionPostError(error);
+    return sessionRouteError(error, "POST");
   }
 }
 function sessionRecordIsValid(
@@ -425,16 +455,6 @@ function adminRecordIsValid(
   );
 }
 
-function sessionGetError(error: unknown): NextResponse {
-  if (readErrorCode(error).startsWith("auth/"))
-    return unauthenticatedSessionResponse();
-  console.error("[admin/session GET]", describeFirebaseError(error));
-  return NextResponse.json(
-    { authenticated: false, error: "The session service is temporarily unavailable." },
-    { status: 503 },
-  );
-}
-
 function unauthenticatedSessionResponse(): NextResponse {
   const response = NextResponse.json(
     { authenticated: false },
@@ -446,44 +466,42 @@ function unauthenticatedSessionResponse(): NextResponse {
 }
 
 async function readSessionStatus(request: NextRequest, session: string): Promise<NextResponse> {
-  try {
-    const decoded = await adminAuth.verifySessionCookie(session, true);
-    const admin = await db.collection("admins").doc(decoded.uid).get();
-    const roleValue: unknown = admin.get("role");
-    const role = isAdminRole(roleValue) ? roleValue : null;
-    const sessionDoc = await db.collection("adminSessions").doc(digest(session)).get();
-    const expiry = timestampMillis(sessionDoc.get("absoluteExpiresAt"));
-    if (
-      !sessionRecordIsValid(sessionDoc, decoded.uid) ||
-      !adminRecordIsValid(admin, decoded, role)
-    ) return unauthenticatedSessionResponse();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- reason: Firestore stores this optional country field as unknown; validate its type below.
-    const sessionCountry = sessionDoc.get("country");
-    const location = await enforceAdminLocation({
-      request,
-      adminUid: decoded.uid,
-      sessionCountry: typeof sessionCountry === "string" ? sessionCountry : null,
-      sessionRef: sessionDoc.ref,
-    });
-    if (!location.allowed) return unauthenticatedSessionResponse();
-    await sessionDoc.ref.update({
-      lastActivityAt: new Date(),
-      lastSeenAt: FieldValue.serverTimestamp(),
-    });
-    return NextResponse.json(
-      {
-        authenticated: true,
-        uid: decoded.uid,
-        email: decoded.email,
-        role,
-        lastActivityAt: Date.now(),
-        hardExpiresAt: expiry,
-      },
-      { headers: { "Cache-Control": "no-store" } },
-    );
-  } catch (error) {
-    return sessionGetError(error);
+  const decoded = await adminAuth.verifySessionCookie(session, true);
+  const admin = await db.collection("admins").doc(decoded.uid).get();
+  const roleValue: unknown = admin.get("role");
+  const role = isAdminRole(roleValue) ? roleValue : null;
+  const sessionDoc = await db.collection("adminSessions").doc(digest(session)).get();
+  const expiry = timestampMillis(sessionDoc.get("absoluteExpiresAt"));
+  if (
+    !sessionRecordIsValid(sessionDoc, decoded.uid) ||
+    !adminRecordIsValid(admin, decoded, role)
+  ) {
+    return unauthenticatedSessionResponse();
   }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- reason: Firestore stores this optional country field as unknown; validate its type below.
+  const sessionCountry = sessionDoc.get("country");
+  const location = await enforceAdminLocation({
+    request,
+    adminUid: decoded.uid,
+    sessionCountry: typeof sessionCountry === "string" ? sessionCountry : null,
+    sessionRef: sessionDoc.ref,
+  });
+  if (!location.allowed) return unauthenticatedSessionResponse();
+  await sessionDoc.ref.update({
+    lastActivityAt: new Date(),
+    lastSeenAt: FieldValue.serverTimestamp(),
+  });
+  return NextResponse.json(
+    {
+      authenticated: true,
+      uid: decoded.uid,
+      email: decoded.email,
+      role,
+      lastActivityAt: Date.now(),
+      hardExpiresAt: expiry,
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -495,46 +513,28 @@ export async function GET(request: NextRequest) {
     );
   try {
     await verifyRequestAppCheck(request);
-  } catch {
-    return NextResponse.json(
-      { authenticated: false, error: "App verification failed." },
-      { status: 403 },
-    );
+    return await readSessionStatus(request, session);
+  } catch (error) {
+    return sessionRouteError(error, "GET");
   }
-  return readSessionStatus(request, session);
 }
 export async function DELETE(request: NextRequest) {
   try {
     await verifyRequestAppCheck(request);
-  } catch {
-    return NextResponse.json({ error: "App verification failed" }, { status: 403 });
+    if (!verifyCsrf(request)) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+    const session = request.cookies.get(COOKIE)?.value;
+    if (session) await revokeSessionForLogout(request, session);
+    const response = NextResponse.json({ ok: true });
+    response.cookies.set(COOKIE, "", {
+      ...adminSessionCookieOptions(),
+      maxAge: 0,
+    });
+    response.cookies.set("sis_admin_csrf", "", {
+      ...csrfCookieOptions(),
+      maxAge: 0,
+    });
+    return response;
+  } catch (error) {
+    return sessionRouteError(error, "DELETE");
   }
-  if (!verifyCsrf(request)) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
-  const session = request.cookies.get(COOKIE)?.value;
-  if (session) {
-    try {
-      const decoded = await adminAuth.verifySessionCookie(session, true);
-      const sessionHash = digest(session);
-      await db
-        .collection("adminSessions")
-        .doc(sessionHash)
-        .set(
-          { revokedAt: FieldValue.serverTimestamp(), revokeReason: "sign_out" },
-          { merge: true },
-        );
-      await writeAuditLog(request, decoded.uid, "admin.logout", "session");
-    } catch {
-      /* Clear expired cookies too. */
-    }
-  }
-  const response = NextResponse.json({ ok: true });
-  response.cookies.set(COOKIE, "", {
-    ...adminSessionCookieOptions(),
-    maxAge: 0,
-  });
-  response.cookies.set("sis_admin_csrf", "", {
-    ...csrfCookieOptions(),
-    maxAge: 0,
-  });
-  return response;
 }
