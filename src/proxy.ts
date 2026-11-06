@@ -109,14 +109,36 @@ function httpsRedirect(request: NextRequest, production: boolean): NextResponse 
   );
 }
 
+function isLoggedOutSessionCheck(request: NextRequest): boolean {
+  return (
+    request.nextUrl.pathname === "/api/admin/session" &&
+    request.method === "GET" &&
+    !request.cookies.get("sis_admin_session")?.value
+  );
+}
+
+function isSafeReadWithoutOrigin(request: NextRequest, origin: string | null): boolean {
+  return !origin && ["GET", "HEAD"].includes(request.method);
+}
+
+function isApiMutationMissingOrigin(request: NextRequest, origin: string | null): boolean {
+  return (
+    !origin &&
+    !["GET", "HEAD", "OPTIONS"].includes(request.method) &&
+    request.nextUrl.pathname.startsWith("/api/")
+  );
+}
+
 function originResponse(request: NextRequest, production: boolean): NextResponse | null {
   const origin = request.headers.get("origin");
+  if (isLoggedOutSessionCheck(request) || isSafeReadWithoutOrigin(request, origin)) return null;
+  // Safe reads without Origin and logged-out session checks need no CORS
+  // decision, even when the deployment origin is misconfigured.
   const expectedOrigin = getAllowedOrigins();
   if (origin && !isAllowedRequestOrigin(origin, expectedOrigin, !production)) {
     return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403 });
   }
-  const isMutation = !["GET", "HEAD", "OPTIONS"].includes(request.method);
-  if (isMutation && request.nextUrl.pathname.startsWith("/api/") && !origin) {
+  if (isApiMutationMissingOrigin(request, origin)) {
     return NextResponse.json({ error: "Request origin is required." }, { status: 403 });
   }
   if (request.method !== "OPTIONS") return null;
