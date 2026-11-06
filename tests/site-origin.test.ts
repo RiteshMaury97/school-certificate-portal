@@ -51,4 +51,27 @@ describe("site origin configuration", () => {
     ]);
     expect(absoluteUrl("/privacy")).toBe("https://new.school.example/privacy");
   });
+
+  it("falls back to Vercel's production host when SITE_URL is malformed", () => {
+    setEnv({
+      NODE_ENV: "production",
+      VERCEL_ENV: "production",
+      SITE_URL: "https://school.example/path",
+      APP_ORIGIN: undefined,
+      VERCEL_PROJECT_PRODUCTION_URL: "school-certificate-portal.vercel.app",
+      VERCEL_URL: undefined,
+    });
+    expect(getSiteOrigin()).toBe("https://school-certificate-portal.vercel.app");
+  });
+
+  it("excludes malformed optional origins without failing all requests", () => {
+    setEnv({
+      NODE_ENV: "production",
+      VERCEL_ENV: "production",
+      SITE_URL: "https://school.example",
+      APP_ORIGIN: undefined,
+      ADDITIONAL_ALLOWED_ORIGINS: "https://legacy.school.example/path,not a url",
+    });
+    expect(getAllowedOrigins()).toEqual(["https://school.example"]);
+  });
 });
