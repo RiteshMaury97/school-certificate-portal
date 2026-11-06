@@ -186,9 +186,11 @@ export function validateEnvironmentFields(env: ServerEnvironment, context: z.Ref
   // to "production". Validate deployment-only settings when the server starts,
   // not while build-time modules are being evaluated.
   const isProductionBuild = env.NEXT_PHASE === "phase-production-build";
-  const production = !isProductionBuild && (env.VERCEL_ENV
+  if (isProductionBuild) return;
+
+  const production = env.VERCEL_ENV
     ? env.VERCEL_ENV === "production"
-    : env.NODE_ENV === "production");
+    : env.NODE_ENV === "production";
   const preview = env.VERCEL_ENV === "preview";
   const issue: AddIssue = (name, message) => {
     context.addIssue({ code: "custom", path: [name], message });

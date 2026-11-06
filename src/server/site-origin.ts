@@ -56,6 +56,9 @@ function previewOrigin(): string {
 }
 
 export function getSiteOrigin(): string {
+  // Next evaluates layout metadata while collecting routes, before the Vercel
+  // deployment URL is available to Preview builds.
+  if (process.env.NEXT_PHASE === "phase-production-build") return "http://localhost:3000";
   if (process.env.VERCEL_ENV === "preview") return previewOrigin();
   return isProduction() ? productionOrigin() : "http://localhost:3000";
 }
