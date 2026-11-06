@@ -56,7 +56,7 @@ describe("admin session route configuration failures", () => {
   });
 
   it("returns safe JSON when Firebase initialization throws an environment error", async () => {
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const log = vi.spyOn(console, "error").mockImplementation(vi.fn());
     const request = new NextRequest("https://school.example/api/admin/session", {
       headers: { cookie: "sis_admin_session=present" },
     });

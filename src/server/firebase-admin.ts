@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars -- reason: Firebase SDK callback generics contain intentionally unused parameters. */
 import "server-only";
 import { applicationDefault, cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAppCheck } from "firebase-admin/app-check";
@@ -15,7 +14,6 @@ type FirebaseServices = {
 };
 
 let services: FirebaseServices | null = null;
-let usingExplicitCredentials = false;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -71,7 +69,6 @@ function getFirebaseServices(): FirebaseServices {
   if (services) return services;
   const serviceAccount = readServiceAccount();
   const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  usingExplicitCredentials = serviceAccount !== null;
   const app =
     getApps()[0] ??
     initializeApp({
@@ -86,47 +83,95 @@ function getFirebaseServices(): FirebaseServices {
   return services;
 }
 
-function lazyService<K extends keyof FirebaseServices>(name: K): FirebaseServices[K] {
-  return new Proxy({} as FirebaseServices[K], {
-    get(_target, property) {
-      const service = getFirebaseServices()[name];
-      const value = Reflect.get(service, property, service);
-      return typeof value === "function" ? value.bind(service) : value;
-    },
-  });
-}
+export const adminAuth = {
+  createSessionCookie: (...args: Parameters<FirebaseServices["adminAuth"]["createSessionCookie"]>) =>
+    getFirebaseServices().adminAuth.createSessionCookie(...args),
+  createUser: (...args: Parameters<FirebaseServices["adminAuth"]["createUser"]>) =>
+    getFirebaseServices().adminAuth.createUser(...args),
+  deleteUser: (...args: Parameters<FirebaseServices["adminAuth"]["deleteUser"]>) =>
+    getFirebaseServices().adminAuth.deleteUser(...args),
+  generateEmailVerificationLink: (...args: Parameters<FirebaseServices["adminAuth"]["generateEmailVerificationLink"]>) =>
+    getFirebaseServices().adminAuth.generateEmailVerificationLink(...args),
+  generatePasswordResetLink: (...args: Parameters<FirebaseServices["adminAuth"]["generatePasswordResetLink"]>) =>
+    getFirebaseServices().adminAuth.generatePasswordResetLink(...args),
+  getUser: (...args: Parameters<FirebaseServices["adminAuth"]["getUser"]>) =>
+    getFirebaseServices().adminAuth.getUser(...args),
+  revokeRefreshTokens: (...args: Parameters<FirebaseServices["adminAuth"]["revokeRefreshTokens"]>) =>
+    getFirebaseServices().adminAuth.revokeRefreshTokens(...args),
+  setCustomUserClaims: (...args: Parameters<FirebaseServices["adminAuth"]["setCustomUserClaims"]>) =>
+    getFirebaseServices().adminAuth.setCustomUserClaims(...args),
+  updateUser: (...args: Parameters<FirebaseServices["adminAuth"]["updateUser"]>) =>
+    getFirebaseServices().adminAuth.updateUser(...args),
+  verifyIdToken: (...args: Parameters<FirebaseServices["adminAuth"]["verifyIdToken"]>) =>
+    getFirebaseServices().adminAuth.verifyIdToken(...args),
+  verifySessionCookie: (...args: Parameters<FirebaseServices["adminAuth"]["verifySessionCookie"]>) =>
+    getFirebaseServices().adminAuth.verifySessionCookie(...args),
+};
 
-export const adminAuth = lazyService("adminAuth");
-export const adminAppCheck = lazyService("adminAppCheck");
-export const db = lazyService("db");
+export const adminAppCheck = {
+  verifyToken: (...args: Parameters<FirebaseServices["adminAppCheck"]["verifyToken"]>) =>
+    getFirebaseServices().adminAppCheck.verifyToken(...args),
+};
+
+export const db = {
+  batch: (...args: Parameters<FirebaseServices["db"]["batch"]>) =>
+    getFirebaseServices().db.batch(...args),
+  collection: (...args: Parameters<FirebaseServices["db"]["collection"]>) =>
+    getFirebaseServices().db.collection(...args),
+  listCollections: (...args: Parameters<FirebaseServices["db"]["listCollections"]>) =>
+    getFirebaseServices().db.listCollections(...args),
+  runTransaction: <T>(
+    updateFunction: (transaction: FirebaseFirestore.Transaction) => Promise<T>,
+  ) => getFirebaseServices().db.runTransaction(updateFunction),
+};
 
 /**
  * Turns a Firebase/Google error into a short, secret-free line for server logs,
  * with a hint for the misconfigurations that most often cause outages.
  */
+function firebaseErrorHint(
+  raw: string,
+  code: string | number | undefined,
+  projectId: string | undefined,
+): string {
+  const hasExplicitCredentials =
+    Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim()) ||
+    Boolean(process.env.FIREBASE_CLIENT_EMAIL?.trim() && process.env.FIREBASE_PRIVATE_KEY?.trim());
+  if (hasMissingCredentialsHint(raw, code, hasExplicitCredentials)) return missingCredentialsHint;
+  if (hasFirestoreNotFoundHint(raw, code)) return firestoreNotFoundHint;
+  if (hasFirestorePermissionHint(raw, code)) return firestorePermissionHint;
+  return projectId ? "" : " | HINT: FIREBASE_PROJECT_ID is not set.";
+}
+
+const missingCredentialsHint =
+  " | HINT: no Firebase Admin credentials were found. Set FIREBASE_SERVICE_ACCOUNT_BASE64 (or FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY) in the server environment.";
+const firestoreNotFoundHint =
+  " | HINT: the Firestore database does not exist for this project. Create it in the Firebase console.";
+const firestorePermissionHint =
+  " | HINT: the service account lacks Firestore access (needs the 'Cloud Datastore User' role).";
+
+function hasMissingCredentialsHint(
+  raw: string,
+  code: string | number | undefined,
+  hasExplicitCredentials: boolean,
+): boolean {
+  return /default credentials|could not load/i.test(raw) ||
+    (!hasExplicitCredentials && /UNAUTHENTICATED|16/.test(String(code)));
+}
+
+function hasFirestoreNotFoundHint(raw: string, code: string | number | undefined): boolean {
+  return /NOT_FOUND|5 NOT_FOUND/.test(raw) || String(code) === "5";
+}
+
+function hasFirestorePermissionHint(raw: string, code: string | number | undefined): boolean {
+  return /PERMISSION_DENIED|7 PERMISSION/.test(raw) || String(code) === "7";
+}
+
 export function describeFirebaseError(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error);
   const code = firebaseErrorCode(error);
   const message = raw.replace(/\s+/g, " ").slice(0, 220);
   const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const hasExplicitCredentials = Boolean(
-    process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim() ||
-      (process.env.FIREBASE_CLIENT_EMAIL?.trim() && process.env.FIREBASE_PRIVATE_KEY?.trim()),
-  );
-  let hint = "";
-  if (
-    /default credentials|could not load/i.test(raw) ||
-    (!hasExplicitCredentials && /UNAUTHENTICATED|16/.test(String(code)))
-  )
-    hint =
-      " | HINT: no Firebase Admin credentials were found. Set FIREBASE_SERVICE_ACCOUNT_BASE64 " +
-      "(or FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY) in the server environment.";
-  else if (/NOT_FOUND|5 NOT_FOUND/.test(raw) || String(code) === "5")
-    hint =
-      " | HINT: the Firestore database does not exist for this project. Create it in the Firebase console.";
-  else if (/PERMISSION_DENIED|7 PERMISSION/.test(raw) || String(code) === "7")
-    hint =
-      " | HINT: the service account lacks Firestore access (needs the 'Cloud Datastore User' role).";
-  else if (!projectId) hint = " | HINT: FIREBASE_PROJECT_ID is not set.";
+  const hint = firebaseErrorHint(raw, code, projectId);
   return `${code === undefined ? "" : `[${String(code)}] `}${message}${hint}`;
 }
