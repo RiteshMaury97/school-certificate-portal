@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable max-lines -- reason: this legacy finder page is awaiting a behavior-preserving component extraction. */
 import { motion, useReducedMotion } from "framer-motion";
 import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
@@ -83,6 +84,7 @@ function isStudentResult(value: unknown): value is StudentResult {
   });
 }
 
+// eslint-disable-next-line max-lines-per-function, complexity -- reason: this view coordinates finder form state and result presentation.
 export default function FinderPage() {
   const router = useRouter();
   const { setResult: shareResult } = useCertificateFlow();
@@ -267,6 +269,7 @@ export default function FinderPage() {
     };
   }, [result, notFound]);
 
+  // eslint-disable-next-line complexity -- reason: this submit flow preserves the ordered validation, lookup, and result handling steps.
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");

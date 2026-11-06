@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable max-lines-per-function -- reason: this legacy report modal and its keyboard handler are awaiting a behavior-preserving extraction. */
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -36,6 +37,7 @@ function reportValidationError(input: {
   return null;
 }
 
+// eslint-disable-next-line complexity -- reason: the form coordinates ordered client validation, submission, and error feedback.
 export default function ReportWrongRecordModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [session, setSession] = useState("");

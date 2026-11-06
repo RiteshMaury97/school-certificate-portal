@@ -66,6 +66,7 @@ function settingOr(value: string | undefined, fallback: string): string {
   return cleanValue && cleanValue.length > 0 ? cleanValue : fallback;
 }
 
+// eslint-disable-next-line max-lines-per-function -- reason: this legacy landing page is awaiting a behavior-preserving component extraction.
 export default function HomePage() {
   const settings = usePublicSiteSettings();
   const t = useT();

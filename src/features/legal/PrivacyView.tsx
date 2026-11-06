@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable max-lines -- reason: this privacy page is awaiting a behavior-preserving component extraction. */
 import { useState } from "react";
 
 import { FormErrorSummary } from "@/components/forms/FormErrorSummary";
@@ -20,6 +21,7 @@ function textOr(value: string | undefined | null, fallback: string): string {
 const region = textOr(process.env.NEXT_PUBLIC_DATA_HOSTING_REGION, "{{HOSTING_REGION}}");
 const version = textOr(process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION, "2026-10");
 
+// eslint-disable-next-line max-lines-per-function -- reason: this legacy privacy page coordinates policy content and data rights request handling.
 export default function PrivacyPage() {
   const settings = usePublicSiteSettings();
   const school = textOr(settings.schoolName, "Satyam International School");

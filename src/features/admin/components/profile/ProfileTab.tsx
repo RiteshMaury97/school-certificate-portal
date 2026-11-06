@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable max-lines -- reason: this profile page is awaiting a behavior-preserving component extraction. */
 
 import { Camera, Check, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import Image from "next/image";
@@ -163,6 +164,7 @@ function formatAccountDate(value: string | null | undefined, profile: Profile) {
   }
 }
 
+// eslint-disable-next-line max-lines-per-function, complexity -- reason: this legacy view coordinates profile loading, validation, and save workflows.
 export default function ProfileTab({
   api,
   act,

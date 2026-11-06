@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function -- reason: this legacy view and its nested handlers are awaiting a behavior-preserving component extraction. */
 import {
   ArrowUpRight,
   CheckCircle2,

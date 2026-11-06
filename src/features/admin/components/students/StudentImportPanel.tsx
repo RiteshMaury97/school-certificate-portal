@@ -3,14 +3,14 @@ import { Download, FileSpreadsheet, Upload } from "lucide-react";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { MAX_CSV_ROWS } from "@/shared/upload-limits";
 
-import type { CatalogOption } from "../../types/admin-state.types";
-
 import StudentImportPreview from "./StudentImportPreview";
+
+import type { CatalogOption, StudentImportPreview as StudentImportPreviewData } from "../../types/admin-state.types";
 type Props = {
   busy: boolean;
   file: File | null;
   setFile: (file: File | null) => void;
-  preview: StudentImportPreview | null;
+  preview: StudentImportPreviewData | null;
   importStudents: (action: "preview" | "commit") => Promise<void>;
   downloadTemplate: () => Promise<void>;
   classOptions: CatalogOption[];

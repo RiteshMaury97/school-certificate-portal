@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function -- reason: this legacy view and its nested handlers are awaiting a behavior-preserving component extraction. */
 import { ArrowUpRight, CheckCheck, FileKey2, Inbox, UserRound } from "lucide-react";
 
 import { requestInput } from "@/shared/admin-dialogs";

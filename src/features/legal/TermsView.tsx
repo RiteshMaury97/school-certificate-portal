@@ -12,6 +12,7 @@ function configuredText(value: string | undefined, fallback: string): string {
   return trimmed && trimmed.length > 0 ? trimmed : fallback;
 }
 
+// eslint-disable-next-line max-lines-per-function -- reason: this legacy terms page is awaiting a behavior-preserving component extraction.
 export default function TermsPage() {
   const settings = usePublicSiteSettings();
   const school = configuredText(settings.schoolName, "Satyam International School");

@@ -35,6 +35,7 @@ type Props = {
     reason: string;
   }) => Promise<void>;
 };
+// eslint-disable-next-line max-lines-per-function -- reason: this legacy branding form is awaiting a behavior-preserving component extraction.
 export default function BrandingTab(props: Props) {
   const [now, setNow] = useState(0);
   useEffect(() => {

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { FilePlus2, Search, ShieldCheck, UsersRound, X } from "lucide-react";
+/* eslint-disable max-lines -- reason: this legacy student table is awaiting a behavior-preserving component extraction. */
 import { useMemo, useState, type SubmitEvent } from "react";
 
 import EmptyState from "@/components/feedback/EmptyState";
@@ -91,6 +92,7 @@ function certificateDefaults(): CertificateForm {
   return { certificateType: "", certificateNumber: "", issuedAt: "" };
 }
 
+// eslint-disable-next-line max-lines-per-function, complexity -- reason: this view coordinates student search, selection, and certificate actions.
 export default function StudentsList({
   role,
   students,

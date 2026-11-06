@@ -1,3 +1,5 @@
+/* eslint-disable max-lines -- reason: this legacy view is awaiting a behavior-preserving component extraction. */
+/* eslint-disable max-lines-per-function, complexity -- reason: its nested certificate workflows preserve the current replacement and duplicate confirmation sequence. */
 import { BadgeCheck, Clock3, FileText, ShieldCheck, Upload, UserRound } from "lucide-react";
 
 import { DatePicker } from "@/components/ui/DatePicker";

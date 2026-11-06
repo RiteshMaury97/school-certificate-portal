@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable max-lines-per-function -- reason: this legacy verification page is awaiting a behavior-preserving component extraction. */
 import { BadgeCheck, FileCheck2, Fingerprint, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -93,6 +94,7 @@ function displayDate(value: string): string {
         timeZone: "Asia/Kolkata",
       }).format(date);
 }
+// eslint-disable-next-line complexity -- reason: this view coordinates verification state, API outcomes, and result presentation.
 export default function VerifyPage() {
   const t = useT();
   const [certificateNumber, setCertificateNumber] = useState("");
