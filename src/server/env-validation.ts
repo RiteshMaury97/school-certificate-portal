@@ -135,6 +135,39 @@ function validatePreview(env: ServerEnvironment, issue: AddIssue) {
     issue("FIREBASE_SERVICE_ACCOUNT_BASE64", "Preview requires staging Firebase Admin credentials");
 }
 
+function validateProductionOrigin(env: ServerEnvironment, issue: AddIssue) {
+  if (!env.SITE_URL && !env.APP_ORIGIN && !env.VERCEL_PROJECT_PRODUCTION_URL && !env.VERCEL_URL)
+    issue("SITE_URL", "set SITE_URL, APP_ORIGIN, or a Vercel production URL");
+}
+
+function validateProductionCredentials(env: ServerEnvironment, issue: AddIssue) {
+  if (!hasFirebaseCredentials(env))
+    issue("FIREBASE_SERVICE_ACCOUNT_BASE64", "Production requires Firebase Admin credentials");
+}
+
+function validateProductionMalwareMode(env: ServerEnvironment, issue: AddIssue) {
+  if (env.MALWARE_SCAN_MODE && env.MALWARE_SCAN_MODE !== "required")
+    issue("MALWARE_SCAN_MODE", "must be required in Production");
+}
+
+function validateProductionLegacyOrigin(env: ServerEnvironment, issue: AddIssue) {
+  if (env.APP_ORIGIN && env.SITE_URL && env.APP_ORIGIN !== env.SITE_URL)
+    issue("APP_ORIGIN", "is deprecated and must match SITE_URL when both are set");
+}
+
+function validateProductionBuckets(env: ServerEnvironment, issue: AddIssue) {
+  if (env.BACKUP_R2_BUCKET && env.R2_BUCKET && env.BACKUP_R2_BUCKET === env.R2_BUCKET)
+    issue("BACKUP_R2_BUCKET", "must be different from R2_BUCKET");
+}
+
+function validateProductionRelationships(env: ServerEnvironment, issue: AddIssue) {
+  validateProductionOrigin(env, issue);
+  validateProductionCredentials(env, issue);
+  validateProductionMalwareMode(env, issue);
+  validateProductionLegacyOrigin(env, issue);
+  validateProductionBuckets(env, issue);
+}
+
 function validateProduction(env: ServerEnvironment, issue: AddIssue) {
   requireNames(env, issue, [
     "NEXT_PUBLIC_FIREBASE_API_KEY", "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN", "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
@@ -145,16 +178,7 @@ function validateProduction(env: ServerEnvironment, issue: AddIssue) {
     "DISAMBIGUATION_CHALLENGE_SECRET", "STUDENT_PII_ENCRYPTION_KEY", "CERTIFICATE_NUMBER_ENCRYPTION_KEY",
     "EXPORT_ENCRYPTION_KEY", "OTP_HMAC_SECRET", "GMAIL_USER", "GMAIL_APP_PASSWORD", "CRON_SECRET",
   ]);
-  if (!env.SITE_URL && !env.APP_ORIGIN && !env.VERCEL_PROJECT_PRODUCTION_URL && !env.VERCEL_URL)
-    issue("SITE_URL", "set SITE_URL, APP_ORIGIN, or a Vercel production URL");
-  if (!hasFirebaseCredentials(env))
-    issue("FIREBASE_SERVICE_ACCOUNT_BASE64", "Production requires Firebase Admin credentials");
-  if (env.MALWARE_SCAN_MODE && env.MALWARE_SCAN_MODE !== "required")
-    issue("MALWARE_SCAN_MODE", "must be required in Production");
-  if (env.APP_ORIGIN && env.SITE_URL && env.APP_ORIGIN !== env.SITE_URL)
-    issue("APP_ORIGIN", "is deprecated and must match SITE_URL when both are set");
-  if (env.BACKUP_R2_BUCKET && env.R2_BUCKET && env.BACKUP_R2_BUCKET === env.R2_BUCKET)
-    issue("BACKUP_R2_BUCKET", "must be different from R2_BUCKET");
+  validateProductionRelationships(env, issue);
 }
 
 export function validateEnvironmentFields(env: ServerEnvironment, context: z.RefinementCtx) {

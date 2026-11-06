@@ -25,30 +25,39 @@ function validateHttpsOrigin(value: string, name: string): string {
   throw new Error(`${name} must be an HTTPS origin with no path, query, or trailing slash.`);
 }
 
-export function getSiteOrigin(): string {
-  if (process.env.VERCEL_ENV === "preview") {
-    const deploymentUrl = process.env.VERCEL_URL?.trim();
-    if (!deploymentUrl) throw new Error("VERCEL_URL is required for Preview deployment links.");
-    return validateHttpsOrigin(`https://${deploymentUrl}`, "VERCEL_URL");
-  }
+function trimmedEnvironmentValue(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  if (!value) return undefined;
+  return value;
+}
 
-  if (!isProduction()) return "http://localhost:3000";
-
+function productionOrigin(): string {
   const errors = originConfigErrors();
   if (errors.length) throw new Error(`Invalid production origin configuration: ${errors.join("; ")}`);
-  const siteUrl = process.env.SITE_URL?.trim();
-  const appOrigin = process.env.APP_ORIGIN?.trim();
-  const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() || process.env.VERCEL_URL?.trim();
-  const configured = siteUrl || appOrigin || (vercelUrl ? `https://${vercelUrl}` : undefined);
+
+  const siteUrl = trimmedEnvironmentValue("SITE_URL");
+  const appOrigin = trimmedEnvironmentValue("APP_ORIGIN");
+  const vercelHost = trimmedEnvironmentValue("VERCEL_PROJECT_PRODUCTION_URL") ??
+    trimmedEnvironmentValue("VERCEL_URL");
+  const configured = siteUrl ?? appOrigin ?? (vercelHost ? `https://${vercelHost}` : undefined);
   if (!configured) {
     throw new Error(
       "Set SITE_URL or APP_ORIGIN, or provide VERCEL_PROJECT_PRODUCTION_URL for Production.",
     );
   }
-  return validateHttpsOrigin(
-    configured,
-    siteUrl ? "SITE_URL" : appOrigin ? "APP_ORIGIN" : "VERCEL_PROJECT_PRODUCTION_URL",
-  );
+  const name = siteUrl ? "SITE_URL" : appOrigin ? "APP_ORIGIN" : "VERCEL_PROJECT_PRODUCTION_URL";
+  return validateHttpsOrigin(configured, name);
+}
+
+function previewOrigin(): string {
+  const deploymentUrl = trimmedEnvironmentValue("VERCEL_URL");
+  if (!deploymentUrl) throw new Error("VERCEL_URL is required for Preview deployment links.");
+  return validateHttpsOrigin(`https://${deploymentUrl}`, "VERCEL_URL");
+}
+
+export function getSiteOrigin(): string {
+  if (process.env.VERCEL_ENV === "preview") return previewOrigin();
+  return isProduction() ? productionOrigin() : "http://localhost:3000";
 }
 
 export function absoluteUrl(path: string): string {
