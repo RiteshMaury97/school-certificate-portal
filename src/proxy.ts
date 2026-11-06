@@ -153,6 +153,14 @@ async function adminLocationGate(
   // development has no reliable country/IP context and must not replace an
   // admin page with the middleware's JSON denial response.
   if (!production || !isAdminPath(request.nextUrl.pathname)) return null;
+  // The unauthenticated login document contains no protected data. Keep it
+  // reachable even when the location service is unavailable or the visitor
+  // is outside the admin allowlist; sign-in APIs and authenticated admin
+  // pages remain subject to this gate.
+  if (
+    request.nextUrl.pathname === "/admin/login" &&
+    !request.cookies.get("sis_admin_session")?.value
+  ) return null;
   const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
   if (secret.length < 32) return locationGateResponse(nonce, production, 503);
   try {
