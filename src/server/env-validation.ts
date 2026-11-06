@@ -137,7 +137,7 @@ function validatePreview(env: ServerEnvironment, issue: AddIssue) {
 
 function validateProductionOrigin(env: ServerEnvironment, issue: AddIssue) {
   if (!env.SITE_URL && !env.APP_ORIGIN && !env.VERCEL_PROJECT_PRODUCTION_URL && !env.VERCEL_URL)
-    issue("SITE_URL", "set SITE_URL, APP_ORIGIN, or a Vercel production URL");
+    issue("SITE_URL", "is required in Production (APP_ORIGIN is a deprecated alias)");
 }
 
 function validateProductionCredentials(env: ServerEnvironment, issue: AddIssue) {

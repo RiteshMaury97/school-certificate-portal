@@ -2,8 +2,6 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 
-import { db } from "@/server/firebase-admin";
-
 export const PUBLIC_SITE_SETTINGS_TAG = "public-site-settings";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -12,6 +10,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export const getCachedSiteSettings = unstable_cache(
   async (): Promise<Record<string, unknown>> => {
+    const { db } = await import("@/server/firebase-admin");
     const snapshot = await db.collection("siteSettings").doc("main").get();
     const data = snapshot.exists ? (snapshot.data() ?? {}) : {};
     const serialized = JSON.stringify(data);
