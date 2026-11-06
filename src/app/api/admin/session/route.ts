@@ -456,9 +456,8 @@ async function readSessionStatus(request: NextRequest, session: string): Promise
     if (
       !sessionRecordIsValid(sessionDoc, decoded.uid) ||
       !adminRecordIsValid(admin, decoded, role)
-    ) {
-      return unauthenticatedSessionResponse();
-    }
+    ) return unauthenticatedSessionResponse();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const sessionCountry = sessionDoc.get("country");
     const location = await enforceAdminLocation({
       request,
