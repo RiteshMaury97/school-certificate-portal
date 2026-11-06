@@ -17,8 +17,7 @@ export default function PageLoader({ label = "Loading…", fullscreen = true }: 
         <div className="relative grid h-16 w-16 place-items-center">
           <span
             aria-hidden="true"
-            className="spinner absolute inset-0 text-[var(--gold)]"
-            style={{ width: 64, height: 64, borderWidth: 3 }}
+            className="spinner spinner-page absolute inset-0 text-[var(--gold)]"
           />
           <Logo size={40} className="animate-breathe rounded-xl bg-white p-1 object-contain" />
         </div>

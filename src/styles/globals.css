@@ -321,6 +321,11 @@ html[data-locale="hi"] {
     border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
     border-top-color: currentColor;
   }
+  .spinner-page {
+    width: 64px;
+    height: 64px;
+    border-width: 3px;
+  }
   .top-progress {
     position: fixed;
     inset: 0 0 auto 0;
