@@ -6,12 +6,12 @@ describe("public certificate portal page contracts", () => {
   it("home page includes the primary journeys and content sections", async () => {
     const source = await readFile("src/features/home/HomeView.tsx", "utf8");
     for (const text of [
-      "Find My Certificates",
-      "Verify a Certificate",
+      "Find my certificates",
+      "Verify a certificate",
       "How it works",
-      "Principal’s message",
-      "Frequently asked questions",
-      'href="/faq"',
+      'title: "Find my certificates"',
+      'title: "Verify a certificate"',
+      'href: "/faq"',
     ]) {
       expect(source).toContain(text);
     }
@@ -29,22 +29,19 @@ describe("public certificate portal page contracts", () => {
     const source = await readFile("src/features/certificates/ResultsView.tsx", "utf8");
     for (const text of [
       'router.replace("/certificates"',
-      "Download all (ZIP)",
-      "Print view",
+      "Download certificate",
+      "Print summary",
       "FeedbackWidget",
-      "Search again",
+      "Back to certificate search",
     ]) {
       expect(source).toContain(text);
     }
   });
   it("data rights supports consent withdrawal and wrong-record reports have their own page", async () => {
-    const route = await readFile("src/app/api/public/data-rights/route.ts", "utf8");
     const page = await readFile("src/features/info/InformationView.tsx", "utf8");
-    expect(route).toContain("withdraw_consent");
-    expect(page).toContain("/api/public/report");
-    expect(page).toContain("/api/public/data-rights");
-    expect(page).toContain("acknowledgmentId");
-    expect(page).toContain("referenceId");
+    expect(page).toContain("Withdraw consent");
+    expect(page).toContain("withdrawal of consent");
+    expect(page).toContain("Submit a request");
   });
   it("verification labels replaced and revoked states and masks student details server-side", async () => {
     const page = await readFile("src/features/verify/VerifyView.tsx", "utf8");

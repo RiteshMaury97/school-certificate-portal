@@ -1,4 +1,4 @@
-﻿import {
+import {
   useEffect,
   useState,
   type Dispatch,
@@ -104,10 +104,14 @@ export default function BrandingTab(props: Props) {
               aria-label="Admin countries allowed"
               id="admin-countries-allowed"
               value={allowedAdminCountries}
-              onChange={(e) => { setAllowedAdminCountries(e.target.value); }}
+              onChange={(e) => {
+                setAllowedAdminCountries(e.target.value);
+              }}
               placeholder="IN"
               className="mt-1 w-full rounded border p-2.5"
-            required aria-required="true" />
+              required
+              aria-required="true"
+            />
           </label>
           <label className="text-sm font-semibold text-[var(--text)]">
             Location enforcement
@@ -115,9 +119,13 @@ export default function BrandingTab(props: Props) {
               aria-label="Location enforcement"
               id="admin-location-enforcement"
               value={adminLocationEnforcementMode}
-              onChange={(e) => { setAdminLocationEnforcementMode(e.target.value); }}
+              onChange={(e) => {
+                setAdminLocationEnforcementMode(e.target.value);
+              }}
               className="mt-1 w-full rounded border p-2.5"
-             required aria-required="true">
+              required
+              aria-required="true"
+            >
               <option value="block">Block outside policy</option>
               <option value="alert">Allow and log alerts</option>
               <option value="off">Off</option>
@@ -129,11 +137,15 @@ export default function BrandingTab(props: Props) {
               aria-label="School network IP allowlist"
               id="admin-ip-allowlist"
               value={adminIpAllowlist}
-              onChange={(e) => { setAdminIpAllowlist(e.target.value); }}
+              onChange={(e) => {
+                setAdminIpAllowlist(e.target.value);
+              }}
               placeholder="203.0.113.0/24"
               rows={3}
               className="mt-1 w-full rounded border p-2.5 font-mono"
-            required aria-required="true" />
+              required
+              aria-required="true"
+            />
           </label>
           <label className="text-sm font-semibold text-[var(--text)]">
             Retention period after the end of the academic session (years)
@@ -149,7 +161,9 @@ export default function BrandingTab(props: Props) {
                 setRetentionYears(e.target.value);
               }}
               className="mt-1 w-full rounded border p-2.5"
-            required aria-required="true" />
+              required
+              aria-required="true"
+            />
           </label>
           <label className="text-sm font-semibold text-[var(--text)]">
             Encrypted backup rotation (days)
@@ -165,7 +179,9 @@ export default function BrandingTab(props: Props) {
                 setBackupRotationDays(e.target.value);
               }}
               className="mt-1 w-full rounded border p-2.5"
-            required aria-required="true" />
+              required
+              aria-required="true"
+            />
           </label>
           <label className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4 text-sm font-semibold text-[var(--text)] sm:col-span-2">
             <input
@@ -215,13 +231,15 @@ export default function BrandingTab(props: Props) {
                   setBranding((v) => ({ ...v, [key]: e.target.value }));
                 }}
                 className="mt-1 w-full rounded border p-2.5"
-              required aria-required="true" />
+                required
+                aria-required="true"
+              />
             </label>
           ))}
           <label className="text-sm font-semibold text-[var(--text)]">
             School website (HTTPS URL; optional)
             <input
-              aria-label="School website"
+              aria-label="School website optional"
               type="url"
               value={branding.website ?? ""}
               onChange={(e) => {
@@ -233,7 +251,7 @@ export default function BrandingTab(props: Props) {
           <label className="text-sm font-semibold text-[var(--text)]">
             Security contact email (published in security.txt)
             <input
-              aria-label="Security contact email"
+              aria-label="Security contact email optional"
               type="email"
               value={branding.securityContactEmail ?? ""}
               onChange={(e) => {
@@ -246,9 +264,22 @@ export default function BrandingTab(props: Props) {
             <legend className="px-2 text-sm font-semibold">Optional tagline translations</legend>
             <div className="grid gap-3 sm:grid-cols-2">
               {(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const).map((locale) => (
-                <label key={locale} className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                <label
+                  key={locale}
+                  className="text-xs font-semibold uppercase text-[var(--text-muted)]"
+                >
                   {locale}
-                  <input aria-label={`Tagline translation (${locale})`} value={branding[`tagline_i18n_${locale}`] ?? ""} onChange={(event) => { setBranding((value) => ({ ...value, [`tagline_i18n_${locale}`]: event.target.value })); }} className="mt-1 w-full rounded border p-2.5 text-sm font-normal normal-case text-[var(--text)]" required aria-required="true" />
+                  <input
+                    aria-label={`Tagline translation (${locale}) optional`}
+                    value={branding[`tagline_i18n_${locale}`] ?? ""}
+                    onChange={(event) => {
+                      setBranding((value) => ({
+                        ...value,
+                        [`tagline_i18n_${locale}`]: event.target.value,
+                      }));
+                    }}
+                    className="mt-1 w-full rounded border p-2.5 text-sm font-normal normal-case text-[var(--text)]"
+                  />
                 </label>
               ))}
             </div>
@@ -256,7 +287,7 @@ export default function BrandingTab(props: Props) {
           <label className="text-sm font-semibold text-[var(--text)] sm:col-span-2">
             Principal&apos;s message
             <textarea
-              aria-label="Principal's message"
+              aria-label="Principal's message optional"
               translate="no"
               rows={5}
               maxLength={1800}
@@ -268,15 +299,33 @@ export default function BrandingTab(props: Props) {
                 }));
               }}
               className="mt-1 w-full rounded border p-2.5"
-            required aria-required="true" />
+              required
+              aria-required="true"
+            />
           </label>
           <fieldset className="rounded-lg border border-[var(--border)] p-4 sm:col-span-2">
-            <legend className="px-2 text-sm font-semibold">Optional principal message translations</legend>
+            <legend className="px-2 text-sm font-semibold">
+              Optional principal message translations
+            </legend>
             <div className="grid gap-3 sm:grid-cols-2">
               {(["hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"] as const).map((locale) => (
-                <label key={locale} className="text-xs font-semibold uppercase text-[var(--text-muted)]">
+                <label
+                  key={locale}
+                  className="text-xs font-semibold uppercase text-[var(--text-muted)]"
+                >
                   {locale}
-                  <textarea aria-label={`Principal message translation (${locale})`} rows={3} value={branding[`principalMessage_i18n_${locale}`] ?? ""} onChange={(event) => { setBranding((value) => ({ ...value, [`principalMessage_i18n_${locale}`]: event.target.value })); }} className="mt-1 w-full rounded border p-2.5 text-sm font-normal normal-case text-[var(--text)]" required aria-required="true" />
+                  <textarea
+                    aria-label={`Principal message translation (${locale}) optional`}
+                    rows={3}
+                    value={branding[`principalMessage_i18n_${locale}`] ?? ""}
+                    onChange={(event) => {
+                      setBranding((value) => ({
+                        ...value,
+                        [`principalMessage_i18n_${locale}`]: event.target.value,
+                      }));
+                    }}
+                    className="mt-1 w-full rounded border p-2.5 text-sm font-normal normal-case text-[var(--text)]"
+                  />
                 </label>
               ))}
             </div>
@@ -284,7 +333,7 @@ export default function BrandingTab(props: Props) {
           <label className="text-sm font-semibold text-[var(--text)] sm:col-span-2">
             Social links (one per line: Label|HTTPS URL)
             <textarea
-              aria-label="Social links"
+              aria-label="Social links optional"
               translate="no"
               rows={4}
               value={branding.socialLinks}
@@ -296,7 +345,7 @@ export default function BrandingTab(props: Props) {
               }}
               placeholder="Facebook|Enter an HTTPS URL"
               className="mt-1 w-full rounded border p-2.5"
-            required aria-required="true" />
+            />
           </label>
           <button
             disabled={busy}
@@ -323,9 +372,13 @@ export default function BrandingTab(props: Props) {
             <select
               aria-label="Exception applies to"
               value={exceptionTarget}
-              onChange={(e) => { setExceptionTarget(e.target.value); }}
+              onChange={(e) => {
+                setExceptionTarget(e.target.value);
+              }}
               className="mt-1 w-full rounded border p-2.5"
-             required aria-required="true">
+              required
+              aria-required="true"
+            >
               <option value="country">A country</option>
               <option value="admin">One administrator</option>
             </select>
@@ -335,11 +388,14 @@ export default function BrandingTab(props: Props) {
               Country code
               <input
                 aria-label="Country code"
-                required aria-required="true"
+                required
+                aria-required="true"
                 maxLength={2}
                 pattern="[A-Za-z]{2}"
                 value={exceptionCountry}
-                onChange={(e) => { setExceptionCountry(e.target.value.toUpperCase()); }}
+                onChange={(e) => {
+                  setExceptionCountry(e.target.value.toUpperCase());
+                }}
                 placeholder="US"
                 className="mt-1 w-full rounded border p-2.5"
               />
@@ -349,9 +405,12 @@ export default function BrandingTab(props: Props) {
               Administrator UID
               <input
                 aria-label="Administrator UID"
-                required aria-required="true"
+                required
+                aria-required="true"
                 value={exceptionAdminUid}
-                onChange={(e) => { setExceptionAdminUid(e.target.value); }}
+                onChange={(e) => {
+                  setExceptionAdminUid(e.target.value);
+                }}
                 className="mt-1 w-full rounded border p-2.5"
               />
             </label>
@@ -360,12 +419,15 @@ export default function BrandingTab(props: Props) {
             Expires in (hours)
             <input
               aria-label="Exception expiration in hours"
-              required aria-required="true"
+              required
+              aria-required="true"
               type="number"
               min="1"
               max="168"
               value={exceptionHours}
-              onChange={(e) => { setExceptionHours(e.target.value); }}
+              onChange={(e) => {
+                setExceptionHours(e.target.value);
+              }}
               className="mt-1 w-full rounded border p-2.5"
             />
           </label>
@@ -373,11 +435,14 @@ export default function BrandingTab(props: Props) {
             Reason
             <input
               aria-label="Exception reason"
-              required aria-required="true"
+              required
+              aria-required="true"
               minLength={5}
               maxLength={500}
               value={exceptionReason}
-              onChange={(e) => { setExceptionReason(e.target.value); }}
+              onChange={(e) => {
+                setExceptionReason(e.target.value);
+              }}
               className="mt-1 w-full rounded border p-2.5"
             />
           </label>
@@ -396,7 +461,7 @@ export default function BrandingTab(props: Props) {
                 {item.country
                   ? `Country ${readText(item.country)}`
                   : `Admin ${readText(item.adminUid)}`}{" "}
-                Â· expires {new Date(readText(item.expiresAt)).toLocaleString()} Â·{" "}
+                · expires {new Date(readText(item.expiresAt)).toLocaleString()} ·{" "}
                 {readText(item.reason)}
               </li>
             ))}
@@ -408,7 +473,7 @@ export default function BrandingTab(props: Props) {
           {recentLocationBlocks.length ? (
             recentLocationBlocks.map((item, index) => (
               <li key={`${readText(item.action)}-${String(index)}`} className="rounded border p-3">
-                {readText(item.action)} Â· {readText(item.country)} Â·{" "}
+                {readText(item.action)} · {readText(item.country)} ·{" "}
                 {item.at ? new Date(readText(item.at)).toLocaleString() : "time unavailable"}
               </li>
             ))

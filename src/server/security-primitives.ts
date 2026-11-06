@@ -156,6 +156,7 @@ export function selectUniqueDisambiguationMatch<
       candidate.dateOfBirthDisambiguationKey === answerHash ||
       candidate.admissionNumberDisambiguationKey === answerHash,
   );
+  if (matches.length !== 1) return null;
   const [match] = matches;
   return match ?? null;
 }

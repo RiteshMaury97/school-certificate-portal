@@ -159,9 +159,13 @@ function validateProduction(env: ServerEnvironment, issue: AddIssue) {
 }
 
 export function validateEnvironmentFields(env: ServerEnvironment, context: z.RefinementCtx) {
-  const production = env.VERCEL_ENV
+  // Next collects route/page data during `next build` with VERCEL_ENV still set
+  // to "production". Validate deployment-only settings when the server starts,
+  // not while build-time modules are being evaluated.
+  const isProductionBuild = env.NEXT_PHASE === "phase-production-build";
+  const production = !isProductionBuild && (env.VERCEL_ENV
     ? env.VERCEL_ENV === "production"
-    : env.NODE_ENV === "production" && env.NEXT_PHASE !== "phase-production-build";
+    : env.NODE_ENV === "production");
   const preview = env.VERCEL_ENV === "preview";
   const issue: AddIssue = (name, message) => {
     context.addIssue({ code: "custom", path: [name], message });

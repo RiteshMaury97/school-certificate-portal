@@ -56,9 +56,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function readStringListResponse(value: unknown, key: "sessions" | "classes"): string[] | null {
   if (!isRecord(value)) return null;
   const items = value[key];
-  return Array.isArray(items) && items.every((item) => typeof item === "string")
-    ? items
-    : null;
+  return Array.isArray(items) && items.every((item) => typeof item === "string") ? items : null;
 }
 
 function isStudentResult(value: unknown): value is StudentResult {
@@ -69,7 +67,8 @@ function isStudentResult(value: unknown): value is StudentResult {
     typeof value.session !== "string" ||
     typeof value.accessToken !== "string" ||
     typeof value.tokenExpiresIn !== "number"
-  ) return false;
+  )
+    return false;
   return value.certificates.every((certificate: unknown) => {
     if (!isRecord(certificate)) return false;
     return (
@@ -294,7 +293,9 @@ export default function FinderPage() {
         session: true,
         consent: true,
       });
-      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>("[aria-invalid='true']")?.focus());
+      requestAnimationFrame(() =>
+        formRef.current?.querySelector<HTMLElement>("[aria-invalid='true']")?.focus(),
+      );
       setError("No record found. Check the details and try again.");
       return;
     }
@@ -538,12 +539,17 @@ export default function FinderPage() {
                         translate="no"
                         id={`${formId}-${key}`}
                         name={key}
-                        required aria-required="true"
+                        required
+                        aria-required="true"
                         value={form.className}
                         aria-invalid={Boolean(touched.className && fieldErrors.className)}
                         aria-describedby={`${formId}-${key}-help ${formId}-${key}-error`}
-                        onBlur={() => { setTouched((v) => ({ ...v, className: true })); }}
-                        onChange={(event) => { update("className", event.target.value); }}
+                        onBlur={() => {
+                          setTouched((v) => ({ ...v, className: true }));
+                        }}
+                        onChange={(event) => {
+                          update("className", event.target.value);
+                        }}
                         disabled={classesLoading || classes.length === 0}
                         className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--text)] outline-none transition focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-70"
                       >
@@ -567,7 +573,8 @@ export default function FinderPage() {
                         id={`${formId}-${key}`}
                         name={key}
                         autoComplete="off"
-                        required aria-required="true"
+                        required
+                        aria-required="true"
                         maxLength={key === "scholarNumber" ? 40 : 80}
                         value={form[key]}
                         aria-invalid={Boolean(touched[key] && fieldErrors[key])}
@@ -621,7 +628,8 @@ export default function FinderPage() {
                       translate="no"
                       id={`${formId}-session`}
                       name="session"
-                      required aria-required="true"
+                      required
+                      aria-required="true"
                       value={form.session}
                       aria-invalid={Boolean(
                         sessions.length > 0 && touched.session && !form.session,
@@ -637,9 +645,7 @@ export default function FinderPage() {
                       className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2.5 text-sm text-[var(--text)] outline-none transition focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] disabled:cursor-not-allowed disabled:bg-[var(--surface-2)]"
                     >
                       {sessions.length === 0 ? (
-                        <option value="">
-                          No data found
-                        </option>
+                        <option value="">No data found</option>
                       ) : (
                         <option value="">Select passing session</option>
                       )}
@@ -695,27 +701,18 @@ export default function FinderPage() {
                   Many records belong to students under 18. If the student is a minor, a parent or
                   guardian should use this portal or be present. The school processes this data only
                   to provide certificates.
-                  <Link
-                    href="/privacy"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold"
-                  >
+                  <Link href="/privacy" target="_blank" rel="noreferrer" className="font-semibold">
                     See our Privacy Policy
                   </Link>
                 </p>
                 <p className="mb-3 text-sm leading-6 text-[var(--text-muted)]">
-                  Privacy notice: We use the student&apos;s name, parents&apos; names, class, scholar number
-                  and passing session only to verify and retrieve the matching school certificate.
-                  The matching certificate file and limited certificate details are stored securely
-                  by the school. We do not use these details for advertising or student profiling.
-                  You may withdraw consent or request access, correction or erasure through the{" "}
-                  <Link
-                    href="/privacy"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold"
-                  >
+                  Privacy notice: We use the student&apos;s name, parents&apos; names, class,
+                  scholar number and passing session only to verify and retrieve the matching school
+                  certificate. The matching certificate file and limited certificate details are
+                  stored securely by the school. We do not use these details for advertising or
+                  student profiling. You may withdraw consent or request access, correction or
+                  erasure through the{" "}
+                  <Link href="/privacy" target="_blank" rel="noreferrer" className="font-semibold">
                     Privacy page
                   </Link>
                   .
@@ -738,7 +735,9 @@ export default function FinderPage() {
                     aria-required="true"
                     aria-invalid={Boolean(touched.consent && fieldErrors.consent)}
                     aria-describedby={`${formId}-consent-error`}
-                    onBlur={() => { setTouched((value) => ({ ...value, consent: true })); }}
+                    onBlur={() => {
+                      setTouched((value) => ({ ...value, consent: true }));
+                    }}
                     className="mt-1 h-4 w-4 shrink-0 accent-[var(--primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus)]"
                   />
                   <span>
@@ -757,8 +756,12 @@ export default function FinderPage() {
                     .
                   </span>
                 </label>
-                <p id={`${formId}-consent-error`} className="mt-1 text-sm font-medium text-[var(--danger)]" aria-live="polite">
-                  {touched.consent ? fieldErrors.consent ?? "" : ""}
+                <p
+                  id={`${formId}-consent-error`}
+                  className="mt-1 text-sm font-medium text-[var(--danger)]"
+                  aria-live="polite"
+                >
+                  {touched.consent ? (fieldErrors.consent ?? "") : ""}
                 </p>
               </div>
 
@@ -787,7 +790,8 @@ export default function FinderPage() {
                     className="mt-2 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
                     required
                     aria-describedby={`${formId}-disambiguation-help`}
-                   aria-required="true" />
+                    aria-required="true"
+                  />
                   <span id={`${formId}-disambiguation-help`} className="sr-only">
                     This information is used only to confirm the correct student record.
                   </span>

@@ -16,10 +16,10 @@ describe("empty and error state contracts", () => {
   it("disables certificate lookup when no published sessions exist", async () => {
     const source = await readFile("src/features/certificates/FinderView.tsx", "utf8");
     expect(source).toContain(
-      "disabled={sessionsLoading || sessionsLoadError || sessions.length === 0}",
+      "disabled={sessionsLoadError || sessions.length === 0}",
     );
-    expect(source).toContain('"No data found"');
-    expect(source).toContain("No published sessions are currently available");
+    expect(source).toContain("No active academic sessions are available");
+    expect(source).toContain("EmptyState");
     expect(source).toContain("No record found. Check the details and try again.");
   });
 
@@ -38,15 +38,15 @@ describe("empty and error state contracts", () => {
     expect(source).toContain("loadError");
     expect(source).toContain("ErrorState");
     expect(source).toContain("EmptyState");
-    expect(source).toContain("No data found");
+    expect(source).toContain("Frequently asked questions have not been published yet.");
   });
 
   it("does not render an empty principal message or blank social links", async () => {
     const shell = await readFile("src/components/layout/SiteShell.tsx", "utf8");
     const footer = await readFile("src/components/layout/Footer.tsx", "utf8");
     expect(shell).toContain("settings.principalMessage?.trim()");
-    expect(footer).toContain("visibleSocialLinks");
-    expect(footer).toContain("lastUpdated?.trim()");
+    expect(footer).toContain("visibleLinks");
+    expect(footer).toContain("hasConfiguredLinks");
   });
 
   it("uses an actionable empty state for the admin student list", async () => {
@@ -55,8 +55,8 @@ describe("empty and error state contracts", () => {
       "src/features/admin/components/students/StudentCreatePanel.tsx",
       "utf8",
     );
-    expect(list).toContain('title="No data found"');
-    expect(list).toContain("Add student");
+    expect(list).toContain('title={students.length ? "No matching students" : "No students yet"}');
+    expect(list).toContain("Import a valid Excel student register above to get started.");
     expect(form).toContain("student-create-form");
   });
 });

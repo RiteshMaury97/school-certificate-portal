@@ -13,6 +13,13 @@ vi.mock("next/link", () => ({
     <a href={href}>{children}</a>
   ),
 }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
+}));
+vi.mock("@/lib/firebase-client", () => ({
+  initializeAppCheckEarly: vi.fn(),
+  auth: {},
+}));
 
 vi.mock("@/lib/use-site-settings", () => ({
   usePublicSiteSettings: () => ({ schoolName: settingsState.schoolName }),
@@ -34,6 +41,13 @@ vi.mock("@/features/auth/useAdminSignIn", () => ({
     requestPasswordReset: vi.fn(),
   }),
 }));
+vi.mock("@/features/auth/admin-session", () => ({
+  AdminSessionProvider: ({ children }: { children: ReactNode }) => children,
+  useAdminSession: () => ({
+    state: { status: "unauthenticated" },
+    retry: vi.fn(),
+  }),
+}));
 
 afterEach(() => {
   cleanup();
@@ -45,7 +59,7 @@ describe("AdminAuthView school heading fallback", () => {
     render(<AdminAuthView />);
     expect(
       screen.getByRole("heading", {
-        name: "Satyam International School – Administrator login",
+        name: "Satyam International School",
       }),
     ).toBeTruthy();
   });

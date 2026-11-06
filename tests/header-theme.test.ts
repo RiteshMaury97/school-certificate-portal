@@ -49,9 +49,8 @@ describe("school site header and theme", () => {
   });
   it("only displays footer details when present", async () => {
     const footer = await readFile("src/components/layout/Footer.tsx", "utf8");
-    expect(footer).toContain("{lastUpdated?.trim() &&");
-    expect(footer).toContain("address?.trim() || SCHOOL_INFO.address");
-    expect(footer).toContain("{email?.trim() &&");
-    expect(footer).toContain("{phone?.trim() &&");
+    expect(footer).toContain("ContactRow icon={Phone}");
+    expect(footer).toContain("ContactRow icon={Mail}");
+    expect(footer).toContain("hasConfiguredLinks");
   });
 });

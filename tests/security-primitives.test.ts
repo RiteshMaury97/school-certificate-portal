@@ -178,7 +178,7 @@ describe("encrypted student identifiers and challenge token", () => {
     expect(encrypted).not.toContain("15-04-2010");
     expect(decryptStudentIdentifier(encrypted)).toBe("2010-04-15");
     expect(() =>
-      decryptStudentIdentifier(`${encrypted.slice(0, -1)}x`),
+      decryptStudentIdentifier(`${encrypted.slice(0, 12)}${encrypted[12] === "A" ? "B" : "A"}${encrypted.slice(13)}`),
     ).toThrow();
     expect(studentIdentifierHmac("15-04-2010")).toBe(
       studentIdentifierHmac("2010-04-15"),

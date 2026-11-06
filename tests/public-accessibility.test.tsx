@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import FaqPage from "@/features/faq/FaqView";
+import ThemeProvider from "@/features/theme/ThemeProvider";
+import { LocaleProvider } from "@/i18n/locale-provider";
 
 import type { ReactNode } from "react";
 
@@ -36,17 +38,19 @@ describe("public FAQ accessibility", () => {
     });
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({ ok: true, json: () => ({ settings: {} }) }),
+      vi.fn().mockResolvedValue({ ok: true, json: () => ({ settings: { faqs: [{ questionEn: "Name not found", answerEn: "Check the spelling used in your school records." }] } }) }),
     );
   });
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
   });
-  it("uses native keyboard-operable disclosure controls for FAQs", () => {
-    render(<FaqPage />);
-    expect(screen.getByRole("heading", { name: "Frequently Asked Questions" })).toBeTruthy();
-    expect(screen.getAllByText("Name not found").length).toBeGreaterThan(0);
-    expect(document.querySelectorAll("details > summary").length).toBeGreaterThan(0);
+  it("uses native keyboard-operable disclosure controls for FAQs", async () => {
+    render(<ThemeProvider><LocaleProvider><FaqPage /></LocaleProvider></ThemeProvider>);
+    expect(screen.getByRole("heading", { name: "Frequently asked questions" })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText("Name not found")).toBeTruthy();
+    });
+    expect(document.querySelector("details > summary")?.textContent).toContain("Name not found");
   });
 });
