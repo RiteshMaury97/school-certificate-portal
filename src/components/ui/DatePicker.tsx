@@ -48,6 +48,10 @@ function inputValue(selectedDate: string, time: string, includeTime: boolean): s
   return includeTime ? `${selectedDate}T${time}` : selectedDate;
 }
 
+function selectedDateLabel(date: Date | null, placeholder: string | undefined): string {
+  return date ? dateFormat.format(date) : (placeholder ?? "Pick a date");
+}
+
 type CalendarPopupProps = {
   id: string;
   label: string;
@@ -255,7 +259,7 @@ export function DatePicker({
         <span className="flex min-w-0 items-center gap-2.5">
           <CalendarDays size={16} className="shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
           <span className="truncate">
-            {parsedSelected ? dateFormat.format(parsedSelected) : (placeholder ?? "Pick a date")}
+            {selectedDateLabel(parsedSelected, placeholder)}
             {includeTime && selectedDate && <span className="ml-2 text-[var(--text-muted)]">{time}</span>}
           </span>
         </span>

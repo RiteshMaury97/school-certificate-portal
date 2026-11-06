@@ -1,4 +1,4 @@
-import { PassThrough, Readable } from "node:stream";
+import { PassThrough } from "node:stream";
 
 import archiver from "archiver";
 import { NextResponse } from "next/server";
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     void Promise.resolve(archive.finalize())
       .then(() => recordCertificateDownloads(included))
       .catch(() => output.destroy(new Error("Archive finalization or download metrics failed")));
-    const archiveChunks = output[Symbol.asyncIterator]();
+    const archiveChunks: AsyncIterator<unknown, unknown> = output[Symbol.asyncIterator]();
     const body = new ReadableStream<Uint8Array>({
       async pull(controller) {
         try {

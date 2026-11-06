@@ -139,10 +139,10 @@ function displayScalar(value: unknown, fallback = ""): string {
   return fallback;
 }
 
-function displayTimestamp(value: unknown): string | null {
-  if (typeof value !== "string" && typeof value !== "number") return null;
+function displayTimestamp(value: unknown): string {
+  if (typeof value !== "string" && typeof value !== "number") return "";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? "" : ` · ${date.toLocaleString()}`;
 }
   const sessionNames = useMemo(
     () =>
@@ -613,9 +613,7 @@ function displayTimestamp(value: unknown): string | null {
                       <strong className="text-[var(--text)]">
                         {displayScalar(item.action, "Record activity")}
                       </strong>
-                      {displayTimestamp(item.timestamp)
-                        ? ` · ${displayTimestamp(item.timestamp)}`
-                        : ""}
+                      {displayTimestamp(item.timestamp)}
                       {item.actor ? ` Â· ${displayScalar(item.actor)}` : ""}
                       {Array.isArray(item.changedFields) && item.changedFields.length > 0 ? (
                         <p className="mt-1">Changed: {item.changedFields.map(String).join(", ")}</p>

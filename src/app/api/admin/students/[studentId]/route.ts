@@ -96,6 +96,88 @@ async function hasDuplicateStudentIdentity(
   };
 }
 
+async function validateStudentSessionChange(input: {
+  studentId: string;
+  data: z.output<typeof studentUpdateSchema>;
+  snapshot: FirebaseFirestore.DocumentSnapshot;
+}): Promise<NextResponse | null> {
+  const { studentId, data, snapshot } = input;
+  const storedSession: unknown = snapshot.get("session");
+  const currentSession = normalizeAcademicSession(
+    typeof storedSession === "string" ? storedSession : "",
+  ) ?? "";
+  const canKeepCertificateSessions = await validateLinkedCertificateSessions(
+    studentId,
+    normalizeAcademicSession(data.session) ?? "",
+    currentSession,
+  );
+  if (canKeepCertificateSessions) return null;
+  return NextResponse.json(
+    { error: "This student has linked certificates in another session. Update the certificates to the same session before changing the student session." },
+    { status: 409 },
+  );
+}
+
+type StudentIdentityValidation =
+  | { ok: false; response: NextResponse }
+  | {
+      ok: true;
+      searchKey: string;
+      dateOfBirth: string;
+      admissionNumber: string;
+      dateOfBirthKey: string;
+      admissionNumberKey: string;
+    };
+
+async function validateStudentIdentity(input: {
+  studentId: string;
+  data: z.output<typeof studentUpdateSchema>;
+  snapshot: FirebaseFirestore.DocumentSnapshot;
+}): Promise<StudentIdentityValidation> {
+  const { studentId, data, snapshot } = input;
+  if (await hasDuplicateScholarNumber(studentId, data))
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "That scholar number is already assigned in this class and session." },
+        { status: 409 },
+      ),
+    };
+
+  const searchKey = createSearchKey(data);
+  const dateOfBirth = data.dateOfBirth ?? "";
+  const storedAdmission: unknown = snapshot.get("admissionNo");
+  const admissionNumber = data.admissionNumber ?? (typeof storedAdmission === "string" ? storedAdmission : "");
+  const dateOfBirthKey = dateOfBirth ? studentIdentifierHmac(dateOfBirth) : "";
+  const admissionNumberKey = admissionNumber ? studentIdentifierHmac(admissionNumber) : "";
+  const identityCheck = await hasDuplicateStudentIdentity(
+    studentId,
+    searchKey,
+    dateOfBirthKey,
+    admissionNumberKey,
+  );
+  if (identityCheck.missingDisambiguator || identityCheck.duplicate)
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          error: identityCheck.missingDisambiguator
+            ? "Duplicate name combination detected: add a date of birth or admission number so students can be told apart."
+            : "The supplied date of birth or admission number is already assigned to another matching student.",
+        },
+        { status: 409 },
+      ),
+    };
+  return {
+    ok: true,
+    searchKey,
+    dateOfBirth,
+    admissionNumber,
+    dateOfBirthKey,
+    admissionNumberKey,
+  };
+}
+
 async function validateStudentUpdate(
   input: {
     studentId: string;
@@ -110,55 +192,11 @@ async function validateStudentUpdate(
   dateOfBirthKey: string;
   admissionNumberKey: string;
 } > {
-  const { studentId, data, snapshot } = input;
-  const storedSession: unknown = snapshot.get("session");
-  const currentSession = normalizeAcademicSession(
-    typeof storedSession === "string" ? storedSession : "",
-  ) ?? "";
-  if (!(await validateLinkedCertificateSessions(
-    studentId,
-    normalizeAcademicSession(data.session ?? "") ?? "",
-    currentSession,
-  )))
-    return { ok: false, response: NextResponse.json(
-      { error: "This student has linked certificates in another session. Update the certificates to the same session before changing the student session." },
-      { status: 409 },
-    ) };
-  if (await hasDuplicateScholarNumber(studentId, data))
-    return { ok: false, response: NextResponse.json(
-      { error: "That scholar number is already assigned in this class and session." },
-      { status: 409 },
-    ) };
-  const searchKey = createSearchKey(data);
-  const dateOfBirth = data.dateOfBirth ?? "";
-  const storedAdmission: unknown = snapshot.get("admissionNo");
-  const admissionNumber = data.admissionNumber ?? (typeof storedAdmission === "string" ? storedAdmission : "");
-  const dateOfBirthKey = dateOfBirth ? studentIdentifierHmac(dateOfBirth) : "";
-  const admissionNumberKey = admissionNumber ? studentIdentifierHmac(admissionNumber) : "";
-  const identityCheck = await hasDuplicateStudentIdentity(
-    studentId,
-    searchKey,
-    dateOfBirthKey,
-    admissionNumberKey,
-  );
-  if (identityCheck.missingDisambiguator)
-    return { ok: false, response: NextResponse.json(
-      { error: "Duplicate name combination detected: add a date of birth or admission number so students can be told apart." },
-      { status: 409 },
-    ) };
-  if (identityCheck.duplicate)
-    return { ok: false, response: NextResponse.json(
-      { error: "The supplied date of birth or admission number is already assigned to another matching student." },
-      { status: 409 },
-    ) };
-  return {
-    ok: true,
-    searchKey,
-    dateOfBirth,
-    admissionNumber,
-    dateOfBirthKey,
-    admissionNumberKey,
-  };
+  const sessionError = await validateStudentSessionChange(input);
+  if (sessionError) return { ok: false, response: sessionError };
+  const identity = await validateStudentIdentity(input);
+  if (!identity.ok) return identity;
+  return identity;
 }
 
 function buildStudentUpdate(
