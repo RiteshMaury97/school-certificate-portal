@@ -132,6 +132,44 @@ function replyToAddress(value: string | undefined): string | undefined {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) ? address : undefined;
 }
 
+type SchoolContactInput = {
+  boardName?: string;
+  affiliationNumber?: string;
+  schoolCode?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+};
+
+function schoolDetails(input: SchoolContactInput): string[] {
+  return [
+    input.boardName?.trim() ? `Affiliated to ${input.boardName.trim()}` : "",
+    input.affiliationNumber?.trim() ? `Affiliation No. ${input.affiliationNumber.trim()}` : "",
+    input.schoolCode?.trim() ? `School Code ${input.schoolCode.trim()}` : "",
+  ].filter(Boolean);
+}
+
+function schoolContactDetails(input: SchoolContactInput): string[] {
+  return [input.address?.trim(), input.phone?.trim(), input.email?.trim()].filter(
+    (value): value is string => Boolean(value),
+  );
+}
+
+async function otpSchoolName(value: string | undefined): Promise<string> {
+  const provided = value?.trim();
+  return provided === undefined || provided === "" ? await schoolName() : provided;
+}
+
+function adminRoleLabel(role: string): string {
+  const labels: Record<string, string> = {
+    uploader: "Records uploader",
+    approver: "Certificate approver",
+    admin: "Administrator",
+    superadmin: "Super administrator",
+  };
+  return labels[role] ?? role;
+}
+
 export async function sendMail({ to, subject, text, html, replyTo, attachments }: MailInput): Promise<void> {
   const recipients = (Array.isArray(to) ? to : [to])
     .map((address) => cleanHeader(address))
@@ -170,20 +208,12 @@ export async function sendAdminOtpEmail(input: {
   phone?: string;
   email?: string;
 }): Promise<void> {
-  let name = input.schoolName?.trim();
-  if (name === "") name = undefined;
-  name ??= await schoolName();
+  const name = await otpSchoolName(input.schoolName);
   const safeName = escapeHtml(name);
   const safeCode = escapeHtml(input.code);
   const tagline = input.tagline?.trim() ?? "";
-  const details = [
-    input.boardName?.trim() ? `Affiliated to ${input.boardName.trim()}` : "",
-    input.affiliationNumber?.trim() ? `Affiliation No. ${input.affiliationNumber.trim()}` : "",
-    input.schoolCode?.trim() ? `School Code ${input.schoolCode.trim()}` : "",
-  ].filter(Boolean);
-  const contactDetails = [input.address?.trim(), input.phone?.trim(), input.email?.trim()].filter(
-    (value): value is string => Boolean(value),
-  );
+  const details = schoolDetails(input);
+  const contactDetails = schoolContactDetails(input);
   const portalUrl = absoluteUrl("/admin/login");
   const safeTagline = escapeHtml(tagline);
   const safeDetails = details.map(escapeHtml);
@@ -248,21 +278,9 @@ export async function sendAdminInvitationEmail(input: {
 }): Promise<void> {
   const name = input.schoolName.trim() || "Satyam International School";
   const recipientName = input.recipientName?.trim() ?? "";
-  const roleLabels: Record<string, string> = {
-    uploader: "Records uploader",
-    approver: "Certificate approver",
-    admin: "Administrator",
-    superadmin: "Super administrator",
-  };
-  const roleLabel = roleLabels[input.role] ?? input.role;
-  const details = [
-    input.boardName?.trim() ? `Affiliated to ${input.boardName.trim()}` : "",
-    input.affiliationNumber?.trim() ? `Affiliation No. ${input.affiliationNumber.trim()}` : "",
-    input.schoolCode?.trim() ? `School Code ${input.schoolCode.trim()}` : "",
-  ].filter(Boolean);
-  const contacts = [input.address?.trim(), input.phone?.trim(), input.email?.trim()].filter(
-    (value): value is string => Boolean(value),
-  );
+  const roleLabel = adminRoleLabel(input.role);
+  const details = schoolDetails(input);
+  const contacts = schoolContactDetails(input);
   const portalUrl = absoluteUrl("/admin/login");
   const safeLogoUrl = `cid:${SCHOOL_LOGO_CID}`;
   const safeName = escapeHtml(name);

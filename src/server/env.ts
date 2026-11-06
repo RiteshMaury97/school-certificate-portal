@@ -1,11 +1,13 @@
 import { z } from "zod";
 
+import { validateEnvironmentFields } from "./env-validation";
+
 const optionalText = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
   z.string().trim().optional(),
 );
 
-const serverEnvironmentSchema = z
+const serverEnvironmentFieldsSchema = z
   .object({
     NODE_ENV: optionalText,
     NEXT_PHASE: optionalText,
@@ -70,197 +72,10 @@ const serverEnvironmentSchema = z
     SEED_CERTIFICATE_TYPES: optionalText,
   })
   .loose()
-  .superRefine((env, context) => {
-    const production = env.VERCEL_ENV
-      ? env.VERCEL_ENV === "production"
-      : env.NODE_ENV === "production" && env.NEXT_PHASE !== "phase-production-build";
-    const preview = env.VERCEL_ENV === "preview";
-    const issue = (name: string, message: string) => { context.addIssue({ code: "custom", path: [name], message }); };
-    const requireNames = (names: string[]) => {
-      for (const name of names) if (!env[name]) issue(name, "is required");
-    };
+;
+export type ServerEnvironment = z.infer<typeof serverEnvironmentFieldsSchema>;
 
-    const secretNames = [
-      "SEARCH_HMAC_SECRET",
-      "AUDIT_LOG_HMAC_SECRET",
-      "CERTIFICATE_ACCESS_TOKEN_SECRET",
-      "CERTIFICATE_NUMBER_HMAC_SECRET",
-      "DISAMBIGUATION_HMAC_SECRET",
-      "DISAMBIGUATION_CHALLENGE_SECRET",
-      "OTP_HMAC_SECRET",
-      "NOTIFICATION_OPT_OUT_SECRET",
-      "CRON_SECRET",
-      "R2_SECRET_ACCESS_KEY",
-      "TURNSTILE_SECRET_KEY",
-      "FIREBASE_PRIVATE_KEY",
-    ] as const;
-    for (const name of secretNames) {
-      const value = env[name];
-      if (value && Buffer.byteLength(value, "utf8") < 32)
-        issue(name, "must contain at least 32 bytes");
-    }
-
-    const base64KeyNames = [
-      "STUDENT_PII_ENCRYPTION_KEY",
-      "CERTIFICATE_NUMBER_ENCRYPTION_KEY",
-      "EXPORT_ENCRYPTION_KEY",
-    ] as const;
-    for (const name of base64KeyNames) {
-      const value = env[name];
-      if (!value) continue;
-      const decoded = Buffer.from(value, "base64");
-      if (decoded.toString("base64") !== value || decoded.length !== 32)
-        issue(name, "must be valid base64 encoding of exactly 32 bytes");
-    }
-
-    const serviceAccount = env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-    if (serviceAccount) {
-      const decoded = Buffer.from(serviceAccount, "base64");
-      let validServiceAccount = false;
-      try {
-        const parsed: unknown = JSON.parse(decoded.toString("utf8"));
-        validServiceAccount =
-          typeof parsed === "object" && parsed !== null &&
-          ("private_key" in parsed || "privateKey" in parsed) &&
-          ("client_email" in parsed || "clientEmail" in parsed);
-      } catch {
-        validServiceAccount = false;
-      }
-      if (decoded.length === 0 || !validServiceAccount)
-        issue("FIREBASE_SERVICE_ACCOUNT_BASE64", "must encode Firebase service-account JSON");
-    }
-
-    const hasFirebaseCredentials = Boolean(
-      serviceAccount ?? (env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY),
-    );
-    if (env.FIREBASE_CLIENT_EMAIL && !env.FIREBASE_PRIVATE_KEY)
-      issue("FIREBASE_PRIVATE_KEY", "is required when FIREBASE_CLIENT_EMAIL is set");
-    if (env.FIREBASE_PRIVATE_KEY && !env.FIREBASE_CLIENT_EMAIL)
-      issue("FIREBASE_CLIENT_EMAIL", "is required when FIREBASE_PRIVATE_KEY is set");
-    if (env.MALWARE_SCAN_MODE && !["required", "off"].includes(env.MALWARE_SCAN_MODE))
-      issue("MALWARE_SCAN_MODE", "must be required or off");
-    if (env.APP_CHECK_ENFORCE && !["true", "false"].includes(env.APP_CHECK_ENFORCE))
-      issue("APP_CHECK_ENFORCE", "must be true or false");
-    for (const name of ["CLAMD_PORT", "CLAMD_TIMEOUT_MS"] as const) {
-      const value = env[name];
-      if (value && (!Number.isInteger(Number(value)) || Number(value) <= 0))
-        issue(name, "must be a positive integer");
-    }
-
-    const httpsOrigin = (value: string | undefined) => {
-      if (!value) return false;
-      try {
-        const parsed = new URL(value);
-        return parsed.protocol === "https:" && parsed.origin === value;
-      } catch {
-        return false;
-      }
-    };
-    const allowedOrigin = (value: string | undefined) => {
-      if (httpsOrigin(value)) return true;
-      if (!value || production || preview) return false;
-      try {
-        const parsed = new URL(value);
-        return (
-          parsed.protocol === "http:" &&
-          ["localhost", "127.0.0.1"].includes(parsed.hostname) &&
-          (parsed.origin === value || `${parsed.origin}/` === value) &&
-          parsed.search === "" &&
-          parsed.hash === ""
-        );
-      } catch {
-        return false;
-      }
-    };
-
-    if (env.APP_ORIGIN && !allowedOrigin(env.APP_ORIGIN))
-      issue("APP_ORIGIN", "must be an https origin with no path or trailing slash");
-    if (env.SITE_URL && !allowedOrigin(env.SITE_URL))
-      issue("SITE_URL", "must be an https origin with no path or trailing slash");
-    if (env.ADDITIONAL_ALLOWED_ORIGINS) {
-      const origins = env.ADDITIONAL_ALLOWED_ORIGINS.split(",").map((origin) => origin.trim());
-      if (origins.some((origin) => !origin || !httpsOrigin(origin)))
-        issue("ADDITIONAL_ALLOWED_ORIGINS", "must be a comma-separated list of https origins with no path or trailing slash");
-    }
-    if (env.SECURITY_CONTACT_EMAIL && !z.email().safeParse(env.SECURITY_CONTACT_EMAIL).success)
-      issue("SECURITY_CONTACT_EMAIL", "must be a valid email address");
-
-    if (preview) {
-      if (env.APP_ORIGIN) issue("APP_ORIGIN", "must not be set for Preview deployments");
-      requireNames([
-        "NEXT_PUBLIC_FIREBASE_API_KEY",
-        "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-        "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-        "NEXT_PUBLIC_FIREBASE_APP_ID",
-        "NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY",
-        "FIREBASE_PROJECT_ID",
-        "R2_ACCOUNT_ID",
-        "R2_ACCESS_KEY_ID",
-        "R2_SECRET_ACCESS_KEY",
-        "R2_BUCKET",
-        "GMAIL_USER",
-        "GMAIL_APP_PASSWORD",
-        "TURNSTILE_SECRET_KEY",
-        "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
-        "SEARCH_HMAC_SECRET",
-        "AUDIT_LOG_HMAC_SECRET",
-        "CERTIFICATE_ACCESS_TOKEN_SECRET",
-        "CERTIFICATE_NUMBER_HMAC_SECRET",
-        "DISAMBIGUATION_HMAC_SECRET",
-        "DISAMBIGUATION_CHALLENGE_SECRET",
-        "STUDENT_PII_ENCRYPTION_KEY",
-        "CERTIFICATE_NUMBER_ENCRYPTION_KEY",
-        "OTP_HMAC_SECRET",
-        "CLAMD_HOST",
-        "MALWARE_SCAN_MODE",
-      ]);
-      if (!hasFirebaseCredentials)
-        issue("FIREBASE_SERVICE_ACCOUNT_BASE64", "Preview requires staging Firebase Admin credentials");
-    }
-
-    if (production) {
-      requireNames([
-        "NEXT_PUBLIC_FIREBASE_API_KEY",
-        "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-        "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-        "NEXT_PUBLIC_FIREBASE_APP_ID",
-        "NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY",
-        "FIREBASE_PROJECT_ID",
-        "R2_ACCOUNT_ID",
-        "R2_ACCESS_KEY_ID",
-        "R2_SECRET_ACCESS_KEY",
-        "R2_BUCKET",
-        "BACKUP_R2_BUCKET",
-        "TURNSTILE_SECRET_KEY",
-        "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
-        "SEARCH_HMAC_SECRET",
-        "AUDIT_LOG_HMAC_SECRET",
-        "CERTIFICATE_ACCESS_TOKEN_SECRET",
-        "CERTIFICATE_NUMBER_HMAC_SECRET",
-        "DISAMBIGUATION_HMAC_SECRET",
-        "DISAMBIGUATION_CHALLENGE_SECRET",
-        "STUDENT_PII_ENCRYPTION_KEY",
-        "CERTIFICATE_NUMBER_ENCRYPTION_KEY",
-        "EXPORT_ENCRYPTION_KEY",
-        "OTP_HMAC_SECRET",
-        "GMAIL_USER",
-        "GMAIL_APP_PASSWORD",
-        "CRON_SECRET",
-        "CLAMD_HOST",
-        "MALWARE_SCAN_MODE",
-      ]);
-      if (!env.SITE_URL && !env.APP_ORIGIN)
-        issue("SITE_URL", "is required in Production (APP_ORIGIN is a deprecated alias)");
-      if (!hasFirebaseCredentials)
-        issue("FIREBASE_SERVICE_ACCOUNT_BASE64", "Production requires Firebase Admin credentials");
-      if (env.MALWARE_SCAN_MODE && env.MALWARE_SCAN_MODE !== "required")
-        issue("MALWARE_SCAN_MODE", "must be required in Production");
-      if (env.APP_ORIGIN && env.SITE_URL && env.APP_ORIGIN !== env.SITE_URL)
-        issue("APP_ORIGIN", "is deprecated and must match SITE_URL when both are set");
-      if (env.BACKUP_R2_BUCKET && env.R2_BUCKET && env.BACKUP_R2_BUCKET === env.R2_BUCKET)
-        issue("BACKUP_R2_BUCKET", "must be different from R2_BUCKET");
-    }
-  });
+const serverEnvironmentSchema = serverEnvironmentFieldsSchema.superRefine(validateEnvironmentFields);
 
 export type ServerEnvironmentResult = {
   valid: boolean;

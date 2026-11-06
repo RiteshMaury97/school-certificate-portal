@@ -60,7 +60,14 @@ export async function POST(request: NextRequest) {
     if (parsed instanceof NextResponse) return parsed;
     const identity = await resolveStudentIdentity(parsed.data);
     if (identity instanceof NextResponse) return identity;
-    return await storeStudentCertificate(request, admin, form, parsed.file, parsed.data, identity);
+    return await storeStudentCertificate({
+      request,
+      admin,
+      form,
+      file: parsed.file,
+      data: parsed.data,
+      identity,
+    });
   } catch (error) {
     return apiError(error);
   }
@@ -203,9 +210,11 @@ async function resolveStudentIdentity(data: StudentData): Promise<StudentIdentit
     );
   const reuseExisting = identified.length === 1;
   const existing = identified.at(0) ?? matching.docs.at(0);
-  if (reuseExisting && !existing)
-    return NextResponse.json({ error: "Student match is no longer available." }, { status: 409 });
-  const studentRef = reuseExisting ? existing.ref : db.collection("students").doc(randomUUID());
+  const missingMatch = unavailableMatchedStudent(reuseExisting, existing);
+  if (missingMatch) return missingMatch;
+  const studentRef = reuseExisting && existing
+    ? existing.ref
+    : db.collection("students").doc(randomUUID());
   const catalogError = await validateStudentCatalog(data);
   if (catalogError) return catalogError;
   return {
@@ -219,6 +228,15 @@ async function resolveStudentIdentity(data: StudentData): Promise<StudentIdentit
     reuseExisting,
     studentRef,
   };
+}
+
+function unavailableMatchedStudent(
+  reuseExisting: boolean,
+  existing: FirebaseFirestore.QueryDocumentSnapshot | undefined,
+): NextResponse | null {
+  return reuseExisting && !existing
+    ? NextResponse.json({ error: "Student match is no longer available." }, { status: 409 })
+    : null;
 }
 
 async function resolveIdentityKeys(data: StudentData) {
@@ -260,14 +278,15 @@ async function validateStudentCatalog(data: StudentData): Promise<NextResponse |
       );
 }
 
-async function storeStudentCertificate(
-  request: NextRequest,
-  admin: Awaited<ReturnType<typeof requireRoles>>,
-  form: FormData,
-  file: File,
-  data: StudentData,
-  identity: StudentIdentity,
-): Promise<NextResponse> {
+async function storeStudentCertificate(input: {
+  request: NextRequest;
+  admin: Awaited<ReturnType<typeof requireRoles>>;
+  form: FormData;
+  file: File;
+  data: StudentData;
+  identity: StudentIdentity;
+}): Promise<NextResponse> {
+  const { request, admin, form, file, data, identity } = input;
   const notification = notificationDetails(form);
   if (notification instanceof NextResponse) return notification;
   const duplicate = await checkDuplicateFile(
@@ -287,7 +306,7 @@ async function storeStudentCertificate(
   });
   try {
     const now = FieldValue.serverTimestamp();
-    await writeStudentRecord(data, identity, notification, admin.uid, now);
+    await writeStudentRecord({ data, identity, notification, adminUid: admin.uid, now });
     const certificateId = await saveStudentCertificateRecord({
       data,
       identity,
@@ -295,7 +314,7 @@ async function storeStudentCertificate(
       stored,
       adminUid: admin.uid,
     });
-    await logStudentCertificate(
+    await logStudentCertificate({
       request,
       admin,
       identity,
@@ -303,7 +322,7 @@ async function storeStudentCertificate(
       notification,
       certificateId,
       now,
-    );
+    });
     return NextResponse.json(studentCreatedResponse(identity), { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "DUPLICATE_CERTIFICATE_NUMBER")
@@ -355,13 +374,14 @@ async function checkDuplicateFile(
   return { sameHash, reason };
 }
 
-async function writeStudentRecord(
-  data: StudentData,
-  identity: StudentIdentity,
-  notification: { parentEmail: string; parentMobile: string; consent: boolean },
-  adminUid: string,
-  now: FirebaseFirestore.FieldValue,
-): Promise<void> {
+async function writeStudentRecord(input: {
+  data: StudentData;
+  identity: StudentIdentity;
+  notification: { parentEmail: string; parentMobile: string; consent: boolean };
+  adminUid: string;
+  now: FirebaseFirestore.FieldValue;
+}): Promise<void> {
+  const { data, identity, notification, adminUid, now } = input;
   const base = {
     studentName: data.studentName,
     fatherName: data.fatherName,
@@ -451,32 +471,35 @@ async function saveStudentCertificateRecord(input: {
     });
     return certificateRef.id;
   } catch (error) {
-    await removeCertificateNumberIndex(certificateRef.id).catch(() =>
-      console.error("Certificate index cleanup failed"),
-    );
-    await softDeleteR2Object(stored.r2Key, identity.studentRef.id).catch(() =>
-      console.error("Orphan R2 cleanup failed"),
-    );
+    await removeCertificateNumberIndex(certificateRef.id).catch(() => {
+      console.error("Certificate index cleanup failed");
+    });
+    await softDeleteR2Object(stored.r2Key, identity.studentRef.id).catch(() => {
+      console.error("Orphan R2 cleanup failed");
+    });
     if (error instanceof DuplicateCertificateNumberError) {
       if (!identity.reuseExisting)
         await identity.studentRef
           .delete()
-          .catch(() => console.error("Empty student record cleanup failed"));
+          .catch(() => {
+            console.error("Empty student record cleanup failed");
+          });
       throw new Error("DUPLICATE_CERTIFICATE_NUMBER");
     }
     throw error;
   }
 }
 
-async function logStudentCertificate(
-  request: NextRequest,
-  admin: Awaited<ReturnType<typeof requireRoles>>,
-  identity: StudentIdentity,
-  duplicate: { sameHash: FirebaseFirestore.QuerySnapshot; reason: string },
-  notification: { parentEmail: string; parentMobile: string; consent: boolean },
-  certificateId: string,
-  now: FirebaseFirestore.FieldValue,
-): Promise<void> {
+async function logStudentCertificate(input: {
+  request: NextRequest;
+  admin: Awaited<ReturnType<typeof requireRoles>>;
+  identity: StudentIdentity;
+  duplicate: { sameHash: FirebaseFirestore.QuerySnapshot; reason: string };
+  notification: { parentEmail: string; parentMobile: string; consent: boolean };
+  certificateId: string;
+  now: FirebaseFirestore.FieldValue;
+}): Promise<void> {
+  const { request, admin, identity, duplicate, notification, certificateId, now } = input;
   const studentId = identity.studentRef.id;
   if (admin.role === "admin" || admin.role === "superadmin") {
     await publishCertificateWithoutReview(certificateId, admin.uid);

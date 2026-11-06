@@ -1,8 +1,78 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { appCheckHeaders } from "@/lib/firebase-client";
 
 import { csrf } from "../utils/admin-helpers";
+
+type ApiRecord = Record<string, unknown>;
+type ApiParser<T extends ApiRecord> = (value: unknown) => T;
+type ReauthGrant = () => Promise<string>;
+
+function isApiRecord(value: unknown): value is ApiRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseApiRecord(value: unknown): ApiRecord {
+  if (!isApiRecord(value)) throw new Error("Request failed");
+  return value;
+}
+
+async function createRequestOptions(init: RequestInit): Promise<RequestInit> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const headers = new Headers(init.headers);
+  for (const [key, value] of Object.entries(await appCheckHeaders())) headers.set(key, value);
+  if (!["GET", "HEAD", "OPTIONS"].includes(method))
+    headers.set("x-csrf-token", decodeURIComponent(csrf()));
+  return { ...init, headers, credentials: "same-origin", cache: "no-store" };
+}
+
+async function fetchWithReauth(
+  url: string,
+  options: RequestInit,
+  obtainReauthGrant: ReauthGrant,
+): Promise<Response> {
+  const response = await fetch(url, options);
+  if (response.status !== 428) return response;
+  const headers = new Headers(options.headers);
+  headers.set("x-admin-reauth", await obtainReauthGrant());
+  return fetch(url, { ...options, headers });
+}
+
+async function parseResponse<T extends ApiRecord>(
+  response: Response,
+  parse?: ApiParser<T>,
+): Promise<ApiRecord | T> {
+  if (response.status === 401 && typeof window !== "undefined") {
+    window.location.assign("/admin/login");
+    throw new Error("Your administrator session expired. Sign in again.");
+  }
+  const data: unknown = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      isApiRecord(data) && "error" in data ? String(data.error) : "Request failed",
+    );
+  }
+  return parse ? parse(data) : parseApiRecord(data);
+}
+
+function createAdminApi(obtainReauthGrant: ReauthGrant) {
+  function api(url: string, init?: RequestInit): Promise<ApiRecord>;
+  function api<T extends ApiRecord>(
+    url: string,
+    init: RequestInit,
+    parse: ApiParser<T>,
+  ): Promise<T>;
+  async function api<T extends ApiRecord>(
+    url: string,
+    init: RequestInit = {},
+    parse?: ApiParser<T>,
+  ): Promise<ApiRecord | T> {
+    const options = await createRequestOptions(init);
+    const response = await fetchWithReauth(url, options, obtainReauthGrant);
+    return parseResponse(response, parse);
+  }
+  return api;
+}
 
 export function useAdminApi() {
   const [reauthOpen, setReauthOpen] = useState(false);
@@ -30,42 +100,6 @@ export function useAdminApi() {
     setReauthResolver(null);
     setReauthRejecter(null);
   }, [reauthRejecter]);
-  const api = useCallback(
-    async <T extends Record<string, unknown> = Record<string, unknown>>(
-      url: string,
-      init: RequestInit = {},
-    ): Promise<T> => {
-      const method = (init.method ?? "GET").toUpperCase();
-      const headers = new Headers(init.headers);
-      for (const [key, value] of Object.entries(await appCheckHeaders())) headers.set(key, value);
-      if (!["GET", "HEAD", "OPTIONS"].includes(method))
-        headers.set("x-csrf-token", decodeURIComponent(csrf()));
-      const options: RequestInit = {
-        ...init,
-        headers,
-        credentials: "same-origin",
-        cache: "no-store",
-      };
-      let response = await fetch(url, options);
-      if (response.status === 428) {
-        const grant = await obtainReauthGrant();
-        headers.set("x-admin-reauth", grant);
-        response = await fetch(url, { ...options, headers });
-      }
-      if (response.status === 401 && typeof window !== "undefined") {
-        window.location.assign("/admin/login");
-        throw new Error("Your administrator session expired. Sign in again.");
-      }
-      const data: unknown = await response.json().catch(() => ({}));
-      if (!response.ok)
-        throw new Error(
-          typeof data === "object" && data !== null && "error" in data
-            ? String(data.error)
-            : "Request failed",
-        );
-      return data as T;
-    },
-    [obtainReauthGrant],
-  );
+  const api = useMemo(() => createAdminApi(obtainReauthGrant), [obtainReauthGrant]);
   return { api, reauthOpen, completeReauth, cancelReauth };
 }

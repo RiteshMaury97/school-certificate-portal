@@ -26,20 +26,13 @@ async function measureLayout(page: Page, route: string) {
     const visible = (element: Element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return (
-        style.display !== "none" &&
-        style.visibility !== "hidden" &&
-        Number(style.opacity) !== 0 &&
-        rect.width > 0 &&
-        rect.height > 0
-      );
+      return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
     };
     const intentionalScroller = (element: Element) => {
       let parent = element.parentElement;
       while (parent && parent !== document.body) {
         const style = getComputedStyle(parent);
-        if (/(auto|scroll)/.test(style.overflowX) && parent.scrollWidth > parent.clientWidth + 1)
-          return true;
+        if (/(auto|scroll)/.test(style.overflowX) && parent.scrollWidth > parent.clientWidth + 1) return true;
         parent = parent.parentElement;
       }
       return false;
@@ -55,14 +48,8 @@ async function measureLayout(page: Page, route: string) {
       const style = getComputedStyle(element);
       const text = element.children.length === 0 ? element.textContent.trim() : "";
       const isOutside = rect.left < -1 || rect.right > width + 1;
-      const isClipped =
-        /(hidden|clip)/.test(`${style.overflow} ${style.textOverflow}`) &&
-        element.scrollWidth > element.clientWidth + 1;
-      const isLong =
-        /[\p{L}\p{N}_-]{35,}/u.test(text) &&
-        style.overflowWrap !== "anywhere" &&
-        style.wordBreak !== "break-all" &&
-        style.whiteSpace !== "normal";
+      const isClipped = /(hidden|clip)/.test(`${style.overflow} ${style.textOverflow}`) && element.scrollWidth > element.clientWidth + 1;
+      const isLong = /[\p{L}\p{N}_-]{35,}/u.test(text) && style.overflowWrap !== "anywhere" && style.wordBreak !== "break-all" && style.whiteSpace !== "normal";
       inspectBounds({
         element,
         isOutside,

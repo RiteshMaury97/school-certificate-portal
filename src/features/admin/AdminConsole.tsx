@@ -70,6 +70,17 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unable to load admin data.";
 }
 
+function parseAdminProfile(value: unknown): { profile?: { name?: string } } {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    throw new Error("Request failed");
+  if (!("profile" in value) || value.profile === undefined) return {};
+  if (typeof value.profile !== "object" || value.profile === null || Array.isArray(value.profile))
+    throw new Error("Request failed");
+  if (!("name" in value.profile) || value.profile.name === undefined) return { profile: {} };
+  if (typeof value.profile.name !== "string") throw new Error("Request failed");
+  return { profile: { name: value.profile.name } };
+}
+
 // eslint-disable-next-line max-lines-per-function, complexity -- reason: the shared console coordinates section state and routing across the admin workspace.
 export default function AdminPage() {
   const [mobileAdminNav, setMobileAdminNav] = useState(false);
@@ -159,7 +170,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (!email || tab !== "dashboard") return;
     let current = true;
-    void api<{ profile?: { name?: string } }>("/api/admin/profile")
+    void api("/api/admin/profile", {}, parseAdminProfile)
       .then((result) => {
         if (current) setProfileName(result.profile?.name?.trim() ?? "");
       })
