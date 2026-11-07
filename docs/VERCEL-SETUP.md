@@ -8,10 +8,10 @@ This checklist covers dashboard work that cannot be committed as code. Complete 
 - [ ] In Vercel, choose **Add New → Project**, connect GitHub, and import this repository.
 - [ ] Set **Production Branch** to `main`.
 - [ ] Set **Framework Preset** to `Next.js`.
-- [ ] Set **Node.js Version** to `20.x` or newer (the repository requires Node `>=20.9.0`; use the currently supported 20.x runtime).
+- [ ] Set **Node.js Version** to `22.x` or `24.x` (the repository requires Node `>=22.12.0`: `firebase-admin` 14 needs Node 22+, and its `jwks-rsa` dependency loads an ESM-only `jose` with `require()`, which fails on older runtimes with `ERR_REQUIRE_ESM`). Changing the setting takes effect on the next deployment, so redeploy afterwards.
 - [ ] Set the function **Region** to `Mumbai, India (bom1)`.
 - [ ] Keep the repository's build settings: Install `npm install`; Build `next build` (also specified in `vercel.json`).
-- [ ] Add environment values in **Settings → Environment Variables**, scoped deliberately to Production, Preview, or Development. Use [VERCEL-ENV.md](./VERCEL-ENV.md) as the complete name-by-name source. Production must use the live HTTPS origin, production Firebase project/service-account, production private R2 bucket, backup bucket, and `MALWARE_SCAN_MODE=required`. Preview must use a separate staging Firebase project, R2 bucket/credentials, and test Gmail account; leave `APP_ORIGIN` unset and never copy Production secrets. Mark every secret **Sensitive**. `` values are embedded at build time, so changing them requires a redeployment.
+- [ ] Add environment values in **Settings → Environment Variables**, scoped deliberately to Production, Preview, or Development. Use [VERCEL-ENV.md](./VERCEL-ENV.md) as the complete name-by-name source. Production must use the live HTTPS origin, production Firebase project/service-account, production private R2 bucket, backup bucket, and `MALWARE_SCAN_MODE=required`. Preview must use a separate staging Firebase project, R2 bucket/credentials, and test Gmail account; leave `APP_ORIGIN` unset and never copy Production secrets. Mark every secret **Sensitive**. `NEXT_PUBLIC_` values are embedded at build time, so changing them requires a redeployment.
 - [ ] Under **Settings → Deployment Protection**, enable **Vercel Authentication** for Preview deployments. Add the small set of school reviewers who need preview access. Do not make preview deployments public just to simplify Google login.
 - [ ] Under project/account **Usage**, set any available usage notifications early and review usage weekly. Hobby has no paid spend cap/spend-management feature; it is a free tier with included quotas, and exceeding some limits can suspend usage until the quota window resets. If budget alerts, team controls, or commercial school use are needed, use Pro and configure a spend limit/alert there. Do not treat an alert as a hard spending cap.
 - [ ] After the first Production deployment, verify the deployment is from `main`, functions are in `bom1`, and `/api/health` returns the expected safe health response.
@@ -52,7 +52,7 @@ See Firebase's current [redirect best practices](https://firebase.google.com/doc
 
 ## 4. Cloudflare Turnstile and R2
 
-- [ ] In **Cloudflare → Turnstile**, create one Production widget allowing `tc.sischool.in`, `school.example`, `www.school.example`, and `school-certificate-portal.vercel.app`. Set `TURNSTILE_SITE_KEY` to its site key and `TURNSTILE_SECRET_KEY` to its secret in Production only.
+- [ ] In **Cloudflare → Turnstile**, create one Production widget allowing `tc.sischool.in`, `school.example`, `www.school.example`, and `school-certificate-portal.vercel.app`. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` to its site key and `TURNSTILE_SECRET_KEY` to its secret in Production only.
 - [ ] Create a separate staging Turnstile widget for the staging hostname and any stable Preview hostname. Put its site and secret keys in Preview only.
 - [ ] Create the main Production R2 bucket and a **different** backup R2 bucket. Keep both private; do not enable public bucket access or public custom domains.
 - [ ] Create separate staging R2 bucket(s) and credentials. Configure `R2_BUCKET` to the upload bucket and `BACKUP_R2_BUCKET` to the separate backup bucket in Production; use the staging bucket in Preview.
@@ -68,8 +68,8 @@ See Firebase's current [redirect best practices](https://firebase.google.com/doc
 
 ## 6. Optional monitoring and analytics
 
-- [ ] **Sentry (optional):** create a project for the app and set `SENTRY_DSN` (server) and, if browser reporting is desired, `BROWSER_SENTRY_DSN` (public) in the intended environments. Restrict/allowlist the Production and staging domains where Sentry supports it; keep alerts access limited. This app scrubs user and request data, but do not add personal data, form values, certificate data, search text, or identity to events/tags.
-- [ ] **Plausible (optional):** create a site for `school.example`, set `PLAUSIBLE_DOMAIN=school.example` and `PLAUSIBLE_SCRIPT_URL=https://plausible.io/js/script.js`. Configure only aggregate page views. Do not add custom events, form values, search queries, certificate/student identifiers, or other personal data. If using a self-hosted Plausible endpoint, use its approved HTTPS script URL.
+- [ ] **Sentry (optional):** create a project for the app and set `SENTRY_DSN` (server) and, if browser reporting is desired, `NEXT_PUBLIC_SENTRY_DSN` (public) in the intended environments. Restrict/allowlist the Production and staging domains where Sentry supports it; keep alerts access limited. This app scrubs user and request data, but do not add personal data, form values, certificate data, search text, or identity to events/tags.
+- [ ] **Plausible (optional):** create a site for `school.example`, set `NEXT_PUBLIC_PLAUSIBLE_DOMAIN=school.example` and `NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL=https://plausible.io/js/script.js`. Configure only aggregate page views. Do not add custom events, form values, search queries, certificate/student identifiers, or other personal data. If using a self-hosted Plausible endpoint, use its approved HTTPS script URL.
 
 ## 7. ClamAV scanner host
 
