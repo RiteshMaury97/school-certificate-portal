@@ -52,7 +52,6 @@ function firebaseErrorCode(error: unknown): string | number | undefined {
  * A service-account file must never be committed to the repository.
  */
 function readServiceAccount(): ServiceAccountInput | null {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   assertEnvironmentFor("Firebase Admin", FIREBASE_ENVIRONMENT_NAMES);
   const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();

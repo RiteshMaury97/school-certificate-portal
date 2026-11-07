@@ -56,7 +56,40 @@ function authorized(request: Request): boolean {
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 
-export function GET(request: Request) {
+type Probe = { name: string; ok: boolean; error?: string };
+
+function probeMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  return raw.replace(/\s+/g, " ").slice(0, 400);
+}
+
+async function probe(name: string, run: () => Promise<unknown>): Promise<Probe> {
+  try {
+    await run();
+    return { name, ok: true };
+  } catch (error) {
+    return { name, ok: false, error: probeMessage(error) };
+  }
+}
+
+/**
+ * Authorized-only runtime probes. They load the same modules the failing routes load, so a
+ * crash at import time (which Vercel reports as a bare 500) is reported here with its message.
+ */
+async function runtimeProbes(): Promise<Probe[]> {
+  return [
+    await probe("module: firebase-admin", () => import("@/server/firebase-admin")),
+    await probe("module: security", () => import("@/server/security")),
+    await probe("module: admin session route", () => import("@/app/api/admin/session/route")),
+    await probe("module: public sessions route", () => import("@/app/api/public/sessions/route")),
+    await probe("firestore read", async () => {
+      const { db } = await import("@/server/firebase-admin");
+      await db.collection("publicSessions").doc("main").get();
+    }),
+  ];
+}
+
+export async function GET(request: Request) {
   const result = validateServerEnvironment(process.env);
   const base = {
     version: "1.0.0",
@@ -76,6 +109,7 @@ export function GET(request: Request) {
       required: result.deployment === "production" ? PRODUCTION_REQUIRED_ENV_NAMES : [],
       missing: result.missing,
       errors: result.errors,
+      probes: await runtimeProbes(),
     },
     { status: result.valid ? 200 : 503, headers },
   );

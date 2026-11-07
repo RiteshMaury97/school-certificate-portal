@@ -1,26 +1,26 @@
 import path from "node:path";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 require("@next/env").loadEnvConfig(process.cwd());
 
-const { Module } = require("node:module");
-
 const typescript = require("typescript");
-const filename = path.resolve("src/server/env.ts");
-const source = await import("node:fs/promises").then((fs) => fs.readFile(filename, "utf8"));
-const compiled = typescript.transpileModule(source, {
-  compilerOptions: {
-    module: typescript.ModuleKind.CommonJS,
-    target: typescript.ScriptTarget.ES2022,
-  },
-}).outputText;
-const loaded = new Module(filename);
-loaded.filename = filename;
-loaded.paths = Module._nodeModulePaths(path.dirname(filename));
-loaded._compile(compiled, filename);
+const filename = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../src/server/env.ts");
+require.extensions[".ts"] = (module, typescriptFilename) => {
+  const source = require("node:fs").readFileSync(typescriptFilename, "utf8");
+  const compiled = typescript.transpileModule(source, {
+    compilerOptions: {
+      module: typescript.ModuleKind.CommonJS,
+      target: typescript.ScriptTarget.ES2022,
+    },
+    fileName: typescriptFilename,
+  }).outputText;
+  module._compile(compiled, typescriptFilename);
+};
 
-const result = loaded.exports.validateServerEnvironment(process.env);
+const { validateServerEnvironment } = require(filename);
+const result = validateServerEnvironment(process.env);
 process.stdout.write(`Environment validation (${result.deployment})\n`);
 for (const check of result.checks) {
   process.stdout.write(`${check.passed ? "PASS" : "FAIL"} ${check.name}: ${check.message}\n`);
