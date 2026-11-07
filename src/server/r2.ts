@@ -14,7 +14,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { PDFDocument, PDFArray, PDFDict, PDFName, PDFRef } from "pdf-lib";
 import sharp from "sharp";
 
-import { assertServerEnvironment } from "@/server/env";
+import { assertEnvironmentFor } from "@/server/env";
 import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
 import { MalwareScanError, scanForMalware } from "@/server/malware-scan";
@@ -31,7 +31,7 @@ function ignoreAuditFailure(error: unknown): void {
 }
 
 function required(name: string): string {
-  assertServerEnvironment();
+  assertEnvironmentFor("file storage", [name]);
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not configured`);
   return value;

@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import nodemailer from "nodemailer";
 
-import { assertServerEnvironment } from "@/server/env";
+import { assertEnvironmentFor } from "@/server/env";
 import { db } from "@/server/firebase-admin";
 import { absoluteUrl } from "@/server/site-origin";
 
@@ -55,7 +55,7 @@ export function escapeHtml(value: unknown): string {
 }
 
 function getTransport(): ReturnType<typeof nodemailer.createTransport> {
-  assertServerEnvironment();
+  assertEnvironmentFor("email delivery", ["GMAIL_USER", "GMAIL_APP_PASSWORD"]);
   const user = process.env.GMAIL_USER?.trim();
   const password = process.env.GMAIL_APP_PASSWORD?.trim();
   if (!user || !password) {

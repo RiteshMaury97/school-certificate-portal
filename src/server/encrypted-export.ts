@@ -3,7 +3,7 @@ import { createCipheriv, randomBytes, scryptSync } from "node:crypto";
 
 import { FieldPath } from "firebase-admin/firestore";
 
-import { assertServerEnvironment } from "@/server/env";
+import { assertEnvironmentFor } from "@/server/env";
 import { db } from "@/server/firebase-admin";
 
 export type ExportFormat = "json" | "csv";
@@ -22,7 +22,7 @@ function encryptionKey(
   passphrase?: string,
   salt?: Buffer,
 ): { key: Buffer; salt: Buffer; mode: string } {
-  assertServerEnvironment();
+  assertEnvironmentFor("encrypted export", ["EXPORT_ENCRYPTION_KEY"]);
   const env = process.env.EXPORT_ENCRYPTION_KEY;
   if (passphrase) {
     const actualSalt = salt ?? randomBytes(16);

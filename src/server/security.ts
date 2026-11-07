@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { persistAuditLog } from "@/server/audit-log";
 import { getAllowedOrigins } from "@/server/site-origin";
 
-import { assertServerEnvironment } from "./env";
+import { assertEnvironmentFor } from "./env";
 import { adminAuth, adminAppCheck, db, describeFirebaseError } from "./firebase-admin";
 import { requireRequesterIp } from "./request-origin";
 import {
@@ -30,7 +30,7 @@ import { hasAnyRole as hasRole } from "../shared/role-policy";
 import { ADMIN_HARD_SESSION_LIMIT_MS, isAdminSessionExpired } from "../shared/session-policy";
 
 function requiredSecret(name: string): string {
-  assertServerEnvironment();
+  assertEnvironmentFor("server secrets", [name]);
   const value = process.env[name];
   if (!value || Buffer.byteLength(value, "utf8") < 32) {
     throw new Error(`${name} must be configured with at least 32 bytes`);
@@ -365,7 +365,7 @@ export async function verifyRequestAppCheck(request: NextRequest): Promise<void>
       return;
     }
   }
-  assertServerEnvironment();
+  assertEnvironmentFor("App Check", ["APP_CHECK_ENFORCE", "NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY"]);
   const token = request.headers.get("x-firebase-appcheck") ?? "";
   if (!token) throw new Error("APP_CHECK");
   try {

@@ -4,7 +4,7 @@ import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 
 import { FieldValue } from "firebase-admin/firestore";
 
-import { assertServerEnvironment } from "./env";
+import { assertEnvironmentFor } from "./env";
 import { db } from "./firebase-admin";
 import { hashRequesterIp } from "./security";
 import { recordDailySecurityMetric } from "./security-summary";
@@ -16,7 +16,7 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 
 function otpSecret(): string {
-  assertServerEnvironment();
+  assertEnvironmentFor("admin email verification", ["OTP_HMAC_SECRET"]);
   const secret = process.env.OTP_HMAC_SECRET ?? "";
   if (Buffer.byteLength(secret, "utf8") < 32) {
     throw new Error("OTP_HMAC_SECRET must contain at least 32 bytes.");
@@ -56,7 +56,7 @@ export function createDeviceHash(request: NextRequest): string {
 }
 
 export function adminEmailLockoutId(email: string): string {
-  assertServerEnvironment();
+  assertEnvironmentFor("admin sign-in lockout", ["AUDIT_LOG_HMAC_SECRET"]);
   const secret = process.env.AUDIT_LOG_HMAC_SECRET ?? "";
   if (Buffer.byteLength(secret, "utf8") < 32) {
     throw new Error("AUDIT_LOG_HMAC_SECRET must contain at least 32 bytes.");

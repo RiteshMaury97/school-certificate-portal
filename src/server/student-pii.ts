@@ -6,10 +6,10 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
-import { assertServerEnvironment } from "./env";
+import { assertEnvironmentFor } from "./env";
 
 function secret(name: string): Buffer {
-  assertServerEnvironment();
+  assertEnvironmentFor("student data protection", [name]);
   const raw = process.env[name];
   if (!raw) throw new Error(`${name} is required`);
   const value =

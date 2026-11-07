@@ -137,3 +137,25 @@ export function assertServerEnvironment(
     }${result.errors.length ? `\n${result.errors.map((entry) => `- ${entry}`).join("\n")}` : ""}`,
   );
 }
+
+/**
+ * Validates only the variables one feature needs. A missing or malformed value for an
+ * unrelated feature (mail, ClamAV, backups) must not take down every route that touches
+ * Firebase, so each server module asserts its own scope instead of the whole environment.
+ * The full check still runs in /api/health and `npm run check:env`.
+ */
+export function assertEnvironmentFor(
+  feature: string,
+  names: readonly string[],
+  source: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
+): void {
+  const result = validateServerEnvironment(source);
+  if (result.valid) return;
+  const relevant = result.checks.filter((check) => !check.passed && names.includes(check.name));
+  if (relevant.length === 0) return;
+  throw new Error(
+    `Invalid ${result.deployment} server environment for ${feature}:\n${relevant
+      .map((check) => `- ${check.name}: ${check.message}`)
+      .join("\n")}`,
+  );
+}

@@ -1,7 +1,7 @@
 import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 
-import { assertServerEnvironment } from "@/server/env";
+import { assertEnvironmentFor } from "@/server/env";
 import { db } from "@/server/firebase-admin";
 import { escapeHtml, sendMail } from "@/server/mailer";
 import { absoluteUrl } from "@/server/site-origin";
@@ -9,7 +9,7 @@ import { absoluteUrl } from "@/server/site-origin";
 import type { DocumentSnapshot } from "firebase-admin/firestore";
 
 function secret() {
-  assertServerEnvironment();
+  assertEnvironmentFor("notifications", ["NOTIFICATION_OPT_OUT_SECRET"]);
   const value = process.env.NOTIFICATION_OPT_OUT_SECRET;
   if (!value || Buffer.byteLength(value) < 32)
     throw new Error("NOTIFICATION_OPT_OUT_SECRET must be at least 32 bytes.");

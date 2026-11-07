@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { validateServerEnvironment } from "@/server/env";
+import { assertEnvironmentFor, validateServerEnvironment } from "@/server/env";
 
 const validProductionEnvironment = {
   NODE_ENV: "production",
@@ -143,3 +143,44 @@ describe("server environment validator", () => {
     expect(result.errors).toContain("R2_BUCKET: is required");
   });
 });
+
+describe("scoped environment assertions", () => {
+  const firebaseNames = [
+    "FIREBASE_PROJECT_ID",
+    "FIREBASE_SERVICE_ACCOUNT_BASE64",
+    "FIREBASE_CLIENT_EMAIL",
+    "FIREBASE_PRIVATE_KEY",
+  ];
+
+  function without(...names: string[]): Record<string, string | undefined> {
+    const copy: Record<string, string | undefined> = { ...validProductionEnvironment };
+    for (const name of names) delete copy[name];
+    return copy;
+  }
+
+  it("ignores missing variables that belong to unrelated features", () => {
+    const rest = without("GMAIL_APP_PASSWORD", "CLAMD_HOST", "BACKUP_R2_BUCKET");
+    expect(validateServerEnvironment(rest).valid).toBe(false);
+    expect(() => assertEnvironmentFor("Firebase Admin", firebaseNames, rest)).not.toThrow();
+  });
+
+  it("names only the variables of the requested feature", () => {
+    const rest = without("FIREBASE_PROJECT_ID", "GMAIL_USER");
+    expect(() => assertEnvironmentFor("Firebase Admin", firebaseNames, rest)).toThrow(
+      /Firebase Admin[\s\S]*FIREBASE_PROJECT_ID/,
+    );
+    try {
+      assertEnvironmentFor("Firebase Admin", firebaseNames, rest);
+    } catch (error) {
+      expect(String(error)).not.toContain("GMAIL_USER");
+    }
+  });
+
+  it("rejects a malformed service account for the Firebase scope", () => {
+    const broken = { ...validProductionEnvironment, FIREBASE_SERVICE_ACCOUNT_BASE64: "not-json" };
+    expect(() => assertEnvironmentFor("Firebase Admin", firebaseNames, broken)).toThrow(
+      /FIREBASE_SERVICE_ACCOUNT_BASE64/,
+    );
+  });
+});
+
