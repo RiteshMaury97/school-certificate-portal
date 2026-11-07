@@ -8,6 +8,7 @@ const config: NextConfig = {
     FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID ?? "",
     FIREBASE_APP_ID: process.env.FIREBASE_APP_ID ?? "",
     RECAPTCHA_V3_SITE_KEY: process.env.RECAPTCHA_V3_SITE_KEY ?? "",
+    APP_CHECK_ENFORCE: process.env.APP_CHECK_ENFORCE ?? "",
     TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY ?? "",
     DATA_HOSTING_REGION: process.env.DATA_HOSTING_REGION ?? "",
     RETENTION_YEARS: process.env.RETENTION_YEARS ?? "",

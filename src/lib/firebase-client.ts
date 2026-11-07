@@ -41,7 +41,8 @@ function tokenExpiry(token: string): number {
 
 /** Local development: App Check can be skipped on both ends with APP_CHECK_ENFORCE=false. */
 function appCheckOptional(): boolean {
-  return !isProduction && !process.env.RECAPTCHA_V3_SITE_KEY;
+  return !isProduction &&
+    (process.env.APP_CHECK_ENFORCE === "false" || !process.env.RECAPTCHA_V3_SITE_KEY);
 }
 
 function appCheck(): AppCheck {
