@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type Dispatch, type RefObject, type SetSta
 import { FormErrorSummary } from "@/components/forms/FormErrorSummary";
 import { FormField } from "@/components/forms/FormField";
 import { useFormValidation } from "@/components/forms/useFormValidation";
+import { applyCspNonce } from "@/lib/csp";
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { contactEnquirySchema } from "@/shared/validation";
 
@@ -102,6 +103,7 @@ function useContactTurnstile(
     else {
       const script = document.createElement("script");
       script.id = scriptId;
+      applyCspNonce(script);
       script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
       script.async = true;
       script.defer = true;

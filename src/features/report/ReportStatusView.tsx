@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { applyCspNonce } from "@/lib/csp";
 import { appCheckHeaders } from "@/lib/firebase-client";
 
 import type { SubmitEvent } from "react";
@@ -46,6 +47,7 @@ function useTurnstileToken() {
     else {
       const script = document.createElement("script");
       script.id = "cloudflare-turnstile-script";
+      applyCspNonce(script);
       script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
       script.async = true;
       script.defer = true;

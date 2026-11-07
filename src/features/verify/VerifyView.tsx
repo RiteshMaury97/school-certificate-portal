@@ -7,6 +7,7 @@ import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
 import SiteShell from "@/components/layout/SiteShell";
 import { useT } from "@/i18n/locale-provider";
+import { applyCspNonce } from "@/lib/csp";
 import { appCheckHeaders } from "@/lib/firebase-client";
 
 import type { SubmitEvent} from "react";
@@ -186,6 +187,7 @@ export default function VerifyPage() {
     else {
       const script = document.createElement("script");
       script.id = scriptId;
+      applyCspNonce(script);
       script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
       script.async = true;
       script.defer = true;

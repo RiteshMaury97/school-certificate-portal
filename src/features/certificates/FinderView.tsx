@@ -19,6 +19,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { useCertificateFlow } from "@/features/certificates/CertificateFlowProvider";
+import { applyCspNonce } from "@/lib/csp";
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { studentLookupSchema } from "@/shared/validation";
 
@@ -228,6 +229,7 @@ export default function FinderPage() {
     else {
       const script = document.createElement("script");
       script.id = scriptId;
+      applyCspNonce(script);
       script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
       script.async = true;
       script.defer = true;

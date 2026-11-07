@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 
+import { applyCspNonce } from "@/lib/csp";
 import { appCheckHeaders } from "@/lib/firebase-client";
 
 type Choice = boolean | null;
@@ -189,6 +190,7 @@ export default function FeedbackWidget({ page = "/" }: { page?: string }) {
     else {
       const script = document.createElement("script");
       script.id = id;
+      applyCspNonce(script);
       script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
       script.async = true;
       script.defer = true;

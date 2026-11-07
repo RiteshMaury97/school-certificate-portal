@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { applyCspNonce } from "@/lib/csp";
 import { appCheckHeaders } from "@/lib/firebase-client";
 
 import type { SubmitEvent } from "react";
@@ -153,6 +154,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
     else {
       const script = document.createElement("script");
       script.id = id;
+      applyCspNonce(script);
       script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
       script.async = true;
       script.defer = true;
