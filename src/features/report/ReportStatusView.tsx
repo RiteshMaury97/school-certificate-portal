@@ -21,7 +21,7 @@ function useTurnstileToken() {
   const [token, setToken] = useState("");
 
   useEffect(() => {
-    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    const siteKey = process.env.TURNSTILE_SITE_KEY;
     if (!siteKey || !captchaRef.current) return;
     let cancelled = false;
     const render = () => {

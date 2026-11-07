@@ -10,10 +10,10 @@ function requiredFirebaseConfig(value: string | undefined, name: string): string
 }
 
 const config = {
-  apiKey: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_API_KEY, "NEXT_PUBLIC_FIREBASE_API_KEY"),
-  authDomain: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"),
-  projectId: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, "NEXT_PUBLIC_FIREBASE_PROJECT_ID"),
-  appId: requiredFirebaseConfig(process.env.NEXT_PUBLIC_FIREBASE_APP_ID, "NEXT_PUBLIC_FIREBASE_APP_ID"),
+  apiKey: requiredFirebaseConfig(process.env.FIREBASE_API_KEY, "FIREBASE_API_KEY"),
+  authDomain: requiredFirebaseConfig(process.env.FIREBASE_AUTH_DOMAIN, "FIREBASE_AUTH_DOMAIN"),
+  projectId: requiredFirebaseConfig(process.env.FIREBASE_PROJECT_ID, "FIREBASE_PROJECT_ID"),
+  appId: requiredFirebaseConfig(process.env.FIREBASE_APP_ID, "FIREBASE_APP_ID"),
 };
 
 const existingApps = getApps();
@@ -41,14 +41,14 @@ function tokenExpiry(token: string): number {
 
 /** Local development: App Check can be skipped on both ends with APP_CHECK_ENFORCE=false. */
 function appCheckOptional(): boolean {
-  return !isProduction && !process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY;
+  return !isProduction && !process.env.RECAPTCHA_V3_SITE_KEY;
 }
 
 function appCheck(): AppCheck {
   if (typeof window === "undefined")
     throw new Error("Firebase App Check is only available in the browser.");
   if (!appCheckInstance) {
-    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY;
+    const siteKey = process.env.RECAPTCHA_V3_SITE_KEY;
     if (!siteKey) throw new Error("Firebase App Check site key is not configured.");
     if (!isProduction) {
       // The debug token is printed to the console once; register it in Firebase console → App Check.

@@ -47,7 +47,7 @@ function scrub(event: SentryEvent) {
 }
 
 Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  dsn: process.env.BROWSER_SENTRY_DSN,
   tracesSampleRate: 0,
   dataCollection: {
     userInfo: false,

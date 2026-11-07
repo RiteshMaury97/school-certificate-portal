@@ -1,5 +1,22 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
+  // These settings are intentionally public client configuration. Keep secrets
+  // out of this list; Next.js inlines each value into the browser bundle.
+  env: {
+    FIREBASE_API_KEY: process.env.FIREBASE_API_KEY ?? "",
+    FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN ?? "",
+    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID ?? "",
+    FIREBASE_APP_ID: process.env.FIREBASE_APP_ID ?? "",
+    RECAPTCHA_V3_SITE_KEY: process.env.RECAPTCHA_V3_SITE_KEY ?? "",
+    TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY ?? "",
+    DATA_HOSTING_REGION: process.env.DATA_HOSTING_REGION ?? "",
+    RETENTION_YEARS: process.env.RETENTION_YEARS ?? "",
+    PRIVACY_POLICY_VERSION: process.env.PRIVACY_POLICY_VERSION ?? "",
+    TERMS_VERSION: process.env.TERMS_VERSION ?? "",
+    BROWSER_SENTRY_DSN: process.env.BROWSER_SENTRY_DSN ?? "",
+    PLAUSIBLE_DOMAIN: process.env.PLAUSIBLE_DOMAIN ?? "",
+    PLAUSIBLE_SCRIPT_URL: process.env.PLAUSIBLE_SCRIPT_URL ?? "",
+  },
   rewrites() {
     return {
       beforeFiles: [{ source: "/offline", destination: "/offline.html" }],

@@ -53,7 +53,7 @@ function firebaseErrorCode(error: unknown): string | number | undefined {
  */
 function readServiceAccount(): ServiceAccountInput | null {
   assertEnvironmentFor("Firebase Admin", FIREBASE_ENVIRONMENT_NAMES);
-  const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const projectId = process.env.FIREBASE_PROJECT_ID;
   const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();
   if (encoded) {
     try {
@@ -75,7 +75,7 @@ function readServiceAccount(): ServiceAccountInput | null {
 function getFirebaseServices(): FirebaseServices {
   if (services) return services;
   const serviceAccount = readServiceAccount();
-  const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const projectId = process.env.FIREBASE_PROJECT_ID;
   const app =
     getApps()[0] ??
     initializeApp({
@@ -178,7 +178,7 @@ export function describeFirebaseError(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error);
   const code = firebaseErrorCode(error);
   const message = raw.replace(/\s+/g, " ").slice(0, 220);
-  const projectId = process.env.FIREBASE_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const projectId = process.env.FIREBASE_PROJECT_ID;
   const hint = firebaseErrorHint(raw, code, projectId);
   return `${code === undefined ? "" : `[${String(code)}] `}${message}${hint}`;
 }

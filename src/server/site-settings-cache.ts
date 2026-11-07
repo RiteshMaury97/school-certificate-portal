@@ -2,7 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 
-export const PUBLIC_SITE_SETTINGS_TAG = "public-site-settings";
+export const SITE_SETTINGS_TAG = "public-site-settings";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -19,5 +19,5 @@ export const getCachedSiteSettings = unstable_cache(
     return isRecord(parsed) ? parsed : {};
   },
   ["public-site-settings-v1"],
-  { revalidate: 60, tags: [PUBLIC_SITE_SETTINGS_TAG] },
+  { revalidate: 60, tags: [SITE_SETTINGS_TAG] },
 );

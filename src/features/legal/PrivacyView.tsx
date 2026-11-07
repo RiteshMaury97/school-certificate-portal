@@ -18,8 +18,8 @@ function textOr(value: string | undefined | null, fallback: string): string {
   return trimmed && trimmed.length > 0 ? trimmed : fallback;
 }
 
-const region = textOr(process.env.NEXT_PUBLIC_DATA_HOSTING_REGION, "{{HOSTING_REGION}}");
-const version = textOr(process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION, "2026-10");
+const region = textOr(process.env.DATA_HOSTING_REGION, "{{HOSTING_REGION}}");
+const version = textOr(process.env.PRIVACY_POLICY_VERSION, "2026-10");
 
 // eslint-disable-next-line max-lines-per-function -- reason: this legacy privacy page coordinates policy content and data rights request handling.
 export default function PrivacyPage() {
@@ -30,7 +30,7 @@ export default function PrivacyPage() {
   const officer = textOr(settings.grievanceOfficerName, "");
   const updated = textOr(settings.lastUpdated, "No data found");
   const retentionYears =
-    settings.retentionYears ?? Number(process.env.NEXT_PUBLIC_RETENTION_YEARS ?? "7");
+    settings.retentionYears ?? Number(process.env.RETENTION_YEARS ?? "7");
   const backupRotationDays = settings.backupRotationDays ?? 30;
   const [requestType, setRequestType] = useState("");
   const [requesterName, setRequesterName] = useState("");

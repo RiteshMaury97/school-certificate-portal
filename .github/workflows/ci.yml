@@ -48,10 +48,10 @@ jobs:
         run: npm test
         env:
           VERCEL_ENV: development
-          NEXT_PUBLIC_FIREBASE_API_KEY: ci-public-api-key
-          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ci-test.firebaseapp.com
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ci-test-project
-          NEXT_PUBLIC_FIREBASE_APP_ID: 1:1234567890:web:ci-test
+          FIREBASE_API_KEY: ci-public-api-key
+          FIREBASE_AUTH_DOMAIN: ci-test.firebaseapp.com
+          FIREBASE_PROJECT_ID: ci-test-project
+          FIREBASE_APP_ID: 1:1234567890:web:ci-test
 
       - name: Build
         run: npm run build

@@ -101,12 +101,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <Suspense>{children}</Suspense>
         </AppProviders>
         <Toaster />
-        {process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN &&
-        process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL ? (
+        {process.env.PLAUSIBLE_DOMAIN &&
+        process.env.PLAUSIBLE_SCRIPT_URL ? (
           <Script
             defer
-            data-domain={process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN}
-            src={process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL}
+            data-domain={process.env.PLAUSIBLE_DOMAIN}
+            src={process.env.PLAUSIBLE_SCRIPT_URL}
             strategy="afterInteractive"
           />
         ) : null}

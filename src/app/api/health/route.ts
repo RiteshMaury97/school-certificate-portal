@@ -10,11 +10,11 @@ export const dynamic = "force-dynamic";
 
 const publicEnvironmentGroups: Record<string, readonly string[]> = {
   firebaseClient: [
-    "NEXT_PUBLIC_FIREBASE_API_KEY",
-    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-    "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-    "NEXT_PUBLIC_FIREBASE_APP_ID",
-    "NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY",
+    "FIREBASE_API_KEY",
+    "FIREBASE_AUTH_DOMAIN",
+    "FIREBASE_PROJECT_ID",
+    "FIREBASE_APP_ID",
+    "RECAPTCHA_V3_SITE_KEY",
   ],
   firebaseAdmin: [
     "FIREBASE_PROJECT_ID",
@@ -23,7 +23,7 @@ const publicEnvironmentGroups: Record<string, readonly string[]> = {
     "FIREBASE_PRIVATE_KEY",
   ],
   r2: ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "BACKUP_R2_BUCKET"],
-  turnstile: ["TURNSTILE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY"],
+  turnstile: ["TURNSTILE_SECRET_KEY", "TURNSTILE_SITE_KEY"],
   malwareScan: ["CLAMD_HOST", "MALWARE_SCAN_MODE"],
 };
 

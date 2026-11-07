@@ -5,7 +5,7 @@ The portal uses Firebase Authentication (Spark-compatible) for the first sign-in
 ## 1. Firebase project
 
 1. Create or select the Firebase project on the Spark plan.
-2. Register the web application and copy its API key, Auth domain, project ID and app ID into the matching `NEXT_PUBLIC_FIREBASE_*` variables.
+2. Register the web application and copy its API key, Auth domain, project ID and app ID into the matching `FIREBASE_*` variables.
 3. In Firebase Console → Authentication → Sign-in method, enable Email/Password and Google if Google sign-in is wanted.
 4. In Authentication → Settings → Authorized domains, add the production hostname and localhost for development.
 5. Do not upgrade the project for sign-in factors; the application handles the email code itself.
@@ -19,7 +19,7 @@ Use a dedicated school mailbox. Administrator mailboxes should enforce Google 2-
 3. Enable **2-Step Verification** and complete Google's setup.
 4. Return to Google Account → Security → **App passwords**. Create an App Password (for example, name it `School Certificate Portal`). Google displays a one-time 16-character password; copy it immediately and store it in your deployment's secret manager. If App passwords is unavailable, check the account's Workspace administrator policy and account eligibility.
 5. Set `GMAIL_USER` to the mailbox address and `GMAIL_APP_PASSWORD` to the generated App Password. Optionally set `GMAIL_FROM_NAME`; otherwise the configured school name is used.
-6. Keep all Gmail values server-side. Never add a `NEXT_PUBLIC_` prefix or commit real credentials. SMTP uses `smtp.gmail.com` on port 465 with TLS.
+6. Keep all Gmail values server-side. Never expose them through the browser or add them to `next.config.ts`'s `env` mapping. SMTP uses `smtp.gmail.com` on port 465 with TLS.
 
 The application reserves a maximum of **500 recipients per UTC day** in Firestore `abuseCounters` and logs a warning at 400. A message sent to multiple recipients counts each recipient. Gmail may impose lower account-specific sending limits, so use a dedicated Workspace mailbox for operational mail and avoid treating this quota as a Gmail guarantee.
 

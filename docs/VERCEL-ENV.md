@@ -6,22 +6,21 @@ In the tables, **Production / Preview / Development** say whether a value is req
 
 ## Firebase client
 
-Firebase browser configuration is public by design. `NEXT_PUBLIC_` values are embedded in the client bundle at build time: changing one in Vercel requires a new deployment.
+Firebase browser configuration is public by design. The app's browser configuration settings are explicitly mapped in `next.config.ts` and embedded in the client bundle at build time. The variable names do not make their values private; changing one in Vercel requires a new deployment.
 
 | Name                               | What it does                          | Production / Preview / Development                           | Visibility | Required?                          | How to obtain                                                  |
 | ---------------------------------- | ------------------------------------- | ------------------------------------------------------------ | ---------- | ---------------------------------- | -------------------------------------------------------------- |
-| `NEXT_PUBLIC_FIREBASE_API_KEY`     | Firebase Auth browser SDK project key | Required / Required / Optional until Firebase pages are used | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase Auth redirect domain         | Required / Required / Optional                               | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`  | Browser Firebase project identifier   | Required / Required / Optional                               | Public     | Required in Production and Preview | Firebase console → Project settings → General                  |
-| `NEXT_PUBLIC_FIREBASE_APP_ID`      | Browser Firebase app identifier       | Required / Required / Optional                               | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
+| `FIREBASE_API_KEY`     | Firebase Auth browser SDK project key | Required / Required / Optional until Firebase pages are used | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
+| `FIREBASE_AUTH_DOMAIN` | Firebase Auth redirect domain         | Required / Required / Optional                               | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
+| `FIREBASE_PROJECT_ID`  | Shared browser and Firebase Admin project identifier | Required / Required / Optional                      | Public and server-side | Required in Production and Preview | Firebase console → Project settings → General                  |
+| `FIREBASE_APP_ID`      | Browser Firebase app identifier       | Required / Required / Optional                               | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
 
 ## Firebase Admin
 
-Use a dedicated service account with only the Firebase/Firestore permissions the portal needs. Preview must use a separate staging Firebase project and its own service account.
+Use a dedicated service account with only the Firebase/Firestore permissions the portal needs. `FIREBASE_PROJECT_ID` is shared with browser Firebase configuration. Preview must use a separate staging Firebase project and its own service account.
 
 | Name                              | What it does                                                     | Production / Preview / Development                                                                     | Visibility             | Required?                                                | How to obtain                                                                            |
 | --------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `FIREBASE_PROJECT_ID`             | Server-side Firebase Admin project                               | Required / Required / Optional                                                                         | Server-side identifier | Required in Production and Preview                       | Firebase console → Project settings → General; use the staging project for Preview       |
 | `FIREBASE_SERVICE_ACCOUNT_BASE64` | Preferred Firebase Admin credential: base64 service-account JSON | Required unless the two individual fields are used / Required unless individual fields used / Optional | Secret                 | One credential method required in Production and Preview | Download a service-account JSON securely, then base64 encode it using the commands below |
 | `FIREBASE_CLIENT_EMAIL`           | Alternative service-account email                                | Required with private key if base64 JSON is unset / Same / Optional                                    | Server-side identifier | Conditional                                              | From the service-account JSON `client_email`                                             |
 | `FIREBASE_PRIVATE_KEY`            | Alternative service-account private key                          | Required with client email if base64 JSON is unset / Same / Optional                                   | Secret                 | Conditional                                              | From the service-account JSON `private_key`; preserve line breaks as `\n` in Vercel      |
@@ -32,7 +31,7 @@ Production always enforces Firebase App Check. `APP_CHECK_ENFORCE=false` only op
 
 | Name                                | What it does                                        | Production / Preview / Development                                             | Visibility          | Required?                          | How to obtain                                                                  |
 | ----------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY` | Firebase App Check reCAPTCHA v3 site key            | Required / Required / Optional                                                 | Public              | Required in Production and Preview | Firebase console → App Check → register the web app                            |
+| `RECAPTCHA_V3_SITE_KEY` | Firebase App Check reCAPTCHA v3 site key            | Required / Required / Optional                                                 | Public              | Required in Production and Preview | Firebase console → App Check → register the web app                            |
 | `APP_CHECK_ENFORCE`                 | Development-only override for App Check enforcement | Ignored for enforcement / Ignored for enforcement / Optional `true` or `false` | Server-side setting | Optional                           | Set `false` only for local development without a configured App Check site key |
 
 ## Cloudflare R2 (main and backup buckets)
@@ -51,7 +50,7 @@ Preview must use its own R2 credentials and certificate bucket. Production backu
 
 | Name                             | What it does                             | Production / Preview / Development                               | Visibility | Required?                          | How to obtain                                                                  |
 | -------------------------------- | ---------------------------------------- | ---------------------------------------------------------------- | ---------- | ---------------------------------- | ------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile browser widget      | Required / Required / Optional (development has a test fallback) | Public     | Required in Production and Preview | Cloudflare dashboard → Turnstile → add a widget for the respective domains     |
+| `TURNSTILE_SITE_KEY` | Cloudflare Turnstile browser widget      | Required / Required / Optional (development has a test fallback) | Public     | Required in Production and Preview | Cloudflare dashboard → Turnstile → add a widget for the respective domains     |
 | `TURNSTILE_SECRET_KEY`           | Validates Turnstile tokens on the server | Required / Required / Optional                                   | Secret     | Required in Production and Preview | Cloudflare Turnstile widget settings; use Preview/test credentials for Preview |
 
 ## HMAC and encryption secrets
@@ -105,29 +104,29 @@ Keep encryption keys backed up securely. Losing a key can make the corresponding
 
 ## Privacy / DPDP
 
-`NEXT_PUBLIC_` privacy/legal values are public and baked at build time; update them with a redeployment. The retention duration remains available in public settings and defaults to seven years.
+`` privacy/legal values are public and baked at build time; update them with a redeployment. The retention duration remains available in public settings and defaults to seven years.
 
 | Name                                 | What it does                                            | Production / Preview / Development                                  | Visibility          | Required? | How to obtain                                     |
 | ------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------- | ------------------- | --------- | ------------------------------------------------- |
 | `PRIVACY_POLICY_VERSION`             | Version recorded with data-rights requests and searches | Optional (default `2026-10`) / Optional / Optional                  | Server-side setting | Optional  | Set the current published policy version          |
-| `NEXT_PUBLIC_DATA_HOSTING_REGION`    | Region shown in the privacy notice                      | Optional but set to the actual hosting region / Optional / Optional | Public              | Optional  | Set a truthful region label, e.g. `Mumbai, India` |
-| `NEXT_PUBLIC_RETENTION_YEARS`        | Fallback retention duration shown in the privacy notice | Optional (default 7) / Optional / Optional                          | Public              | Optional  | Set the approved retention period in years        |
-| `NEXT_PUBLIC_PRIVACY_POLICY_VERSION` | Version label shown on the privacy page                 | Optional (default `2026-10`) / Optional / Optional                  | Public              | Optional  | Set the published policy version                  |
-| `NEXT_PUBLIC_TERMS_VERSION`          | Version label shown on Terms                            | Optional (default `1.0`) / Optional / Optional                      | Public              | Optional  | Set the published terms version                   |
+| `DATA_HOSTING_REGION`    | Region shown in the privacy notice                      | Optional but set to the actual hosting region / Optional / Optional | Public              | Optional  | Set a truthful region label, e.g. `Mumbai, India` |
+| `RETENTION_YEARS`        | Fallback retention duration shown in the privacy notice | Optional (default 7) / Optional / Optional                          | Public              | Optional  | Set the approved retention period in years        |
+| `PRIVACY_POLICY_VERSION` | Version label shown on the privacy page                 | Optional (default `2026-10`) / Optional / Optional                  | Public              | Optional  | Set the published policy version                  |
+| `TERMS_VERSION`          | Version label shown on Terms                            | Optional (default `1.0`) / Optional / Optional                      | Public              | Optional  | Set the published terms version                   |
 
 ## Sentry
 
 | Name                     | What it does                 | Production / Preview / Development | Visibility                | Required? | How to obtain                                                   |
 | ------------------------ | ---------------------------- | ---------------------------------- | ------------------------- | --------- | --------------------------------------------------------------- |
 | `SENTRY_DSN`             | Server-side error reporting  | Optional / Optional / Optional     | Secret/limited-access DSN | Optional  | Sentry project settings → Client Keys (DSN)                     |
-| `NEXT_PUBLIC_SENTRY_DSN` | Browser-side error reporting | Optional / Optional / Optional     | Public DSN                | Optional  | Same Sentry project; browser events are scrubbed before sending |
+| `BROWSER_SENTRY_DSN` | Browser-side error reporting | Optional / Optional / Optional     | Public DSN                | Optional  | Same Sentry project; browser events are scrubbed before sending |
 
 ## Plausible analytics
 
 | Name                               | What it does                                           | Production / Preview / Development                              | Visibility | Required? | How to obtain                                                     |
 | ---------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------- | ---------- | --------- | ----------------------------------------------------------------- |
-| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`     | Site domain sent to Plausible for aggregate page views | Optional / Optional / Optional                                  | Public     | Optional  | Configure the domain in the Plausible site settings               |
-| `NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL` | Script endpoint used by the site                       | Optional (defaults to Plausible's script) / Optional / Optional | Public     | Optional  | Use the official script URL or your approved self-hosted endpoint |
+| `PLAUSIBLE_DOMAIN`     | Site domain sent to Plausible for aggregate page views | Optional / Optional / Optional                                  | Public     | Optional  | Configure the domain in the Plausible site settings               |
+| `PLAUSIBLE_SCRIPT_URL` | Script endpoint used by the site                       | Optional (defaults to Plausible's script) / Optional / Optional | Public     | Optional  | Use the official script URL or your approved self-hosted endpoint |
 
 ## Site URLs
 
@@ -210,7 +209,7 @@ Set the output in the appropriate Vercel environment. AES keys must be generated
 
 ## Production and Preview setup
 
-- `NEXT_PUBLIC_` settings are baked into the build. Any change requires a redeployment.
+- `` settings are baked into the build. Any change requires a redeployment.
 - Production: set `SITE_URL` to the HTTPS origin for the live domain (no path, query, or trailing slash). A stale `APP_ORIGIN` is ignored when `SITE_URL` is set. Optionally set `ADDITIONAL_ALLOWED_ORIGINS` to a comma-separated list of HTTPS origins while both domains need to accept same-origin requests.
 - Preview: leave `APP_ORIGIN` unset. Configure a separate staging Firebase project/service account, separate R2 credentials and bucket, and test-only Gmail settings. Do not copy Production secrets into Preview. The environment checker requires Preview values to be present and enforces the `APP_ORIGIN` rule; Vercel does not expose Production secret values to Preview, so reviewers must ensure Vercel variables are scoped to Preview and use staging resources.
 - Production: `CRON_SECRET` is required and must be at least 32 bytes. Vercel sends the configured value as the cron request's `Authorization: Bearer <CRON_SECRET>` header.

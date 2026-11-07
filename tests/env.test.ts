@@ -7,12 +7,11 @@ const validProductionEnvironment = {
   APP_ORIGIN: "https://school.example",
   SITE_URL: "https://school.example",
   SECURITY_CONTACT_EMAIL: "security@school.example",
-  NEXT_PUBLIC_FIREBASE_API_KEY: "public-api-key",
-  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "school.firebaseapp.com",
-  NEXT_PUBLIC_FIREBASE_PROJECT_ID: "school-prod",
-  NEXT_PUBLIC_FIREBASE_APP_ID: "1:123:web:abc",
-  NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY: "recaptcha-site-key",
+  FIREBASE_API_KEY: "public-api-key",
+  FIREBASE_AUTH_DOMAIN: "school.firebaseapp.com",
   FIREBASE_PROJECT_ID: "school-prod",
+  FIREBASE_APP_ID: "1:123:web:abc",
+  RECAPTCHA_V3_SITE_KEY: "recaptcha-site-key",
   FIREBASE_SERVICE_ACCOUNT_BASE64: Buffer.from(
     JSON.stringify({ private_key: "private", client_email: "firebase@example.test" }),
   ).toString("base64"),
@@ -22,7 +21,7 @@ const validProductionEnvironment = {
   R2_BUCKET: "school-certificates",
   BACKUP_R2_BUCKET: "school-backups",
   TURNSTILE_SECRET_KEY: "t".repeat(32),
-  NEXT_PUBLIC_TURNSTILE_SITE_KEY: "turnstile-site-key",
+  TURNSTILE_SITE_KEY: "turnstile-site-key",
   SEARCH_HMAC_SECRET: "a".repeat(32),
   AUDIT_LOG_HMAC_SECRET: "b".repeat(32),
   CERTIFICATE_ACCESS_TOKEN_SECRET: "c".repeat(32),
@@ -153,22 +152,26 @@ describe("scoped environment assertions", () => {
   ];
 
   function without(...names: string[]): Record<string, string | undefined> {
-    const copy: Record<string, string | undefined> = { ...validProductionEnvironment };
-    for (const name of names) delete copy[name];
+    const copy: Record<string, string | undefined> = {};
+    for (const [name, value] of Object.entries(validProductionEnvironment)) {
+      if (!names.includes(name)) copy[name] = value;
+    }
     return copy;
   }
 
   it("ignores missing variables that belong to unrelated features", () => {
     const rest = without("GMAIL_APP_PASSWORD", "CLAMD_HOST", "BACKUP_R2_BUCKET");
     expect(validateServerEnvironment(rest).valid).toBe(false);
-    expect(() => assertEnvironmentFor("Firebase Admin", firebaseNames, rest)).not.toThrow();
+    expect(() => {
+      assertEnvironmentFor("Firebase Admin", firebaseNames, rest);
+    }).not.toThrow();
   });
 
   it("names only the variables of the requested feature", () => {
     const rest = without("FIREBASE_PROJECT_ID", "GMAIL_USER");
-    expect(() => assertEnvironmentFor("Firebase Admin", firebaseNames, rest)).toThrow(
-      /Firebase Admin[\s\S]*FIREBASE_PROJECT_ID/,
-    );
+    expect(() => {
+      assertEnvironmentFor("Firebase Admin", firebaseNames, rest);
+    }).toThrow(/Firebase Admin[\s\S]*FIREBASE_PROJECT_ID/);
     try {
       assertEnvironmentFor("Firebase Admin", firebaseNames, rest);
     } catch (error) {
@@ -178,9 +181,9 @@ describe("scoped environment assertions", () => {
 
   it("rejects a malformed service account for the Firebase scope", () => {
     const broken = { ...validProductionEnvironment, FIREBASE_SERVICE_ACCOUNT_BASE64: "not-json" };
-    expect(() => assertEnvironmentFor("Firebase Admin", firebaseNames, broken)).toThrow(
-      /FIREBASE_SERVICE_ACCOUNT_BASE64/,
-    );
+    expect(() => {
+      assertEnvironmentFor("Firebase Admin", firebaseNames, broken);
+    }).toThrow(/FIREBASE_SERVICE_ACCOUNT_BASE64/);
   });
 });
 

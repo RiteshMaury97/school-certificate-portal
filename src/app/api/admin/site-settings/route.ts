@@ -6,7 +6,7 @@ import { z } from "zod";
 import { isValidCidr, normalizeAdminLocationPolicy } from "@/server/admin-location";
 import { db } from "@/server/firebase-admin";
 import { apiError, requireAdmin, writeAuditLog } from "@/server/security";
-import { PUBLIC_SITE_SETTINGS_TAG } from "@/server/site-settings-cache";
+import { SITE_SETTINGS_TAG } from "@/server/site-settings-cache";
 
 import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
@@ -202,7 +202,7 @@ export async function PATCH(request: NextRequest) {
       },
       { merge: true },
     );
-    revalidateTag(PUBLIC_SITE_SETTINGS_TAG, { expire: 0 });
+    revalidateTag(SITE_SETTINGS_TAG, { expire: 0 });
     await writeAuditLog(request, admin.uid, "site_settings.update", "main");
     if (parsed.data.maintenanceMode !== wasLockedDown)
       await writeAuditLog(

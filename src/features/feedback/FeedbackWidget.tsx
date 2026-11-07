@@ -152,7 +152,7 @@ export default function FeedbackWidget({ page = "/" }: { page?: string }) {
   const [sent, setSent] = useState(false);
   const captcha = useRef<HTMLDivElement>(null);
   const widget = useRef<string | null>(null);
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+  const siteKey = process.env.TURNSTILE_SITE_KEY ?? "";
   const displayedError =
     choice !== null && !siteKey
       ? "Security verification is not configured. Feedback is temporarily unavailable."

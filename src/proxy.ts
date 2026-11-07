@@ -19,8 +19,8 @@ const locationDecisionCache = new Map<
 function buildCsp(nonce: string, allowSameOriginFrame = false): string {
   const dev = process.env.NODE_ENV !== "production";
   const telemetryOrigins = [
-    process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL,
-    process.env.NEXT_PUBLIC_SENTRY_DSN,
+    process.env.PLAUSIBLE_SCRIPT_URL,
+    process.env.BROWSER_SENTRY_DSN,
   ]
     .flatMap((value) => {
       try {
@@ -30,7 +30,7 @@ function buildCsp(nonce: string, allowSameOriginFrame = false): string {
       }
     })
     .filter((value, index, values) => values.indexOf(value) === index);
-  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+  const authDomain = process.env.FIREBASE_AUTH_DOMAIN;
   const authOrigin = authDomain ? `https://${authDomain}` : "";
   return [
     "default-src 'self'",
