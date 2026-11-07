@@ -140,7 +140,7 @@ export default function ContactEnquiryForm() {
   const [busy, setBusy] = useState(false);
   const [reference, setReference] = useState("");
   const [emailCopySent, setEmailCopySent] = useState(false);
-  const siteKey = process.env.TURNSTILE_SITE_KEY ?? "";
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const { captcha, widget } = useContactTurnstile(siteKey, setToken, setCaptchaError);
   const validation = useFormValidation(contactEnquirySchema, {
     fullName, mobile, email, enquiryType, studentName, classSession, subject, message, consent, turnstileToken: token,

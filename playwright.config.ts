@@ -30,7 +30,8 @@ export default defineConfig({
           timeout: 120_000,
           env: {
             ...process.env,
-            TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+            NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+            NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY: "2x0000000000000000000000AB",
             FIREBASE_API_KEY: "e2e-api-key",
             FIREBASE_PROJECT_ID: "sis-e2e",
             FIREBASE_AUTH_DOMAIN: "sis-e2e.firebaseapp.com",

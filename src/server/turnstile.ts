@@ -3,8 +3,8 @@ import "server-only";
 export async function verifyTurnstileToken(
   token: string,
   remoteIp: string | null,
+  secret = process.env.TURNSTILE_SECRET_KEY,
 ): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) return process.env.NODE_ENV !== "production";
 
   try {

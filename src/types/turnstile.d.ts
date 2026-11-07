@@ -10,7 +10,7 @@ type TurnstileApi = {
       "error-callback": () => void;
       theme?: "light" | "dark";
       appearance?: "always";
-      size?: "normal" | "compact" | "invisible";
+      size?: "normal" | "compact" | "flexible";
       execution?: "render" | "execute";
     },
   ) => string;

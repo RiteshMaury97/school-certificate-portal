@@ -1,6 +1,6 @@
 import { Eye, EyeOff } from "lucide-react";
 
-import type { SyntheticEvent } from "react";
+import type { ReactNode, SyntheticEvent } from "react";
 
 type Props = {
   busy: boolean;
@@ -14,6 +14,9 @@ type Props = {
   onPasswordChange: (password: string) => void;
   onPasswordValidityChange: (valid: boolean) => void;
   onTogglePassword: () => void;
+  captcha: ReactNode;
+  captchaRequired: boolean;
+  captchaReady: boolean;
   onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void;
   onGoogle: () => void;
 };
@@ -35,6 +38,9 @@ export default function CredentialForm({
   onPasswordChange,
   onPasswordValidityChange,
   onTogglePassword,
+  captcha,
+  captchaRequired,
+  captchaReady,
   onSubmit,
   onGoogle,
 }: Props) {
@@ -107,9 +113,10 @@ export default function CredentialForm({
             )}
           </button>
         </div>
+        {captcha}
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || (captchaRequired && !captchaReady)}
           aria-busy={busy}
           className={primary}
         >

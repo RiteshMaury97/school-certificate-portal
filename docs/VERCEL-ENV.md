@@ -49,8 +49,10 @@ Preview must use its own R2 credentials and certificate bucket. Production backu
 
 | Name                   | What it does                             | Production / Preview / Development                               | Visibility | Required?                          | How to obtain                                                                  |
 | ---------------------- | ---------------------------------------- | ---------------------------------------------------------------- | ---------- | ---------------------------------- | ------------------------------------------------------------------------------ |
-| `TURNSTILE_SITE_KEY`   | Cloudflare Turnstile browser widget      | Required / Required / Optional (development has a test fallback) | Public     | Required in Production and Preview | Cloudflare dashboard → Turnstile → add a widget for the respective domains     |
-| `TURNSTILE_SECRET_KEY` | Validates Turnstile tokens on the server | Required / Required / Optional                                   | Secret     | Required in Production and Preview | Cloudflare Turnstile widget settings; use Preview/test credentials for Preview |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Visible Cloudflare widget for login and protected forms | Required / Required / Optional (development has a test fallback) | Public | Required in Production and Preview | Cloudflare dashboard → Turnstile → visible Managed widget |
+| `TURNSTILE_SECRET_KEY` | Validates visible login/form Turnstile tokens on the server | Required / Required / Optional | Secret | Required in Production and Preview | Secret paired with `NEXT_PUBLIC_TURNSTILE_SITE_KEY` |
+| `NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY` | Invisible Cloudflare widget used only to acquire Firebase App Check tokens | Required / Required / Optional | Public | Required in Production and Preview | Cloudflare dashboard → Turnstile → separate Invisible widget |
+| `APPCHECK_TURNSTILE_SECRET_KEY` | Validates the App Check Turnstile proof before the server mints an App Check token | Required / Required / Optional | Secret | Required in Production and Preview | Secret paired with `NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY` |
 
 ## HMAC and encryption secrets
 

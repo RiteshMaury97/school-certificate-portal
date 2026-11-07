@@ -50,6 +50,11 @@ async function requestJson(
   return { response, data: (await response.json().catch(() => null)) as unknown };
 }
 
+async function verifyLoginCaptcha(token: string): Promise<void> {
+  const { response, data } = await requestJson("/api/admin/login-captcha", { token });
+  if (!response.ok) throw new Error(message(data) ?? "Complete the security check and try again.");
+}
+
 function parseChallenge(data: unknown): { challengeId: string; resendAfterSeconds: number } {
   if (
     typeof data !== "object" ||
@@ -197,10 +202,11 @@ export function useAdminSignIn() {
       );
     throw new Error(describeSignInError(cause, "password"));
   };
-  const submitCredentials = (typedEmail: string, password: string) =>
+  const submitCredentials = (typedEmail: string, password: string, captchaToken: string) =>
     run(
       async () => {
         await appCheckHeaders();
+        await verifyLoginCaptcha(captchaToken);
         setEmail(typedEmail);
         setProgress("Checking your credentials and account status...");
         const [lockResult, authResult] = await Promise.allSettled([

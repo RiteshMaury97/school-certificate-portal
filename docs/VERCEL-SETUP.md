@@ -44,10 +44,11 @@ Use separate Firebase projects for Production and Preview/staging.
 
 ### App Check setup
 
-Production server routes enforce Firebase App Check. The web client obtains Firebase App Check tokens from the server after Cloudflare Turnstile verification; never disable server enforcement or use a debug token in Production.
+Production server routes enforce Firebase App Check. The web client obtains Firebase App Check tokens from the server after verification by a dedicated Cloudflare Invisible widget. Keep this widget's key pair separate from the visible login/form widget; never disable server enforcement or use a debug token in Production.
 
-- [ ] In Cloudflare Turnstile, use the same site/secret key pair for the Production widget; allow `tc.sischool.in` and `school-certificate-portal.vercel.app`, plus `localhost` in development. Set `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in the matching Vercel environments.
-- [ ] In Firebase Console > App Check > Apps, confirm the web app whose app ID matches `NEXT_PUBLIC_FIREBASE_APP_ID` is registered. The app server verifies Turnstile proof before minting each Firebase App Check token; keep App Check enforcement enabled for the protected resources.
+- [ ] In Cloudflare Turnstile, keep the existing visible login/form widget and its key pair: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (site key) and `TURNSTILE_SECRET_KEY` (secret). Allow `tc.sischool.in`, `school-certificate-portal.vercel.app`, and `localhost` for development.
+- [ ] In Cloudflare Turnstile, create a second widget with **Widget Mode: Invisible**. Allow the same production hostnames and development `localhost`. Set its distinct site key as `NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY` and its paired secret as `APPCHECK_TURNSTILE_SECRET_KEY`. Do not reuse either key from the visible widget.
+- [ ] In Firebase Console > App Check > Apps, confirm the web app whose app ID matches `NEXT_PUBLIC_FIREBASE_APP_ID` is registered. This app uses the Firebase custom provider in code; do not configure a Google reCAPTCHA provider. Keep App Check enforcement enabled for protected resources.
 - [ ] Ensure the Firebase Admin service account can mint App Check tokens in the same Firebase project; `FIREBASE_PROJECT_ID` and `NEXT_PUBLIC_FIREBASE_APP_ID` must belong to that project.
 - [ ] In Firebase Authentication > Settings > Authorized domains, confirm `tc.sischool.in` is listed.
 - [ ] After changing any public environment value, redeploy. Clear site data or test in a new Incognito window if the browser still has stale app code.
@@ -60,8 +61,8 @@ See Firebase's current [redirect best practices](https://firebase.google.com/doc
 
 ## 4. Cloudflare Turnstile and R2
 
-- [ ] In **Cloudflare → Turnstile → Hostname Management**, allow `tc.sischool.in` and `school-certificate-portal.vercel.app` on the Production widget (add each hostname without `https://`). Set `TURNSTILE_SITE_KEY` to its site key and `TURNSTILE_SECRET_KEY` to its secret in Production only. Turnstile error `110200` means the current hostname is not allowed for that site key.
-- [ ] Create a separate staging Turnstile widget for the staging hostname and any stable Preview hostname. Put its site and secret keys in Preview only.
+- [ ] In **Cloudflare → Turnstile → Hostname Management**, ensure both Production widgets allow `tc.sischool.in` and `school-certificate-portal.vercel.app` (add hostnames without `https://`). Turnstile error `110200` means the hostname is not allowed for that widget key.
+- [ ] Create separate visible and Invisible Turnstile widgets for staging/Preview. Put each site's key pair in the corresponding Preview environment using the same four variable names above.
 - [ ] Create the main Production R2 bucket and a **different** backup R2 bucket. Keep both private; do not enable public bucket access or public custom domains.
 - [ ] Create separate staging R2 bucket(s) and credentials. Configure `R2_BUCKET` to the upload bucket and `BACKUP_R2_BUCKET` to the separate backup bucket in Production; use the staging bucket in Preview.
 - [ ] Create a Cloudflare API token restricted to the required R2 object read/write/list permissions and the specific buckets used by this app. Do not use a Global API Key. Enter `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY` only as Vercel secrets for the appropriate environment.

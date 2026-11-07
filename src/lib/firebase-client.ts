@@ -72,7 +72,7 @@ function tokenExpiry(token: string): number {
 function appCheckOptional(): boolean {
   return (
     !isProduction &&
-    (process.env.APP_CHECK_ENFORCE === "false" || !process.env.TURNSTILE_SITE_KEY)
+    (process.env.APP_CHECK_ENFORCE === "false" || !process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY)
   );
 }
 
@@ -117,7 +117,7 @@ function loadTurnstileScript(): Promise<void> {
 }
 
 function requestTurnstileProof(): Promise<string> {
-  const siteKey = process.env.TURNSTILE_SITE_KEY;
+  const siteKey = process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY;
   if (!siteKey) return Promise.reject(new Error("Turnstile is not configured."));
   return loadTurnstileScript().then(
     () =>
@@ -142,7 +142,6 @@ function requestTurnstileProof(): Promise<string> {
           if (!turnstile) throw new Error("Turnstile did not initialize.");
           widgetId = turnstile.render(host, {
             sitekey: siteKey,
-            size: "invisible",
             execution: "execute",
             callback: (token) => {
               finish(token);

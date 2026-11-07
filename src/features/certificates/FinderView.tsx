@@ -108,7 +108,7 @@ export default function FinderPage() {
   const [captchaReady, setCaptchaReady] = useState(false);
   const [captchaError, setCaptchaError] = useState(false);
   const [captchaRetry, setCaptchaRetry] = useState(0);
-  const siteKey = process.env.TURNSTILE_SITE_KEY ?? "";
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const effectiveSiteKey =
     siteKey || (process.env.NODE_ENV === "development" ? "1x00000000000000000000AA" : "");
 

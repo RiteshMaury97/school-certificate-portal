@@ -60,7 +60,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
   const [captchaError, setCaptchaError] = useState(false);
   const captcha = useRef<HTMLDivElement>(null);
   const widget = useRef<string | null>(null);
-  const siteKey = process.env.TURNSTILE_SITE_KEY ?? "";
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   useEffect(() => {
     let active = true;
     void fetch("/api/public/sessions", { cache: "no-store" })

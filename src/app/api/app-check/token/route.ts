@@ -20,7 +20,13 @@ export async function POST(request: NextRequest) {
   if (!parsed.success)
     return NextResponse.json({ error: "Security verification failed." }, { status: 400 });
   const ip = requesterIp(request);
-  if (!(await verifyTurnstileToken(parsed.data.turnstileToken, ip)))
+  if (
+    !(await verifyTurnstileToken(
+      parsed.data.turnstileToken,
+      ip,
+      process.env.APPCHECK_TURNSTILE_SECRET_KEY,
+    ))
+  )
     return NextResponse.json({ error: "Security verification failed." }, { status: 403 });
 
   const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID?.trim();

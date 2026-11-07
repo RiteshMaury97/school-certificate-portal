@@ -28,7 +28,8 @@ const publicEnvironmentGroups: Record<string, readonly string[]> = {
     "R2_BUCKET",
     "BACKUP_R2_BUCKET",
   ],
-  turnstile: ["TURNSTILE_SECRET_KEY", "TURNSTILE_SITE_KEY"],
+  turnstile: ["NEXT_PUBLIC_TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"],
+  appCheck: ["NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY", "APPCHECK_TURNSTILE_SECRET_KEY"],
   malwareScan: ["CLAMD_HOST", "MALWARE_SCAN_MODE"],
 };
 
