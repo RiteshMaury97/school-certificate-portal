@@ -54,6 +54,22 @@ for (const [name, response] of [
 ]) {
   const csp = response.headers.get("content-security-policy");
   check(`${name} has Content-Security-Policy`, Boolean(csp));
+  const connectSrcDirectives = [
+    ...(csp ?? "").matchAll(/\bconnect-src\s+([^;]+)/gi),
+  ].map((match) => match[1]);
+  check(`${name} CSP has connect-src`, connectSrcDirectives.length > 0);
+  check(
+    `${name} CSP connect-src allows data:`,
+    connectSrcDirectives.length > 0 &&
+      connectSrcDirectives.every((directive) => directive.split(/\s+/).includes("data:")),
+  );
+  check(
+    `${name} CSP connect-src allows Cloudflare Turnstile`,
+    connectSrcDirectives.length > 0 &&
+      connectSrcDirectives.every((directive) =>
+        directive.includes("https://challenges.cloudflare.com"),
+      ),
+  );
   check(`${name} has X-Frame-Options`, Boolean(response.headers.get("x-frame-options")));
   check(
     `${name} has X-Content-Type-Options: nosniff`,
