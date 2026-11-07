@@ -37,7 +37,7 @@ function buildCsp(nonce: string, allowSameOriginFrame = false): string {
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob: https://www.gstatic.com",
     "font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com",
-    `connect-src 'self' ${dev ? "ws://localhost:* ws://127.0.0.1:*" : ""} https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.google.com https://www.gstatic.com https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
+    `connect-src 'self' data: ${dev ? "ws://localhost:* ws://127.0.0.1:*" : ""} https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.google.com https://www.gstatic.com https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
     `frame-src 'self' https://challenges.cloudflare.com ${authOrigin}`,
     "object-src 'none'",
     "base-uri 'self'",

@@ -26,6 +26,7 @@ describe("proxy origin checks", () => {
     expect(csp).toContain("style-src-attr 'unsafe-inline'");
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
     expect(csp).toContain("https://challenges.cloudflare.com");
+    expect(csp).toMatch(/connect-src[^;]*\bdata:/);
     expect(csp).not.toContain("firebaseappcheck.googleapis.com");
     expect(csp).not.toMatch(/script-src[^;]*\*/);
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-eval'/);
