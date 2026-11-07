@@ -20,6 +20,10 @@ describe("proxy origin checks", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Security-Policy")).toBeTruthy();
+    const csp = response.headers.get("Content-Security-Policy") ?? "";
+    expect(csp).toMatch(/style-src 'self' 'nonce-[^']+' https:\/\/fonts\.googleapis\.com/);
+    expect(csp).toMatch(/style-src-elem 'self' 'nonce-[^']+' https:\/\/fonts\.googleapis\.com/);
+    expect(csp).toContain("style-src-attr 'unsafe-inline'");
+    expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
   });
 });

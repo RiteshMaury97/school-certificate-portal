@@ -8,7 +8,7 @@ import { usePublicSiteSettings } from "@/lib/use-site-settings";
 export default function PageFooter() {
   const email = usePublicSiteSettings().email?.trim() ?? "";
   return (
-    <footer className="mx-auto w-full max-w-[440px] px-5 pb-5 pt-4 text-center text-xs text-[var(--text-muted)] sm:px-8 lg:px-0">
+    <footer className="mx-auto w-full max-w-[440px] shrink-0 px-5 pb-5 pt-4 text-center text-xs text-[var(--text-muted)] sm:px-8 lg:px-0">
       {email ? (
         <p>
           Need help? Contact{" "}

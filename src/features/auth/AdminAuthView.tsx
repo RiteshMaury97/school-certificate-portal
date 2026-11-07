@@ -44,10 +44,10 @@ function AdminAuthContent() {
   return (
     <main
       id="main-content"
-      className="flex min-h-dvh flex-col lg:h-dvh lg:min-h-0 lg:grid-cols-[45%_55%] lg:overflow-hidden lg:grid"
+      className="flex min-h-dvh flex-col lg:min-h-dvh lg:grid-cols-[45%_55%] lg:grid"
     >
       <BrandPanel />
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-1 flex-col lg:min-h-dvh">
         <SignInForm flow={flow} />
         <PageFooter />
       </div>

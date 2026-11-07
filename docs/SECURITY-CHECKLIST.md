@@ -9,6 +9,12 @@ Operational record for release reviews. Replace the `school.example` contact and
 - [ ] Keep location enforcement on `block` in production. Review `admin.location.blocked` events; logs retain country and a keyed IP hash rather than a raw IP.
 - [ ] Verify a blocked admin cannot sign in or keep a session, and an allowed IP/CIDR or temporary exception works as intended.
 
+## Content Security Policy
+
+- Production `script-src` keeps its per-request nonce and does not allow `unsafe-inline`.
+- `style-src` and `style-src-elem` use the per-request nonce and allow Google Fonts stylesheets.
+- `style-src-attr 'unsafe-inline'` permits framework and component style attributes; keep this exception limited to style attributes.
+
 ## Upload controls
 
 - [ ] Certificate files: 4 MB maximum; PDF, JPG or PNG only; extension, declared MIME type, and magic bytes must agree.
