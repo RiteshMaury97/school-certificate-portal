@@ -7,7 +7,7 @@ type TurnstileApi = {
       sitekey: string;
       callback: (token: string) => void;
       "expired-callback": () => void;
-      "error-callback": () => void;
+      "error-callback": (errorCode: string) => void;
       theme?: "light" | "dark";
       appearance?: "always";
       size?: "normal" | "compact" | "flexible";

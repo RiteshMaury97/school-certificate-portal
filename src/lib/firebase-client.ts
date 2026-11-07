@@ -149,7 +149,8 @@ function requestTurnstileProof(): Promise<string> {
             "expired-callback": () => {
               finish();
             },
-            "error-callback": () => {
+            "error-callback": (errorCode) => {
+              console.error("appCheck/turnstile-widget", errorCode);
               finish();
             },
           });
@@ -173,6 +174,16 @@ async function fetchCustomAppCheckToken(): Promise<{ token: string; expireTimeMi
     cache: "no-store",
   });
   const payload: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const stage =
+      typeof payload === "object" &&
+      payload !== null &&
+      "stage" in payload &&
+      typeof payload.stage === "string"
+        ? payload.stage.slice(0, 40)
+        : "unknown";
+    console.error("appCheck/token-endpoint", response.status, stage);
+  }
   if (
     !response.ok ||
     typeof payload !== "object" ||
