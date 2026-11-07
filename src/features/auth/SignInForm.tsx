@@ -50,10 +50,8 @@ export default function SignInForm({ flow }: Props) {
             {flow.step === "credentials" && (
               <CredentialsStep
                 busy={flow.busy}
-                resetBusy={flow.resetBusy}
                 onSubmit={flow.submitCredentials}
                 onGoogle={flow.signInWithGoogle}
-                onReset={(email) => void flow.requestPasswordReset(email)}
               />
             )}
             {flow.step === "change-password" && (

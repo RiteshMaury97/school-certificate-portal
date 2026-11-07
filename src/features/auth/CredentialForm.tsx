@@ -14,7 +14,6 @@ type Props = {
   onPasswordChange: (password: string) => void;
   onPasswordValidityChange: (valid: boolean) => void;
   onTogglePassword: () => void;
-  onForgotPassword: () => void;
   captcha: ReactNode;
   captchaRequired: boolean;
   captchaReady: boolean;
@@ -39,7 +38,6 @@ export default function CredentialForm({
   onPasswordChange,
   onPasswordValidityChange,
   onTogglePassword,
-  onForgotPassword,
   captcha,
   captchaRequired,
   captchaReady,
@@ -113,15 +111,6 @@ export default function CredentialForm({
             ) : (
               <Eye aria-hidden="true" size={18} />
             )}
-          </button>
-        </div>
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onForgotPassword}
-            className="inline-flex min-h-8 items-center text-xs font-medium text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
-          >
-            Forgot password?
           </button>
         </div>
         {captcha}

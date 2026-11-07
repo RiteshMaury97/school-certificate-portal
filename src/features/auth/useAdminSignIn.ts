@@ -81,7 +81,6 @@ export function useAdminSignIn() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
-  const [resetBusy, setResetBusy] = useState(false);
   const signedOut = params.get("security") === "signed-out";
   const [pendingUser, setPendingUser] = useState<User | null>(null);
   const [challengeId, setChallengeId] = useState("");
@@ -308,29 +307,6 @@ export function useAdminSignIn() {
       await signOut(auth);
       reset("Password changed. Sign in again with your new password.");
     });
-  const requestPasswordReset = async (typedEmail: string) => {
-    setResetBusy(true);
-    try {
-      const { response } = await requestJson("/api/admin/password-reset", {
-        email: typedEmail.trim(),
-      });
-      if (!response.ok) throw new Error("The reset request could not be completed.");
-      toast.add({
-        type: "info",
-        title: "Password reset requested",
-        description:
-          "If the account is eligible, instructions will be sent to its registered email.",
-      });
-    } catch {
-      toast.add({
-        type: "error",
-        title: "Password reset unavailable",
-        description: "Unable to send a reset request. Check your connection and try again.",
-      });
-    } finally {
-      setResetBusy(false);
-    }
-  };
   const cancel = async () => {
     await signOut(auth).catch(ignoreBestEffortFailure);
     reset();
@@ -340,7 +316,6 @@ export function useAdminSignIn() {
     email,
     busy,
     progress,
-    resetBusy,
     pendingEmail: pendingUser?.email ?? email,
     resendAfterSeconds,
     continueAfterEmailVerification,
@@ -350,6 +325,5 @@ export function useAdminSignIn() {
     verifyCode,
     changeTemporaryPassword,
     cancel,
-    requestPasswordReset,
   };
 }
