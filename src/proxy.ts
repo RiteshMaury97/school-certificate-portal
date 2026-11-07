@@ -136,7 +136,16 @@ function originResponse(request: NextRequest, production: boolean): NextResponse
   if (isLoggedOutSessionCheck(request) || isSafeReadWithoutOrigin(request, origin)) return null;
   // Safe reads without Origin and logged-out session checks need no CORS
   // decision, even when the deployment origin is misconfigured.
-  const expectedOrigin = getAllowedOrigins();
+  let expectedOrigin: string[];
+  try {
+    expectedOrigin = getAllowedOrigins();
+  } catch (error) {
+    console.error("[proxy origin configuration]", error instanceof Error ? error.message : error);
+    return NextResponse.json(
+      { error: "The server is not configured correctly. Contact the site owner." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   if (origin && !isAllowedRequestOrigin(origin, expectedOrigin, !production)) {
     return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403 });
   }

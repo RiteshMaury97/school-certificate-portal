@@ -144,7 +144,9 @@ async function importRows(file: File): Promise<SourceRow[]> {
 
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await file.arrayBuffer());
-  const worksheet = workbook.getWorksheet("Student Data") ?? workbook.worksheets[0];
+  const namedWorksheet = workbook.getWorksheet("Student Data");
+  const worksheet =
+    workbook.worksheets.find((candidate) => candidate === namedWorksheet) ?? workbook.worksheets[0];
   if (!worksheet) throw new Error("The Excel workbook does not contain a worksheet.");
 
   const rows: SourceRow[] = [];
