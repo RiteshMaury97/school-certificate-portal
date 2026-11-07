@@ -25,7 +25,6 @@ const serverEnvironmentFieldsSchema = z
     FIREBASE_SERVICE_ACCOUNT_BASE64: optionalText,
     FIREBASE_CLIENT_EMAIL: optionalText,
     FIREBASE_PRIVATE_KEY: optionalText,
-    NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY: optionalText,
     APP_CHECK_ENFORCE: optionalText,
     R2_ACCOUNT_ID: optionalText,
     R2_ACCESS_KEY_ID: optionalText,
@@ -71,11 +70,11 @@ const serverEnvironmentFieldsSchema = z
     SEED_SESSIONS: optionalText,
     SEED_CERTIFICATE_TYPES: optionalText,
   })
-  .loose()
-;
+  .loose();
 export type ServerEnvironment = z.infer<typeof serverEnvironmentFieldsSchema>;
 
-const serverEnvironmentSchema = serverEnvironmentFieldsSchema.superRefine(validateEnvironmentFields);
+const serverEnvironmentSchema =
+  serverEnvironmentFieldsSchema.superRefine(validateEnvironmentFields);
 
 export type ServerEnvironmentResult = {
   valid: boolean;
@@ -91,11 +90,23 @@ export function validateServerEnvironment(
   const parsed = serverEnvironmentSchema.safeParse(source);
   const deployment = source.VERCEL_ENV ?? source.NODE_ENV ?? "development";
   if (parsed.success) {
-    const requiredNames = deployment === "production"
-      ? [source.SITE_URL ? "SITE_URL" : source.APP_ORIGIN ? "APP_ORIGIN" : source.VERCEL_PROJECT_PRODUCTION_URL ? "VERCEL_PROJECT_PRODUCTION_URL" : "VERCEL_URL", "FIREBASE_PROJECT_ID", "R2_BUCKET", "CRON_SECRET"]
-      : deployment === "preview"
-        ? ["FIREBASE_PROJECT_ID", "R2_BUCKET", "GMAIL_USER", "GMAIL_APP_PASSWORD"]
-        : [];
+    const requiredNames =
+      deployment === "production"
+        ? [
+            source.SITE_URL
+              ? "SITE_URL"
+              : source.APP_ORIGIN
+                ? "APP_ORIGIN"
+                : source.VERCEL_PROJECT_PRODUCTION_URL
+                  ? "VERCEL_PROJECT_PRODUCTION_URL"
+                  : "VERCEL_URL",
+            "FIREBASE_PROJECT_ID",
+            "R2_BUCKET",
+            "CRON_SECRET",
+          ]
+        : deployment === "preview"
+          ? ["FIREBASE_PROJECT_ID", "R2_BUCKET", "GMAIL_USER", "GMAIL_APP_PASSWORD"]
+          : [];
     return {
       valid: true,
       deployment,
@@ -110,7 +121,9 @@ export function validateServerEnvironment(
     name: String(entry.path[0] ?? "environment"),
     message: entry.message,
   }));
-  const unique = [...new Map(issues.map((entry) => [`${entry.name}:${entry.message}`, entry])).values()];
+  const unique = [
+    ...new Map(issues.map((entry) => [`${entry.name}:${entry.message}`, entry])).values(),
+  ];
   return {
     valid: false,
     deployment,
@@ -119,7 +132,11 @@ export function validateServerEnvironment(
       passed: false,
       message: entry.message,
     })),
-    missing: [...new Set(issues.filter((entry) => /required/i.test(entry.message)).map((entry) => entry.name))],
+    missing: [
+      ...new Set(
+        issues.filter((entry) => /required/i.test(entry.message)).map((entry) => entry.name),
+      ),
+    ],
     errors: unique.map((entry) => `${entry.name}: ${entry.message}`),
   };
 }

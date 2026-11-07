@@ -360,12 +360,12 @@ export async function verifyRequestAppCheck(request: NextRequest): Promise<void>
     if (process.env.APP_CHECK_ENFORCE === "false") return;
     if (
       process.env.APP_CHECK_ENFORCE !== "true" &&
-      !process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY
+        !process.env.TURNSTILE_SITE_KEY
     ) {
       return;
     }
   }
-  assertEnvironmentFor("App Check", ["APP_CHECK_ENFORCE", "NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY"]);
+  assertEnvironmentFor("App Check", ["APP_CHECK_ENFORCE", "TURNSTILE_SITE_KEY"]);
   const token = request.headers.get("x-firebase-appcheck") ?? "";
   if (!token) throw new Error("APP_CHECK");
   try {
@@ -542,8 +542,14 @@ export function apiError(error: unknown): NextResponse {
     return response;
   }
   const responses = new Map<string, { error: string; status: number }>([
-    ["Security scan unavailable, try again", { error: "Security scan unavailable, try again", status: 503 }],
-    ["Malware detected; upload blocked", { error: "Malware detected; upload blocked", status: 422 }],
+    [
+      "Security scan unavailable, try again",
+      { error: "Security scan unavailable, try again", status: 503 },
+    ],
+    [
+      "Malware detected; upload blocked",
+      { error: "Malware detected; upload blocked", status: 422 },
+    ],
     ["File failed security checks", { error: "File failed security checks", status: 422 }],
     [
       "REAUTH_REQUIRED",
@@ -589,9 +595,5 @@ export function apiError(error: unknown): NextResponse {
 }
 export function sameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
-  return isAllowedRequestOrigin(
-    origin,
-    getAllowedOrigins(),
-    process.env.NODE_ENV !== "production",
-  );
+  return isAllowedRequestOrigin(origin, getAllowedOrigins(), process.env.NODE_ENV !== "production");
 }

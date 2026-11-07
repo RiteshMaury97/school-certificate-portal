@@ -14,7 +14,6 @@ const allowedHostRoots = [
   "googleapis.com",
   "gstatic.com",
   "googleusercontent.com",
-  "recaptcha.net",
   "firebaseapp.com",
   "firebaseio.com",
   "web.app",

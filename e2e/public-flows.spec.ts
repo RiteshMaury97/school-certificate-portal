@@ -45,13 +45,6 @@ function isChallengeAnswer(
 
 async function mockTurnstile(page: Page) {
   await page.addInitScript(() => {
-    Object.defineProperty(window, "grecaptcha", {
-      configurable: true,
-      value: {
-        ready: (callback: () => void) => { callback(); },
-        execute: () => Promise.resolve("e2e-recaptcha-token"),
-      },
-    });
     Object.defineProperty(window, "turnstile", {
       configurable: true,
       value: {
@@ -63,6 +56,7 @@ async function mockTurnstile(page: Page) {
           return "e2e-widget";
         },
         reset: () => { return; },
+        execute: () => { return; },
         remove: () => { return; },
       },
     });
@@ -76,8 +70,8 @@ async function fillSearch(page: Page) {
   await page.getByRole("checkbox").check();
 }
 test.beforeEach(async ({ page }) => {
-  await page.route("**/firebaseappcheck.googleapis.com/**", (route) =>
-    route.fulfill({ json: { token: "e2e-app-check-token", ttl: "3600s" } }),
+  await page.route("**/api/app-check/token", (route) =>
+    route.fulfill({ json: { token: "e2e-app-check-token", expireTimeMillis: Date.now() + 3_600_000 } }),
   );
   await page.route("**/api/public/site-settings", (route) =>
     route.fulfill({

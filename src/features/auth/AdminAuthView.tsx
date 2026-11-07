@@ -5,7 +5,6 @@ import { useEffect } from "react";
 
 import ErrorState from "@/components/feedback/ErrorState";
 import PageLoader from "@/components/feedback/PageLoader";
-import { initializeAppCheckEarly } from "@/lib/firebase-client";
 
 import { AdminSessionProvider, useAdminSession } from "./admin-session";
 import BrandPanel from "./BrandPanel";
@@ -17,10 +16,6 @@ function AdminAuthContent() {
   const { state, retry } = useAdminSession();
   const router = useRouter();
   const flow = useAdminSignIn();
-
-  useEffect(() => {
-    void initializeAppCheckEarly();
-  }, []);
 
   useEffect(() => {
     if (state.status === "authenticated") router.replace("/admin");

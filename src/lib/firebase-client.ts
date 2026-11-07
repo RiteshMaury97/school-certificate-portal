@@ -1,11 +1,16 @@
 "use client";
 
 import { getApps, initializeApp } from "firebase/app";
-import { getToken, initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from "firebase/app-check";
+import {
+  CustomProvider,
+  getToken,
+  initializeAppCheck,
+  type AppCheck,
+} from "firebase/app-check";
 import { getAuth } from "firebase/auth";
 
-import { applyCspNonce } from "./csp";
 import { AppCheckTokenError, appCheckFailureCode } from "./app-check-errors";
+import { applyCspNonce } from "./csp";
 
 function requiredFirebaseConfig(value: string | undefined, name: string): string {
   const normalized = value?.trim();
@@ -31,7 +36,7 @@ const isProduction = process.env.NODE_ENV === "production";
 type AppCheckRuntime = {
   instance: AppCheck | null;
   initialization: Promise<AppCheck> | null;
-  recaptchaScript: Promise<void> | null;
+  turnstileScript: Promise<void> | null;
   cachedToken: string;
   tokenExpiresAt: number;
   tokenRequest: Promise<string> | null;
@@ -40,7 +45,7 @@ type AppCheckGlobal = typeof globalThis & { __sisPortalAppCheckRuntime?: AppChec
 const appCheckRuntime = ((globalThis as AppCheckGlobal).__sisPortalAppCheckRuntime ??= {
   instance: null,
   initialization: null,
-  recaptchaScript: null,
+  turnstileScript: null,
   cachedToken: "",
   tokenExpiresAt: 0,
   tokenRequest: null,
@@ -52,8 +57,12 @@ function tokenExpiry(token: string): number {
     if (!payload) return Date.now() + 5 * 60_000;
     const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
     const claims: unknown = JSON.parse(atob(normalized));
-    return typeof claims === "object" && claims !== null && "exp" in claims &&
-      typeof claims.exp === "number" ? claims.exp * 1000 : Date.now() + 5 * 60_000;
+    return typeof claims === "object" &&
+      claims !== null &&
+      "exp" in claims &&
+      typeof claims.exp === "number"
+      ? claims.exp * 1000
+      : Date.now() + 5 * 60_000;
   } catch {
     return Date.now() + 5 * 60_000;
   }
@@ -61,67 +70,156 @@ function tokenExpiry(token: string): number {
 
 /** Development may skip App Check only when the server uses the same opt-out. */
 function appCheckOptional(): boolean {
-  return !isProduction &&
-    (process.env.APP_CHECK_ENFORCE === "false" || !process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY);
+  return (
+    !isProduction &&
+    (process.env.APP_CHECK_ENFORCE === "false" || !process.env.TURNSTILE_SITE_KEY)
+  );
 }
 
-function loadRecaptchaScript(): Promise<void> {
+function loadTurnstileScript(): Promise<void> {
   if (typeof window === "undefined")
     throw new Error("Firebase App Check is only available in the browser.");
-  if (Reflect.has(window, "grecaptcha")) return Promise.resolve();
-  appCheckRuntime.recaptchaScript ??= new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://www.google.com/recaptcha/api.js";
-    script.async = true;
-    applyCspNonce(script);
+  if (window.turnstile) return Promise.resolve();
+  appCheckRuntime.turnstileScript ??= new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>("script#cloudflare-turnstile-script");
+    const script = existing ?? document.createElement("script");
+    if (!existing) {
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.id = "cloudflare-turnstile-script";
+      script.async = true;
+      applyCspNonce(script);
+    }
     if (!script.nonce) {
-      reject(new Error("reCAPTCHA script nonce is unavailable."));
+      reject(new Error("Turnstile script nonce is unavailable."));
       return;
     }
-    script.addEventListener("load", () => {
-      if (Reflect.has(window, "grecaptcha")) resolve();
-      else reject(new Error("reCAPTCHA did not initialize."));
-    }, { once: true });
-    script.addEventListener("error", () => reject(new Error("reCAPTCHA could not load.")), {
-      once: true,
-    });
-    document.head.appendChild(script);
+    script.addEventListener(
+      "load",
+      () => {
+        if (window.turnstile) resolve();
+        else reject(new Error("Turnstile did not initialize."));
+      },
+      { once: true },
+    );
+    script.addEventListener(
+      "error",
+      () => {
+        reject(new Error("Turnstile could not load."));
+      },
+      { once: true },
+    );
+    if (!existing) document.head.appendChild(script);
   }).catch((cause: unknown) => {
-    appCheckRuntime.recaptchaScript = null;
+    appCheckRuntime.turnstileScript = null;
     throw cause;
   });
-  return appCheckRuntime.recaptchaScript;
+  return appCheckRuntime.turnstileScript;
+}
+
+function requestTurnstileProof(): Promise<string> {
+  const siteKey = process.env.TURNSTILE_SITE_KEY;
+  if (!siteKey) return Promise.reject(new Error("Turnstile is not configured."));
+  return loadTurnstileScript().then(
+    () =>
+      new Promise<string>((resolve, reject) => {
+        const host = document.createElement("div");
+        host.setAttribute("aria-hidden", "true");
+        host.style.position = "fixed";
+        host.style.left = "-10000px";
+        document.body.appendChild(host);
+        let widgetId = "";
+        let settled = false;
+        const finish = (token?: string) => {
+          if (settled) return;
+          settled = true;
+          window.turnstile?.remove(widgetId);
+          host.remove();
+          if (token) resolve(token);
+          else reject(new Error("Turnstile verification failed."));
+        };
+        try {
+          const turnstile = window.turnstile;
+          if (!turnstile) throw new Error("Turnstile did not initialize.");
+          widgetId = turnstile.render(host, {
+            sitekey: siteKey,
+            size: "invisible",
+            execution: "execute",
+            callback: (token) => {
+              finish(token);
+            },
+            "expired-callback": () => {
+              finish();
+            },
+            "error-callback": () => {
+              finish();
+            },
+          });
+          turnstile.execute(widgetId);
+          window.setTimeout(() => {
+            finish();
+          }, 120_000);
+        } catch {
+          finish();
+        }
+      }),
+  );
+}
+
+async function fetchCustomAppCheckToken(): Promise<{ token: string; expireTimeMillis: number }> {
+  const turnstileToken = await requestTurnstileProof();
+  const response = await fetch("/api/app-check/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ turnstileToken }),
+    cache: "no-store",
+  });
+  const payload: unknown = await response.json().catch(() => null);
+  if (
+    !response.ok ||
+    typeof payload !== "object" ||
+    payload === null ||
+    !("token" in payload) ||
+    typeof payload.token !== "string" ||
+    !("expireTimeMillis" in payload) ||
+    typeof payload.expireTimeMillis !== "number"
+  ) {
+    throw new AppCheckTokenError("appCheck/turnstile-error");
+  }
+  return { token: payload.token, expireTimeMillis: payload.expireTimeMillis };
 }
 
 function appCheck(): Promise<AppCheck> {
   if (typeof window === "undefined")
     throw new Error("Firebase App Check is only available in the browser.");
-  appCheckRuntime.initialization ??= loadRecaptchaScript().then(() => {
-    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY;
-    if (!siteKey) throw new Error("Firebase App Check site key is not configured.");
-    appCheckRuntime.instance = initializeAppCheck(firebaseApp, {
-      provider: new ReCaptchaV3Provider(siteKey),
-      isTokenAutoRefreshEnabled: true,
+  appCheckRuntime.initialization ??= loadTurnstileScript()
+    .then(() => {
+      appCheckRuntime.instance = initializeAppCheck(firebaseApp, {
+        provider: new CustomProvider({ getToken: fetchCustomAppCheckToken }),
+        isTokenAutoRefreshEnabled: true,
+      });
+      return appCheckRuntime.instance;
+    })
+    .catch((cause: unknown) => {
+      appCheckRuntime.initialization = null;
+      throw cause;
     });
-    return appCheckRuntime.instance;
-  }).catch((cause: unknown) => {
-    appCheckRuntime.initialization = null;
-    throw cause;
-  });
   return appCheckRuntime.initialization;
 }
 
 async function readAppCheckToken(): Promise<string> {
   if (appCheckRuntime.cachedToken && appCheckRuntime.tokenExpiresAt > Date.now() + 60_000)
     return appCheckRuntime.cachedToken;
-  appCheckRuntime.tokenRequest ??= appCheck().then((instance) => getToken(instance, false))
+  appCheckRuntime.tokenRequest ??= appCheck()
+    .then((instance) => getToken(instance, false))
     .then((result) => {
       if (!result.token) throw new Error("App Check token unavailable.");
       appCheckRuntime.cachedToken = result.token;
       appCheckRuntime.tokenExpiresAt = tokenExpiry(result.token);
       return appCheckRuntime.cachedToken;
     })
-    .finally(() => { appCheckRuntime.tokenRequest = null; });
+    .finally(() => {
+      appCheckRuntime.tokenRequest = null;
+    });
   return appCheckRuntime.tokenRequest;
 }
 
@@ -133,14 +231,5 @@ export async function appCheckHeaders(): Promise<Record<string, string>> {
     const code = appCheckFailureCode(cause) ?? "appCheck/token-unavailable";
     console.error(code);
     throw new AppCheckTokenError(code);
-  }
-}
-
-export async function initializeAppCheckEarly(): Promise<void> {
-  if (appCheckOptional()) return;
-  try {
-    await appCheckHeaders();
-  } catch {
-    // Sign-in reports the actionable error when the user tries to continue.
   }
 }

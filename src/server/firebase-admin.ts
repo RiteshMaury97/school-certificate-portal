@@ -118,6 +118,8 @@ export const adminAuth = {
 export const adminAppCheck = {
   verifyToken: (...args: Parameters<FirebaseServices["adminAppCheck"]["verifyToken"]>) =>
     getFirebaseServices().adminAppCheck.verifyToken(...args),
+  createToken: (...args: Parameters<FirebaseServices["adminAppCheck"]["createToken"]>) =>
+    getFirebaseServices().adminAppCheck.createToken(...args),
 };
 
 export const db = {

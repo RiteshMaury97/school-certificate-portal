@@ -213,11 +213,11 @@ async function routeApi(route: Route, scenario: ResponsiveScenario) {
 export async function mockResponsiveApis(page: Page, scenario: ResponsiveScenario) {
   await page.unrouteAll({ behavior: "wait" });
   await page.route("**/api/**", (route) => routeApi(route, scenario));
-  await page.route("**/firebaseappcheck.googleapis.com/**", (route) =>
+  await page.route("**/api/app-check/token", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ token: "e2e-app-check-token", ttl: "3600s" }),
+      body: JSON.stringify({ token: "e2e-app-check-token", expireTimeMillis: Date.now() + 3_600_000 }),
     }),
   );
   await page.route("**/identitytoolkit.googleapis.com/**", (route) =>

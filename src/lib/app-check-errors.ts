@@ -5,7 +5,7 @@ const APP_CHECK_ERROR_CODES = new Set([
   "appCheck/initial-throttle",
   "appCheck/throttled",
   "appCheck/fetch-status-error",
-  "appCheck/recaptcha-error",
+  "appCheck/turnstile-error",
   "appCheck/token-unavailable",
   "appCheck/unknown-error",
 ]);
@@ -31,9 +31,8 @@ export function appCheckFailureCode(cause: unknown): string | null {
   const code = errorCode(cause);
   if (APP_CHECK_ERROR_CODES.has(code)) return code;
   if (code.startsWith("appCheck/")) return "appCheck/unknown-error";
-  if (/recaptcha|captcha/i.test(code)) return "appCheck/recaptcha-error";
-  if (cause instanceof Error && /recaptcha|captcha/i.test(cause.name))
-    return "appCheck/recaptcha-error";
+  if (/turnstile/i.test(code)) return "appCheck/turnstile-error";
+  if (cause instanceof Error && /turnstile/i.test(cause.name)) return "appCheck/turnstile-error";
   return null;
 }
 

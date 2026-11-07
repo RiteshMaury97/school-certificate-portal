@@ -12,7 +12,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { toast } from "@/components/ui/toast";
-import { appCheckFailureMessage, AppCheckTokenError, reportAppCheckFailure } from "@/lib/app-check-errors";
+import {
+  appCheckFailureMessage,
+  AppCheckTokenError,
+  reportAppCheckFailure,
+} from "@/lib/app-check-errors";
 import { appCheckHeaders, auth } from "@/lib/firebase-client";
 
 import { describeSignInError, errorCode, isBadCredentials, safeNextPath } from "./auth-errors";
@@ -44,11 +48,6 @@ async function requestJson(
     cache: "no-store",
   });
   return { response, data: (await response.json().catch(() => null)) as unknown };
-}
-
-async function verifyLoginCaptcha(token: string): Promise<void> {
-  const { response, data } = await requestJson("/api/admin/login-captcha", { token });
-  if (!response.ok) throw new Error(message(data) ?? "Complete the security check and try again.");
 }
 
 function parseChallenge(data: unknown): { challengeId: string; resendAfterSeconds: number } {
@@ -198,11 +197,10 @@ export function useAdminSignIn() {
       );
     throw new Error(describeSignInError(cause, "password"));
   };
-  const submitCredentials = (typedEmail: string, password: string, captchaToken: string) =>
+  const submitCredentials = (typedEmail: string, password: string) =>
     run(
       async () => {
         await appCheckHeaders();
-        await verifyLoginCaptcha(captchaToken);
         setEmail(typedEmail);
         setProgress("Checking your credentials and account status...");
         const [lockResult, authResult] = await Promise.allSettled([
@@ -219,10 +217,9 @@ export function useAdminSignIn() {
       "Sign in failed",
       "Checking your credentials and account status...",
     );
-  const signInWithGoogle = (captchaToken: string) =>
+  const signInWithGoogle = () =>
     run(async () => {
       await appCheckHeaders();
-      await verifyLoginCaptcha(captchaToken);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
       try {

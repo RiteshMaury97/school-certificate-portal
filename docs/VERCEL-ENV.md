@@ -8,12 +8,12 @@ In the tables, **Production / Preview / Development** say whether a value is req
 
 Firebase browser configuration is public by design. Variables prefixed with NEXT_PUBLIC_ are embedded in the client bundle at build time; remaining browser settings are explicitly mapped in next.config.ts. Values are public regardless of the variable names, and changing them in Vercel requires a new deployment.
 
-| Name                               | What it does                          | Production / Preview / Development                           | Visibility | Required?                          | How to obtain                                                  |
-| ---------------------------------- | ------------------------------------- | ------------------------------------------------------------ | ---------- | ---------------------------------- | -------------------------------------------------------------- |
-| `FIREBASE_API_KEY`     | Firebase Auth browser SDK project key | Required / Required / Optional until Firebase pages are used | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
-| `FIREBASE_AUTH_DOMAIN` | Firebase Auth redirect domain         | Required / Required / Optional                               | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
-| `FIREBASE_PROJECT_ID`  | Shared browser and Firebase Admin project identifier | Required / Required / Optional                      | Public and server-side | Required in Production and Preview | Firebase console → Project settings → General                  |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Browser Firebase app identifier | Required / Required / Optional | Public | Required in Production and Preview | Firebase Console: Project settings, General, Web app config |
+| Name                          | What it does                                         | Production / Preview / Development                           | Visibility             | Required?                          | How to obtain                                                  |
+| ----------------------------- | ---------------------------------------------------- | ------------------------------------------------------------ | ---------------------- | ---------------------------------- | -------------------------------------------------------------- |
+| `FIREBASE_API_KEY`            | Firebase Auth browser SDK project key                | Required / Required / Optional until Firebase pages are used | Public                 | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
+| `FIREBASE_AUTH_DOMAIN`        | Firebase Auth redirect domain                        | Required / Required / Optional                               | Public                 | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
+| `FIREBASE_PROJECT_ID`         | Shared browser and Firebase Admin project identifier | Required / Required / Optional                               | Public and server-side | Required in Production and Preview | Firebase console → Project settings → General                  |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Browser Firebase app identifier                      | Required / Required / Optional                               | Public                 | Required in Production and Preview | Firebase Console: Project settings, General, Web app config    |
 
 ## Firebase Admin
 
@@ -29,10 +29,9 @@ Use a dedicated service account with only the Firebase/Firestore permissions the
 
 Production always enforces Firebase App Check. `APP_CHECK_ENFORCE=false` only opts out in local development; it does not disable production enforcement.
 
-| Name                                | What it does                                        | Production / Preview / Development                                             | Visibility          | Required?                          | How to obtain                                                                  |
-| ----------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY` | Firebase App Check reCAPTCHA v3 site key | Required / Required / Optional | Public | Required in Production and Preview | Google reCAPTCHA admin and Firebase App Check registration |
-| `APP_CHECK_ENFORCE`                 | Development-only override for App Check enforcement | Ignored for enforcement / Ignored for enforcement / Optional `true` or `false` | Server-side setting | Optional                           | Set `false` only for local development without a configured App Check site key |
+| Name                | What it does                                        | Production / Preview / Development                                             | Visibility          | Required? | How to obtain                                                                  |
+| ------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------- | --------- | ------------------------------------------------------------------------------ |
+| `APP_CHECK_ENFORCE` | Development-only override for App Check enforcement | Ignored for enforcement / Ignored for enforcement / Optional `true` or `false` | Server-side setting | Optional  | Set `false` only for local development without a configured Turnstile site key |
 
 ## Cloudflare R2 (main and backup buckets)
 
@@ -48,10 +47,10 @@ Preview must use its own R2 credentials and certificate bucket. Production backu
 
 ## Turnstile
 
-| Name                             | What it does                             | Production / Preview / Development                               | Visibility | Required?                          | How to obtain                                                                  |
-| -------------------------------- | ---------------------------------------- | ---------------------------------------------------------------- | ---------- | ---------------------------------- | ------------------------------------------------------------------------------ |
-| `TURNSTILE_SITE_KEY` | Cloudflare Turnstile browser widget      | Required / Required / Optional (development has a test fallback) | Public     | Required in Production and Preview | Cloudflare dashboard → Turnstile → add a widget for the respective domains     |
-| `TURNSTILE_SECRET_KEY`           | Validates Turnstile tokens on the server | Required / Required / Optional                                   | Secret     | Required in Production and Preview | Cloudflare Turnstile widget settings; use Preview/test credentials for Preview |
+| Name                   | What it does                             | Production / Preview / Development                               | Visibility | Required?                          | How to obtain                                                                  |
+| ---------------------- | ---------------------------------------- | ---------------------------------------------------------------- | ---------- | ---------------------------------- | ------------------------------------------------------------------------------ |
+| `TURNSTILE_SITE_KEY`   | Cloudflare Turnstile browser widget      | Required / Required / Optional (development has a test fallback) | Public     | Required in Production and Preview | Cloudflare dashboard → Turnstile → add a widget for the respective domains     |
+| `TURNSTILE_SECRET_KEY` | Validates Turnstile tokens on the server | Required / Required / Optional                                   | Secret     | Required in Production and Preview | Cloudflare Turnstile widget settings; use Preview/test credentials for Preview |
 
 ## HMAC and encryption secrets
 
@@ -106,9 +105,9 @@ Keep encryption keys backed up securely. Losing a key can make the corresponding
 
 `` privacy/legal values are public and baked at build time; update them with a redeployment. The retention duration remains available in public settings and defaults to seven years.
 
-| Name                                 | What it does                                            | Production / Preview / Development                                  | Visibility          | Required? | How to obtain                                     |
-| ------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------- | ------------------- | --------- | ------------------------------------------------- |
-| `PRIVACY_POLICY_VERSION`             | Version recorded with data-rights requests and searches | Optional (default `2026-10`) / Optional / Optional                  | Server-side setting | Optional  | Set the current published policy version          |
+| Name                     | What it does                                            | Production / Preview / Development                                  | Visibility          | Required? | How to obtain                                     |
+| ------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------- | ------------------- | --------- | ------------------------------------------------- |
+| `PRIVACY_POLICY_VERSION` | Version recorded with data-rights requests and searches | Optional (default `2026-10`) / Optional / Optional                  | Server-side setting | Optional  | Set the current published policy version          |
 | `DATA_HOSTING_REGION`    | Region shown in the privacy notice                      | Optional but set to the actual hosting region / Optional / Optional | Public              | Optional  | Set a truthful region label, e.g. `Mumbai, India` |
 | `RETENTION_YEARS`        | Fallback retention duration shown in the privacy notice | Optional (default 7) / Optional / Optional                          | Public              | Optional  | Set the approved retention period in years        |
 | `PRIVACY_POLICY_VERSION` | Version label shown on the privacy page                 | Optional (default `2026-10`) / Optional / Optional                  | Public              | Optional  | Set the published policy version                  |
@@ -116,15 +115,15 @@ Keep encryption keys backed up securely. Losing a key can make the corresponding
 
 ## Sentry
 
-| Name                     | What it does                 | Production / Preview / Development | Visibility                | Required? | How to obtain                                                   |
-| ------------------------ | ---------------------------- | ---------------------------------- | ------------------------- | --------- | --------------------------------------------------------------- |
-| `SENTRY_DSN`             | Server-side error reporting  | Optional / Optional / Optional     | Secret/limited-access DSN | Optional  | Sentry project settings → Client Keys (DSN)                     |
+| Name                 | What it does                 | Production / Preview / Development | Visibility                | Required? | How to obtain                                                   |
+| -------------------- | ---------------------------- | ---------------------------------- | ------------------------- | --------- | --------------------------------------------------------------- |
+| `SENTRY_DSN`         | Server-side error reporting  | Optional / Optional / Optional     | Secret/limited-access DSN | Optional  | Sentry project settings → Client Keys (DSN)                     |
 | `BROWSER_SENTRY_DSN` | Browser-side error reporting | Optional / Optional / Optional     | Public DSN                | Optional  | Same Sentry project; browser events are scrubbed before sending |
 
 ## Plausible analytics
 
-| Name                               | What it does                                           | Production / Preview / Development                              | Visibility | Required? | How to obtain                                                     |
-| ---------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------- | ---------- | --------- | ----------------------------------------------------------------- |
+| Name                   | What it does                                           | Production / Preview / Development                              | Visibility | Required? | How to obtain                                                     |
+| ---------------------- | ------------------------------------------------------ | --------------------------------------------------------------- | ---------- | --------- | ----------------------------------------------------------------- |
 | `PLAUSIBLE_DOMAIN`     | Site domain sent to Plausible for aggregate page views | Optional / Optional / Optional                                  | Public     | Optional  | Configure the domain in the Plausible site settings               |
 | `PLAUSIBLE_SCRIPT_URL` | Script endpoint used by the site                       | Optional (defaults to Plausible's script) / Optional / Optional | Public     | Optional  | Use the official script URL or your approved self-hosted endpoint |
 
@@ -133,7 +132,7 @@ Keep encryption keys backed up securely. Losing a key can make the corresponding
 | Name                         | What it does                                                                                                                    | Production / Preview / Development                                                               | Visibility          | Required?                          | How to obtain                                                          |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------- | ---------------------------------- | ---------------------------------------------------------------------- |
 | `SITE_URL`                   | Canonical origin for metadata, links, sitemaps, email and security policy                                                       | Required `https://` origin / Ignored in Preview / Local development uses `http://localhost:3000` | Server-side URL     | Required in Production             | Use only the origin, with no path, query, or trailing slash            |
-| `APP_ORIGIN`                 | Deprecated fallback used only when `SITE_URL` is unset                                                                           | Optional legacy alias / Must be unset / Optional local origin                                    | Server-side URL     | Deprecated; remove after migration | If `SITE_URL` is set, it takes precedence and `APP_ORIGIN` is ignored    |
+| `APP_ORIGIN`                 | Deprecated fallback used only when `SITE_URL` is unset                                                                          | Optional legacy alias / Must be unset / Optional local origin                                    | Server-side URL     | Deprecated; remove after migration | If `SITE_URL` is set, it takes precedence and `APP_ORIGIN` is ignored  |
 | `ADDITIONAL_ALLOWED_ORIGINS` | Extra HTTPS origins accepted by same-origin and CSRF checks during a domain migration                                           | Optional comma-separated HTTPS origins / Optional / Optional                                     | Server-side URL     | Optional                           | Add the old origin temporarily; no paths, queries, or trailing slashes |
 | `SECURITY_CONTACT_EMAIL`     | Optional fallback mailbox for `/.well-known/security.txt` when no security or school email is configured in `siteSettings/main` | Optional / Optional / Optional                                                                   | Server-side setting | Optional                           | Set a security-reporting mailbox; site settings take precedence        |
 

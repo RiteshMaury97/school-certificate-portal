@@ -25,13 +25,8 @@ describe("proxy origin checks", () => {
     expect(csp).toMatch(/style-src-elem 'self' 'nonce-[^']+' https:\/\/fonts\.googleapis\.com/);
     expect(csp).toContain("style-src-attr 'unsafe-inline'");
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
-    expect(csp).toMatch(/script-src[^;]*https:\/\/www\.google\.com\/recaptcha\//);
-    expect(csp).toMatch(/script-src[^;]*https:\/\/www\.gstatic\.com\/recaptcha\//);
-    expect(csp).toMatch(/connect-src[^;]*https:\/\/www\.google\.com\/recaptcha\//);
-    expect(csp).toMatch(/connect-src[^;]*https:\/\/firebaseappcheck\.googleapis\.com/);
-    expect(csp).toMatch(/connect-src[^;]*https:\/\/content-firebaseappcheck\.googleapis\.com/);
-    expect(csp).toMatch(/frame-src[^;]*https:\/\/www\.google\.com\/recaptcha\//);
-    expect(csp).toMatch(/frame-src[^;]*https:\/\/recaptcha\.google\.com/);
+    expect(csp).toContain("https://challenges.cloudflare.com");
+    expect(csp).not.toContain("firebaseappcheck.googleapis.com");
     expect(csp).not.toMatch(/script-src[^;]*\*/);
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-eval'/);
   });

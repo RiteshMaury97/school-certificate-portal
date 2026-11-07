@@ -39,6 +39,8 @@ export default function LanguageButton() {
       <select
         id="language-toggle"
         aria-label={t("nav.language")}
+        required
+        aria-required="true"
         value={locale}
         onChange={(event) => {
           const next = event.currentTarget.value;

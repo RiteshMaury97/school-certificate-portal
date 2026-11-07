@@ -10,8 +10,7 @@ const validProductionEnvironment = {
   FIREBASE_API_KEY: "public-api-key",
   FIREBASE_AUTH_DOMAIN: "school.firebaseapp.com",
   FIREBASE_PROJECT_ID: "school-prod",
-  FIREBASE_APP_ID: "1:123:web:abc",
-  RECAPTCHA_V3_SITE_KEY: "recaptcha-site-key",
+  NEXT_PUBLIC_FIREBASE_APP_ID: "1:123:web:abc",
   FIREBASE_SERVICE_ACCOUNT_BASE64: Buffer.from(
     JSON.stringify({ private_key: "private", client_email: "firebase@example.test" }),
   ).toString("base64"),
@@ -186,4 +185,3 @@ describe("scoped environment assertions", () => {
     }).toThrow(/FIREBASE_SERVICE_ACCOUNT_BASE64/);
   });
 });
-

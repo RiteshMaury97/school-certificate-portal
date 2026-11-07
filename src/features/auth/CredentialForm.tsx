@@ -1,6 +1,6 @@
 import { Eye, EyeOff } from "lucide-react";
 
-import type { ReactNode, SyntheticEvent } from "react";
+import type { SyntheticEvent } from "react";
 
 type Props = {
   busy: boolean;
@@ -14,9 +14,6 @@ type Props = {
   onPasswordChange: (password: string) => void;
   onPasswordValidityChange: (valid: boolean) => void;
   onTogglePassword: () => void;
-  captcha: ReactNode;
-  captchaRequired: boolean;
-  captchaReady: boolean;
   onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void;
   onGoogle: () => void;
 };
@@ -38,9 +35,6 @@ export default function CredentialForm({
   onPasswordChange,
   onPasswordValidityChange,
   onTogglePassword,
-  captcha,
-  captchaRequired,
-  captchaReady,
   onSubmit,
   onGoogle,
 }: Props) {
@@ -113,10 +107,9 @@ export default function CredentialForm({
             )}
           </button>
         </div>
-        {captcha}
         <button
           type="submit"
-          disabled={busy || (captchaRequired && !captchaReady)}
+          disabled={busy}
           aria-busy={busy}
           className={primary}
         >
@@ -131,7 +124,7 @@ export default function CredentialForm({
       <button
         type="button"
         onClick={onGoogle}
-        disabled={busy || (captchaRequired && !captchaReady)}
+        disabled={busy}
         aria-busy={busy}
         className="flex min-h-11 w-full items-center justify-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 font-semibold text-[var(--text)] outline-none transition hover:bg-[var(--surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
       >

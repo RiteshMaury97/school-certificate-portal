@@ -44,14 +44,13 @@ Use separate Firebase projects for Production and Preview/staging.
 
 ### App Check setup
 
-Production server routes enforce Firebase App Check. Complete this console checklist with the matching Production Firebase and reCAPTCHA projects; never disable server enforcement or use a debug token in Production.
+Production server routes enforce Firebase App Check. The web client obtains Firebase App Check tokens from the server after Cloudflare Turnstile verification; never disable server enforcement or use a debug token in Production.
 
-- [ ] In Google reCAPTCHA Admin, confirm the key used for `NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY` is a **reCAPTCHA v3** key (not v2 or Enterprise) and lists `tc.sischool.in`, `school-certificate-portal.vercel.app`, and `localhost` for development.
-- [ ] In Firebase Console > App Check > Apps, select the web app whose app ID matches `NEXT_PUBLIC_FIREBASE_APP_ID`, choose reCAPTCHA v3, and enter the secret key from the same key pair as the site key. A secret from another key pair causes token exchange failures.
-- [ ] In Google Cloud Console for the same Firebase project, open **APIs & Services** and enable **Firebase App Check API**.
-- [ ] In Google Cloud Console > APIs & Services > Credentials, confirm the browser API key HTTP referrer restrictions include `https://tc.sischool.in/*` and `https://school-certificate-portal.vercel.app/*`; its API restrictions must allow Firebase App Check API and the Firebase Authentication APIs this app uses.
+- [ ] In Cloudflare Turnstile, use the same site/secret key pair for the Production widget; allow `tc.sischool.in` and `school-certificate-portal.vercel.app`, plus `localhost` in development. Set `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in the matching Vercel environments.
+- [ ] In Firebase Console > App Check > Apps, confirm the web app whose app ID matches `NEXT_PUBLIC_FIREBASE_APP_ID` is registered. The app server verifies Turnstile proof before minting each Firebase App Check token; keep App Check enforcement enabled for the protected resources.
+- [ ] Ensure the Firebase Admin service account can mint App Check tokens in the same Firebase project; `FIREBASE_PROJECT_ID` and `NEXT_PUBLIC_FIREBASE_APP_ID` must belong to that project.
 - [ ] In Firebase Authentication > Settings > Authorized domains, confirm `tc.sischool.in` is listed.
-- [ ] After changing any `NEXT_PUBLIC_*` value, redeploy so the build receives it. To clear a browser App Check 24-hour throttle after correcting the configuration, use DevTools > Application > Storage > Clear site data, or test in a new Incognito window.
+- [ ] After changing any public environment value, redeploy. Clear site data or test in a new Incognito window if the browser still has stale app code.
 
 ### Google sign-in choice: popup only
 

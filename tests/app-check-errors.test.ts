@@ -22,15 +22,14 @@ describe("App Check failure messages", () => {
     expect(appCheckFailureMessage(raw)).not.toContain("key");
   });
 
-  it.each(["appCheck/recaptcha-error", "auth/captcha-check-failed", "recaptcha/error"])(
-    "maps reCAPTCHA error %s to the fixed safe message",
-    (code) => {
-      const raw = Object.assign(new Error("Raw reCAPTCHA host and key details"), { code });
+  it("maps Turnstile provider failures to the fixed safe message", () => {
+    const cause = Object.assign(new Error("Raw Turnstile hostname and key details"), {
+      code: "appCheck/turnstile-error",
+    });
 
-      expect(appCheckFailureCode(raw)).toBe("appCheck/recaptcha-error");
-      expect(appCheckFailureMessage(raw)).toBe(APP_CHECK_FAILURE_MESSAGE);
-      expect(appCheckFailureMessage(raw)).not.toContain("host");
-      expect(appCheckFailureMessage(raw)).not.toContain("key");
-    },
-  );
+    expect(appCheckFailureCode(cause)).toBe("appCheck/turnstile-error");
+    expect(appCheckFailureMessage(cause)).toBe(APP_CHECK_FAILURE_MESSAGE);
+    expect(appCheckFailureMessage(cause)).not.toContain("hostname");
+    expect(appCheckFailureMessage(cause)).not.toContain("key");
+  });
 });

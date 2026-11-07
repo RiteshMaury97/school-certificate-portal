@@ -17,7 +17,6 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
 }));
 vi.mock("@/lib/firebase-client", () => ({
-  initializeAppCheckEarly: vi.fn(),
   auth: {},
 }));
 

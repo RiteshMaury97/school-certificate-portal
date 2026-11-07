@@ -4,16 +4,24 @@ test("superadmin can upload a certificate and approve a pending record", async (
 }) => {
   let published = false;
   await page.addInitScript(() => {
-    Object.defineProperty(window, "grecaptcha", {
+    Object.defineProperty(window, "turnstile", {
       configurable: true,
       value: {
-        ready: (callback: () => void) => { callback(); },
-        execute: () => Promise.resolve("e2e-recaptcha-token"),
+        render: (
+          _container: HTMLElement,
+          options: { callback: (token: string) => void },
+        ) => {
+          options.callback("e2e-turnstile-token");
+          return "e2e-turnstile-widget";
+        },
+        execute: () => { return; },
+        reset: () => { return; },
+        remove: () => { return; },
       },
     });
   });
-  await page.route("**/firebaseappcheck.googleapis.com/**", (route) =>
-    route.fulfill({ json: { token: "e2e-app-check-token", ttl: "3600s" } }),
+  await page.route("**/api/app-check/token", (route) =>
+    route.fulfill({ json: { token: "e2e-app-check-token", expireTimeMillis: Date.now() + 3_600_000 } }),
   );
   const student = {
     id: "student-1234567890123456",

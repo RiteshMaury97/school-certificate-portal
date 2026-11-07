@@ -5,14 +5,32 @@ import type { ServerEnvironment } from "./env";
 type AddIssue = (name: string, message: string) => void;
 
 export const PRODUCTION_REQUIRED_ENV_NAMES = [
-  "FIREBASE_API_KEY", "FIREBASE_AUTH_DOMAIN", "FIREBASE_PROJECT_ID",
-  "NEXT_PUBLIC_FIREBASE_APP_ID", "NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY",
-  "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "BACKUP_R2_BUCKET",
-  "TURNSTILE_SECRET_KEY", "TURNSTILE_SITE_KEY", "SEARCH_HMAC_SECRET", "AUDIT_LOG_HMAC_SECRET",
-  "CERTIFICATE_ACCESS_TOKEN_SECRET", "CERTIFICATE_NUMBER_HMAC_SECRET", "DISAMBIGUATION_HMAC_SECRET",
-  "DISAMBIGUATION_CHALLENGE_SECRET", "STUDENT_PII_ENCRYPTION_KEY", "CERTIFICATE_NUMBER_ENCRYPTION_KEY",
-  "EXPORT_ENCRYPTION_KEY", "OTP_HMAC_SECRET", "GMAIL_USER", "GMAIL_APP_PASSWORD", "CRON_SECRET",
-  "CLAMD_HOST", "MALWARE_SCAN_MODE",
+  "FIREBASE_API_KEY",
+  "FIREBASE_AUTH_DOMAIN",
+  "FIREBASE_PROJECT_ID",
+  "NEXT_PUBLIC_FIREBASE_APP_ID",
+  "R2_ACCOUNT_ID",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_BUCKET",
+  "BACKUP_R2_BUCKET",
+  "TURNSTILE_SECRET_KEY",
+  "TURNSTILE_SITE_KEY",
+  "SEARCH_HMAC_SECRET",
+  "AUDIT_LOG_HMAC_SECRET",
+  "CERTIFICATE_ACCESS_TOKEN_SECRET",
+  "CERTIFICATE_NUMBER_HMAC_SECRET",
+  "DISAMBIGUATION_HMAC_SECRET",
+  "DISAMBIGUATION_CHALLENGE_SECRET",
+  "STUDENT_PII_ENCRYPTION_KEY",
+  "CERTIFICATE_NUMBER_ENCRYPTION_KEY",
+  "EXPORT_ENCRYPTION_KEY",
+  "OTP_HMAC_SECRET",
+  "GMAIL_USER",
+  "GMAIL_APP_PASSWORD",
+  "CRON_SECRET",
+  "CLAMD_HOST",
+  "MALWARE_SCAN_MODE",
 ] as const;
 
 function requireNames(env: ServerEnvironment, issue: AddIssue, names: readonly string[]) {
@@ -21,14 +39,23 @@ function requireNames(env: ServerEnvironment, issue: AddIssue, names: readonly s
 
 function validateSecrets(env: ServerEnvironment, issue: AddIssue) {
   const secretNames = [
-    "SEARCH_HMAC_SECRET", "AUDIT_LOG_HMAC_SECRET", "CERTIFICATE_ACCESS_TOKEN_SECRET",
-    "CERTIFICATE_NUMBER_HMAC_SECRET", "DISAMBIGUATION_HMAC_SECRET",
-    "DISAMBIGUATION_CHALLENGE_SECRET", "OTP_HMAC_SECRET", "NOTIFICATION_OPT_OUT_SECRET",
-    "CRON_SECRET", "R2_SECRET_ACCESS_KEY", "TURNSTILE_SECRET_KEY", "FIREBASE_PRIVATE_KEY",
+    "SEARCH_HMAC_SECRET",
+    "AUDIT_LOG_HMAC_SECRET",
+    "CERTIFICATE_ACCESS_TOKEN_SECRET",
+    "CERTIFICATE_NUMBER_HMAC_SECRET",
+    "DISAMBIGUATION_HMAC_SECRET",
+    "DISAMBIGUATION_CHALLENGE_SECRET",
+    "OTP_HMAC_SECRET",
+    "NOTIFICATION_OPT_OUT_SECRET",
+    "CRON_SECRET",
+    "R2_SECRET_ACCESS_KEY",
+    "TURNSTILE_SECRET_KEY",
+    "FIREBASE_PRIVATE_KEY",
   ] as const;
   for (const name of secretNames) {
     const value = env[name];
-    if (value && Buffer.byteLength(value, "utf8") < 32) issue(name, "must contain at least 32 bytes");
+    if (value && Buffer.byteLength(value, "utf8") < 32)
+      issue(name, "must contain at least 32 bytes");
   }
   validateEncryptionKeys(env, issue);
   validateServiceAccount(env, issue);
@@ -37,7 +64,11 @@ function validateSecrets(env: ServerEnvironment, issue: AddIssue) {
 }
 
 function validateEncryptionKeys(env: ServerEnvironment, issue: AddIssue) {
-  const names = ["STUDENT_PII_ENCRYPTION_KEY", "CERTIFICATE_NUMBER_ENCRYPTION_KEY", "EXPORT_ENCRYPTION_KEY"] as const;
+  const names = [
+    "STUDENT_PII_ENCRYPTION_KEY",
+    "CERTIFICATE_NUMBER_ENCRYPTION_KEY",
+    "EXPORT_ENCRYPTION_KEY",
+  ] as const;
   for (const name of names) {
     const value = env[name];
     if (!value) continue;
@@ -50,9 +81,12 @@ function validateEncryptionKeys(env: ServerEnvironment, issue: AddIssue) {
 function isFirebaseServiceAccount(value: string): boolean {
   try {
     const parsed: unknown = JSON.parse(Buffer.from(value, "base64").toString("utf8"));
-    return typeof parsed === "object" && parsed !== null &&
+    return (
+      typeof parsed === "object" &&
+      parsed !== null &&
       ("private_key" in parsed || "privateKey" in parsed) &&
-      ("client_email" in parsed || "clientEmail" in parsed);
+      ("client_email" in parsed || "clientEmail" in parsed)
+    );
   } catch {
     return false;
   }
@@ -94,15 +128,22 @@ function isHttpsOrigin(value: string | undefined): boolean {
   }
 }
 
-function isAllowedOrigin(value: string | undefined, production: boolean, preview: boolean): boolean {
+function isAllowedOrigin(
+  value: string | undefined,
+  production: boolean,
+  preview: boolean,
+): boolean {
   if (isHttpsOrigin(value)) return true;
   if (!value || production || preview) return false;
   try {
     const parsed = new URL(value);
-    return parsed.protocol === "http:" &&
+    return (
+      parsed.protocol === "http:" &&
       ["localhost", "127.0.0.1"].includes(parsed.hostname) &&
       (parsed.origin === value || `${parsed.origin}/` === value) &&
-      parsed.search === "" && parsed.hash === "";
+      parsed.search === "" &&
+      parsed.hash === ""
+    );
   } catch {
     return false;
   }
@@ -115,7 +156,10 @@ function validateOrigins(
   preview: boolean,
 ) {
   if (
-    env.APP_ORIGIN && !env.SITE_URL && !env.VERCEL_PROJECT_PRODUCTION_URL && !env.VERCEL_URL &&
+    env.APP_ORIGIN &&
+    !env.SITE_URL &&
+    !env.VERCEL_PROJECT_PRODUCTION_URL &&
+    !env.VERCEL_URL &&
     !isAllowedOrigin(env.APP_ORIGIN, production, preview)
   )
     issue("APP_ORIGIN", "must be an https origin with no path or trailing slash");
@@ -124,26 +168,45 @@ function validateOrigins(
   if (env.ADDITIONAL_ALLOWED_ORIGINS) {
     const origins = env.ADDITIONAL_ALLOWED_ORIGINS.split(",").map((origin) => origin.trim());
     if (origins.some((origin) => !origin || !isHttpsOrigin(origin)))
-      issue("ADDITIONAL_ALLOWED_ORIGINS", "must be a comma-separated list of https origins with no path or trailing slash");
+      issue(
+        "ADDITIONAL_ALLOWED_ORIGINS",
+        "must be a comma-separated list of https origins with no path or trailing slash",
+      );
   }
   if (env.SECURITY_CONTACT_EMAIL && !z.email().safeParse(env.SECURITY_CONTACT_EMAIL).success)
     issue("SECURITY_CONTACT_EMAIL", "must be a valid email address");
 }
 
 function hasFirebaseCredentials(env: ServerEnvironment): boolean {
-  return Boolean(env.FIREBASE_SERVICE_ACCOUNT_BASE64 ?? (env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY));
+  return Boolean(
+    env.FIREBASE_SERVICE_ACCOUNT_BASE64 ?? (env.FIREBASE_CLIENT_EMAIL && env.FIREBASE_PRIVATE_KEY),
+  );
 }
 
 function validatePreview(env: ServerEnvironment, issue: AddIssue) {
   if (env.APP_ORIGIN) issue("APP_ORIGIN", "must not be set for Preview deployments");
   requireNames(env, issue, [
-    "FIREBASE_API_KEY", "FIREBASE_AUTH_DOMAIN", "FIREBASE_PROJECT_ID",
-    "FIREBASE_APP_ID",
-    "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "GMAIL_USER",
-    "GMAIL_APP_PASSWORD", "TURNSTILE_SECRET_KEY", "TURNSTILE_SITE_KEY", "SEARCH_HMAC_SECRET",
-    "AUDIT_LOG_HMAC_SECRET", "CERTIFICATE_ACCESS_TOKEN_SECRET", "CERTIFICATE_NUMBER_HMAC_SECRET",
-    "DISAMBIGUATION_HMAC_SECRET", "DISAMBIGUATION_CHALLENGE_SECRET", "STUDENT_PII_ENCRYPTION_KEY",
-    "CERTIFICATE_NUMBER_ENCRYPTION_KEY", "OTP_HMAC_SECRET",
+    "FIREBASE_API_KEY",
+    "FIREBASE_AUTH_DOMAIN",
+    "FIREBASE_PROJECT_ID",
+    "NEXT_PUBLIC_FIREBASE_APP_ID",
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET",
+    "GMAIL_USER",
+    "GMAIL_APP_PASSWORD",
+    "TURNSTILE_SECRET_KEY",
+    "TURNSTILE_SITE_KEY",
+    "SEARCH_HMAC_SECRET",
+    "AUDIT_LOG_HMAC_SECRET",
+    "CERTIFICATE_ACCESS_TOKEN_SECRET",
+    "CERTIFICATE_NUMBER_HMAC_SECRET",
+    "DISAMBIGUATION_HMAC_SECRET",
+    "DISAMBIGUATION_CHALLENGE_SECRET",
+    "STUDENT_PII_ENCRYPTION_KEY",
+    "CERTIFICATE_NUMBER_ENCRYPTION_KEY",
+    "OTP_HMAC_SECRET",
   ]);
   if (!hasFirebaseCredentials(env))
     issue("FIREBASE_SERVICE_ACCOUNT_BASE64", "Preview requires staging Firebase Admin credentials");

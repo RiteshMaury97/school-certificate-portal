@@ -14,7 +14,6 @@ const publicEnvironmentGroups: Record<string, readonly string[]> = {
     "FIREBASE_AUTH_DOMAIN",
     "FIREBASE_PROJECT_ID",
     "NEXT_PUBLIC_FIREBASE_APP_ID",
-    "NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY",
   ],
   firebaseAdmin: [
     "FIREBASE_PROJECT_ID",
@@ -22,7 +21,13 @@ const publicEnvironmentGroups: Record<string, readonly string[]> = {
     "FIREBASE_CLIENT_EMAIL",
     "FIREBASE_PRIVATE_KEY",
   ],
-  r2: ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "BACKUP_R2_BUCKET"],
+  r2: [
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET",
+    "BACKUP_R2_BUCKET",
+  ],
   turnstile: ["TURNSTILE_SECRET_KEY", "TURNSTILE_SITE_KEY"],
   malwareScan: ["CLAMD_HOST", "MALWARE_SCAN_MODE"],
 };
@@ -37,11 +42,12 @@ function publicStatus() {
     (configured("FIREBASE_CLIENT_EMAIL") && configured("FIREBASE_PRIVATE_KEY"));
   return Object.fromEntries(
     Object.entries(publicEnvironmentGroups).map(([group, names]) => {
-      const valid = group === "firebaseAdmin"
-        ? configured("FIREBASE_PROJECT_ID") && firebaseAdminCredentials
-        : group === "malwareScan"
-          ? configured("CLAMD_HOST") && process.env.MALWARE_SCAN_MODE === "required"
-          : names.every(configured);
+      const valid =
+        group === "firebaseAdmin"
+          ? configured("FIREBASE_PROJECT_ID") && firebaseAdminCredentials
+          : group === "malwareScan"
+            ? configured("CLAMD_HOST") && process.env.MALWARE_SCAN_MODE === "required"
+            : names.every(configured);
       return [group, valid];
     }),
   );
