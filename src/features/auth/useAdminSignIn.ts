@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { toast } from "@/components/ui/toast";
+import { appCheckFailureMessage, AppCheckTokenError, reportAppCheckFailure } from "@/lib/app-check-errors";
 import { appCheckHeaders, auth } from "@/lib/firebase-client";
 
 import { describeSignInError, errorCode, isBadCredentials, safeNextPath } from "./auth-errors";
@@ -105,6 +106,12 @@ export function useAdminSignIn() {
       try {
         await action();
       } catch (cause) {
+        const appCheckMessage = appCheckFailureMessage(cause);
+        if (appCheckMessage) {
+          if (!(cause instanceof AppCheckTokenError)) reportAppCheckFailure(cause);
+          toast.add({ type: "error", title: failureTitle, description: appCheckMessage });
+          return;
+        }
         toast.add({
           type: "error",
           title: failureTitle,
@@ -184,6 +191,7 @@ export function useAdminSignIn() {
     });
   }, []);
   const handleError = async (cause: unknown, typedEmail: string) => {
+    if (appCheckFailureMessage(cause)) throw cause;
     if (isBadCredentials(cause) && typedEmail)
       await requestJson("/api/admin/login-check", { email: typedEmail, action: "failure" }).catch(
         ignoreBestEffortFailure,
@@ -193,6 +201,7 @@ export function useAdminSignIn() {
   const submitCredentials = (typedEmail: string, password: string, captchaToken: string) =>
     run(
       async () => {
+        await appCheckHeaders();
         await verifyLoginCaptcha(captchaToken);
         setEmail(typedEmail);
         setProgress("Checking your credentials and account status...");
@@ -212,6 +221,7 @@ export function useAdminSignIn() {
     );
   const signInWithGoogle = (captchaToken: string) =>
     run(async () => {
+      await appCheckHeaders();
       await verifyLoginCaptcha(captchaToken);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });

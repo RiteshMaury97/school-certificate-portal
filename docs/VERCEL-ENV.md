@@ -6,14 +6,14 @@ In the tables, **Production / Preview / Development** say whether a value is req
 
 ## Firebase client
 
-Firebase browser configuration is public by design. The app's browser configuration settings are explicitly mapped in `next.config.ts` and embedded in the client bundle at build time. The variable names do not make their values private; changing one in Vercel requires a new deployment.
+Firebase browser configuration is public by design. Variables prefixed with NEXT_PUBLIC_ are embedded in the client bundle at build time; remaining browser settings are explicitly mapped in next.config.ts. Values are public regardless of the variable names, and changing them in Vercel requires a new deployment.
 
 | Name                               | What it does                          | Production / Preview / Development                           | Visibility | Required?                          | How to obtain                                                  |
 | ---------------------------------- | ------------------------------------- | ------------------------------------------------------------ | ---------- | ---------------------------------- | -------------------------------------------------------------- |
 | `FIREBASE_API_KEY`     | Firebase Auth browser SDK project key | Required / Required / Optional until Firebase pages are used | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
 | `FIREBASE_AUTH_DOMAIN` | Firebase Auth redirect domain         | Required / Required / Optional                               | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
 | `FIREBASE_PROJECT_ID`  | Shared browser and Firebase Admin project identifier | Required / Required / Optional                      | Public and server-side | Required in Production and Preview | Firebase console → Project settings → General                  |
-| `FIREBASE_APP_ID`      | Browser Firebase app identifier       | Required / Required / Optional                               | Public     | Required in Production and Preview | Firebase console → Project settings → General → Web app config |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Browser Firebase app identifier | Required / Required / Optional | Public | Required in Production and Preview | Firebase Console: Project settings, General, Web app config |
 
 ## Firebase Admin
 
@@ -31,7 +31,7 @@ Production always enforces Firebase App Check. `APP_CHECK_ENFORCE=false` only op
 
 | Name                                | What it does                                        | Production / Preview / Development                                             | Visibility          | Required?                          | How to obtain                                                                  |
 | ----------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------- | ---------------------------------- | ------------------------------------------------------------------------------ |
-| `RECAPTCHA_V3_SITE_KEY` | Firebase App Check reCAPTCHA v3 site key            | Required / Required / Optional                                                 | Public              | Required in Production and Preview | Firebase console → App Check → register the web app                            |
+| `NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY` | Firebase App Check reCAPTCHA v3 site key | Required / Required / Optional | Public | Required in Production and Preview | Google reCAPTCHA admin and Firebase App Check registration |
 | `APP_CHECK_ENFORCE`                 | Development-only override for App Check enforcement | Ignored for enforcement / Ignored for enforcement / Optional `true` or `false` | Server-side setting | Optional                           | Set `false` only for local development without a configured App Check site key |
 
 ## Cloudflare R2 (main and backup buckets)

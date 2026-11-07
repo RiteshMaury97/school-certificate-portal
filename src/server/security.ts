@@ -360,12 +360,12 @@ export async function verifyRequestAppCheck(request: NextRequest): Promise<void>
     if (process.env.APP_CHECK_ENFORCE === "false") return;
     if (
       process.env.APP_CHECK_ENFORCE !== "true" &&
-      !process.env.RECAPTCHA_V3_SITE_KEY
+      !process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY
     ) {
       return;
     }
   }
-  assertEnvironmentFor("App Check", ["APP_CHECK_ENFORCE", "RECAPTCHA_V3_SITE_KEY"]);
+  assertEnvironmentFor("App Check", ["APP_CHECK_ENFORCE", "NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY"]);
   const token = request.headers.get("x-firebase-appcheck") ?? "";
   if (!token) throw new Error("APP_CHECK");
   try {

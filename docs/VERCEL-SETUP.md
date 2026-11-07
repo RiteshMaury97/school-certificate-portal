@@ -39,10 +39,19 @@ Use separate Firebase projects for Production and Preview/staging.
   - The production Vercel project hostname, e.g. `school-certificate-portal.vercel.app`
 - [ ] Add the staging domain and the exact Vercel Preview hostnames to the staging Firebase project's authorized domains, not Production. Firebase authorized domains are hostnames, without scheme or path. Preview deployments have unique generated hostnames; add the stable Preview alias where available, or use email/password in previews and avoid Google sign-in there.
 - [ ] In **Authentication → Sign-in method**, enable **Google** and **Email/Password**. Use school-controlled administrators for Google access and check the support email/provider configuration.
-- [ ] In **App Check**, register the same Production hosts for the web app's **reCAPTCHA v3** provider: `tc.sischool.in`, `school.example`, `www.school.example`, and the production `*.vercel.app` project hostname. Register staging/Preview hosts only in the staging project. After validation, enforce App Check for the applicable Firebase products.
-- [ ] App Check debug tokens are for local/staging testing only. Register debug tokens only in the staging project, keep them out of source control, and never enable or register them in Production.
 - [ ] From the project root, review `firebase/firestore.rules`; it denies all client reads and writes (Admin SDK server handlers bypass Firestore rules). Deploy with `npx firebase deploy --only firestore:rules --project <production-project-id>` after selecting/verifying the Production project. Confirm the same deny-all policy is deployed to staging with its project ID.
 - [ ] Create Production Firestore in `asia-south1` (Mumbai), matching Vercel `bom1`. Confirm the location before clicking create; it cannot be changed later.
+
+### App Check setup
+
+Production server routes enforce Firebase App Check. Complete this console checklist with the matching Production Firebase and reCAPTCHA projects; never disable server enforcement or use a debug token in Production.
+
+- [ ] In Google reCAPTCHA Admin, confirm the key used for `NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY` is a **reCAPTCHA v3** key (not v2 or Enterprise) and lists `tc.sischool.in`, `school-certificate-portal.vercel.app`, and `localhost` for development.
+- [ ] In Firebase Console > App Check > Apps, select the web app whose app ID matches `NEXT_PUBLIC_FIREBASE_APP_ID`, choose reCAPTCHA v3, and enter the secret key from the same key pair as the site key. A secret from another key pair causes token exchange failures.
+- [ ] In Google Cloud Console for the same Firebase project, open **APIs & Services** and enable **Firebase App Check API**.
+- [ ] In Google Cloud Console > APIs & Services > Credentials, confirm the browser API key HTTP referrer restrictions include `https://tc.sischool.in/*` and `https://school-certificate-portal.vercel.app/*`; its API restrictions must allow Firebase App Check API and the Firebase Authentication APIs this app uses.
+- [ ] In Firebase Authentication > Settings > Authorized domains, confirm `tc.sischool.in` is listed.
+- [ ] After changing any `NEXT_PUBLIC_*` value, redeploy so the build receives it. To clear a browser App Check 24-hour throttle after correcting the configuration, use DevTools > Application > Storage > Clear site data, or test in a new Incognito window.
 
 ### Google sign-in choice: popup only
 

@@ -13,8 +13,8 @@ const publicEnvironmentGroups: Record<string, readonly string[]> = {
     "FIREBASE_API_KEY",
     "FIREBASE_AUTH_DOMAIN",
     "FIREBASE_PROJECT_ID",
-    "FIREBASE_APP_ID",
-    "RECAPTCHA_V3_SITE_KEY",
+    "NEXT_PUBLIC_FIREBASE_APP_ID",
+    "NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY",
   ],
   firebaseAdmin: [
     "FIREBASE_PROJECT_ID",
