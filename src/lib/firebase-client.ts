@@ -182,7 +182,14 @@ async function fetchCustomAppCheckToken(): Promise<{ token: string; expireTimeMi
       typeof payload.stage === "string"
         ? payload.stage.slice(0, 40)
         : "unknown";
-    console.error("appCheck/token-endpoint", response.status, stage);
+    const reason =
+      typeof payload === "object" &&
+      payload !== null &&
+      "reason" in payload &&
+      typeof payload.reason === "string"
+        ? payload.reason.slice(0, 40)
+        : "";
+    console.error("appCheck/token-endpoint", response.status, stage, reason);
   }
   if (
     !response.ok ||

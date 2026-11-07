@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { adminAppCheck, describeAppCheckMintError } from "@/server/firebase-admin";
+import {
+  adminAppCheck,
+  classifyAppCheckMintError,
+  describeAppCheckMintError,
+} from "@/server/firebase-admin";
 import { requesterIp } from "@/server/request-origin";
 import { sameOrigin } from "@/server/security";
 import { checkTurnstileToken } from "@/server/turnstile";
@@ -23,8 +27,11 @@ type FailureStage =
   | "mint-failed";
 
 /** The stage is a fixed label (never a secret or raw error) so the browser console can show it. */
-function failure(stage: FailureStage, error: string, status: number) {
-  return NextResponse.json({ error, stage }, { status, headers: { "Cache-Control": "no-store" } });
+function failure(stage: FailureStage, error: string, status: number, reason?: string) {
+  return NextResponse.json(
+    { error, stage, ...(reason ? { reason } : {}) },
+    { status, headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 /** Web app IDs look like 1:123456789012:web:0123456789abcdef. */
@@ -68,6 +75,11 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("appCheck/token-mint-failed", describeAppCheckMintError(error));
-    return failure("mint-failed", "Security verification is unavailable.", 503);
+    return failure(
+      "mint-failed",
+      "Security verification is unavailable.",
+      503,
+      classifyAppCheckMintError(error),
+    );
   }
 }

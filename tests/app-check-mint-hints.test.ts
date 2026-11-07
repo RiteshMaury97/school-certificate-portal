@@ -11,7 +11,7 @@ vi.mock("firebase-admin/app-check", () => ({ getAppCheck: vi.fn() }));
 vi.mock("firebase-admin/auth", () => ({ getAuth: vi.fn() }));
 vi.mock("firebase-admin/firestore", () => ({ getFirestore: vi.fn() }));
 
-import { describeAppCheckMintError } from "../src/server/firebase-admin";
+import { classifyAppCheckMintError, describeAppCheckMintError } from "../src/server/firebase-admin";
 
 describe("describeAppCheckMintError", () => {
   it("explains a disabled Firebase App Check API", () => {
@@ -31,6 +31,22 @@ describe("describeAppCheckMintError", () => {
     expect(describeAppCheckMintError(new Error("Caller does not have permission"))).toContain(
       "Firebase App Check Admin",
     );
+  });
+
+  it("classifies failures into fixed non-sensitive labels", () => {
+    expect(classifyAppCheckMintError(new Error("API has not been used in project 1 before"))).toBe(
+      "api-disabled",
+    );
+    expect(classifyAppCheckMintError(new Error("Requested entity was not found."))).toBe(
+      "app-id-mismatch",
+    );
+    expect(classifyAppCheckMintError(new Error("Caller does not have permission"))).toBe(
+      "permission",
+    );
+    expect(classifyAppCheckMintError(new Error("error:1E08010C:DECODER routines"))).toBe(
+      "key-malformed",
+    );
+    expect(classifyAppCheckMintError(new Error("something else entirely"))).toBe("unknown");
   });
 
   it("includes the error code and never more than a short message", () => {
