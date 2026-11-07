@@ -91,28 +91,34 @@ function getFirebaseServices(): FirebaseServices {
 }
 
 export const adminAuth = {
-  createSessionCookie: (...args: Parameters<FirebaseServices["adminAuth"]["createSessionCookie"]>) =>
-    getFirebaseServices().adminAuth.createSessionCookie(...args),
+  createSessionCookie: (
+    ...args: Parameters<FirebaseServices["adminAuth"]["createSessionCookie"]>
+  ) => getFirebaseServices().adminAuth.createSessionCookie(...args),
   createUser: (...args: Parameters<FirebaseServices["adminAuth"]["createUser"]>) =>
     getFirebaseServices().adminAuth.createUser(...args),
   deleteUser: (...args: Parameters<FirebaseServices["adminAuth"]["deleteUser"]>) =>
     getFirebaseServices().adminAuth.deleteUser(...args),
-  generateEmailVerificationLink: (...args: Parameters<FirebaseServices["adminAuth"]["generateEmailVerificationLink"]>) =>
-    getFirebaseServices().adminAuth.generateEmailVerificationLink(...args),
-  generatePasswordResetLink: (...args: Parameters<FirebaseServices["adminAuth"]["generatePasswordResetLink"]>) =>
-    getFirebaseServices().adminAuth.generatePasswordResetLink(...args),
+  generateEmailVerificationLink: (
+    ...args: Parameters<FirebaseServices["adminAuth"]["generateEmailVerificationLink"]>
+  ) => getFirebaseServices().adminAuth.generateEmailVerificationLink(...args),
+  generatePasswordResetLink: (
+    ...args: Parameters<FirebaseServices["adminAuth"]["generatePasswordResetLink"]>
+  ) => getFirebaseServices().adminAuth.generatePasswordResetLink(...args),
   getUser: (...args: Parameters<FirebaseServices["adminAuth"]["getUser"]>) =>
     getFirebaseServices().adminAuth.getUser(...args),
-  revokeRefreshTokens: (...args: Parameters<FirebaseServices["adminAuth"]["revokeRefreshTokens"]>) =>
-    getFirebaseServices().adminAuth.revokeRefreshTokens(...args),
-  setCustomUserClaims: (...args: Parameters<FirebaseServices["adminAuth"]["setCustomUserClaims"]>) =>
-    getFirebaseServices().adminAuth.setCustomUserClaims(...args),
+  revokeRefreshTokens: (
+    ...args: Parameters<FirebaseServices["adminAuth"]["revokeRefreshTokens"]>
+  ) => getFirebaseServices().adminAuth.revokeRefreshTokens(...args),
+  setCustomUserClaims: (
+    ...args: Parameters<FirebaseServices["adminAuth"]["setCustomUserClaims"]>
+  ) => getFirebaseServices().adminAuth.setCustomUserClaims(...args),
   updateUser: (...args: Parameters<FirebaseServices["adminAuth"]["updateUser"]>) =>
     getFirebaseServices().adminAuth.updateUser(...args),
   verifyIdToken: (...args: Parameters<FirebaseServices["adminAuth"]["verifyIdToken"]>) =>
     getFirebaseServices().adminAuth.verifyIdToken(...args),
-  verifySessionCookie: (...args: Parameters<FirebaseServices["adminAuth"]["verifySessionCookie"]>) =>
-    getFirebaseServices().adminAuth.verifySessionCookie(...args),
+  verifySessionCookie: (
+    ...args: Parameters<FirebaseServices["adminAuth"]["verifySessionCookie"]>
+  ) => getFirebaseServices().adminAuth.verifySessionCookie(...args),
 };
 
 export const adminAppCheck = {
@@ -129,9 +135,8 @@ export const db = {
     getFirebaseServices().db.collection(...args),
   listCollections: (...args: Parameters<FirebaseServices["db"]["listCollections"]>) =>
     getFirebaseServices().db.listCollections(...args),
-  runTransaction: <T>(
-    updateFunction: (transaction: FirebaseFirestore.Transaction) => Promise<T>,
-  ) => getFirebaseServices().db.runTransaction(updateFunction),
+  runTransaction: <T>(updateFunction: (transaction: FirebaseFirestore.Transaction) => Promise<T>) =>
+    getFirebaseServices().db.runTransaction(updateFunction),
 };
 
 /**
@@ -164,8 +169,10 @@ function hasMissingCredentialsHint(
   code: string | number | undefined,
   hasExplicitCredentials: boolean,
 ): boolean {
-  return /default credentials|could not load/i.test(raw) ||
-    (!hasExplicitCredentials && /UNAUTHENTICATED|16/.test(String(code)));
+  return (
+    /default credentials|could not load/i.test(raw) ||
+    (!hasExplicitCredentials && /UNAUTHENTICATED|16/.test(String(code)))
+  );
 }
 
 function hasFirestoreNotFoundHint(raw: string, code: string | number | undefined): boolean {
@@ -174,6 +181,29 @@ function hasFirestoreNotFoundHint(raw: string, code: string | number | undefined
 
 function hasFirestorePermissionHint(raw: string, code: string | number | undefined): boolean {
   return /PERMISSION_DENIED|7 PERMISSION/.test(raw) || String(code) === "7";
+}
+
+function appCheckMintHint(raw: string, code: string | number | undefined): string {
+  const text = `${code === undefined ? "" : String(code)} ${raw}`;
+  if (
+    /has not been used in project|SERVICE_DISABLED|accessNotConfigured|api.*is disabled/i.test(text)
+  )
+    return " | HINT: enable the Firebase App Check API (firebaseappcheck.googleapis.com) for this Google Cloud project, wait a few minutes, then retry.";
+  if (/private key|DECODER|PEM|error:1E08010C|signing/i.test(text))
+    return " | HINT: the Firebase Admin service-account private key is malformed. Re-encode the service-account JSON into FIREBASE_SERVICE_ACCOUNT_BASE64.";
+  if (/not.?found|invalid.?app.?id|unknown app/i.test(text))
+    return " | HINT: NEXT_PUBLIC_FIREBASE_APP_ID does not match a Web app in the Firebase project of FIREBASE_PROJECT_ID.";
+  if (/permission|forbidden|\b403\b|unauthenticated|\b401\b/i.test(text))
+    return " | HINT: the Firebase Admin service account is not allowed to mint App Check tokens. Grant it the 'Firebase App Check Admin' role, or confirm the credentials belong to the same project.";
+  return "";
+}
+
+/** Secret-free, hinted description of a failure while minting an App Check token. */
+export function describeAppCheckMintError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const code = firebaseErrorCode(error);
+  const message = raw.replace(/\s+/g, " ").slice(0, 300);
+  return `${code === undefined ? "" : `[${String(code)}] `}${message}${appCheckMintHint(raw, code)}`;
 }
 
 export function describeFirebaseError(error: unknown): string {

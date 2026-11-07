@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { adminAppCheck } from "@/server/firebase-admin";
+import { adminAppCheck, describeAppCheckMintError } from "@/server/firebase-admin";
 import { requesterIp } from "@/server/request-origin";
 import { sameOrigin } from "@/server/security";
 import { checkTurnstileToken } from "@/server/turnstile";
@@ -27,10 +27,8 @@ function failure(stage: FailureStage, error: string, status: number) {
   return NextResponse.json({ error, stage }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-function safeLogDetail(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error);
-  return raw.replace(/\s+/g, " ").slice(0, 300);
-}
+/** Web app IDs look like 1:123456789012:web:0123456789abcdef. */
+const WEB_APP_ID_PATTERN = /^\d+:\d+:web:[0-9a-f]+$/i;
 
 export async function POST(request: NextRequest) {
   if (!sameOrigin(request)) return failure("origin", "Invalid origin.", 403);
@@ -53,7 +51,13 @@ export async function POST(request: NextRequest) {
 
   const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID?.trim();
   if (!appId) {
-    console.error("appCheck/token-not-configured");
+    console.error("appCheck/token-not-configured | HINT: NEXT_PUBLIC_FIREBASE_APP_ID is not set.");
+    return failure("not-configured", "Security verification is unavailable.", 503);
+  }
+  if (!WEB_APP_ID_PATTERN.test(appId)) {
+    console.error(
+      "appCheck/token-not-configured | HINT: NEXT_PUBLIC_FIREBASE_APP_ID is not a Web app ID (expected 1:<project number>:web:<id>).",
+    );
     return failure("not-configured", "Security verification is unavailable.", 503);
   }
   try {
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    console.error("appCheck/token-mint-failed", safeLogDetail(error));
+    console.error("appCheck/token-mint-failed", describeAppCheckMintError(error));
     return failure("mint-failed", "Security verification is unavailable.", 503);
   }
 }

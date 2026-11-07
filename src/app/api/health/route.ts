@@ -92,8 +92,12 @@ async function runtimeProbes(): Promise<Probe[]> {
     await probe("app check token mint", async () => {
       const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID?.trim();
       if (!appId) throw new Error("NEXT_PUBLIC_FIREBASE_APP_ID is not set");
-      const { adminAppCheck } = await import("@/server/firebase-admin");
-      await adminAppCheck.createToken(appId, { ttlMillis: 30 * 60 * 1000 });
+      const { adminAppCheck, describeAppCheckMintError } = await import("@/server/firebase-admin");
+      try {
+        await adminAppCheck.createToken(appId, { ttlMillis: 30 * 60 * 1000 });
+      } catch (error) {
+        throw new Error(describeAppCheckMintError(error));
+      }
     }),
     await probe("firestore read", async () => {
       const { db } = await import("@/server/firebase-admin");
