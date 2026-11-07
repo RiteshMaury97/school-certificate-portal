@@ -18,10 +18,7 @@ const locationDecisionCache = new Map<
 
 function buildCsp(nonce: string, allowSameOriginFrame = false): string {
   const dev = process.env.NODE_ENV !== "production";
-  const telemetryOrigins = [
-    process.env.PLAUSIBLE_SCRIPT_URL,
-    process.env.BROWSER_SENTRY_DSN,
-  ]
+  const telemetryOrigins = [process.env.PLAUSIBLE_SCRIPT_URL, process.env.BROWSER_SENTRY_DSN]
     .flatMap((value) => {
       try {
         return value ? [new URL(value).origin] : [];
@@ -40,7 +37,7 @@ function buildCsp(nonce: string, allowSameOriginFrame = false): string {
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob: https://www.gstatic.com",
     "font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com",
-    `connect-src 'self' ${dev ? "ws://localhost:* ws://127.0.0.1:*" : ""} https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseappcheck.googleapis.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
+    `connect-src 'self' ${dev ? "ws://localhost:* ws://127.0.0.1:*" : ""} https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
     `frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://www.recaptcha.net ${authOrigin}`,
     "object-src 'none'",
     "base-uri 'self'",

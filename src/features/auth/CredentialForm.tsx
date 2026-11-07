@@ -1,6 +1,6 @@
 import { Eye, EyeOff } from "lucide-react";
 
-import type { SyntheticEvent } from "react";
+import type { ReactNode, SyntheticEvent } from "react";
 
 type Props = {
   busy: boolean;
@@ -15,6 +15,9 @@ type Props = {
   onPasswordValidityChange: (valid: boolean) => void;
   onTogglePassword: () => void;
   onForgotPassword: () => void;
+  captcha: ReactNode;
+  captchaRequired: boolean;
+  captchaReady: boolean;
   onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void;
   onGoogle: () => void;
 };
@@ -37,6 +40,9 @@ export default function CredentialForm({
   onPasswordValidityChange,
   onTogglePassword,
   onForgotPassword,
+  captcha,
+  captchaRequired,
+  captchaReady,
   onSubmit,
   onGoogle,
 }: Props) {
@@ -52,7 +58,8 @@ export default function CredentialForm({
             translate="no"
             type="email"
             autoComplete="email"
-            required aria-required="true"
+            required
+            aria-required="true"
             placeholder="Enter your registered email address"
             value={email}
             onInvalid={() => {
@@ -78,7 +85,8 @@ export default function CredentialForm({
               translate="no"
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
-              required aria-required="true"
+              required
+              aria-required="true"
               value={password}
               onInvalid={() => {
                 onPasswordValidityChange(false);
@@ -116,7 +124,13 @@ export default function CredentialForm({
             Forgot password?
           </button>
         </div>
-        <button type="submit" disabled={busy} aria-busy={busy} className={primary}>
+        {captcha}
+        <button
+          type="submit"
+          disabled={busy || (captchaRequired && !captchaReady)}
+          aria-busy={busy}
+          className={primary}
+        >
           {busy ? "Verifying…" : "Sign In"}
         </button>
       </form>
@@ -128,7 +142,7 @@ export default function CredentialForm({
       <button
         type="button"
         onClick={onGoogle}
-        disabled={busy}
+        disabled={busy || (captchaRequired && !captchaReady)}
         aria-busy={busy}
         className="flex min-h-11 w-full items-center justify-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 font-semibold text-[var(--text)] outline-none transition hover:bg-[var(--surface-2)] focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
       >

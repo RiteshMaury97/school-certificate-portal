@@ -2,14 +2,15 @@
 
 import { useState, type SyntheticEvent } from "react";
 
+import AdminTurnstile, { adminCaptchaRequired } from "./AdminTurnstile";
 import CredentialForm from "./CredentialForm";
 import PasswordResetForm from "./PasswordResetForm";
 
 type Props = {
   busy: boolean;
   resetBusy: boolean;
-  onSubmit: (email: string, password: string) => void;
-  onGoogle: () => void;
+  onSubmit: (email: string, password: string, captchaToken: string) => Promise<void>;
+  onGoogle: (captchaToken: string) => Promise<void>;
   onReset: (email: string) => void;
 };
 
@@ -20,6 +21,8 @@ export default function CredentialsStep({ busy, resetBusy, onSubmit, onGoogle, o
   const [resetMode, setResetMode] = useState(false);
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [passwordInvalid, setPasswordInvalid] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaAttempt, setCaptchaAttempt] = useState(0);
 
   if (resetMode) {
     return (
@@ -39,9 +42,11 @@ export default function CredentialsStep({ busy, resetBusy, onSubmit, onGoogle, o
     );
   }
 
-  const submit = (event: SyntheticEvent<HTMLFormElement>) => {
+  const submit = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onSubmit(email.trim(), password);
+    await onSubmit(email.trim(), password, captchaToken);
+    setCaptchaToken("");
+    setCaptchaAttempt((value) => value + 1);
   };
 
   return (
@@ -67,8 +72,24 @@ export default function CredentialsStep({ busy, resetBusy, onSubmit, onGoogle, o
         setEmailInvalid(false);
         setResetMode(true);
       }}
+      captcha={
+        <AdminTurnstile
+          attempt={captchaAttempt}
+          onToken={setCaptchaToken}
+          onRetry={() => {
+            setCaptchaToken("");
+            setCaptchaAttempt((value) => value + 1);
+          }}
+        />
+      }
+      captchaRequired={adminCaptchaRequired}
+      captchaReady={!adminCaptchaRequired || Boolean(captchaToken)}
       onSubmit={submit}
-      onGoogle={onGoogle}
+      onGoogle={async () => {
+        await onGoogle(captchaToken);
+        setCaptchaToken("");
+        setCaptchaAttempt((value) => value + 1);
+      }}
     />
   );
 }

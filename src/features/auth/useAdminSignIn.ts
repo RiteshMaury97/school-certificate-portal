@@ -45,6 +45,11 @@ async function requestJson(
   return { response, data: (await response.json().catch(() => null)) as unknown };
 }
 
+async function verifyLoginCaptcha(token: string): Promise<void> {
+  const { response, data } = await requestJson("/api/admin/login-captcha", { token });
+  if (!response.ok) throw new Error(message(data) ?? "Complete the security check and try again.");
+}
+
 function parseChallenge(data: unknown): { challengeId: string; resendAfterSeconds: number } {
   if (
     typeof data !== "object" ||
@@ -90,22 +95,29 @@ export function useAdminSignIn() {
     setChallengeId("");
     if (noticeText) toast.add({ type: "success", title: noticeText });
   }, []);
-  const run = useCallback(async (action: () => Promise<void>, failureTitle = "Sign in failed", initialProgress = "Working...") => {
-    setBusy(true);
-    setProgress(initialProgress);
-    try {
-      await action();
-    } catch (cause) {
-      toast.add({
-        type: "error",
-        title: failureTitle,
-        description: cause instanceof Error ? cause.message : "Unable to complete sign-in.",
-      });
-    } finally {
-      setBusy(false);
-      setProgress("");
-    }
-  }, []);
+  const run = useCallback(
+    async (
+      action: () => Promise<void>,
+      failureTitle = "Sign in failed",
+      initialProgress = "Working...",
+    ) => {
+      setBusy(true);
+      setProgress(initialProgress);
+      try {
+        await action();
+      } catch (cause) {
+        toast.add({
+          type: "error",
+          title: failureTitle,
+          description: cause instanceof Error ? cause.message : "Unable to complete sign-in.",
+        });
+      } finally {
+        setBusy(false);
+        setProgress("");
+      }
+    },
+    [],
+  );
   const checkLock = async (typedEmail: string) => {
     const { response, data } = await requestJson("/api/admin/login-check", {
       email: typedEmail,
@@ -179,23 +191,29 @@ export function useAdminSignIn() {
       );
     throw new Error(describeSignInError(cause, "password"));
   };
-  const submitCredentials = (typedEmail: string, password: string) =>
+  const submitCredentials = (typedEmail: string, password: string, captchaToken: string) =>
+    run(
+      async () => {
+        await verifyLoginCaptcha(captchaToken);
+        setEmail(typedEmail);
+        setProgress("Checking your credentials and account status...");
+        const [lockResult, authResult] = await Promise.allSettled([
+          checkLock(typedEmail),
+          signInWithEmailAndPassword(auth, typedEmail, password),
+        ]);
+        if (lockResult.status === "rejected") {
+          if (authResult.status === "fulfilled") await signOut(auth);
+          throw lockResult.reason;
+        }
+        if (authResult.status === "rejected") await handleError(authResult.reason, typedEmail);
+        if (authResult.status === "fulfilled") await begin(authResult.value.user, true);
+      },
+      "Sign in failed",
+      "Checking your credentials and account status...",
+    );
+  const signInWithGoogle = (captchaToken: string) =>
     run(async () => {
-      setEmail(typedEmail);
-      setProgress("Checking your credentials and account status...");
-      const [lockResult, authResult] = await Promise.allSettled([
-        checkLock(typedEmail),
-        signInWithEmailAndPassword(auth, typedEmail, password),
-      ]);
-      if (lockResult.status === "rejected") {
-        if (authResult.status === "fulfilled") await signOut(auth);
-        throw lockResult.reason;
-      }
-      if (authResult.status === "rejected") await handleError(authResult.reason, typedEmail);
-      if (authResult.status === "fulfilled") await begin(authResult.value.user, true);
-    }, "Sign in failed", "Checking your credentials and account status...");
-  const signInWithGoogle = () =>
-    run(async () => {
+      await verifyLoginCaptcha(captchaToken);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
       try {

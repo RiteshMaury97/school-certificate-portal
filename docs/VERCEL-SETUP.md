@@ -52,7 +52,7 @@ See Firebase's current [redirect best practices](https://firebase.google.com/doc
 
 ## 4. Cloudflare Turnstile and R2
 
-- [ ] In **Cloudflare → Turnstile**, create one Production widget allowing `tc.sischool.in`, `school.example`, `www.school.example`, and `school-certificate-portal.vercel.app`. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` to its site key and `TURNSTILE_SECRET_KEY` to its secret in Production only.
+- [ ] In **Cloudflare → Turnstile → Hostname Management**, allow `tc.sischool.in` and `school-certificate-portal.vercel.app` on the Production widget (add each hostname without `https://`). Set `TURNSTILE_SITE_KEY` to its site key and `TURNSTILE_SECRET_KEY` to its secret in Production only. Turnstile error `110200` means the current hostname is not allowed for that site key.
 - [ ] Create a separate staging Turnstile widget for the staging hostname and any stable Preview hostname. Put its site and secret keys in Preview only.
 - [ ] Create the main Production R2 bucket and a **different** backup R2 bucket. Keep both private; do not enable public bucket access or public custom domains.
 - [ ] Create separate staging R2 bucket(s) and credentials. Configure `R2_BUCKET` to the upload bucket and `BACKUP_R2_BUCKET` to the separate backup bucket in Production; use the staging bucket in Preview.
