@@ -228,15 +228,20 @@ export function useAdminSignIn() {
       await appCheckHeaders();
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
+      let authenticatedUid: string | undefined;
       try {
         const credential = await signInWithPopup(auth, provider);
+        authenticatedUid = credential.user.uid;
         await begin(credential.user);
       } catch (cause) {
         if (
           ["auth/popup-closed-by-user", "auth/cancelled-popup-request"].includes(errorCode(cause))
         )
           return;
-        throw cause;
+        if (authenticatedUid && auth.currentUser?.uid === authenticatedUid)
+          await signOut(auth).catch(ignoreBestEffortFailure);
+        if (appCheckFailureMessage(cause)) throw cause;
+        throw new Error(describeSignInError(cause, "google"));
       }
     }, "Google sign-in failed");
   const continueAfterEmailVerification = () =>

@@ -7,7 +7,9 @@ import {
 } from "firebase/auth";
 import { useState } from "react";
 
-import { auth, appCheckHeaders } from "@/lib/firebase-client";
+import { describeSignInError } from "@/features/auth/auth-errors";
+import { appCheckFailureMessage } from "@/lib/app-check-errors";
+import { appCheckHeaders, auth } from "@/lib/firebase-client";
 
 function csrfToken() {
   return decodeURIComponent(
@@ -38,6 +40,18 @@ function errorMessage(data: unknown, fallback: string) {
     ? data.error
     : fallback;
 }
+async function clearAuthenticatedUser(uid: string): Promise<void> {
+  if (uid && auth.currentUser?.uid === uid) await signOut(auth).catch(ignoreSignOutFailure);
+}
+function ignoreSignOutFailure(): void {
+  // Preserve the original credential error when best-effort cleanup fails.
+}
+function credentialErrorMessage(cause: unknown, method: "password" | "google"): string {
+  const appCheckError = appCheckFailureMessage(cause);
+  if (appCheckError) return appCheckError;
+  if (cause instanceof Error && !("code" in cause)) return cause.message;
+  return describeSignInError(cause, method);
+}
 // eslint-disable-next-line max-lines-per-function -- reason: this security-sensitive reauthentication flow is kept together to preserve its staged credential and OTP transitions.
 export default function ReauthModal({
   email,
@@ -58,11 +72,17 @@ export default function ReauthModal({
   const finishCredential = async () => {
     setBusy(true);
     setError("");
+    let authenticatedUid = "";
     try {
       if (method === "password") await signInWithEmailAndPassword(auth, email, password);
-      else await signInWithPopup(auth, new GoogleAuthProvider());
+      else {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        await signInWithPopup(auth, provider);
+      }
       const user = auth.currentUser;
       if (!user) throw new Error("Re-authentication failed.");
+      authenticatedUid = user.uid;
       const idToken = await user.getIdToken(true);
       const sent = await post("/api/admin/otp/send", { idToken });
       if (
@@ -76,7 +96,8 @@ export default function ReauthModal({
       setChallengeId(sent.data.challengeId);
       setStage("code");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Re-authentication failed.");
+      await clearAuthenticatedUser(authenticatedUid);
+      setError(credentialErrorMessage(cause, method));
     } finally {
       setBusy(false);
     }
