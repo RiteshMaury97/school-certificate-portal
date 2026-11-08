@@ -16,7 +16,7 @@ import GoogleSignInDialog from "./GoogleSignInDialog";
 
 import type { SyntheticEvent } from "react";
 
-type OtpChallenge = { challengeId: string; resendAfterSeconds: number };
+type EmailCodeChallenge = { challengeId: string; resendAfterSeconds: number };
 type ApiResult = Record<string, unknown>;
 
 function isRecord(value: unknown): value is ApiResult {
@@ -45,7 +45,7 @@ async function postJson(path: string, body: Record<string, string>): Promise<Api
   return result;
 }
 
-async function requestOtp(idToken: string): Promise<OtpChallenge> {
+async function requestEmailCode(idToken: string): Promise<EmailCodeChallenge> {
   const result = await postJson("/api/admin/otp/send", { idToken });
   if (typeof result.challengeId !== "string")
     throw new Error("The verification challenge was not created.");
@@ -80,7 +80,7 @@ function useGoogleStartListener(start: () => Promise<void>): void {
 
 export default function GoogleSignInController() {
   const [idToken, setIdToken] = useState("");
-  const [challenge, setChallenge] = useState<OtpChallenge | null>(null);
+  const [challenge, setChallenge] = useState<EmailCodeChallenge | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -107,7 +107,7 @@ export default function GoogleSignInController() {
       await setPersistence(auth, inMemoryPersistence);
       const token = await credential.user.getIdToken(true);
       setIdToken(token);
-      const nextChallenge = await requestOtp(token);
+      const nextChallenge = await requestEmailCode(token);
       setChallenge(nextChallenge);
       setResendIn(nextChallenge.resendAfterSeconds);
     } catch (cause) {
@@ -150,7 +150,7 @@ export default function GoogleSignInController() {
     setBusy(true);
     setError("");
     try {
-      const nextChallenge = await requestOtp(idToken);
+      const nextChallenge = await requestEmailCode(idToken);
       setChallenge(nextChallenge);
       setResendIn(nextChallenge.resendAfterSeconds);
       setCode("");

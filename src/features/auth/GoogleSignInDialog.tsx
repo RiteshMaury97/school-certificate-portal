@@ -42,6 +42,7 @@ export default function GoogleSignInDialog({
               Verification code
               <input
                 aria-label="Verification code"
+                aria-required="true"
                 autoComplete="one-time-code"
                 id="google-signin-code"
                 inputMode="numeric"

@@ -30,3 +30,4 @@ describe("root layout resilience", () => {
     await expect(RootLayout({ children: null })).resolves.toBeTruthy();
   });
 });
+  
