@@ -41,9 +41,16 @@ async function postJson(path: string, body: Record<string, string>): Promise<Api
   });
   const result = await readJson(response);
   if (!response.ok) {
-    throw new Error(
-      typeof result.error === "string" ? result.error : "Sign-in could not be completed.",
-    );
+    const base =
+      typeof result.error === "string" ? result.error : "Sign-in could not be completed.";
+    // Server-side 503s carry a non-sensitive step name; show it so the site owner can find the
+    // matching entry in the server log.
+    const stage = typeof result.stage === "string" ? result.stage : "";
+    if (stage)
+      console.error(
+        `Google sign-in: ${path} failed at step "${stage}" (HTTP ${String(response.status)})`,
+      );
+    throw new Error(stage ? `${base} (ref: ${stage})` : base);
   }
   return result;
 }

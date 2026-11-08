@@ -324,7 +324,9 @@ async function establishSession(
   request: NextRequest,
   body: LoginBody,
   identity: LoginIdentity,
+  onStage: (stage: string) => void = () => undefined,
 ): Promise<NextResponse> {
+  onStage("create-session-cookie");
   const session = await adminAuth.createSessionCookie(body.idToken, {
     expiresIn: ADMIN_HARD_SESSION_LIMIT_MS,
   });
@@ -336,6 +338,7 @@ async function establishSession(
   const requestOrigin = getRequestOrigin(request);
   const city = decodeCity(requestOrigin.city);
   const country = (requestOrigin.country ?? "").slice(0, 8);
+  onStage("save-session-records");
   const record = await saveSessionRecords({
     request,
     uid: identity.decoded.uid,
@@ -349,7 +352,15 @@ async function establishSession(
     country,
     userAgent,
   });
-  await scheduleNewDeviceAlert({ ...record, identity, city, country, userAgent, now });
+  onStage("new-device-alert");
+  // The session is already valid at this point. A failure to queue the "new sign-in" e-mail must
+  // not block an otherwise successful login, so it is logged and skipped.
+  await scheduleNewDeviceAlert({ ...record, identity, city, country, userAgent, now }).catch(
+    (alertError: unknown) => {
+      console.error("[admin/session new-device alert setup]", describeFirebaseError(alertError));
+    },
+  );
+  onStage("audit-log");
   const csrf = createCsrfToken();
   const googleLogin = isGoogleSignIn(identity.decoded);
   await writeAuditLog(request, identity.decoded.uid, "admin.login", "session");
@@ -376,7 +387,11 @@ async function establishSession(
   return response;
 }
 
-function sessionRouteError(error: unknown, method: "GET" | "POST" | "DELETE"): NextResponse {
+function sessionRouteError(
+  error: unknown,
+  method: "GET" | "POST" | "DELETE",
+  stage = "unknown",
+): NextResponse {
   if (error instanceof Error && error.message === "APP_CHECK")
     return NextResponse.json(
       {
@@ -392,11 +407,13 @@ function sessionRouteError(error: unknown, method: "GET" | "POST" | "DELETE"): N
       ? unauthenticatedSessionResponse()
       : NextResponse.json({ error: "Authentication failed." }, { status: 401 });
   }
-  console.error(`[admin/session ${method}]`, describeFirebaseError(error));
+  console.error(`[admin/session ${method}] stage=${stage}`, describeFirebaseError(error));
   return NextResponse.json(
     {
       authenticated: false,
       error: "The server is not configured correctly. Contact the site owner.",
+      // Non-sensitive step name so the site owner can match this to the server log entry.
+      ...(method === "POST" ? { stage } : {}),
     },
     { status: 503, headers: { "Cache-Control": "no-store" } },
   );
@@ -419,6 +436,7 @@ async function revokeSessionForLogout(request: NextRequest, session: string): Pr
   }
 }
 export async function POST(request: NextRequest) {
+  let stage = "request-checks";
   try {
     if (!requesterIp(request))
       return NextResponse.json(
@@ -427,15 +445,20 @@ export async function POST(request: NextRequest) {
       );
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+    stage = "read-body";
     const bodyResult = readLoginBody(await request.json());
     if (bodyResult instanceof NextResponse) return bodyResult;
     // Turnstile/App Check is required for email+password sign-ins only; Google sign-ins skip it.
+    stage = "app-check";
     const appCheck = await verifyAppCheckUnlessGoogle(request, bodyResult.idToken);
+    stage = "authenticate";
     const identity = await authenticateLogin(request, bodyResult, appCheck.skipped);
     if (identity instanceof NextResponse) return identity;
-    return await establishSession(request, bodyResult, identity);
+    return await establishSession(request, bodyResult, identity, (next) => {
+      stage = next;
+    });
   } catch (error) {
-    return sessionRouteError(error, "POST");
+    return sessionRouteError(error, "POST", stage);
   }
 }
 function sessionRecordIsValid(
