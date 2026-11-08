@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { auth } from "@/lib/firebase-client";
 
-import { describeSignInError, errorCode } from "./auth-errors";
+import { describeSignInError, errorCode, safeNextPath } from "./auth-errors";
 import { ADMIN_GOOGLE_SIGN_IN_EVENT } from "./google-signin-event";
 import GoogleSignInDialog from "./GoogleSignInDialog";
 
@@ -150,7 +150,9 @@ export default function GoogleSignInController() {
         });
         await postJson("/api/admin/session", { idToken, challengeId: challenge.challengeId });
         await clearClientAuth();
-        window.location.assign("/admin");
+        window.location.assign(
+          safeNextPath(new URLSearchParams(window.location.search).get("next")),
+        );
       } catch (cause) {
         setError(
           cause instanceof Error ? cause.message : "The verification code could not be verified.",

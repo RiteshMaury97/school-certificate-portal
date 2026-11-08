@@ -74,8 +74,16 @@ const localizedText = (value: unknown, maxLength: number) => {
       .map(([key, item]) => [key, String(item).replace(/<[^>]*>/g, "").replace(/[<>\u0000-\u001f\u007f]/g, " ").slice(0, maxLength)]),
   );
 };
+// A bad origin setting must never turn this public endpoint into a 500.
+function safeSiteOrigin(): string {
+  try {
+    return getSiteOrigin();
+  } catch {
+    return "";
+  }
+}
 export async function GET() {
-  const fallbackWebsite = getSiteOrigin();
+  const fallbackWebsite = safeSiteOrigin();
   try {
     const data = await getCachedSiteSettings();
     const safe = {

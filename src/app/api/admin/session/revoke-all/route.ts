@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     if (
       !isAllowedRequestOrigin(
         origin,
-        getAllowedOrigins(),
+        getAllowedOrigins(request.nextUrl.origin),
         process.env.NODE_ENV !== "production",
       )
     ) {

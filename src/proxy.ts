@@ -137,7 +137,9 @@ function isApiMutationMissingOrigin(request: NextRequest, origin: string | null)
 }
 
 const CORS_METHODS = "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS";
-const CORS_HEADERS = "Accept, Authorization, Content-Type, X-CSRF-Token, X-Firebase-AppCheck";
+const CORS_HEADERS =
+  "Accept, Authorization, Content-Type, X-CSRF-Token, X-Firebase-AppCheck, X-Admin-Reauth";
+const CORS_EXPOSED_HEADERS = "Retry-After";
 
 function appendVary(headers: Headers, value: string): void {
   const vary = headers.get("Vary");
@@ -151,12 +153,14 @@ function applyCorsHeaders(response: NextResponse, request: NextRequest, producti
   if (!origin || request.method === "OPTIONS" || !request.nextUrl.pathname.startsWith("/api/"))
     return;
   try {
-    if (!isAllowedRequestOrigin(origin, getAllowedOrigins(), !production)) return;
+    if (!isAllowedRequestOrigin(origin, getAllowedOrigins(request.nextUrl.origin), !production))
+      return;
   } catch {
     return;
   }
   response.headers.set("Access-Control-Allow-Origin", origin);
   response.headers.set("Access-Control-Allow-Credentials", "true");
+  response.headers.set("Access-Control-Expose-Headers", CORS_EXPOSED_HEADERS);
   appendVary(response.headers, "Origin");
 }
 
@@ -201,7 +205,7 @@ function originResponse(request: NextRequest, production: boolean): NextResponse
   // decision, even when the deployment origin is misconfigured.
   let expectedOrigin: string[];
   try {
-    expectedOrigin = getAllowedOrigins();
+    expectedOrigin = getAllowedOrigins(request.nextUrl.origin);
   } catch (error) {
     console.error("[proxy origin configuration]", error instanceof Error ? error.message : error);
     return NextResponse.json(

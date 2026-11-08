@@ -6,7 +6,33 @@ function isProduction(): boolean {
   );
 }
 
-function validateHttpsOrigin(value: string, name: string): string {
+/**
+ * Tolerates common copy/paste mistakes in origin settings (surrounding quotes or spaces, a missing
+ * "https://", a trailing slash, upper-case letters). Values that still carry a path, query,
+ * credentials, a non-HTTPS scheme or a dot-less host are returned unchanged so validation rejects them.
+ */
+function normalizeOriginInput(value: string): string {
+  const trimmed = value.trim().replace(/^["']+|["']+$/g, "").trim();
+  if (!trimmed) return value;
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withScheme);
+    const bareOrigin =
+      url.protocol === "https:" &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash &&
+      (url.pathname === "/" || url.pathname === "") &&
+      /^[^.]+\.[^.]+/.test(url.hostname);
+    return bareOrigin ? url.origin : value;
+  } catch {
+    return value;
+  }
+}
+
+function validateHttpsOrigin(input: string, name: string): string {
+  const value = normalizeOriginInput(input);
   try {
     const parsed = new URL(value);
     if (parsed.protocol === "https:" && parsed.origin === value) return parsed.origin;
@@ -95,11 +121,29 @@ export function absoluteUrl(path: string): string {
   return url.toString();
 }
 
-export function getAllowedOrigins(): string[] {
+export function getAllowedOrigins(requestOrigin?: string | null): string[] {
   const additional = (process.env.ADDITIONAL_ALLOWED_ORIGINS ?? "")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean)
-    .filter((origin) => isValidHttpsOrigin(origin));
-  return [...new Set([getSiteOrigin(), ...additional])];
+    .filter((origin) => isValidHttpsOrigin(origin))
+    .map((origin) => validateHttpsOrigin(origin, "ADDITIONAL_ALLOWED_ORIGINS"));
+  let site: string;
+  try {
+    site = getSiteOrigin();
+  } catch (error) {
+    // Last resort for a live Vercel Production deployment whose SITE_URL/APP_ORIGIN are unset or
+    // unusable: trust only the origin of the request's own host, and log loudly so it gets fixed.
+    const fallback =
+      process.env.VERCEL_ENV === "production" && isValidHttpsOrigin(requestOrigin ?? undefined)
+        ? validateHttpsOrigin(requestOrigin as string, "request origin")
+        : null;
+    if (!fallback) throw error;
+    console.error(
+      "[site origin] Falling back to the request origin. Set SITE_URL to your https origin (for example https://tc.sischool.in, no path or trailing slash) in Vercel Production and redeploy.",
+      error instanceof Error ? error.message : error,
+    );
+    site = fallback;
+  }
+  return [...new Set([site, ...additional])];
 }

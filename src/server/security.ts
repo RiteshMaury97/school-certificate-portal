@@ -625,5 +625,9 @@ export function apiError(error: unknown): NextResponse {
 }
 export function sameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
-  return isAllowedRequestOrigin(origin, getAllowedOrigins(), process.env.NODE_ENV !== "production");
+  return isAllowedRequestOrigin(
+    origin,
+    getAllowedOrigins(request.nextUrl.origin),
+    process.env.NODE_ENV !== "production",
+  );
 }
