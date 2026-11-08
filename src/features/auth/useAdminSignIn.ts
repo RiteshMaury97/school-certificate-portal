@@ -16,7 +16,6 @@ import {
   appCheckFailureMessage,
   appCheckFailureReference,
   AppCheckTokenError,
-  reportAppCheckFailure,
 } from "@/lib/app-check-errors";
 import { appCheckHeaders, auth } from "@/lib/firebase-client";
 
@@ -114,7 +113,6 @@ function useExistingNonGoogleSignInMethods() {
       } catch (cause) {
         const appCheckMessage = appCheckFailureMessage(cause);
         if (appCheckMessage) {
-          if (!(cause instanceof AppCheckTokenError)) reportAppCheckFailure(cause);
           const reference = appCheckFailureReference(cause);
           toast.add({
             type: "error",

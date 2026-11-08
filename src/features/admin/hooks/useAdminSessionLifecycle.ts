@@ -13,9 +13,6 @@ type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
   init?: RequestInit,
 ) => Promise<T>;
 type Props = { sessionState: AdminSessionState; api: Api; onLogin: () => void };
-function ignoreRequestFailure(error: unknown): void {
-  if (error instanceof Error) console.warn("Session refresh failed", error.message);
-}
 function readHardExpiry(value: unknown): number | null {
   if (typeof value !== "object" || value === null || !("hardExpiresAt" in value)) return null;
   return typeof value.hardExpiresAt === "number" ? value.hardExpiresAt : null;
@@ -73,9 +70,9 @@ function useSessionExpiryTimers(
       }
     };
     const pingTimer = setInterval(() => {
-      if (Date.now() - lastActivity < 20_000) void refreshSession().catch(ignoreRequestFailure);
+      if (Date.now() - lastActivity < 20_000) void refreshSession().catch(() => {});
     }, 15_000);
-    void refreshSession().catch(ignoreRequestFailure);
+    void refreshSession().catch(() => {});
     return () => {
       clear();
       if (hardExpiryTimer !== null) clearTimeout(hardExpiryTimer);

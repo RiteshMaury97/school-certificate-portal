@@ -125,8 +125,8 @@ export default function ReauthModal({
           errorMessage(result.data, "Recent credential and email-code verification are required."),
         );
       onComplete(result.data.grant);
-      await signOut(auth).catch((signOutError: unknown) => {
-        console.error("Could not clear the temporary re-authentication session.", signOutError);
+      await signOut(auth).catch(() => {
+        // The one-time credential is already consumed; the re-auth result is authoritative.
       });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Verification failed.");

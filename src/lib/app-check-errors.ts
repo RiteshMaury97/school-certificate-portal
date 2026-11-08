@@ -61,8 +61,3 @@ export function appCheckFailureReference(cause: unknown): string {
   if (cause instanceof AppCheckTokenError && cause.reference) return cause.reference;
   return safeReference(appCheckFailureCode(cause) ?? "");
 }
-
-export function reportAppCheckFailure(cause: unknown): void {
-  const code = appCheckFailureCode(cause);
-  if (code) console.error(code);
-}

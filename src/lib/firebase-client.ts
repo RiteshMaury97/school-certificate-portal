@@ -165,7 +165,6 @@ function requestTurnstileProof(): Promise<string> {
               finish(undefined, "widget:expired");
             },
             "error-callback": (errorCode) => {
-              console.error("appCheck/turnstile-widget", errorCode);
               finish(undefined, `widget:${errorCode}`);
             },
           });
@@ -199,15 +198,6 @@ function safeEndpointLabel(payload: unknown, key: "stage" | "reason", fallback: 
   return typeof value === "string" ? value.slice(0, 40) : fallback;
 }
 
-function reportTokenEndpointFailure(response: Response, payload: unknown): void {
-  console.error(
-    "appCheck/token-endpoint",
-    response.status,
-    safeEndpointLabel(payload, "stage", "unknown"),
-    safeEndpointLabel(payload, "reason", ""),
-  );
-}
-
 async function fetchCustomAppCheckToken(): Promise<AppCheckTokenPayload> {
   const turnstileToken = await requestTurnstileProof();
   const response = await fetch("/api/app-check/token", {
@@ -218,7 +208,6 @@ async function fetchCustomAppCheckToken(): Promise<AppCheckTokenPayload> {
   });
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    reportTokenEndpointFailure(response, payload);
     if (response.status === 503 && safeEndpointLabel(payload, "stage", "") === "maintenance")
       throw new AppCheckTokenError("appCheck/maintenance");
   }
@@ -288,11 +277,9 @@ export async function appCheckHeaders(): Promise<Record<string, string>> {
     return { "X-Firebase-AppCheck": await readAppCheckToken() };
   } catch (cause) {
     if (cause instanceof AppCheckTokenError) {
-      console.error(cause.code, cause.reference);
       throw cause;
     }
     const code = appCheckFailureCode(cause) ?? "appCheck/token-unavailable";
-    console.error(code);
     throw new AppCheckTokenError(code, appCheckFailureReference(cause) || "client-init");
   }
 }

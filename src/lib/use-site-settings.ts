@@ -56,10 +56,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function warnInvalid(field: string) {
-  if (process.env.NODE_ENV === "development")
-    console.warn(`[site-settings] Ignoring invalid ${field}; using its default value.`);
-}
+function warnInvalid(_field: string) {}
 
 function parseStringSettings(source: Record<string, unknown>, result: PublicSiteSettings) {
   for (const key of stringKeys) {
@@ -163,8 +160,6 @@ function fetchPublicSettings(): Promise<PublicSiteSettings> {
       return cachedSettings;
     })
     .catch((error: unknown) => {
-      if (process.env.NODE_ENV === "development")
-        console.warn("[site-settings] Could not load public settings; using defaults.", error);
       cacheExpiresAt = Date.now() + 10_000;
       return cachedSettings;
     })

@@ -231,7 +231,18 @@ async function deliverOtpEmail(
       phone: String(site.get("phone") ?? ""),
       email: String(site.get("email") ?? ""),
     });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown email delivery error";
+    const safeMessage = message
+      .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, "[email]")
+      .replace(/(password|token|secret)\s*[:=]\s*\S+/gi, "$1=[redacted]")
+      .replace(/\s+/g, " ")
+      .slice(0, 240);
+    console.error("[admin/otp/send] Verification email delivery failed", {
+      name: error instanceof Error ? error.name : "UnknownError",
+      code: readErrorCode(error) || undefined,
+      message: safeMessage,
+    });
     await challenge.challengeRef.delete();
     await releaseFailedOtpReservation({
       accountMinute: challenge.accountMinute,

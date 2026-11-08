@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { auth } from "@/lib/firebase-client";
 
-import { describeSignInError, errorCode, safeNextPath } from "./auth-errors";
+import { describeSignInError, safeNextPath } from "./auth-errors";
 import { ADMIN_GOOGLE_SIGN_IN_EVENT } from "./google-signin-event";
 import GoogleSignInDialog from "./GoogleSignInDialog";
 
@@ -46,10 +46,6 @@ async function postJson(path: string, body: Record<string, string>): Promise<Api
     // Server-side 503s carry a non-sensitive step name; show it so the site owner can find the
     // matching entry in the server log.
     const stage = typeof result.stage === "string" ? result.stage : "";
-    if (stage)
-      console.error(
-        `Google sign-in: ${path} failed at step "${stage}" (HTTP ${String(response.status)})`,
-      );
     throw new Error(stage ? `${base} (ref: ${stage})` : base);
   }
   return result;
@@ -126,8 +122,6 @@ export default function GoogleSignInController() {
       setChallenge(nextChallenge);
       setResendIn(nextChallenge.resendAfterSeconds);
     } catch (cause) {
-      const code = errorCode(cause);
-      if (code) console.error("Google sign-in failed:", code);
       await clearClientAuth();
       setError(describeSignInError(cause, "google"));
     } finally {
