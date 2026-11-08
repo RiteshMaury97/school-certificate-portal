@@ -24,7 +24,7 @@ const SCHOOL_LOGO_CID = "sis-logo@school-portal";
 function schoolLogoAttachment(): NonNullable<SendMailOptions["attachments"]>[number] {
   return {
     filename: "sis-logo.png",
-    path: join(process.cwd(), "public", "android-chrome-192x192.png"),
+    path: join(process.cwd(), "public", "sis-logo.png"),
     contentType: "image/png",
     contentDisposition: "inline",
     cid: SCHOOL_LOGO_CID,
@@ -105,17 +105,89 @@ async function reserveDailyRecipients(recipientCount: number): Promise<void> {
   }
 }
 
-async function schoolName(): Promise<string> {
+type SchoolMailBrand = {
+  name: string;
+  tagline: string;
+  contacts: string[];
+  details: string[];
+};
+
+function settingText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+async function schoolMailBrand(): Promise<SchoolMailBrand> {
   try {
     const settings = await db.collection("siteSettings").doc("main").get();
-    const configured = String(settings.get("schoolName") ?? "").trim();
-    if (configured) return configured;
+    const name = settingText(settings.get("schoolName"));
+    const contacts = [
+      settingText(settings.get("address")),
+      settingText(settings.get("phone")),
+      settingText(settings.get("email")),
+      settingText(settings.get("website")),
+      settingText(settings.get("officeHours")),
+    ].filter(Boolean);
+    const details = schoolDetails({
+      boardName: settingText(settings.get("boardName")),
+      affiliationNumber: settingText(settings.get("affiliationNumber")),
+      schoolCode: settingText(settings.get("schoolCode")),
+    });
+    return {
+      name:
+        name ||
+        cleanHeader(process.env.GMAIL_FROM_NAME ?? "").trim() ||
+        "Satyam International School",
+      tagline: settingText(settings.get("tagline")),
+      contacts,
+      details,
+    };
   } catch {
     /* Fall back to configured mail identity when site settings are unavailable. */
   }
   const configuredName = process.env.GMAIL_FROM_NAME?.trim();
-  if (!configuredName || configuredName.length === 0) return "Satyam International School";
-  return configuredName;
+  return {
+    name: configuredName || "Satyam International School",
+    tagline: "",
+    contacts: [],
+    details: [],
+  };
+}
+
+function textBrandFooter(text: string, brand: SchoolMailBrand): string {
+  const body = text.trim();
+  const hasSchoolName = body.toLocaleLowerCase().startsWith(brand.name.toLocaleLowerCase());
+  const footer = (
+    hasSchoolName
+      ? [brand.tagline, ...brand.details, ...brand.contacts].filter(
+          (detail) => !body.includes(detail),
+        )
+      : [brand.name, brand.tagline, ...brand.details, ...brand.contacts]
+  )
+    .filter(Boolean)
+    .join("\n");
+  return footer ? `${body}\n\n${footer}` : body;
+}
+
+function brandEmailHtml(
+  html: string | undefined,
+  text: string | undefined,
+  brand: SchoolMailBrand,
+): string {
+  const body =
+    html?.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] ??
+    html ??
+    (text ?? "")
+      .split(/\n{2,}/)
+      .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
+      .join("");
+  const footer = [...brand.details, ...brand.contacts]
+    .filter(Boolean)
+    .map((detail) => `<div>${escapeHtml(detail)}</div>`)
+    .join("");
+  const tagline = brand.tagline
+    ? `<div style="margin-top:5px;color:#d4e5de;font-size:13px;line-height:1.4">${escapeHtml(brand.tagline)}</div>`
+    : "";
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f3f5f4;color:#1b2925;font-family:Arial,Helvetica,sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f5f4;padding:28px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #e0e7e3;border-radius:14px;overflow:hidden"><tr><td style="padding:22px 28px;background:#123d32;color:#fff"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td style="vertical-align:middle;padding-right:14px"><img src="cid:${SCHOOL_LOGO_CID}" width="58" height="58" alt="${escapeHtml(brand.name)} logo" style="display:block;width:58px;height:58px;object-fit:contain;background:#fff;border-radius:10px;padding:4px"></td><td style="vertical-align:middle"><div style="font-size:18px;line-height:1.35;font-weight:700">${escapeHtml(brand.name)}</div>${tagline}</td></tr></table></td></tr><tr><td style="padding:28px;font-size:14px;line-height:1.65">${body}</td></tr><tr><td style="padding:18px 28px;border-top:1px solid #e7ece9;background:#fafcfb;color:#66736d;font-size:11px;line-height:1.7"><strong style="color:#26352e">${escapeHtml(brand.name)}</strong>${footer ? `<br>${footer}` : ""}<br>This is an automated email. Please do not send passwords or verification codes by email.</td></tr></table></td></tr></table></body></html>`;
 }
 
 function senderAddress(): string {
@@ -157,7 +229,7 @@ function schoolContactDetails(input: SchoolContactInput): string[] {
 
 async function otpSchoolName(value: string | undefined): Promise<string> {
   const provided = value?.trim();
-  return provided === undefined || provided === "" ? await schoolName() : provided;
+  return provided === undefined || provided === "" ? (await schoolMailBrand()).name : provided;
 }
 
 function adminRoleLabel(role: string): string {
@@ -170,28 +242,46 @@ function adminRoleLabel(role: string): string {
   return labels[role] ?? role;
 }
 
-export async function sendMail({ to, subject, text, html, replyTo, attachments }: MailInput): Promise<void> {
+export async function sendMail({
+  to,
+  subject,
+  text,
+  html,
+  replyTo,
+  attachments,
+}: MailInput): Promise<void> {
   const recipients = (Array.isArray(to) ? to : [to])
     .map((address) => cleanHeader(address))
     .filter(Boolean);
   if (!recipients.length) throw new Error("Email requires at least one recipient.");
   if (!text && !html) throw new Error("Email requires text or HTML content.");
 
-  const name = cleanHeader(await schoolName()).replace(/["\\]/g, "");
+  const brand = await schoolMailBrand();
+  const name = cleanHeader(brand.name).replace(/["\\]/g, "");
   const from = `"${name}" <${cleanHeader(senderAddress())}>`;
-  const safeSubject = cleanHeader(subject);
+  const cleanSubject = cleanHeader(subject);
+  const safeSubject = cleanSubject.toLocaleLowerCase().startsWith(name.toLocaleLowerCase())
+    ? cleanSubject
+    : `${name}: ${cleanSubject}`;
   const safeReplyTo = replyToAddress(replyTo);
   const smtp = getTransport();
   await reserveDailyRecipients(recipients.length);
 
+  const alreadyBranded = Boolean(html?.includes(`cid:${SCHOOL_LOGO_CID}`));
+  const messageHtml = alreadyBranded ? html : brandEmailHtml(html, text, brand);
+  const messageText = text ? textBrandFooter(text, brand) : undefined;
+  const messageAttachments = [
+    ...(attachments ?? []),
+    ...(!alreadyBranded ? [schoolLogoAttachment()] : []),
+  ];
   const options: SendMailOptions = {
     from,
     to: recipients,
     ...(safeReplyTo ? { replyTo: safeReplyTo } : {}),
     subject: safeSubject,
-    ...(text ? { text } : {}),
-    ...(html ? { html } : {}),
-    ...(attachments?.length ? { attachments } : {}),
+    ...(messageText ? { text: messageText } : {}),
+    html: messageHtml,
+    ...(messageAttachments.length ? { attachments: messageAttachments } : {}),
   };
   await smtp.sendMail(options);
 }
