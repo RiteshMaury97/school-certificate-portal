@@ -36,10 +36,12 @@ function buildCsp(nonce: string, allowSameOriginFrame = false): string {
     "'sha256-xlFUELNrtnWiUXTUBP8ReC0QfYK+jD6C68lZJoIGSZc='",
     "'sha256-9+6EXYcy4JMPrd2mDGG1D85TeqaKTTmr5XhC0WaqBc0='",
     "'sha256-W0U1EAmZ7P6+0KGCduefcolUx2E5sd/T1NvV2dxWRuA='",
+    "'sha256-AKPgnbmZSTILshg0gjoVBbVHgHGzZ6Z2Ov8nHOKyAqI='",
+    "'sha256-XiWN0GaQx6O2JxZKuwcaMG6XBTVSQpoXO9E/k/JtIlY='",
   ];
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'${dev ? " 'unsafe-eval'" : ""} https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com https://apis.google.com ${reportedInlineScriptHashes.join(" ")}`,
+    `script-src 'self' 'nonce-${nonce}'${dev ? " 'unsafe-eval'" : ""} https://challenges.cloudflare.com https://www.google.com https://www.gstatic.com https://apis.google.com https://vercel.live ${reportedInlineScriptHashes.join(" ")}`,
     `style-src 'self' ${dev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com`,
     `style-src-elem 'self' ${dev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com 'sha256-Wwucq8eX2r0YFymkQhDXm5hN0+FfSvI3s4JSSaqa4iw='`,
     "style-src-attr 'unsafe-inline'",
