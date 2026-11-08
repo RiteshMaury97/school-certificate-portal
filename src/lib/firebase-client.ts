@@ -124,15 +124,21 @@ function requestTurnstileProof(): Promise<string> {
       new Promise<string>((resolve, reject) => {
         const host = document.createElement("div");
         host.setAttribute("aria-hidden", "true");
-        host.style.position = "fixed";
-        host.style.left = "-10000px";
         document.body.appendChild(host);
         let widgetId = "";
+        let timeoutId: number | undefined;
         let settled = false;
         const finish = (token?: string) => {
           if (settled) return;
           settled = true;
-          window.turnstile?.remove(widgetId);
+          if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+          if (widgetId) {
+            try {
+              window.turnstile?.remove(widgetId);
+            } catch {
+              // Cleanup must not prevent resolving or rejecting token acquisition.
+            }
+          }
           host.remove();
           if (token) resolve(token);
           else reject(new Error("Turnstile verification failed."));
@@ -154,10 +160,10 @@ function requestTurnstileProof(): Promise<string> {
               finish();
             },
           });
-          turnstile.execute(widgetId);
-          window.setTimeout(() => {
+          timeoutId = window.setTimeout(() => {
             finish();
           }, 120_000);
+          turnstile.execute(widgetId);
         } catch {
           finish();
         }
@@ -165,7 +171,35 @@ function requestTurnstileProof(): Promise<string> {
   );
 }
 
-async function fetchCustomAppCheckToken(): Promise<{ token: string; expireTimeMillis: number }> {
+type AppCheckTokenPayload = { token: string; expireTimeMillis: number };
+
+function isAppCheckTokenPayload(value: unknown): value is AppCheckTokenPayload {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "token" in value &&
+    typeof value.token === "string" &&
+    "expireTimeMillis" in value &&
+    typeof value.expireTimeMillis === "number"
+  );
+}
+
+function safeEndpointLabel(payload: unknown, key: "stage" | "reason", fallback: string): string {
+  if (typeof payload !== "object" || payload === null || !(key in payload)) return fallback;
+  const value: unknown = Reflect.get(payload, key);
+  return typeof value === "string" ? value.slice(0, 40) : fallback;
+}
+
+function reportTokenEndpointFailure(response: Response, payload: unknown): void {
+  console.error(
+    "appCheck/token-endpoint",
+    response.status,
+    safeEndpointLabel(payload, "stage", "unknown"),
+    safeEndpointLabel(payload, "reason", ""),
+  );
+}
+
+async function fetchCustomAppCheckToken(): Promise<AppCheckTokenPayload> {
   const turnstileToken = await requestTurnstileProof();
   const response = await fetch("/api/app-check/token", {
     method: "POST",
@@ -174,35 +208,10 @@ async function fetchCustomAppCheckToken(): Promise<{ token: string; expireTimeMi
     cache: "no-store",
   });
   const payload: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    const stage =
-      typeof payload === "object" &&
-      payload !== null &&
-      "stage" in payload &&
-      typeof payload.stage === "string"
-        ? payload.stage.slice(0, 40)
-        : "unknown";
-    const reason =
-      typeof payload === "object" &&
-      payload !== null &&
-      "reason" in payload &&
-      typeof payload.reason === "string"
-        ? payload.reason.slice(0, 40)
-        : "";
-    console.error("appCheck/token-endpoint", response.status, stage, reason);
-  }
-  if (
-    !response.ok ||
-    typeof payload !== "object" ||
-    payload === null ||
-    !("token" in payload) ||
-    typeof payload.token !== "string" ||
-    !("expireTimeMillis" in payload) ||
-    typeof payload.expireTimeMillis !== "number"
-  ) {
+  if (!response.ok) reportTokenEndpointFailure(response, payload);
+  if (!response.ok || !isAppCheckTokenPayload(payload))
     throw new AppCheckTokenError("appCheck/turnstile-error");
-  }
-  return { token: payload.token, expireTimeMillis: payload.expireTimeMillis };
+  return payload;
 }
 
 function appCheck(): Promise<AppCheck> {

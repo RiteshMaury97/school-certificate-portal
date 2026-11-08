@@ -5,7 +5,15 @@ vi.mock("server-only", () => ({}));
 import { checkTurnstileToken, verifyTurnstileToken } from "../src/server/turnstile";
 
 function siteverify(body: unknown, ok = true) {
-  return vi.fn().mockResolvedValue({ ok, json: () => Promise.resolve(body) });
+  return vi.fn<typeof fetch>().mockResolvedValue(
+    new Response(JSON.stringify(body), { status: ok ? 200 : 500 }),
+  );
+}
+
+function requestBody(fetchMock: ReturnType<typeof siteverify>): URLSearchParams {
+  const body = fetchMock.mock.calls[0]?.[1]?.body;
+  if (!(body instanceof URLSearchParams)) throw new Error("Expected a URL encoded request body");
+  return body;
 }
 
 describe("checkTurnstileToken", () => {
@@ -22,7 +30,7 @@ describe("checkTurnstileToken", () => {
     const fetchMock = siteverify({ success: true });
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await checkTurnstileToken("token", null, undefined);
+    const result = await checkTurnstileToken("token", null, "");
 
     expect(result).toEqual({ ok: false, reason: "not-configured", errorCodes: [] });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -36,9 +44,9 @@ describe("checkTurnstileToken", () => {
       ok: true,
     });
 
-    const init = fetchMock.mock.calls[0]?.[1] as { body: URLSearchParams };
-    expect(init.body.get("secret")).toBe("app-check-secret");
-    expect(init.body.get("remoteip")).toBe("203.0.113.5");
+    const body = requestBody(fetchMock);
+    expect(body.get("secret")).toBe("app-check-secret");
+    expect(body.get("remoteip")).toBe("203.0.113.5");
   });
 
   it("reports Cloudflare error codes when a token is rejected", async () => {
@@ -67,7 +75,6 @@ describe("checkTurnstileToken", () => {
 
     await expect(verifyTurnstileToken("token", null)).resolves.toBe(true);
 
-    const init = fetchMock.mock.calls[0]?.[1] as { body: URLSearchParams };
-    expect(init.body.get("secret")).toBe("login-widget-secret");
+    expect(requestBody(fetchMock).get("secret")).toBe("login-widget-secret");
   });
 });
