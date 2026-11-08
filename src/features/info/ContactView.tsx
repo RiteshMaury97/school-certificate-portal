@@ -12,7 +12,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { useT } from "@/i18n/locale-provider";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import ContactEnquiryForm from "./ContactEnquiryForm";
@@ -26,7 +25,6 @@ function settingOr(value: string | undefined, fallback: string): string {
 
 // eslint-disable-next-line max-lines-per-function -- reason: this legacy contact page is awaiting a behavior-preserving component extraction.
 export default function ContactView() {
-  const t = useT();
   const settings = usePublicSiteSettings();
   const schoolName = settingOr(settings.schoolName, "Satyam International School");
   const address = settingOr(settings.address, "Lodipur, Zamania, Ghazipur, Uttar Pradesh 232329");
@@ -48,7 +46,7 @@ export default function ContactView() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{t("contact.supportHeading")}</BreadcrumbPage>
+              <BreadcrumbPage>{"Contact & support"}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -78,7 +76,7 @@ export default function ContactView() {
         </header>
 
         <section
-          aria-label={t("contact.contactOptions")}
+          aria-label={"Contact options"}
           className="mt-5 grid gap-3 md:grid-cols-3"
         >
           <a
@@ -170,7 +168,7 @@ export default function ContactView() {
               <h2 className="text-sm font-bold text-[var(--text)]">Need another service?</h2>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-[var(--primary)]">
                 <Link href="/certificates" className="inline-flex items-center gap-1">
-                  {t("footer.findCertificates")} <ArrowRight size={12} aria-hidden="true" />
+                  {"Find my certificates"} <ArrowRight size={12} aria-hidden="true" />
                 </Link>
                 <Link href="/report-wrong-record" className="inline-flex items-center gap-1">
                   Report a record issue <ArrowRight size={12} aria-hidden="true" />

@@ -6,7 +6,6 @@ import { useEffect, useId, useRef, useState } from "react";
 import EmptyState from "@/components/feedback/EmptyState";
 import ErrorState from "@/components/feedback/ErrorState";
 import SiteShell from "@/components/layout/SiteShell";
-import { useT } from "@/i18n/locale-provider";
 import { applyCspNonce } from "@/lib/csp";
 import { appCheckHeaders } from "@/lib/firebase-client";
 
@@ -97,7 +96,6 @@ function displayDate(value: string): string {
 }
 // eslint-disable-next-line complexity -- reason: this view coordinates verification state, API outcomes, and result presentation.
 export default function VerifyPage() {
-  const t = useT();
   const [certificateNumber, setCertificateNumber] = useState("");
   const [session, setSession] = useState("");
   const [sessions, setSessions] = useState<string[]>([]);
@@ -270,7 +268,7 @@ export default function VerifyPage() {
           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="max-w-2xl">
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-white/70"><ShieldCheck size={15} /> Public certificate service</p>
-              <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{t("verify.title")}</h1>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{"Verify a certificate"}</h1>
               <p className="mt-3 text-sm leading-6 text-white/80 sm:text-base">Confirm that a certificate was issued by the school using its number and academic session.</p>
             </div>
             <div className="grid h-16 w-16 shrink-0 place-items-center self-start rounded-2xl border border-white/15 bg-white/10 sm:self-center"><FileCheck2 size={30} aria-hidden="true" /></div>
@@ -482,3 +480,4 @@ export default function VerifyPage() {
     </SiteShell>
   );
 }
+

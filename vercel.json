@@ -24,16 +24,10 @@
     "src/app/api/admin/backup/route.ts": {
       "maxDuration": 60
     },
-    "src/app/api/admin/malware/rescan/route.ts": {
-      "maxDuration": 60
-    },
     "src/app/api/cron/security-summary/route.ts": {
       "maxDuration": 60
     },
     "src/app/api/cron/breach-reminders/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/malware-rescan/route.ts": {
       "maxDuration": 60
     }
   },
@@ -48,10 +42,6 @@
     },
     {
       "path": "/api/cron/breach-reminders",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/malware-rescan",
       "schedule": "0 4 * * *"
     }
   ]

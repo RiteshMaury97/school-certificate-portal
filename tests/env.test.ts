@@ -36,8 +36,6 @@ const validProductionEnvironment = {
   GMAIL_USER: "school@example.test",
   GMAIL_APP_PASSWORD: "test-app-password",
   CRON_SECRET: "h".repeat(32),
-  CLAMD_HOST: "clamd.internal",
-  MALWARE_SCAN_MODE: "required",
 };
 
 describe("server environment validator", () => {
@@ -161,7 +159,7 @@ describe("scoped environment assertions", () => {
   }
 
   it("ignores missing variables that belong to unrelated features", () => {
-    const rest = without("GMAIL_APP_PASSWORD", "CLAMD_HOST", "BACKUP_R2_BUCKET");
+    const rest = without("GMAIL_APP_PASSWORD", "BACKUP_R2_BUCKET");
     expect(validateServerEnvironment(rest).valid).toBe(false);
     expect(() => {
       assertEnvironmentFor("Firebase Admin", firebaseNames, rest);

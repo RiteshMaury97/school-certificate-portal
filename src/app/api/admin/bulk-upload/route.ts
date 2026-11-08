@@ -156,10 +156,7 @@ async function persistBulkCertificate(input: {
     file,
     session: map.session,
     certificateType: map.certificateType,
-    studentId,
-    uploaderUid: admin.uid,
-    request,
-  });
+    studentId,  });
   const ref = db.collection("certificates").doc(randomUUID());
   try {
     await createCertificateNumberIndex(map.certificateNumber, ref.id, map.session);
@@ -173,12 +170,7 @@ async function persistBulkCertificate(input: {
       fileName: stored.fileName,
       mimeType: stored.mimeType,
       size: stored.size,
-      sha256: stored.sha256,
-      scanStatus: stored.scanStatus,
-      scannedAt: stored.scannedAt,
-      scannerVersion: stored.scannerVersion,
-      signatureDatabaseDate: stored.signatureDatabaseDate,
-      issueDate: map.issueDate,
+      sha256: stored.sha256,      issueDate: map.issueDate,
       status: "pending",
       published: false,
       uploadedBy: admin.uid,

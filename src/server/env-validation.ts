@@ -16,8 +16,6 @@ export const PRODUCTION_REQUIRED_ENV_NAMES = [
   "BACKUP_R2_BUCKET",
   "TURNSTILE_SECRET_KEY",
   "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
-  "APPCHECK_TURNSTILE_SECRET_KEY",
-  "NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY",
   "SEARCH_HMAC_SECRET",
   "AUDIT_LOG_HMAC_SECRET",
   "CERTIFICATE_ACCESS_TOKEN_SECRET",
@@ -31,8 +29,6 @@ export const PRODUCTION_REQUIRED_ENV_NAMES = [
   "GMAIL_USER",
   "GMAIL_APP_PASSWORD",
   "CRON_SECRET",
-  "CLAMD_HOST",
-  "MALWARE_SCAN_MODE",
 ] as const;
 
 function requireNames(env: ServerEnvironment, issue: AddIssue, names: readonly string[]) {
@@ -107,18 +103,11 @@ function validateCredentialPair(env: ServerEnvironment, issue: AddIssue) {
     issue("FIREBASE_PRIVATE_KEY", "is required when FIREBASE_CLIENT_EMAIL is set");
   if (env.FIREBASE_PRIVATE_KEY && !env.FIREBASE_CLIENT_EMAIL)
     issue("FIREBASE_CLIENT_EMAIL", "is required when FIREBASE_PRIVATE_KEY is set");
-  if (env.MALWARE_SCAN_MODE && !["required", "off"].includes(env.MALWARE_SCAN_MODE))
-    issue("MALWARE_SCAN_MODE", "must be required or off");
   if (env.APP_CHECK_ENFORCE && !["true", "false"].includes(env.APP_CHECK_ENFORCE))
     issue("APP_CHECK_ENFORCE", "must be true or false");
 }
 
 function validateScalarSettings(env: ServerEnvironment, issue: AddIssue) {
-  for (const name of ["CLAMD_PORT", "CLAMD_TIMEOUT_MS"] as const) {
-    const value = env[name];
-    if (value && (!Number.isInteger(Number(value)) || Number(value) <= 0))
-      issue(name, "must be a positive integer");
-  }
 }
 
 function isHttpsOrigin(value: string | undefined): boolean {
@@ -201,8 +190,6 @@ function validatePreview(env: ServerEnvironment, issue: AddIssue) {
     "GMAIL_APP_PASSWORD",
     "TURNSTILE_SECRET_KEY",
     "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
-    "APPCHECK_TURNSTILE_SECRET_KEY",
-    "NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY",
     "SEARCH_HMAC_SECRET",
     "AUDIT_LOG_HMAC_SECRET",
     "CERTIFICATE_ACCESS_TOKEN_SECRET",
@@ -227,11 +214,6 @@ function validateProductionCredentials(env: ServerEnvironment, issue: AddIssue) 
     issue("FIREBASE_SERVICE_ACCOUNT_BASE64", "Production requires Firebase Admin credentials");
 }
 
-function validateProductionMalwareMode(env: ServerEnvironment, issue: AddIssue) {
-  if (env.MALWARE_SCAN_MODE && env.MALWARE_SCAN_MODE !== "required")
-    issue("MALWARE_SCAN_MODE", "must be required in Production");
-}
-
 function validateProductionBuckets(env: ServerEnvironment, issue: AddIssue) {
   if (env.BACKUP_R2_BUCKET && env.R2_BUCKET && env.BACKUP_R2_BUCKET === env.R2_BUCKET)
     issue("BACKUP_R2_BUCKET", "must be different from R2_BUCKET");
@@ -240,7 +222,6 @@ function validateProductionBuckets(env: ServerEnvironment, issue: AddIssue) {
 function validateProductionRelationships(env: ServerEnvironment, issue: AddIssue) {
   validateProductionOrigin(env, issue);
   validateProductionCredentials(env, issue);
-  validateProductionMalwareMode(env, issue);
   validateProductionBuckets(env, issue);
 }
 

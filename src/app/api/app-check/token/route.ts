@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   const verification = await checkTurnstileToken(
     parsed.data.turnstileToken,
     requesterIp(request),
-    process.env.APPCHECK_TURNSTILE_SECRET_KEY,
+    process.env.APPCHECK_TURNSTILE_SECRET_KEY?.trim() || process.env.TURNSTILE_SECRET_KEY,
   );
   if (!verification.ok) {
     console.error("appCheck/token-turnstile", verification.reason, verification.errorCodes.join(","));

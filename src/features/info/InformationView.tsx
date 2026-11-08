@@ -3,7 +3,6 @@ import { ArrowRight, Check, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import SiteShell from "@/components/layout/SiteShell";
-import { useT } from "@/i18n/locale-provider";
 type Kind = "contact" | "report" | "rights" | "offline" | "maintenance";
 const content: Record<
   Kind,
@@ -46,11 +45,10 @@ const content: Record<
   },
 };
 export default function InformationPage({ kind }: { kind: Kind }) {
-  const t = useT();
   const page = content[kind];
-  const localizedTitle = kind === "rights" ? t("legal.dataRights")
-    : kind === "report" ? t("legal.reportWrongRecord")
-      : kind === "contact" ? t("contact.title") : page.title;
+  const localizedTitle = kind === "rights" ? "Data protection and your rights"
+    : kind === "report" ? "Report a wrong record"
+      : kind === "contact" ? "Contact the school" : page.title;
   if (kind === "rights") {
     return (
       <SiteShell>

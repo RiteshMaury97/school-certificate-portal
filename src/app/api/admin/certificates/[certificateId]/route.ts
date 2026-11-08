@@ -131,10 +131,7 @@ async function saveReplacement(input: {
     file,
     session: metadata.session,
     certificateType: metadata.type,
-    studentId,
-    uploaderUid: adminUid,
-    request,
-  });
+    studentId,  });
   const replacementRef = db.collection("certificates").doc(randomUUID());
   try {
     await createCertificateNumberIndex(
@@ -152,12 +149,7 @@ async function saveReplacement(input: {
       fileName: stored.fileName,
       mimeType: stored.mimeType,
       size: stored.size,
-      sha256: stored.sha256,
-      scanStatus: stored.scanStatus,
-      scannedAt: stored.scannedAt,
-      scannerVersion: stored.scannerVersion,
-      signatureDatabaseDate: stored.signatureDatabaseDate,
-      issueDate: metadata.issueDate,
+      sha256: stored.sha256,      issueDate: metadata.issueDate,
       status: "pending",
       published: false,
       uploadedBy: adminUid,

@@ -9,7 +9,6 @@ import type { DraftContact } from "@/shared/breach-drafts";
 
 type Contact = Required<DraftContact>;
 type Audience = "board" | "people";
-type Language = "en" | "hi";
 type EditedDraft = { key: string; value: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -20,32 +19,22 @@ function isAudience(value: string): value is Audience {
   return value === "board" || value === "people";
 }
 
-function isLanguage(value: string): value is Language {
-  return value === "en" || value === "hi";
-}
-
 function DraftEditor({
   recipientId,
-  languageId,
   draftId,
   audience,
-  language,
   draft,
   copied,
   onAudienceChange,
-  onLanguageChange,
   onDraftChange,
   onCopy,
 }: {
   recipientId: string;
-  languageId: string;
   draftId: string;
   audience: Audience;
-  language: Language;
   draft: string;
   copied: boolean;
   onAudienceChange: (value: Audience) => void;
-  onLanguageChange: (value: Language) => void;
   onDraftChange: (value: string) => void;
   onCopy: () => void;
 }) {
@@ -67,22 +56,6 @@ function DraftEditor({
         >
           <option value="board">Data Protection Board</option>
           <option value="people">Affected people</option>
-        </select>
-        <label htmlFor={languageId} className="text-sm">
-          Language *
-        </label>
-        <select
-          id={languageId}
-          required
-          aria-required="true"
-          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2"
-          value={language}
-          onChange={(event) => {
-            if (isLanguage(event.target.value)) onLanguageChange(event.target.value);
-          }}
-        >
-          <option value="en">English</option>
-          <option value="hi">Hindi</option>
         </select>
       </div>
       <label className="block text-sm font-medium" htmlFor={draftId}>
@@ -115,10 +88,8 @@ function DraftEditor({
 
 export default function BreachDrafts({ incident }: { incident: Incident }) {
   const recipientId = useId();
-  const languageId = useId();
   const draftId = useId();
   const [audience, setAudience] = useState<Audience>("board");
-  const [language, setLanguage] = useState<Language>("en");
   const [contact, setContact] = useState<Contact>({ name: "", email: "", phone: "" });
   const [editedDraft, setEditedDraft] = useState<EditedDraft | null>(null);
   const [copied, setCopied] = useState(false);
@@ -157,14 +128,13 @@ export default function BreachDrafts({ incident }: { incident: Incident }) {
   const draftKey = [
     incident.id,
     audience,
-    language,
     incident.summary,
     incident.discoveredAt,
     contact.email,
   ].join("|");
   const generated = useMemo(
-    () => generateBreachDraft(incident, audience, language, contact),
-    [incident, audience, language, contact],
+    () => generateBreachDraft(incident, audience, contact),
+    [incident, audience, contact],
   );
   const draft = editedDraft?.key === draftKey ? editedDraft.value : generated;
 
@@ -194,14 +164,11 @@ export default function BreachDrafts({ incident }: { incident: Incident }) {
       </div>
       <DraftEditor
         recipientId={recipientId}
-        languageId={languageId}
         draftId={draftId}
         audience={audience}
-        language={language}
         draft={draft}
         copied={copied}
         onAudienceChange={setAudience}
-        onLanguageChange={setLanguage}
         onDraftChange={(value) => {
           setEditedDraft({ key: draftKey, value });
         }}

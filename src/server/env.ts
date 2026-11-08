@@ -59,10 +59,6 @@ const serverEnvironmentFieldsSchema = z
     TERMS_VERSION: optionalText,
     BREACH_RESPONSE_TARGET_HOURS: optionalText,
     NOTIFICATION_OPT_OUT_SECRET: optionalText,
-    CLAMD_HOST: optionalText,
-    CLAMD_PORT: optionalText,
-    CLAMD_TIMEOUT_MS: optionalText,
-    MALWARE_SCAN_MODE: optionalText,
     SENTRY_DSN: optionalText,
     BROWSER_SENTRY_DSN: optionalText,
     PLAUSIBLE_DOMAIN: optionalText,
@@ -157,7 +153,7 @@ export function assertServerEnvironment(
 
 /**
  * Validates only the variables one feature needs. A missing or malformed value for an
- * unrelated feature (mail, ClamAV, backups) must not take down every route that touches
+ * unrelated feature (mail, backups) must not take down every route that touches
  * Firebase, so each server module asserts its own scope instead of the whole environment.
  * The full check still runs in /api/health and `npm run check:env`.
  */

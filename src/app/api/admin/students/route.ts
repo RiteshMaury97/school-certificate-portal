@@ -300,10 +300,7 @@ async function storeStudentCertificate(input: {
     file,
     session: data.session,
     certificateType: data.certificateType,
-    studentId: identity.studentRef.id,
-    uploaderUid: admin.uid,
-    request,
-  });
+    studentId: identity.studentRef.id,  });
   try {
     const now = FieldValue.serverTimestamp();
     await writeStudentRecord({ data, identity, notification, adminUid: admin.uid, now });
@@ -451,12 +448,7 @@ async function saveStudentCertificateRecord(input: {
       fileName: stored.fileName,
       mimeType: stored.mimeType,
       size: stored.size,
-      sha256: stored.sha256,
-      scanStatus: stored.scanStatus,
-      scannedAt: stored.scannedAt,
-      scannerVersion: stored.scannerVersion,
-      signatureDatabaseDate: stored.signatureDatabaseDate,
-      issueDate: data.issuedAt,
+      sha256: stored.sha256,      issueDate: data.issuedAt,
       status: "pending",
       published: false,
       uploadedBy: adminUid,

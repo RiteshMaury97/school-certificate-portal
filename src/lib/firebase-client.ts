@@ -65,10 +65,13 @@ function tokenExpiry(token: string): number {
 
 /** Development may skip App Check only when the server uses the same opt-out. */
 function appCheckOptional(): boolean {
+  const appCheckSiteKey =
+    process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
   return (
     !isProduction &&
     (process.env.APP_CHECK_ENFORCE === "false" ||
-      !process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY)
+      !appCheckSiteKey)
   );
 }
 
@@ -115,7 +118,9 @@ function loadTurnstileScript(): Promise<void> {
 }
 
 function requestTurnstileProof(): Promise<string> {
-  const siteKey = process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY;
+  const siteKey =
+    process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
   if (!siteKey) return Promise.reject(new Error("Turnstile is not configured."));
   return loadTurnstileScript().then(
     () =>

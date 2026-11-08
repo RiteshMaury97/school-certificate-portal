@@ -30,7 +30,6 @@ const publicEnvironmentGroups: Record<string, readonly string[]> = {
   ],
   turnstile: ["NEXT_PUBLIC_TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"],
   appCheck: ["NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY", "APPCHECK_TURNSTILE_SECRET_KEY"],
-  malwareScan: ["CLAMD_HOST", "MALWARE_SCAN_MODE"],
 };
 const WEB_APP_ID_PATTERN = /^\d+:\d+:web:[0-9a-f]+$/i;
 
@@ -47,9 +46,7 @@ function publicStatus() {
       const valid =
         group === "firebaseAdmin"
           ? configured("FIREBASE_PROJECT_ID") && firebaseAdminCredentials
-          : group === "malwareScan"
-            ? configured("CLAMD_HOST") && process.env.MALWARE_SCAN_MODE === "required"
-            : names.every(configured);
+          : names.every(configured);
       return [group, valid];
     }),
   );

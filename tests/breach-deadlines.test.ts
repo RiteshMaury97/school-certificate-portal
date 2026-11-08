@@ -59,14 +59,12 @@ describe("breach deadline and export helpers", () => {
       likelyConsequences: "Records may have been viewed.",
       containmentActions: "Access was disabled.",
     };
-    const english = generateBreachDraft(incident, "board", "en", {
+    const english = generateBreachDraft(incident, "board", {
       name: "Grievance Officer",
       email: "privacy@example.test",
     });
-    const hindi = generateBreachDraft(incident, "people", "hi", {});
     expect(english).toContain("Nature and extent:");
     expect(english).toContain("privacy@example.test");
-    expect(hindi).toContain("क्या हुआ:");
     expect(english).not.toMatch(/\[(?:student|parent|name|email|phone)[^\]]*\]/i);
   });
 

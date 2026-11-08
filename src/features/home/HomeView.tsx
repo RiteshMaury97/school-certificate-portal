@@ -23,7 +23,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { useT } from "@/i18n/locale-provider";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import { OFFICIAL_WEBSITE } from "../../../config/school";
@@ -69,7 +68,6 @@ function settingOr(value: string | undefined, fallback: string): string {
 // eslint-disable-next-line max-lines-per-function -- reason: this legacy landing page is awaiting a behavior-preserving component extraction.
 export default function HomePage() {
   const settings = usePublicSiteSettings();
-  const t = useT();
   const schoolName = settingOr(settings.schoolName, "Satyam International School");
   const address = settingOr(settings.address, "Lodipur, Zamania, Ghazipur, Uttar Pradesh 232329");
   const phone = settingOr(settings.phone, "+91 9336950476");
@@ -81,11 +79,11 @@ export default function HomePage() {
       <Breadcrumb className="mb-4">
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/">{t("nav.home")}</BreadcrumbLink>
+            <BreadcrumbLink href="/">{"Home"}</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{t("home.studentServices")}</BreadcrumbPage>
+            <BreadcrumbPage>{"Student services"}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -98,31 +96,31 @@ export default function HomePage() {
         <div className="relative grid items-center gap-9 sm:grid-cols-[minmax(0,1fr)_260px] lg:gap-14">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--on-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--on-primary)_8%,transparent)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em]">
-              <ShieldCheck size={13} aria-hidden="true" /> {t("home.officialPortal")}
+              <ShieldCheck size={13} aria-hidden="true" /> {"Official student portal"}
             </p>
             <h1 className="mt-5 max-w-2xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl lg:text-5xl">
-              {t("home.journey")}
-              <br className="hidden sm:block" /> {t("home.trustedPlace")}
+              {"Your school journey."}
+              <br className="hidden sm:block" /> {"One trusted place."}
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-[color-mix(in_srgb,var(--on-primary)_82%,transparent)] sm:text-base sm:leading-7">
-              {t("home.welcomeText").replace("{schoolName}", schoolName)}
+              {"Welcome to the official student services portal for {schoolName}, Zamania. Find student certificates, verify issued records and get the support you need.".replace("{schoolName}", schoolName)}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/certificates"
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-2)]"
               >
-                {t("home.findCertificates")} <ArrowRight size={15} aria-hidden="true" />
+                {"Find my certificates"} <ArrowRight size={15} aria-hidden="true" />
               </Link>
               <Link
                 href="/verify"
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--on-primary)_45%,transparent)] px-4 text-sm font-semibold text-[var(--on-primary)] transition hover:bg-[color-mix(in_srgb,var(--on-primary)_10%,transparent)]"
               >
-                {t("home.verifyCertificate")}
+                {"Verify a certificate"}
               </Link>
             </div>
             <p className="mt-4 flex items-center gap-2 text-[10px] text-[color-mix(in_srgb,var(--on-primary)_75%,transparent)]">
-              <LockKeyhole size={12} aria-hidden="true" /> {t("home.secureRecords")}
+              <LockKeyhole size={12} aria-hidden="true" /> {"Secure access to official school records"}
             </p>
           </div>
 

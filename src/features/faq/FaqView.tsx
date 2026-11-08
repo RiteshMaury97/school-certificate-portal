@@ -14,12 +14,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { useLocale, useT } from "@/i18n/locale-provider";
 type Faq = {
   questionEn: string;
   answerEn: string;
-  question_i18n?: Record<string, string>;
-  answer_i18n?: Record<string, string>;
 };
 
 function isFaq(value: unknown): value is Faq {
@@ -88,14 +85,13 @@ function FaqSearchHeader({
   query: string;
   onQueryChange: (value: string) => void;
 }) {
-  const t = useT();
   return (
     <header className="rounded-3xl bg-[var(--surface-2)] px-5 py-7 sm:px-8 sm:py-9">
       <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--primary)]">
         Help centre / Student services
       </p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--text)] sm:text-4xl">
-        {t("faq.title")}
+        {"Frequently asked questions"}
       </h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
         Clear answers about finding, verifying and requesting support for school certificates.
@@ -159,14 +155,12 @@ function FaqQuestions({
   loadError,
   faqs,
   visibleFaqs,
-  locale,
   onRetry,
 }: {
   loading: boolean;
   loadError: boolean;
   faqs: Faq[];
   visibleFaqs: Faq[];
-  locale: string;
   onRetry: () => void;
 }) {
   return (
@@ -203,9 +197,7 @@ function FaqQuestions({
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus)]">
                 <span>
-                  {item.question_i18n?.[locale]?.length
-                    ? item.question_i18n[locale]
-                    : item.questionEn}
+                  {item.questionEn}
                 </span>
                 <span
                   aria-hidden="true"
@@ -215,7 +207,7 @@ function FaqQuestions({
                 </span>
               </summary>
               <p className="mt-3 max-w-3xl text-xs leading-6 text-[var(--text-muted)]">
-                {item.answer_i18n?.[locale]?.length ? item.answer_i18n[locale] : item.answerEn}
+                {item.answerEn}
               </p>
             </details>
           ))}
@@ -299,8 +291,6 @@ function FaqSupportSidebar() {
 }
 
 export default function FaqPage() {
-  const { locale } = useLocale();
-  const t = useT();
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -349,7 +339,7 @@ export default function FaqPage() {
         <Breadcrumb className="mb-4">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">{t("nav.home")}</BreadcrumbLink>
+              <BreadcrumbLink href="/">{"Home"}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
@@ -357,7 +347,7 @@ export default function FaqPage() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{t("home.studentServices")}</BreadcrumbPage>
+              <BreadcrumbPage>{"Student services"}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -371,7 +361,6 @@ export default function FaqPage() {
             loadError={loadError}
             faqs={faqs}
             visibleFaqs={visibleFaqs}
-            locale={locale}
             onRetry={() => {
               setLoading(true);
               setRetry((value) => value + 1);

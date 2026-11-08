@@ -5,7 +5,6 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
-import { useLocale } from "@/i18n/locale-provider";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
 
 import type { PublicSiteSettings } from "@/lib/use-site-settings";
@@ -122,11 +121,7 @@ function SchoolMetadata({ settings }: { settings: PublicSiteSettings }) {
 }
 
 function PrincipalMessage({ settings }: { settings: PublicSiteSettings }) {
-  const { locale } = useLocale();
-  const message = [
-    settings.principalMessage_i18n?.[locale]?.trim(),
-    settings.principalMessage?.trim(),
-  ].find((value) => Boolean(value));
+  const message = settings.principalMessage?.trim();
   if (!message) return null;
 
   return (
@@ -160,16 +155,12 @@ function PrincipalMessage({ settings }: { settings: PublicSiteSettings }) {
 
 export default function SiteShell({ children }: { children: ReactNode }) {
   const settings = usePublicSiteSettings();
-  const { locale } = useLocale();
   const [announcementDismissed, setAnnouncementDismissed] = useAnnouncementDismissal();
   const pathname = usePathname();
   useServiceWorkerMaintenance();
 
   const announcement = settings.announcement;
-  const localizedAnnouncement = announcement?.text_i18n?.[locale]?.trim();
-  const announcementText = [localizedAnnouncement, announcement?.textEn.trim()].find(
-    (value) => Boolean(value),
-  );
+  const announcementText = announcement?.textEn.trim();
   const schoolName = displaySchoolName(settings.schoolName);
 
   return (

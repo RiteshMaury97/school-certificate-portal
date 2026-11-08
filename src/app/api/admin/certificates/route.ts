@@ -116,10 +116,7 @@ async function storeCertificateRecord(
     file,
     session,
     certificateType: type,
-    studentId,
-    uploaderUid: admin.uid,
-    request,
-  });
+    studentId,  });
   const ref = db.collection("certificates").doc(randomUUID());
   try {
     await createCertificateNumberIndex(certificateNumber, ref.id, session);
@@ -133,12 +130,7 @@ async function storeCertificateRecord(
       mimeType: stored.mimeType,
       certificateNumberEncrypted: encryptCertificateNumber(certificateNumber),
       size: stored.size,
-      sha256: stored.sha256,
-      scanStatus: stored.scanStatus,
-      scannedAt: stored.scannedAt,
-      scannerVersion: stored.scannerVersion,
-      signatureDatabaseDate: stored.signatureDatabaseDate,
-      issueDate,
+      sha256: stored.sha256,      issueDate,
       status: "pending",
       published: false,
       uploadedBy: admin.uid,
@@ -296,12 +288,7 @@ export async function GET(request: NextRequest) {
           ),
           issueDate: safeDocumentValue(doc, "issueDate"),
           fileName: safeDocumentValue(doc, "fileName"),
-          mimeType: safeDocumentValue(doc, "mimeType"),
-          scanStatus: safeDocumentValue(doc, "scanStatus") ?? "error",
-          scannedAt: documentTimestampIso(doc, "scannedAt"),
-          scannerVersion: safeDocumentValue(doc, "scannerVersion") ?? "",
-          signatureDatabaseDate: safeDocumentValue(doc, "signatureDatabaseDate") ?? "",
-          size: safeDocumentValue(doc, "size"),
+          mimeType: safeDocumentValue(doc, "mimeType"),          size: safeDocumentValue(doc, "size"),
           status: safeDocumentValue(doc, "status") ?? "pending",
           downloadCount: Number(safeDocumentValue(doc, "downloadCount") ?? 0),
           lastDownloadedAt: documentTimestampIso(doc, "lastDownloadedAt"),

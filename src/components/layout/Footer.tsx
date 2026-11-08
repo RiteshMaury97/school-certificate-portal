@@ -15,10 +15,10 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { useT } from "@/i18n/locale-provider";
 
 
 import Logo from "@/components/ui/Logo";
-import { useT } from "@/i18n/locale-provider";
 import { SITE_MAP } from "@/shared/site-map";
 
 import {
@@ -148,18 +148,18 @@ function LegalLinks() {
 }
 
 function FooterLinkGrid() {
-  const t = useT();
   return (
     <>
-      <FooterNavigation title={t("footer.quickLinks")} ariaLabel={t("footer.quickLinks")} pages={SchoolLinks()} />
-      <FooterNavigation title={t("siteMap.groups.helpAndSupport")} ariaLabel={t("siteMap.groups.helpAndSupport")} pages={HelpLinks()} />
-      <FooterNavigation title={t("siteMap.groups.legalAndPrivacy")} ariaLabel={t("siteMap.groups.legalAndPrivacy")} pages={LegalLinks()} />
+      <FooterNavigation title={"Quick links"} ariaLabel={"Quick links"} pages={SchoolLinks()} />
+      <FooterNavigation title={"Help and support"} ariaLabel={"Help and support"} pages={HelpLinks()} />
+      <FooterNavigation title={"Legal and privacy"} ariaLabel={"Legal and privacy"} pages={LegalLinks()} />
       <SocialCard />
     </>
   );
 }
 
 export default function Footer() {
+  const t = useT();
   const boardDetails = [AFFILIATION, BOARD].filter((value) => value.trim()).join(" · ");
   const validPhone = !PHONE.includes("X");
 

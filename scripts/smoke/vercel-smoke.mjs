@@ -179,7 +179,6 @@ const cronRoutes = [
   "/api/admin/backup",
   "/api/cron/security-summary",
   "/api/cron/breach-reminders",
-  "/api/cron/malware-rescan",
 ];
 for (const path of cronRoutes) {
   const unauthorized = await request(path);

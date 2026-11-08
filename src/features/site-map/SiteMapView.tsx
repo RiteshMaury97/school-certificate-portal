@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useT } from "@/i18n/locale-provider";
 
 
 import SiteShell from "@/components/layout/SiteShell";
-import { useT } from "@/i18n/locale-provider";
 import { SITE_MAP, SITE_MAP_GROUPS } from "@/shared/site-map";
 
 import type { CSSProperties } from "react";
@@ -27,9 +27,9 @@ export default function SiteMapView() {
     <SiteShell>
       <header className="sitemap-hero relative mb-8 flex items-center justify-between gap-6 overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface-2)] px-6 py-7 sm:mb-10 sm:px-9 sm:py-9">
         <div className="relative z-10 max-w-3xl">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{t("siteMap.title")}</h1>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{"Sitemap"}</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--text-muted)] sm:text-base">
-            {t("siteMap.intro")}
+            {"Browse the public pages for certificates, verification, school support and policies."}
           </p>
         </div>
         <div

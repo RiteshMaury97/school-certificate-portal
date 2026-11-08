@@ -48,11 +48,6 @@ function decisionErrorResponse(error: unknown): NextResponse | null {
     return NextResponse.json({ error: "Certificate not found." }, { status: 404 });
   if (error.message === "NOT_PENDING")
     return NextResponse.json({ error: "This certificate is no longer pending." }, { status: 409 });
-  if (error.message === "MALWARE_SCAN_NOT_CLEAN")
-    return NextResponse.json(
-      { error: "This certificate cannot be approved until a clean security scan is recorded." },
-      { status: 409 },
-    );
   if (error.message === "SELF_APPROVAL")
     return NextResponse.json(
       { error: "The uploader cannot approve or reject their own upload." },
@@ -78,8 +73,6 @@ function assertReviewable(
 ): string {
   if (!snap.exists) throw new Error("NOT_FOUND");
   if (snap.get("status") !== "pending") throw new Error("NOT_PENDING");
-  if (decision === "approve" && snap.get("scanStatus") !== "clean")
-    throw new Error("MALWARE_SCAN_NOT_CLEAN");
   const uploaderUid = String(snap.get("uploadedBy") ?? "");
   if (!uploaderUid) throw new Error("UPLOADER_UNKNOWN");
   const privilegedSelfReview =

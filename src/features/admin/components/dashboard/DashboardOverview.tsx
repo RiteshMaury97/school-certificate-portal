@@ -4,7 +4,6 @@ import { ArrowRight, FilePlus2, Upload } from "lucide-react";
 
 import DashboardActivityPanels from "./DashboardActivityPanels";
 import DashboardStatCard from "./DashboardStatCard";
-import MalwareScannerStatus from "./MalwareScannerStatus";
 
 type DashboardStats = Record<string, unknown>;
 type FeedbackStats = { total?: unknown; helpful?: unknown; notHelpful?: unknown };
@@ -195,7 +194,6 @@ export default function DashboardOverview({
         ))}
       </section>
 
-      <MalwareScannerStatus isSuperadmin={isSuperadmin} />
 
       <StorageUsage stats={stats} />
 

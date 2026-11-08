@@ -381,18 +381,23 @@ export { assertVerifiedGoogleSignIn, isGoogleSignIn };
 export async function verifyRequestAppCheck(request: NextRequest): Promise<void> {
   if (process.env.NODE_ENV !== "production") {
     if (process.env.APP_CHECK_ENFORCE === "false") return;
+    const appCheckSiteKey =
+      process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY?.trim() ||
+      process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
     if (
       process.env.APP_CHECK_ENFORCE !== "true" &&
-        !process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY
+        !appCheckSiteKey
     ) {
       return;
     }
   }
-  assertEnvironmentFor("App Check", [
-    "APP_CHECK_ENFORCE",
-    "NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY",
-    "APPCHECK_TURNSTILE_SECRET_KEY",
-  ]);
+  const siteKey =
+    process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
+  const secret =
+    process.env.APPCHECK_TURNSTILE_SECRET_KEY?.trim() || process.env.TURNSTILE_SECRET_KEY?.trim();
+  if (!siteKey || !secret) throw new Error("APP_CHECK_NOT_CONFIGURED");
+  assertEnvironmentFor("App Check", ["APP_CHECK_ENFORCE"]);
   const token = request.headers.get("x-firebase-appcheck") ?? "";
   if (!token) throw new Error("APP_CHECK");
   try {
