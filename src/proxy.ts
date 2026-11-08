@@ -136,6 +136,64 @@ function isApiMutationMissingOrigin(request: NextRequest, origin: string | null)
   );
 }
 
+const CORS_METHODS = "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS";
+const CORS_HEADERS = "Accept, Authorization, Content-Type, X-CSRF-Token, X-Firebase-AppCheck";
+
+function appendVary(headers: Headers, value: string): void {
+  const vary = headers.get("Vary");
+  const values = vary?.split(",").map((item) => item.trim().toLowerCase()) ?? [];
+  if (!values.includes(value.toLowerCase()))
+    headers.set("Vary", [...(vary ? [vary] : []), value].join(", "));
+}
+
+function applyCorsHeaders(response: NextResponse, request: NextRequest, production: boolean): void {
+  const origin = request.headers.get("origin");
+  if (!origin || request.method === "OPTIONS" || !request.nextUrl.pathname.startsWith("/api/"))
+    return;
+  try {
+    if (!isAllowedRequestOrigin(origin, getAllowedOrigins(), !production)) return;
+  } catch {
+    return;
+  }
+  response.headers.set("Access-Control-Allow-Origin", origin);
+  response.headers.set("Access-Control-Allow-Credentials", "true");
+  appendVary(response.headers, "Origin");
+}
+
+function preflightResponse(
+  request: NextRequest,
+  origin: string,
+  expectedOrigins: string[],
+  development: boolean,
+): NextResponse {
+  if (!isAllowedRequestOrigin(origin, expectedOrigins, development))
+    return new NextResponse(null, { status: 403 });
+  const requestedMethod = request.headers.get("access-control-request-method")?.toUpperCase();
+  const allowedMethods = CORS_METHODS.split(", ");
+  if (requestedMethod && !allowedMethods.includes(requestedMethod))
+    return NextResponse.json({ error: "Request method is not allowed." }, { status: 403 });
+  const requestedHeaders = (request.headers.get("access-control-request-headers") ?? "")
+    .split(",")
+    .map((header) => header.trim().toLowerCase())
+    .filter(Boolean);
+  const allowedHeaders = new Set(CORS_HEADERS.split(", ").map((header) => header.toLowerCase()));
+  if (requestedHeaders.some((header) => !allowedHeaders.has(header)))
+    return NextResponse.json({ error: "Request headers are not allowed." }, { status: 403 });
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      Allow: CORS_METHODS,
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Methods": CORS_METHODS,
+      "Access-Control-Allow-Headers": CORS_HEADERS,
+      "Access-Control-Max-Age": "600",
+      Vary: "Origin, Access-Control-Request-Method, Access-Control-Request-Headers",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 function originResponse(request: NextRequest, production: boolean): NextResponse | null {
   const origin = request.headers.get("origin");
   if (isLoggedOutSessionCheck(request) || isSafeReadWithoutOrigin(request, origin)) return null;
@@ -161,16 +219,9 @@ function originResponse(request: NextRequest, production: boolean): NextResponse
     return NextResponse.json({ error: "Request origin is required." }, { status: 403 });
   }
   if (request.method !== "OPTIONS") return null;
-  if (!isAllowedRequestOrigin(origin, expectedOrigin, !production))
-    return new NextResponse(null, { status: 403 });
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      Allow: "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
-      Vary: "Origin",
-      "Cache-Control": "no-store",
-    },
-  });
+  return origin
+    ? preflightResponse(request, origin, expectedOrigin, !production)
+    : new NextResponse(null, { status: 403 });
 }
 
 function isAdminPage(path: string): boolean {
@@ -446,6 +497,7 @@ export async function proxy(request: NextRequest) {
       const { nonce, response } = createRequestResponse(request, production);
       return continueRequest(request, response, nonce, production);
     })());
+  applyCorsHeaders(result, request, production);
   if (process.env.VERCEL_ENV !== "production" || isAdminPage(request.nextUrl.pathname)) {
     result.headers.set("X-Robots-Tag", "noindex, nofollow");
   }

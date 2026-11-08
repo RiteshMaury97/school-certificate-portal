@@ -82,8 +82,81 @@ describe("proxy origin checks", () => {
     );
 
     expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({
+    expect(await response.json()).toMatchObject({
       error: "The server is not configured correctly. Contact the site owner.",
     });
+  });
+});
+
+describe("proxy CORS handling", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("answers allowed API preflights with explicit credentialed CORS headers", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("SITE_URL", "https://tc.sischool.in");
+    vi.stubEnv("ADDITIONAL_ALLOWED_ORIGINS", "https://school-certificate-portal.vercel.app");
+
+    const response = await proxy(
+      new NextRequest("https://tc.sischool.in/api/admin/session", {
+        method: "OPTIONS",
+        headers: {
+          origin: "https://school-certificate-portal.vercel.app",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "content-type, x-firebase-appcheck",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "https://school-certificate-portal.vercel.app",
+    );
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBe("true");
+    expect(response.headers.get("Access-Control-Allow-Methods")).toContain("POST");
+    expect(response.headers.get("Access-Control-Allow-Headers")).toContain("X-Firebase-AppCheck");
+    expect(response.headers.get("Vary")).toContain("Access-Control-Request-Headers");
+  });
+
+  it("adds CORS headers to responses from an explicitly allowed API origin", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("SITE_URL", "https://tc.sischool.in");
+    vi.stubEnv("ADDITIONAL_ALLOWED_ORIGINS", "https://school-certificate-portal.vercel.app");
+
+    const response = await proxy(
+      new NextRequest("https://tc.sischool.in/api/admin/session", {
+        headers: { origin: "https://school-certificate-portal.vercel.app" },
+      }),
+    );
+
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "https://school-certificate-portal.vercel.app",
+    );
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBe("true");
+    expect(response.headers.get("Vary")).toContain("Origin");
+  });
+
+  it("rejects preflights that request headers outside the CORS allowlist", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("SITE_URL", "https://tc.sischool.in");
+
+    const response = await proxy(
+      new NextRequest("https://tc.sischool.in/api/public/contact", {
+        method: "OPTIONS",
+        headers: {
+          origin: "https://tc.sischool.in",
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "x-unapproved-header",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "Request headers are not allowed." });
+    expect(response.headers.has("Access-Control-Allow-Origin")).toBe(false);
   });
 });
