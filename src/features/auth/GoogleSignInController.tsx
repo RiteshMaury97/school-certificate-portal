@@ -9,7 +9,7 @@ import {
 } from "firebase/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { appCheckHeaders, auth } from "@/lib/firebase-client";
+import { auth } from "@/lib/firebase-client";
 
 import { describeSignInError, errorCode } from "./auth-errors";
 import { ADMIN_GOOGLE_SIGN_IN_EVENT } from "./google-signin-event";
@@ -33,7 +33,9 @@ async function postJson(path: string, body: Record<string, string>): Promise<Api
   const response = await fetch(path, {
     method: "POST",
     credentials: "same-origin",
-    headers: { "Content-Type": "application/json", ...(await appCheckHeaders()) },
+    // Google sign-in does not use Turnstile/App Check; the verified Google ID token, the admin
+    // allow-list and the email OTP protect these calls on the server.
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
     cache: "no-store",
   });

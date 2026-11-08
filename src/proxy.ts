@@ -147,7 +147,10 @@ function originResponse(request: NextRequest, production: boolean): NextResponse
   } catch (error) {
     console.error("[proxy origin configuration]", error instanceof Error ? error.message : error);
     return NextResponse.json(
-      { error: "The server is not configured correctly. Contact the site owner." },
+      {
+        error: "The server is not configured correctly. Contact the site owner.",
+        stage: "origin-config",
+      },
       { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -249,7 +252,10 @@ async function checkLocationPolicyCached(
 }
 
 function locationGateResponse(nonce: string, production: boolean, status: 403 | 503): NextResponse {
-  const response = NextResponse.json({ error: "Request could not be authorized." }, { status });
+  const response = NextResponse.json(
+    { error: "Request could not be authorized.", stage: "location-gate" },
+    { status },
+  );
   securityHeaders(response, nonce, production);
   response.headers.set("Cache-Control", "no-store");
   return response;

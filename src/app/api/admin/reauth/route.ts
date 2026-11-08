@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 
 import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
 import { adminAuth, db } from "@/server/firebase-admin";
-import { requireAdmin, sameOrigin, verifyRequestAppCheck, verifyCsrf, writeAuditLog } from "@/server/security";
+import { requireAdmin, sameOrigin, verifyCsrf, writeAuditLog } from "@/server/security";
 
 import type { NextRequest } from "next/server";
 
@@ -64,7 +64,6 @@ async function issueReauthGrant(uid: string): Promise<string> {
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
-    await verifyRequestAppCheck(request);
     if (!sameOrigin(request) || !verifyCsrf(request)) return NextResponse.json({ error: "CSRF validation failed." }, { status: 403 });
     const admin = await requireAdmin(request);
     const body: unknown = await request.json();

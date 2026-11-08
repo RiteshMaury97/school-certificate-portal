@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   environmentError: new Error("Invalid production server environment: FIREBASE_PROJECT_ID is required"),
-  verifyRequestAppCheck: vi.fn(() => Promise.resolve()),
+  verifyAppCheckUnlessGoogle: vi.fn(() => Promise.resolve({ skipped: false })),
   describeFirebaseError: vi.fn((error: unknown) =>
     error instanceof Error ? error.message : "unknown Firebase error",
   ),
@@ -34,7 +34,9 @@ vi.mock("@/server/security", () => ({
   hashRequesterIp: () => "ip-hash",
   sameOrigin: () => true,
   verifyCsrf: () => true,
-  verifyRequestAppCheck: mocks.verifyRequestAppCheck,
+  verifyAppCheckUnlessGoogle: mocks.verifyAppCheckUnlessGoogle,
+  assertVerifiedGoogleSignIn: vi.fn(),
+  isGoogleSignIn: () => false,
   writeAuditLog: vi.fn(),
 }));
 vi.mock("@/server/site-origin", () => ({ absoluteUrl: (path: string) => `https://school.example${path}` }));
@@ -51,7 +53,7 @@ describe("admin session route configuration failures", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ authenticated: false });
-    expect(mocks.verifyRequestAppCheck).not.toHaveBeenCalled();
+    expect(mocks.verifyAppCheckUnlessGoogle).not.toHaveBeenCalled();
     expect(mocks.describeFirebaseError).not.toHaveBeenCalled();
   });
 

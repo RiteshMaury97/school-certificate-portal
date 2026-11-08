@@ -11,11 +11,13 @@ import { escapeHtml, sendMail } from "@/server/mailer";
 import { getRequestOrigin, requesterIp } from "@/server/request-origin";
 import {
   adminSessionCookieOptions,
+  assertVerifiedGoogleSignIn,
   createCsrfToken,
   csrfCookieOptions,
+  isGoogleSignIn,
   sameOrigin,
   writeAuditLog,
-  verifyRequestAppCheck,
+  verifyAppCheckUnlessGoogle,
   verifyCsrf,
   hashRequesterIp,
 } from "@/server/security";
@@ -93,8 +95,10 @@ function isLoginBody(value: unknown): value is LoginBody {
 async function authenticateLogin(
   request: NextRequest,
   body: LoginBody,
+  appCheckSkipped: boolean,
 ): Promise<LoginIdentity | NextResponse> {
   const decoded = await adminAuth.verifyIdToken(body.idToken, true);
+  if (appCheckSkipped) assertVerifiedGoogleSignIn(decoded);
   const email = decoded.email?.toLowerCase() ?? "";
   const emailHash = digest(email);
   const failureState = await db.collection("adminLoginFailures").doc(emailHash).get();
@@ -347,6 +351,7 @@ async function establishSession(
   });
   await scheduleNewDeviceAlert({ ...record, identity, city, country, userAgent, now });
   const csrf = createCsrfToken();
+  const googleLogin = isGoogleSignIn(identity.decoded);
   await writeAuditLog(request, identity.decoded.uid, "admin.login", "session");
   const response = NextResponse.json(
     { ok: true, email: identity.email, role: identity.role },
@@ -354,6 +359,13 @@ async function establishSession(
   );
   response.cookies.set(COOKIE, session, adminSessionCookieOptions());
   response.cookies.set("sis_admin_csrf", csrf, csrfCookieOptions());
+  // Non-secret hint so the browser skips fetching a Turnstile App Check token on admin pages for
+  // Google sessions. The server never trusts it: it re-reads the provider from the session cookie.
+  response.cookies.set(
+    "sis_admin_provider",
+    googleLogin ? "google" : "",
+    googleLogin ? csrfCookieOptions() : { ...csrfCookieOptions(), maxAge: 0 },
+  );
   response.cookies.set(DEVICE_COOKIE, deviceId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -413,12 +425,13 @@ export async function POST(request: NextRequest) {
         { error: "Client network information is unavailable." },
         { status: 503 },
       );
-    await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
     const bodyResult = readLoginBody(await request.json());
     if (bodyResult instanceof NextResponse) return bodyResult;
-    const identity = await authenticateLogin(request, bodyResult);
+    // Turnstile/App Check is required for email+password sign-ins only; Google sign-ins skip it.
+    const appCheck = await verifyAppCheckUnlessGoogle(request, bodyResult.idToken);
+    const identity = await authenticateLogin(request, bodyResult, appCheck.skipped);
     if (identity instanceof NextResponse) return identity;
     return await establishSession(request, bodyResult, identity);
   } catch (error) {
@@ -465,8 +478,13 @@ function unauthenticatedSessionResponse(): NextResponse {
   return response;
 }
 
-async function readSessionStatus(request: NextRequest, session: string): Promise<NextResponse> {
+async function readSessionStatus(
+  request: NextRequest,
+  session: string,
+  appCheckSkipped: boolean,
+): Promise<NextResponse> {
   const decoded = await adminAuth.verifySessionCookie(session, true);
+  if (appCheckSkipped) assertVerifiedGoogleSignIn(decoded);
   const admin = await db.collection("admins").doc(decoded.uid).get();
   const roleValue: unknown = admin.get("role");
   const role = isAdminRole(roleValue) ? roleValue : null;
@@ -512,15 +530,17 @@ export async function GET(request: NextRequest) {
       { headers: { "Cache-Control": "no-store" } },
     );
   try {
-    await verifyRequestAppCheck(request);
-    return await readSessionStatus(request, session);
+    const appCheck = await verifyAppCheckUnlessGoogle(request, session);
+    return await readSessionStatus(request, session, appCheck.skipped);
   } catch (error) {
     return sessionRouteError(error, "GET");
   }
 }
 export async function DELETE(request: NextRequest) {
   try {
-    await verifyRequestAppCheck(request);
+    // Signing out only revokes the caller's own verified session, so a Google session needs no
+    // Turnstile token; an unverifiable cookie is ignored by revokeSessionForLogout.
+    await verifyAppCheckUnlessGoogle(request, request.cookies.get(COOKIE)?.value);
     if (!verifyCsrf(request)) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
     const session = request.cookies.get(COOKIE)?.value;
     if (session) await revokeSessionForLogout(request, session);

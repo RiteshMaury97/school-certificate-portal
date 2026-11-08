@@ -80,6 +80,9 @@ vi.mock("@/server/admin-location", () => ({
 }));
 vi.mock("@/server/security", () => ({
   verifyRequestAppCheck: vi.fn(() => Promise.resolve()),
+  verifyAppCheckUnlessGoogle: vi.fn(() => Promise.resolve({ skipped: false })),
+  assertVerifiedGoogleSignIn: vi.fn(),
+  isGoogleSignIn: vi.fn(() => false),
   sameOrigin: vi.fn(() => true),
   verifyCsrf: vi.fn(() => true),
   requireAdmin: state.requireAdmin,

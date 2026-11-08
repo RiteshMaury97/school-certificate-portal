@@ -11,6 +11,12 @@ import { assertEnvironmentFor } from "./env";
 import { adminAuth, adminAppCheck, db, describeFirebaseError } from "./firebase-admin";
 import { requireRequesterIp } from "./request-origin";
 import {
+  assertVerifiedGoogleSignIn,
+  GOOGLE_SIGN_IN_PROVIDER,
+  isGoogleSignIn,
+  unverifiedSignInProvider,
+} from "./signin-provider";
+import {
   bindStudentId,
   createCertificateNumberHash as makeCertificateNumberHash,
   createSearchKey as makeSearchKey,
@@ -355,6 +361,23 @@ export async function requireRoles(
   if (!hasAnyRole(admin, roles)) throw new Error("FORBIDDEN");
   return admin;
 }
+/**
+ * Turnstile-backed App Check applies to email and password sign-in only. Google sign-in is
+ * already protected by Google's own authentication, the admin allow-list and the email OTP.
+ * Returns skipped=true when the credential claims a Google sign-in; the caller MUST then call
+ * assertVerifiedGoogleSignIn on the verified token.
+ */
+export async function verifyAppCheckUnlessGoogle(
+  request: NextRequest,
+  credential: string | null | undefined,
+): Promise<{ skipped: boolean }> {
+  if (unverifiedSignInProvider(credential) === GOOGLE_SIGN_IN_PROVIDER) return { skipped: true };
+  await verifyRequestAppCheck(request);
+  return { skipped: false };
+}
+
+export { assertVerifiedGoogleSignIn, isGoogleSignIn };
+
 export async function verifyRequestAppCheck(request: NextRequest): Promise<void> {
   if (process.env.NODE_ENV !== "production") {
     if (process.env.APP_CHECK_ENFORCE === "false") return;
@@ -432,18 +455,21 @@ function hasActiveAdminSession(
   return sessionSnapshot.exists && sessionUid === uid && !sessionSnapshot.get("revokedAt");
 }
 
-async function authenticatedSession(request: NextRequest): Promise<string> {
-  await verifyRequestAppCheck(request);
+async function authenticatedSession(
+  request: NextRequest,
+): Promise<{ session: string; appCheckSkipped: boolean }> {
+  const session = request.cookies.get("sis_admin_session")?.value;
+  const { skipped } = await verifyAppCheckUnlessGoogle(request, session);
   if (!["GET", "HEAD", "OPTIONS"].includes(request.method) && !verifyCsrf(request))
     throw new Error("CSRF");
-  const session = request.cookies.get("sis_admin_session")?.value;
   if (!session) throw new Error("UNAUTHORIZED");
-  return session;
+  return { session, appCheckSkipped: skipped };
 }
 
 export async function requireAdmin(request: NextRequest): Promise<AdminIdentity> {
-  const session = await authenticatedSession(request);
+  const { session, appCheckSkipped } = await authenticatedSession(request);
   const decoded = await adminAuth.verifySessionCookie(session, true);
+  if (appCheckSkipped) assertVerifiedGoogleSignIn(decoded);
   const email = decoded.email?.toLowerCase() ?? "";
   if (!email) throw new Error("FORBIDDEN");
   const admin = await db.collection("admins").doc(decoded.uid).get();

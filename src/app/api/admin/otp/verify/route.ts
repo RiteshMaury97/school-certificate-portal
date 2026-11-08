@@ -9,7 +9,12 @@ import {
 } from "@/server/admin-otp";
 import { adminAuth, db } from "@/server/firebase-admin";
 import { requesterIp } from "@/server/request-origin";
-import { sameOrigin, verifyRequestAppCheck, writeAuditLog } from "@/server/security";
+import {
+  assertVerifiedGoogleSignIn,
+  sameOrigin,
+  verifyAppCheckUnlessGoogle,
+  writeAuditLog,
+} from "@/server/security";
 
 import type { NextRequest } from "next/server";
 
@@ -93,13 +98,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { error: "Client network information is unavailable." },
         { status: 503 },
       );
-    await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
     const body: unknown = await request.json();
     if (!validBody(body))
       return NextResponse.json({ error: "The code is invalid or expired." }, { status: 400 });
+    // Turnstile/App Check is required for email+password sign-ins only; Google sign-ins skip it.
+    const appCheck = await verifyAppCheckUnlessGoogle(request, body.idToken);
     const decoded = await adminAuth.verifyIdToken(body.idToken, true);
+    if (appCheck.skipped) assertVerifiedGoogleSignIn(decoded);
     const email = decoded.email?.trim().toLowerCase() ?? "";
     const admin = await db.collection("admins").doc(decoded.uid).get();
     const role: unknown = admin.get("role");

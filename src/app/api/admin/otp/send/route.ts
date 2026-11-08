@@ -19,9 +19,10 @@ import { adminAuth, db, describeFirebaseError } from "@/server/firebase-admin";
 import { sendAdminOtpEmail } from "@/server/mailer";
 import { requesterIp } from "@/server/request-origin";
 import {
+  assertVerifiedGoogleSignIn,
   hashRequesterIp,
   sameOrigin,
-  verifyRequestAppCheck,
+  verifyAppCheckUnlessGoogle,
   writeAuditLog,
 } from "@/server/security";
 import { readErrorCode } from "@/shared/safe-values";
@@ -83,11 +84,13 @@ function validBody(value: unknown): value is SendBody & { idToken: string } {
 async function verifyOtpIdentity(
   request: NextRequest,
   idToken: string,
+  appCheckSkipped: boolean,
 ): Promise<
   | { decoded: Awaited<ReturnType<typeof adminAuth.verifyIdToken>>; storedEmail: string }
   | NextResponse
 > {
   const decoded = await adminAuth.verifyIdToken(idToken, true);
+  if (appCheckSkipped) assertVerifiedGoogleSignIn(decoded);
   const email = decoded.email?.trim().toLowerCase() ?? "";
   const adminRef = db.collection("admins").doc(decoded.uid);
   const admin = await adminRef.get();
@@ -266,13 +269,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { error: "Client network information is unavailable." },
         { status: 503 },
       );
-    await verifyRequestAppCheck(request);
     if (!sameOrigin(request))
       return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
     const body: unknown = await request.json();
     if (!validBody(body))
       return NextResponse.json({ error: "Unable to send verification code." }, { status: 400 });
-    const identity = await verifyOtpIdentity(request, body.idToken);
+    // Turnstile/App Check is required for email+password sign-ins only; Google sign-ins skip it.
+    const appCheck = await verifyAppCheckUnlessGoogle(request, body.idToken);
+    const identity = await verifyOtpIdentity(request, body.idToken, appCheck.skipped);
     if (identity instanceof NextResponse) return identity;
     const now = Date.now();
     const challenge = await reserveOtpChallenge({

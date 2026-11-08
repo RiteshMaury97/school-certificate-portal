@@ -226,7 +226,6 @@ function useExistingNonGoogleSignInMethods() {
     );
   const signInWithGoogle = () =>
     run(async () => {
-      await appCheckHeaders();
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
       let authenticatedUid: string | undefined;

@@ -251,8 +251,22 @@ async function readAppCheckToken(): Promise<string> {
   return appCheckRuntime.tokenRequest;
 }
 
+/**
+ * Admin sessions created through Google sign-in do not use Turnstile. The server sets a
+ * non-secret hint cookie and re-checks the provider itself, so this only avoids a pointless
+ * token request. It never applies to /admin/login or to public pages.
+ */
+function googleAdminSessionActive(): boolean {
+  if (typeof document === "undefined") return false;
+  const path = window.location.pathname;
+  if (!path.startsWith("/admin") || path === "/admin/login") return false;
+  const cookies = document.cookie.split("; ");
+  const hasCsrf = cookies.some((item) => item.startsWith("sis_admin_csrf=") && item.length > 15);
+  return hasCsrf && cookies.includes("sis_admin_provider=google");
+}
+
 export async function appCheckHeaders(): Promise<Record<string, string>> {
-  if (appCheckOptional()) return {};
+  if (appCheckOptional() || googleAdminSessionActive()) return {};
   try {
     return { "X-Firebase-AppCheck": await readAppCheckToken() };
   } catch (cause) {

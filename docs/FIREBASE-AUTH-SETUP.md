@@ -104,3 +104,7 @@ All application email must go through `src/server/mailer.ts`; do not create rout
 The mailer reserves recipient capacity in the `abuseCounters` collection. The daily application cap is 500 recipients, with a warning logged at 400. Bulk parent notifications use the same counter and therefore cannot bypass the cap. Gmail may impose lower account-specific limits.
 
 In development only, when Gmail credentials are missing, administrator verification codes are printed as a clearly marked development fallback. This fallback is disabled in production and must never be used to test production credentials.
+
+## Turnstile and Google sign-in
+
+Cloudflare Turnstile (the custom App Check provider) protects **email and password** sign-in only. Google sign-in never requests a Turnstile token: the server skips App Check when the verified Firebase token's `sign_in_provider` is `google.com` (see `src/server/signin-provider.ts` and `verifyAppCheckUnlessGoogle` in `src/server/security.ts`). A request that claims Google but carries a non-Google token is rejected. Google sign-ins are still protected by Google authentication, the admin allow-list, the email one-time code, rate limits and the location policy. The `sis_admin_provider=google` cookie is only a browser hint; the server re-reads the provider from the session cookie.
