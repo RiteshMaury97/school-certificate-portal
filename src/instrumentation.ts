@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { validateServerEnvironment } from "@/server/env";
 
 type BeforeSend = NonNullable<NonNullable<Parameters<typeof Sentry.init>[0]>["beforeSend"]>;
 type SentryEvent = Parameters<BeforeSend>[0];
@@ -48,6 +49,14 @@ function scrub(event: SentryEvent) {
 
 export function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs" && process.env.NEXT_RUNTIME !== "edge") return;
+  if (process.env.NEXT_RUNTIME === "nodejs" && process.env.NEXT_PHASE !== "phase-production-build") {
+    const environment = validateServerEnvironment(process.env);
+    if (!environment.valid) {
+      console.error(
+        `[environment validation] ${environment.errors.join("; ")}`,
+      );
+    }
+  }
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     tracesSampleRate: 0,

@@ -348,7 +348,15 @@ async function maintenanceResponse(
         { error: "Service temporarily unavailable for maintenance." },
         { status: 503 },
       )
-    : NextResponse.rewrite(absoluteUrl("/maintenance"), { status: 503 });
+    : (() => {
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set("x-nonce", nonce);
+        requestHeaders.set("Content-Security-Policy", buildCsp(nonce));
+        return NextResponse.rewrite(absoluteUrl("/maintenance"), {
+          request: { headers: requestHeaders },
+          status: 503,
+        });
+      })();
   securityHeaders(blocked, nonce, production);
   blocked.headers.set("Retry-After", "900");
   blocked.headers.set("Cache-Control", "no-store");
@@ -377,7 +385,10 @@ function setResponsePolicyHeaders(
   if (isNoIndexPath(path) || (path === "/verify" && request.nextUrl.searchParams.size > 0)) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
   }
-  if (path.startsWith("/api/") || path.startsWith("/admin")) {
+  if (request.headers.get("accept")?.includes("text/html")) {
+    // A nonce-bearing document must never be reused by a browser or CDN.
+    response.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  } else if (path.startsWith("/api/") || path.startsWith("/admin")) {
     response.headers.set("Cache-Control", "no-store, max-age=0, must-revalidate");
   }
 }

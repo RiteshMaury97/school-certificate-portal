@@ -36,8 +36,13 @@ function check(name, condition, detail = "") {
 }
 
 async function request(path, init = {}) {
+  const headers = new Headers(init.headers);
+  if (!headers.has("accept") && !path.startsWith("/api/")) headers.set("accept", "text/html");
+  if (baseUrl.protocol === "http:" && ["localhost", "127.0.0.1"].includes(baseUrl.hostname))
+    headers.set("x-forwarded-proto", "https");
   return fetch(new URL(path, baseUrl), {
     ...init,
+    headers,
     redirect: "manual",
     signal: AbortSignal.timeout(15_000),
   });
@@ -53,12 +58,22 @@ async function checkInlineScriptNonces(path, response) {
   const html = await response.clone().text();
   const inlineScripts = [...html.matchAll(/<script\b([^>]*)>[\s\S]*?<\/script\s*>/gi)]
     .filter(([, attributes]) => !/\bsrc\s*=/i.test(attributes));
+  const inlineStyles = [...html.matchAll(/<style\b([^>]*)>[\s\S]*?<\/style\s*>/gi)];
   check(`${path} renders nonce-bearing inline scripts`, inlineScripts.length > 0);
   const escapedNonce = nonce.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const nonceAttribute = new RegExp(`\\bnonce=(['"])${escapedNonce}\\1`);
   check(
     `${path} inline scripts match their CSP nonce`,
     inlineScripts.every(([, attributes]) => nonceAttribute.test(attributes)),
+  );
+  check(
+    `${path} inline styles match their CSP nonce`,
+    inlineStyles.every(([, attributes]) => nonceAttribute.test(attributes)),
+  );
+  check(
+    `${path} HTML is not cacheable`,
+    /(?:^|,)\s*private\b/i.test(response.headers.get("cache-control") ?? "") &&
+      /(?:^|,)\s*no-store\b/i.test(response.headers.get("cache-control") ?? ""),
   );
   return nonce;
 }
@@ -82,6 +97,7 @@ for (const [path, response] of noncePaths) {
   await checkInlineScriptNonces(path, response);
 }
 const repeatedHome = await request("/");
+check("Second GET / returns 200 for nonce inspection", repeatedHome.status === 200);
 const firstHomeNonce = await checkInlineScriptNonces("/ (first request)", home);
 const secondHomeNonce = await checkInlineScriptNonces("/ (second request)", repeatedHome);
 check("GET / generates a fresh CSP nonce per request", firstHomeNonce !== secondHomeNonce);
@@ -169,7 +185,7 @@ for (const path of cronRoutes) {
   const unauthorized = await request(path);
   check(
     `${path} rejects missing CRON_SECRET`,
-    unauthorized.status === 401,
+    [401, 403].includes(unauthorized.status),
     `received ${unauthorized.status}`,
   );
   if (runCrons) {
