@@ -37,30 +37,24 @@ function productionOrigin(): string {
   const appOrigin = trimmedEnvironmentValue("APP_ORIGIN");
   const vercelHost = trimmedEnvironmentValue("VERCEL_PROJECT_PRODUCTION_URL") ??
     trimmedEnvironmentValue("VERCEL_URL");
-  if (isValidHttpsOrigin(siteUrl)) return siteUrl;
-  if (isValidHttpsOrigin(appOrigin)) return appOrigin;
-  if (vercelHost) {
-    try {
-      return validateHttpsOrigin(`https://${vercelHost}`, "VERCEL_PROJECT_PRODUCTION_URL");
-    } catch {
-      // Keep rendering available; startup environment validation reports the bad setting.
-    }
+  const configured = (isValidHttpsOrigin(siteUrl) ? siteUrl : undefined) ??
+    (isValidHttpsOrigin(appOrigin) ? appOrigin : undefined) ??
+    (vercelHost ? `https://${vercelHost}` : undefined);
+  if (!configured) {
+    if (siteUrl) return validateHttpsOrigin(siteUrl, "SITE_URL");
+    if (appOrigin) return validateHttpsOrigin(appOrigin, "APP_ORIGIN");
+    throw new Error("SITE_URL: is required in Production (APP_ORIGIN is a deprecated alias)");
   }
-  // This non-routable fallback keeps metadata and redirects from crashing the app.
-  // Production environment validation logs the missing or malformed origin.
-  return "https://localhost.invalid";
+  const name = isValidHttpsOrigin(siteUrl) ? "SITE_URL" : isValidHttpsOrigin(appOrigin)
+    ? "APP_ORIGIN"
+    : "VERCEL_PROJECT_PRODUCTION_URL";
+  return validateHttpsOrigin(configured, name);
 }
 
 function previewOrigin(): string {
   const deploymentUrl = trimmedEnvironmentValue("VERCEL_URL");
-  if (deploymentUrl) {
-    try {
-      return validateHttpsOrigin(`https://${deploymentUrl}`, "VERCEL_URL");
-    } catch {
-      // Continue with a safe fallback and report the invalid value at startup.
-    }
-  }
-  return "https://localhost.invalid";
+  if (!deploymentUrl) throw new Error("VERCEL_URL is required for Preview deployment links.");
+  return validateHttpsOrigin(`https://${deploymentUrl}`, "VERCEL_URL");
 }
 
 export function getSiteOrigin(): string {
@@ -69,6 +63,27 @@ export function getSiteOrigin(): string {
   if (process.env.NEXT_PHASE === "phase-production-build") return "http://localhost:3000";
   if (process.env.VERCEL_ENV === "preview") return previewOrigin();
   return isProduction() ? productionOrigin() : "http://localhost:3000";
+}
+
+/** Origin for metadata generation; keep non-essential canonical metadata from breaking page rendering. */
+export function getSafeSiteOrigin(): string {
+  try {
+    return getSiteOrigin();
+  } catch (error) {
+    console.error(
+      `[site origin] ${error instanceof Error ? error.message : "Invalid site origin configuration"}`,
+    );
+    const deploymentHost = trimmedEnvironmentValue("VERCEL_PROJECT_PRODUCTION_URL") ??
+      trimmedEnvironmentValue("VERCEL_URL");
+    if (deploymentHost) {
+      try {
+        return validateHttpsOrigin(`https://${deploymentHost}`, "VERCEL_PROJECT_PRODUCTION_URL");
+      } catch {
+        // Fall back below; startup validation reports the invalid setting by name.
+      }
+    }
+    return "http://localhost:3000";
+  }
 }
 
 export function absoluteUrl(path: string): string {

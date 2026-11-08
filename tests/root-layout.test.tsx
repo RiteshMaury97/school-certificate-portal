@@ -4,8 +4,7 @@ const { getCachedSiteSettings } = vi.hoisted(() => ({ getCachedSiteSettings: vi.
 
 vi.mock("@/server/site-settings-cache", () => ({ getCachedSiteSettings }));
 vi.mock("@/server/site-origin", () => ({
-  getSiteOrigin: () => "https://school.example",
-  absoluteUrl: (path: string) => new URL(path, "https://school.example").toString(),
+  getSafeSiteOrigin: () => "https://school.example",
 }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-nonce": "test-nonce" }) }));
 vi.mock("next/script", () => ({ default: () => null }));

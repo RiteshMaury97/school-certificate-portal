@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import AppProviders from "@/components/providers/AppProviders";
 import { Toaster } from "@/components/ui/toast";
 import { SCHOOL_INFO } from "@/lib/school-info";
-import { absoluteUrl, getSiteOrigin } from "@/server/site-origin";
+import { getSafeSiteOrigin } from "@/server/site-origin";
 import { getCachedSiteSettings } from "@/server/site-settings-cache";
 import { SITE_SEO } from "@/shared/seo";
 
@@ -14,7 +14,7 @@ import "@/styles/globals.css";
 
 const FALLBACK_NAME = SCHOOL_INFO.name;
 const FALLBACK_DESCRIPTION = SITE_SEO.description;
-const siteUrl = getSiteOrigin();
+const siteUrl = getSafeSiteOrigin();
 
 export const viewport: Viewport = {
   themeColor: [
@@ -61,7 +61,7 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: name,
       title: name,
       description,
-      url: absoluteUrl("/"),
+      url: new URL("/", `${siteUrl}/`).toString(),
       images: [
         { url: "/og-image.png", width: 1200, height: 630, alt: `${name} official school records` },
       ],
