@@ -106,6 +106,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <Script
             defer
             data-domain={process.env.PLAUSIBLE_DOMAIN}
+            nonce={nonce}
             src={process.env.PLAUSIBLE_SCRIPT_URL}
             strategy="afterInteractive"
           />

@@ -43,10 +43,48 @@ async function request(path, init = {}) {
   });
 }
 
+async function checkInlineScriptNonces(path, response) {
+  const csp = response.headers.get("content-security-policy") ?? "";
+  const scriptSource = csp.match(/(?:^|;)\s*script-src\s+([^;]+)/i)?.[1] ?? "";
+  const nonce = scriptSource.match(/'nonce-([^']+)'/)?.[1];
+  check(`${path} CSP has a script nonce`, Boolean(nonce));
+  if (!nonce) return;
+
+  const html = await response.clone().text();
+  const inlineScripts = [...html.matchAll(/<script\b([^>]*)>[\s\S]*?<\/script\s*>/gi)]
+    .filter(([, attributes]) => !/\bsrc\s*=/i.test(attributes));
+  check(`${path} renders nonce-bearing inline scripts`, inlineScripts.length > 0);
+  const escapedNonce = nonce.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const nonceAttribute = new RegExp(`\\bnonce=(['"])${escapedNonce}\\1`);
+  check(
+    `${path} inline scripts match their CSP nonce`,
+    inlineScripts.every(([, attributes]) => nonceAttribute.test(attributes)),
+  );
+  return nonce;
+}
+
 const home = await request("/");
 check("GET / returns 200", home.status === 200, `received ${home.status}`);
 const login = await request("/admin/login");
 check("GET /admin/login returns 200", login.status === 200, `received ${login.status}`);
+
+const noncePaths = [
+  ["/", home],
+  ["/verify", await request("/verify")],
+  ["/certificates", await request("/certificates")],
+  ["/faq", await request("/faq")],
+  ["/contact", await request("/contact")],
+  ["/privacy", await request("/privacy")],
+  ["/admin/login", login],
+];
+for (const [path, response] of noncePaths) {
+  check(`GET ${path} returns 200 for nonce inspection`, response.status === 200);
+  await checkInlineScriptNonces(path, response);
+}
+const repeatedHome = await request("/");
+const firstHomeNonce = await checkInlineScriptNonces("/ (first request)", home);
+const secondHomeNonce = await checkInlineScriptNonces("/ (second request)", repeatedHome);
+check("GET / generates a fresh CSP nonce per request", firstHomeNonce !== secondHomeNonce);
 
 for (const [name, response] of [
   ["/", home],
@@ -54,6 +92,11 @@ for (const [name, response] of [
 ]) {
   const csp = response.headers.get("content-security-policy");
   check(`${name} has Content-Security-Policy`, Boolean(csp));
+  const scriptSource = csp?.match(/\bscript-src\s+([^;]+)/i)?.[1] ?? "";
+  check(`${name} production script-src has no unsafe keywords`,
+    !scriptSource.includes("'unsafe-inline'") && !scriptSource.includes("'unsafe-eval'"));
+  check(`${name} CSP does not allow Vercel Live`, !scriptSource.includes("https://vercel.live"));
+  check(`${name} CSP has no hand-maintained script hashes`, !scriptSource.includes("'sha256-"));
   const connectSrcDirectives = [
     ...(csp ?? "").matchAll(/\bconnect-src\s+([^;]+)/gi),
   ].map((match) => match[1]);
