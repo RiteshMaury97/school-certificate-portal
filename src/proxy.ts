@@ -318,8 +318,7 @@ function isMaintenanceExempt(path: string): boolean {
     path === "/maintenance" ||
     path === "/offline" ||
     isMetadataRoute(path) ||
-    path === "/api/health" ||
-    path === "/api/app-check/token" ||
+    isAlwaysAvailableApiPath(path) ||
     path.startsWith("/api/cron/") ||
     path === "/api/public/site-settings" ||
     path.startsWith("/_next/") ||
@@ -327,6 +326,10 @@ function isMaintenanceExempt(path: string): boolean {
     path === "/manifest.webmanifest" ||
     path === "/sw.js"
   );
+}
+
+function isAlwaysAvailableApiPath(path: string): boolean {
+  return path === "/api/health" || path === "/api/app-check/token";
 }
 
 function isMetadataRoute(path: string): boolean {
