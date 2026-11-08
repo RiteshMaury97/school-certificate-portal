@@ -50,7 +50,9 @@ const config: NextConfig = {
     ];
   },
   poweredByHeader: false,
-  devIndicators: { position: "bottom-right" },
+  // The Next/Vercel development feedback integration loads vercel.live, which the
+  // production CSP intentionally blocks. Keep the local dev server free of that request.
+  devIndicators: false,
   serverExternalPackages: [
     "@aws-sdk/client-s3",
     "@aws-sdk/s3-request-presigner",
