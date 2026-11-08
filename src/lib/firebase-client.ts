@@ -1,12 +1,7 @@
 "use client";
 
 import { getApps, initializeApp } from "firebase/app";
-import {
-  CustomProvider,
-  getToken,
-  initializeAppCheck,
-  type AppCheck,
-} from "firebase/app-check";
+import { CustomProvider, getToken, initializeAppCheck, type AppCheck } from "firebase/app-check";
 import { getAuth } from "firebase/auth";
 
 import { AppCheckTokenError, appCheckFailureCode } from "./app-check-errors";
@@ -72,7 +67,8 @@ function tokenExpiry(token: string): number {
 function appCheckOptional(): boolean {
   return (
     !isProduction &&
-    (process.env.APP_CHECK_ENFORCE === "false" || !process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY)
+    (process.env.APP_CHECK_ENFORCE === "false" ||
+      !process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY)
   );
 }
 
@@ -81,7 +77,9 @@ function loadTurnstileScript(): Promise<void> {
     throw new Error("Firebase App Check is only available in the browser.");
   if (window.turnstile) return Promise.resolve();
   appCheckRuntime.turnstileScript ??= new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>("script#cloudflare-turnstile-script");
+    const existing = document.querySelector<HTMLScriptElement>(
+      "script#cloudflare-turnstile-script",
+    );
     const script = existing ?? document.createElement("script");
     if (!existing) {
       script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
@@ -208,7 +206,11 @@ async function fetchCustomAppCheckToken(): Promise<AppCheckTokenPayload> {
     cache: "no-store",
   });
   const payload: unknown = await response.json().catch(() => null);
-  if (!response.ok) reportTokenEndpointFailure(response, payload);
+  if (!response.ok) {
+    reportTokenEndpointFailure(response, payload);
+    if (response.status === 503 && safeEndpointLabel(payload, "stage", "") === "maintenance")
+      throw new AppCheckTokenError("appCheck/maintenance");
+  }
   if (!response.ok || !isAppCheckTokenPayload(payload))
     throw new AppCheckTokenError("appCheck/turnstile-error");
   return payload;

@@ -7,7 +7,7 @@ The portal uses Firebase Authentication (Spark-compatible) for the first sign-in
 1. Create or select the Firebase project on the Spark plan.
 2. Register the web application and copy its API key, Auth domain, project ID and app ID into the matching `FIREBASE_*` variables.
 3. In Firebase Console → Authentication → Sign-in method, enable Email/Password and Google if Google sign-in is wanted.
-4. In Authentication → Settings → Authorized domains, add the production hostname and localhost for development.
+4. In Authentication → Settings → Authorized domains, add `tc.sischool.in` for Production, `www.tc.sischool.in` if users can sign in there, and every Vercel Preview hostname used for Google sign-in testing. Add `localhost` for local development. Enter hostnames only, without a scheme, path, or port. Firebase projects created after April 28, 2025 may not have `localhost` pre-authorized.
 5. Do not upgrade the project for sign-in factors; the application handles the email code itself.
 
 ## 2. Gmail SMTP and App Password
@@ -68,24 +68,28 @@ The code is valid for 10 minutes, permits at most five incorrect attempts, and a
 
 ## 6. Troubleshooting
 
-| Symptom | Check |
-|---|---|
-| `auth/operation-not-allowed` during password sign-in | Enable Email/Password in Firebase Authentication → Sign-in method. |
-| Google sign-in is unavailable | Enable Google and configure its support email and authorized domains. |
-| Code email is not delivered | Check Gmail App Password, mailbox security settings, SMTP credentials and server logs. |
-| Code is invalid or expired | Request a new code; each code expires after 10 minutes and allows five incorrect attempts. |
-| Too many code requests | Wait at least 60 seconds before requesting another code. |
-| Session rejected after code entry | Confirm the Firebase ID token belongs to the same project and the matching `admins/{uid}` record is active with the expected role. |
+| Symptom                                              | Check                                                                                                                              |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `auth/operation-not-allowed` during password sign-in | Enable Email/Password in Firebase Authentication → Sign-in method.                                                                 |
+| Google sign-in is unavailable                        | Enable Google and configure its support email and authorized domains.                                                              |
+| Code email is not delivered                          | Check Gmail App Password, mailbox security settings, SMTP credentials and server logs.                                             |
+| Code is invalid or expired                           | Request a new code; each code expires after 10 minutes and allows five incorrect attempts.                                         |
+| Too many code requests                               | Wait at least 60 seconds before requesting another code.                                                                           |
+| Session rejected after code entry                    | Confirm the Firebase ID token belongs to the same project and the matching `admins/{uid}` record is active with the expected role. |
 
 ## 7. Local development
 
 Use `http://localhost:<port>` or `http://127.0.0.1:<port>` and configure the Firebase authorized domain `localhost`. App Check can be skipped locally according to the existing `APP_CHECK_ENFORCE` development policy. Do not expose the Gmail app password to browser code.
 
+## 8. Production domain and Auth domain
+
+The deployed client configuration must use `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY`, and `NEXT_PUBLIC_FIREBASE_APP_ID` from the same Firebase project. For this project, the checked-in local environment uses `sis-transfer-certificate.firebaseapp.com` with project ID `sis-transfer-certificate`; verify the Vercel **Production** values match before deployment. The Firebase Auth domain is included in the app's CSP `frame-src` at build time. Changing these public variables requires a new deployment.
+
+The default `<project-id>.firebaseapp.com` Auth domain requires no additional hosting setup. If you intentionally use a custom `FIREBASE_AUTH_DOMAIN`, configure that hostname as an Auth domain in Firebase and ensure `https://<custom-auth-domain>/__/auth/handler` is served by Firebase Hosting or correctly proxied to Firebase's auth handler. If using a custom Google OAuth client, its authorized redirect URI must include `https://<custom-auth-domain>/__/auth/handler`. This app uses `signInWithPopup()` and does not configure an auth-handler proxy itself.
 
 ## Administrator email verification codes
 
 Administrator sign-in uses Firebase Authentication for the first factor and a custom six-digit code sent through the configured Gmail SMTP account for the second factor. Configure `OTP_HMAC_SECRET` with at least 32 random bytes; it must be separate from `AUDIT_LOG_HMAC_SECRET`. The code is stored only as an HMAC in the server-only `adminOtpChallenges` collection, expires after 10 minutes, and allows at most five attempts. The verified challenge is consumed when the server creates a session and is valid for that step for five minutes. No client Firestore access is permitted to this collection.
-
 
 ## Outgoing email (Gmail SMTP only)
 

@@ -34,6 +34,7 @@ describe("proxy origin checks", () => {
 
   it("uses nonces instead of script hashes and allows the configured Plausible origin", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("FIREBASE_AUTH_DOMAIN", "sis-transfer-certificate.firebaseapp.com");
     vi.stubEnv("PLAUSIBLE_SCRIPT_URL", "https://analytics.example/js/script.js");
     vi.stubEnv("BROWSER_SENTRY_DSN", "https://sentry.example/123");
     vi.stubEnv("SITE_URL", "");
@@ -54,6 +55,14 @@ describe("proxy origin checks", () => {
     expect(scriptSource).not.toContain("'sha256-");
     expect(scriptSource).not.toContain("'unsafe-inline'");
     expect(scriptSource).not.toContain("'unsafe-eval'");
+    expect(scriptSource).toContain("https://apis.google.com");
+    const connectSource = /\bconnect-src\s+([^;]+)/i.exec(csp)?.[1] ?? "";
+    expect(connectSource).toContain("https://identitytoolkit.googleapis.com");
+    expect(connectSource).toContain("https://securetoken.googleapis.com");
+    expect(connectSource).toContain("https://www.googleapis.com");
+    expect(csp).toContain(
+      "frame-src 'self' https://challenges.cloudflare.com https://sis-transfer-certificate.firebaseapp.com",
+    );
   });
 
   it("returns a safe configuration response when a session request needs an invalid origin config", async () => {

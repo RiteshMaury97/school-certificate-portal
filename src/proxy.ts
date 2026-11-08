@@ -45,7 +45,7 @@ function buildCsp(nonce: string, allowSameOriginFrame = false): string {
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob: https://www.gstatic.com",
     "font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com",
-    `connect-src 'self' data: ${dev ? "ws://localhost:* ws://127.0.0.1:*" : ""} https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.google.com https://www.gstatic.com https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
+    `connect-src 'self' data: ${dev ? "ws://localhost:* ws://127.0.0.1:*" : ""} https://plausible.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.googleapis.com https://www.google.com https://www.gstatic.com https://challenges.cloudflare.com ${telemetryOrigins.join(" ")}`,
     `frame-src 'self' https://challenges.cloudflare.com ${authOrigin}`,
     "object-src 'none'",
     "base-uri 'self'",
@@ -319,6 +319,7 @@ function isMaintenanceExempt(path: string): boolean {
     path === "/offline" ||
     isMetadataRoute(path) ||
     path === "/api/health" ||
+    path === "/api/app-check/token" ||
     path.startsWith("/api/cron/") ||
     path === "/api/public/site-settings" ||
     path.startsWith("/_next/") ||
@@ -345,7 +346,7 @@ async function maintenanceResponse(
 
   const blocked = isApi
     ? NextResponse.json(
-        { error: "Service temporarily unavailable for maintenance." },
+        { error: "Service temporarily unavailable for maintenance.", stage: "maintenance" },
         { status: 503 },
       )
     : (() => {

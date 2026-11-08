@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   APP_CHECK_FAILURE_MESSAGE,
+  APP_CHECK_MAINTENANCE_MESSAGE,
+  AppCheckTokenError,
   appCheckFailureCode,
   appCheckFailureMessage,
 } from "../src/lib/app-check-errors";
@@ -13,6 +15,12 @@ const appCheckCodes = [
 ];
 
 describe("App Check failure messages", () => {
+  it("maps a maintenance response to a clear sign-in message", () => {
+    expect(appCheckFailureMessage(new AppCheckTokenError("appCheck/maintenance"))).toBe(
+      APP_CHECK_MAINTENANCE_MESSAGE,
+    );
+  });
+
   it.each(appCheckCodes)("maps %s to the fixed safe message", (code) => {
     const raw = Object.assign(new Error("Raw message containing a hostname and key"), { code });
 

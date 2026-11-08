@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { appCheckHeaders, auth } from "@/lib/firebase-client";
 
+import { describeSignInError, errorCode } from "./auth-errors";
 import { ADMIN_GOOGLE_SIGN_IN_EVENT } from "./google-signin-event";
 import GoogleSignInDialog from "./GoogleSignInDialog";
 
@@ -56,13 +57,18 @@ async function requestEmailCode(idToken: string): Promise<EmailCodeChallenge> {
   };
 }
 
-function useResendCountdown(resendIn: number, setResendIn: (value: (seconds: number) => number) => void) {
+function useResendCountdown(
+  resendIn: number,
+  setResendIn: (value: (seconds: number) => number) => void,
+) {
   useEffect(() => {
     if (resendIn <= 0) return;
     const timer = window.setTimeout(() => {
       setResendIn((seconds) => Math.max(0, seconds - 1));
     }, 1000);
-    return () => { window.clearTimeout(timer); };
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [resendIn, setResendIn]);
 }
 
@@ -111,8 +117,10 @@ export default function GoogleSignInController() {
       setChallenge(nextChallenge);
       setResendIn(nextChallenge.resendAfterSeconds);
     } catch (cause) {
+      const code = errorCode(cause);
+      if (code) console.error("Google sign-in failed:", code);
       await clearClientAuth();
-      setError(cause instanceof Error ? cause.message : "Google sign-in could not be completed.");
+      setError(describeSignInError(cause, "google"));
     } finally {
       active.current = false;
       setBusy(false);

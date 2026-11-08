@@ -32,6 +32,7 @@ const publicEnvironmentGroups: Record<string, readonly string[]> = {
   appCheck: ["NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY", "APPCHECK_TURNSTILE_SECRET_KEY"],
   malwareScan: ["CLAMD_HOST", "MALWARE_SCAN_MODE"],
 };
+const WEB_APP_ID_PATTERN = /^\d+:\d+:web:[0-9a-f]+$/i;
 
 function configured(name: string): boolean {
   return Boolean(process.env[name]?.trim());
@@ -52,6 +53,21 @@ function publicStatus() {
       return [group, valid];
     }),
   );
+}
+
+function appCheckConfiguration() {
+  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID?.trim() ?? "";
+  const firebaseAdminCredentials =
+    configured("FIREBASE_SERVICE_ACCOUNT_BASE64") ||
+    (configured("FIREBASE_CLIENT_EMAIL") && configured("FIREBASE_PRIVATE_KEY"));
+  return {
+    APPCHECK_TURNSTILE_SECRET_KEY: configured("APPCHECK_TURNSTILE_SECRET_KEY"),
+    NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY: configured("NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY"),
+    NEXT_PUBLIC_FIREBASE_APP_ID: configured("NEXT_PUBLIC_FIREBASE_APP_ID"),
+    NEXT_PUBLIC_FIREBASE_APP_ID_is_web_app: WEB_APP_ID_PATTERN.test(appId),
+    FIREBASE_PROJECT_ID: configured("FIREBASE_PROJECT_ID"),
+    FIREBASE_ADMIN_CREDENTIALS: firebaseAdminCredentials,
+  };
 }
 
 function authorized(request: Request): boolean {
@@ -112,6 +128,7 @@ export async function GET(request: Request) {
     version: "1.0.0",
     environment: result.deployment,
     requiredEnvironment: publicStatus(),
+    appCheckConfiguration: appCheckConfiguration(),
   };
   const headers = {
     "Cache-Control": "no-store",

@@ -1,5 +1,6 @@
 export const APP_CHECK_FAILURE_MESSAGE =
   "Security verification could not be completed. Please reload the page and try again. If this continues, contact the site administrator.";
+export const APP_CHECK_MAINTENANCE_MESSAGE = "Sign-in is temporarily unavailable for maintenance.";
 
 const APP_CHECK_ERROR_CODES = new Set([
   "appCheck/initial-throttle",
@@ -8,13 +9,16 @@ const APP_CHECK_ERROR_CODES = new Set([
   "appCheck/turnstile-error",
   "appCheck/token-unavailable",
   "appCheck/unknown-error",
+  "appCheck/maintenance",
 ]);
 
 export class AppCheckTokenError extends Error {
   readonly code: string;
 
   constructor(code: string) {
-    super(APP_CHECK_FAILURE_MESSAGE);
+    super(
+      code === "appCheck/maintenance" ? APP_CHECK_MAINTENANCE_MESSAGE : APP_CHECK_FAILURE_MESSAGE,
+    );
     this.name = "AppCheckTokenError";
     this.code = APP_CHECK_ERROR_CODES.has(code) ? code : "appCheck/unknown-error";
   }
@@ -37,7 +41,11 @@ export function appCheckFailureCode(cause: unknown): string | null {
 }
 
 export function appCheckFailureMessage(cause: unknown): string | null {
-  return appCheckFailureCode(cause) ? APP_CHECK_FAILURE_MESSAGE : null;
+  const code = appCheckFailureCode(cause);
+  if (!code) return null;
+  return code === "appCheck/maintenance"
+    ? APP_CHECK_MAINTENANCE_MESSAGE
+    : APP_CHECK_FAILURE_MESSAGE;
 }
 
 export function reportAppCheckFailure(cause: unknown): void {
