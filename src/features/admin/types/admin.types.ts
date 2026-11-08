@@ -45,7 +45,6 @@ export type Tab =
   | "reports"
   | "timeline"
   | "admins"
-  | "branding"
   | "announcement"
   | "faqs"
   | "contacts"

@@ -151,7 +151,10 @@ const nextStatus: Partial<Record<BreachStatus, BreachStatus>> = {
 
 export function canTransitionBreach(from: unknown, to: BreachStatus): boolean {
   const status = breachStatuses.find((value) => value === from);
-  return status !== undefined && nextStatus[status] === to;
+  if (!status || status === to) return false;
+  // A case may be closed directly from any active stage once closure requirements are met.
+  if (to === "closed") return true;
+  return nextStatus[status] === to;
 }
 
 function hasClosureDocumentation(value: Partial<BreachFields>): boolean {

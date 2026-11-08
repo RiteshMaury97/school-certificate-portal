@@ -35,16 +35,7 @@ export type AdminDataLoadProps = {
   setContactEnquiries: Dispatch<SetStateAction<Record<string, unknown>[]>>;
   setFaqs: Dispatch<SetStateAction<FaqItem[]>>;
   setAdmins: Dispatch<SetStateAction<Record<string, unknown>[]>>;
-  setMaintenanceMode: Dispatch<SetStateAction<boolean>>;
-  setRetentionYears: Dispatch<SetStateAction<string>>;
-  setBackupRotationDays: Dispatch<SetStateAction<string>>;
-  setBranding: Dispatch<SetStateAction<Record<string, string>>>;
   setAnnouncement: Dispatch<SetStateAction<AnnouncementState>>;
-  setAllowedAdminCountries: Dispatch<SetStateAction<string>>;
-  setAdminIpAllowlist: Dispatch<SetStateAction<string>>;
-  setAdminLocationEnforcementMode: Dispatch<SetStateAction<string>>;
-  setRecentLocationBlocks: Dispatch<SetStateAction<Record<string, unknown>[]>>;
-  setAdminLocationExceptions: Dispatch<SetStateAction<Record<string, unknown>[]>>;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -62,17 +53,6 @@ function stringMap(value: unknown): Record<string, string> {
   return Object.fromEntries(
     Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
   );
-}
-
-function socialLinkLines(value: unknown): string {
-  if (!Array.isArray(value)) return "";
-  return value
-    .filter(
-      (item): item is { label: string; url: string } =>
-        isRecord(item) && typeof item.label === "string" && typeof item.url === "string",
-    )
-    .map((item) => `${item.label}|${item.url}`)
-    .join("\n");
 }
 
 async function loadDashboard(props: AdminDataLoadProps) {
@@ -167,41 +147,6 @@ async function loadAdmins(props: AdminDataLoadProps) {
   props.setAdmins(data.admins);
 }
 
-async function loadBranding(props: AdminDataLoadProps) {
-  if (props.role !== "superadmin") return;
-  const data = await props.api<{
-    settings: Record<string, unknown>;
-    recentLocationBlocks: Record<string, unknown>[];
-  }>("/api/admin/site-settings");
-  const settings = data.settings;
-  props.setAllowedAdminCountries(Array.isArray(settings.allowedAdminCountries) ? settings.allowedAdminCountries.join(", ") : "IN");
-  props.setAdminIpAllowlist(Array.isArray(settings.adminIpAllowlist) ? settings.adminIpAllowlist.join("\n") : "");
-  props.setAdminLocationEnforcementMode(
-    typeof settings.adminLocationEnforcementMode === "string" ? settings.adminLocationEnforcementMode : "block",
-  );
-  props.setRecentLocationBlocks(data.recentLocationBlocks);
-  props.setAdminLocationExceptions(
-    Array.isArray(settings.adminLocationExceptions) ? settings.adminLocationExceptions.filter(isRecord) : [],
-  );
-  props.setMaintenanceMode(settings.maintenanceMode === true);
-  props.setRetentionYears(displayValue(settings.retentionYears) || "7");
-  props.setBackupRotationDays(displayValue(settings.backupRotationDays) || "30");
-  props.setBranding((current) => ({ ...current, ...brandingValues(current, settings) }));
-}
-
-function brandingValues(current: Record<string, string>, settings: Record<string, unknown>) {
-  return Object.fromEntries(Object.keys(current).map((key) => brandingValue(key, settings)));
-}
-
-function brandingValue(key: string, settings: Record<string, unknown>): [string, string] {
-  if (key.includes("_i18n_")) {
-    const group = settings[key.startsWith("tagline_") ? "tagline_i18n" : "principalMessage_i18n"];
-    const locale = key.slice(key.lastIndexOf("_") + 1);
-    return [key, isRecord(group) ? displayValue(group[locale]) : ""];
-  }
-  return [key, key === "socialLinks" ? socialLinkLines(settings[key]) : displayValue(settings[key])];
-}
-
 async function loadAnnouncement(props: AdminDataLoadProps) {
   if (props.role !== "superadmin" && props.role !== "approver") return;
   const data = await props.api<{ announcement: Record<string, unknown> }>("/api/admin/announcements");
@@ -240,7 +185,6 @@ const loaders: Partial<Record<Tab, (props: AdminDataLoadProps) => Promise<void>>
   timeline: loadTimeline,
   faqs: loadFaqs,
   admins: loadAdmins,
-  branding: loadBranding,
   announcement: loadAnnouncement,
 };
 

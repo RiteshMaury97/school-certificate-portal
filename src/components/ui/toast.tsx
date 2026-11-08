@@ -47,5 +47,9 @@ function ToastList() {
 }
 
 export function Toaster() {
-  return <Toast.Provider toastManager={toast}><ToastList /></Toast.Provider>;
+  return (
+    <Toast.Provider toastManager={toast} timeout={15_000}>
+      <ToastList />
+    </Toast.Provider>
+  );
 }

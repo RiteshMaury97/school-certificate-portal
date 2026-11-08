@@ -29,7 +29,6 @@ import IdleWarningModal from "./components/modals/IdleWarningModal";
 import ProfileTab from "./components/profile/ProfileTab";
 import SessionsTab from "./components/profile/SessionsTab";
 import AnnouncementTab from "./components/site/AnnouncementTab";
-import BrandingTab from "./components/site/BrandingTab";
 import FaqsTab from "./components/site/FaqsTab";
 import StudentCreatePanel from "./components/students/StudentCreatePanel";
 import StudentImportPanel from "./components/students/StudentImportPanel";
@@ -118,31 +117,11 @@ export default function AdminPage() {
   const { api, reauthOpen, completeReauth, cancelReauth } = useAdminApi();
   const siteAdmin = useSiteSettingsAdmin(api, act, setToast);
   const {
-    retentionYears,
-    setRetentionYears,
-    backupRotationDays,
-    setBackupRotationDays,
     faqs,
     setFaqs,
-    maintenanceMode,
-    setMaintenanceMode,
     announcement,
     setAnnouncement,
-    branding,
-    setBranding,
-    allowedAdminCountries,
-    setAllowedAdminCountries,
-    adminIpAllowlist,
-    setAdminIpAllowlist,
-    adminLocationEnforcementMode,
-    setAdminLocationEnforcementMode,
-    recentLocationBlocks,
-    setRecentLocationBlocks,
-    adminLocationExceptions,
-    setAdminLocationExceptions,
-    addAdminLocationException,
     saveFaqs,
-    saveBranding,
     saveAnnouncement,
   } = siteAdmin;
   const lifecycle = useAdminSessionLifecycle({
@@ -272,16 +251,7 @@ export default function AdminPage() {
     setContactEnquiries,
     setFaqs,
     setAdmins,
-    setMaintenanceMode,
-    setRetentionYears,
-    setBackupRotationDays,
-    setBranding,
     setAnnouncement,
-    setAllowedAdminCountries,
-    setAdminIpAllowlist,
-    setAdminLocationEnforcementMode,
-    setRecentLocationBlocks,
-    setAdminLocationExceptions,
   });
   useEffect(() => {
     loadRef.current = load;
@@ -406,9 +376,6 @@ export default function AdminPage() {
           email={email}
           tab={tab}
           setTab={setTab}
-          onSettings={() => {
-            router.push("/admin/settings");
-          }}
           onLoadSessions={() => {
             router.push("/admin/account-sessions");
           }}
@@ -678,31 +645,6 @@ export default function AdminPage() {
                 timelineStudentId={timelineStudentId}
                 setTimelineStudentId={setTimelineStudentId}
                 timeline={timeline}
-              />
-            )}
-            {tab === "branding" && role === "superadmin" && (
-              <BrandingTab
-                branding={branding}
-                setBranding={setBranding}
-                allowedAdminCountries={allowedAdminCountries}
-                setAllowedAdminCountries={setAllowedAdminCountries}
-                adminIpAllowlist={adminIpAllowlist}
-                setAdminIpAllowlist={setAdminIpAllowlist}
-                adminLocationEnforcementMode={adminLocationEnforcementMode}
-                setAdminLocationEnforcementMode={setAdminLocationEnforcementMode}
-                recentLocationBlocks={recentLocationBlocks}
-                adminLocationExceptions={adminLocationExceptions}
-                addAdminLocationException={(input) => act(() => addAdminLocationException(input))}
-                retentionYears={retentionYears}
-                setRetentionYears={setRetentionYears}
-                backupRotationDays={backupRotationDays}
-                setBackupRotationDays={setBackupRotationDays}
-                maintenanceMode={maintenanceMode}
-                setMaintenanceMode={setMaintenanceMode}
-                busy={busy}
-                saveBranding={(event) => {
-                  void saveBranding(event);
-                }}
               />
             )}
             {tab === "announcement" &&

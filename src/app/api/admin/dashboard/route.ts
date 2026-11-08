@@ -6,10 +6,18 @@ import { sendMail } from "@/server/mailer";
 import { getR2StorageBytes } from "@/server/r2";
 import { apiError, requireAdmin } from "@/server/security";
 import { getAdminUploadUsage, getUploadsToday } from "@/server/upload-policy";
+import { normalizeAcademicSession } from "@/shared/academic-session";
 
 import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function sessionAliases(session: string): string[] {
+  const normalized = normalizeAcademicSession(session);
+  if (!normalized) return [];
+  const [start] = normalized.split("-");
+  return [normalized, `${start}-${String(Number(start) + 1)}`];
+}
 
 async function alertStorageBudget(storageBytes: number, budget: number): Promise<void> {
   if (storageBytes < budget * 0.8) return;
@@ -64,6 +72,8 @@ export async function GET(request: NextRequest) {
     const admin = await requireAdmin(request);
     const [
       counters,
+      totalStudents,
+      totalCertificates,
       pending,
       openTickets,
       reviewingTickets,
@@ -71,12 +81,13 @@ export async function GET(request: NextRequest) {
       sessions,
       feedbackPositive,
       feedbackNegative,
-      downloadSessions,
       storageBytes,
       uploadUsage,
       uploadsToday,
     ] = await Promise.all([
       db.collection("metricsCounters").doc("portal").get(),
+      db.collection("students").count().get(),
+      db.collection("certificates").count().get(),
       db.collection("certificates").where("status", "==", "pending").count().get(),
       db.collection("recordReports").where("status", "==", "open").count().get(),
       db.collection("recordReports").where("status", "==", "reviewing").count().get(),
@@ -90,7 +101,6 @@ export async function GET(request: NextRequest) {
       db.collection("sessions").limit(50).get(),
       db.collection("feedback").where("helpful", "==", true).count().get(),
       db.collection("feedback").where("helpful", "==", false).count().get(),
-      db.collection("certificateDownloadSessions").limit(100).get(),
       getR2StorageBytes(),
       getAdminUploadUsage(admin.uid),
       getUploadsToday(),
@@ -98,43 +108,64 @@ export async function GET(request: NextRequest) {
     const storageBudget = Number(process.env.R2_STORAGE_BUDGET_BYTES ?? 10 * 1024 * 1024 * 1024);
     await alertStorageBudget(storageBytes, storageBudget);
     const data = counters.data() ?? {};
-    const certificatesPerSession = await Promise.all(
-      sessions.docs.map(async (session) => ({
-        session: session.id,
-        count: (
-          await db
+    const configuredSessions = new Map<string, { key: string; label: string }>();
+    for (const doc of sessions.docs) {
+      const candidates = [doc.id, doc.get("label"), doc.get("name")];
+      const normalized = candidates
+        .filter((value): value is string => typeof value === "string")
+        .map(normalizeAcademicSession)
+        .find((value): value is string => value !== null);
+      if (!normalized || configuredSessions.has(normalized)) continue;
+      const label = [doc.get("label"), doc.get("name"), doc.id].find(
+        (value): value is string => typeof value === "string" && value.trim().length > 0,
+      );
+      configuredSessions.set(normalized, { key: normalized, label: label ?? normalized });
+    }
+    const activityBySession = await Promise.all(
+      [...configuredSessions.values()].map(async ({ key, label }) => {
+        const aliases = sessionAliases(key);
+        const [certificates, downloadSnapshots] = await Promise.all([
+          db
             .collection("certificates")
-            .where("session", "==", session.id)
+            .where("session", "in", aliases)
             .where("status", "==", "published")
             .count()
-            .get()
-        ).data().count,
-      })),
+            .get(),
+          Promise.all(
+            aliases.map((alias) => db.collection("certificateDownloadSessions").doc(alias).get()),
+          ),
+        ]);
+        return {
+          session: label,
+          certificates: certificates.data().count,
+          downloads: downloadSnapshots.reduce(
+            (total, snapshot) => total + Number(snapshot.get("totalDownloads") ?? 0),
+            0,
+          ),
+        };
+      }),
     );
-    const downloadMap = new Map(
-      downloadSessions.docs.map((doc) => [
-        String(doc.get("session") ?? doc.id),
-        Number(doc.get("totalDownloads") ?? 0),
-      ]),
-    );
-    const allSessions = new Set([...sessions.docs.map((doc) => doc.id), ...downloadMap.keys()]);
-    const downloadsPerSession = [...allSessions]
-      .sort((a, b) => b.localeCompare(a))
-      .map((session) => ({
-        session,
-        downloads: downloadMap.get(session) ?? 0,
-      }));
+    const certificatesPerSession = activityBySession.map(({ session, certificates }) => ({
+      session,
+      count: certificates,
+    }));
+    const downloadsPerSession = activityBySession.map(({ session, downloads }) => ({
+      session,
+      downloads,
+    }));
     const positive = feedbackPositive.data().count,
       negative = feedbackNegative.data().count;
     return NextResponse.json(
       {
         stats: {
-          totalStudents: Number(data.totalStudents ?? 0),
+          // Collection counts are authoritative; metricsCounters can be stale if an audit
+          // write failed after a record was persisted.
+          totalStudents: totalStudents.data().count,
           r2StorageBytes: storageBytes,
           r2StorageBudgetBytes: storageBudget,
           uploadsToday,
           remainingUploadQuotaBytes: uploadUsage.remainingQuotaBytes,
-          totalCertificates: Number(data.totalCertificates ?? 0),
+          totalCertificates: totalCertificates.data().count,
           pendingApprovals: pending.data().count,
           searchesThisWeek: week,
           failedLookups: Number(data.failedLookups ?? 0),

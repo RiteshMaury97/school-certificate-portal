@@ -68,7 +68,6 @@ export type PreviewUrl = { url: string; mimeType: string };
 export type CertificateHistory = Record<string, Record<string, unknown>[]>;
 export type CertificatePreviewMap = Record<string, PreviewUrl>;
 export type AdminRecord = Record<string, unknown>;
-export type BrandingState = Record<string, string>;
 export type AdminInviteRole = "uploader" | "approver" | "admin" | "superadmin";
 export type AdminInviteProfile = {
   name: string;

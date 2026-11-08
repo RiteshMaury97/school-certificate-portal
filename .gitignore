@@ -21,6 +21,8 @@ coverage
 playwright-report
 test-results
 reports
+!src/app/admin/(console)/reports/
+!src/app/admin/(console)/reports/page.tsx
 /scripts/reports/eslint-report.json
 !src/app/api/admin/reports/
 !src/app/api/admin/reports/route.ts

@@ -8,8 +8,8 @@ import {
 } from "@/shared/session-policy";
 describe("administrator session policy", () => {
   it("warns before idle timeout", () => {
-    expect(ADMIN_IDLE_WARNING_MS).toBe(13 * 60_000);
-    expect(ADMIN_IDLE_TIMEOUT_MS).toBe(15 * 60_000);
+    expect(ADMIN_IDLE_WARNING_MS).toBe(5 * 60 * 60_000 + 50 * 60_000);
+    expect(ADMIN_IDLE_TIMEOUT_MS).toBe(6 * 60 * 60_000);
   });
   it("enforces an eight-hour hard limit", () => { expect(ADMIN_HARD_SESSION_LIMIT_MS).toBe(8 * 60 * 60_000); });
   it("expires after inactivity or hard expiry", () => {

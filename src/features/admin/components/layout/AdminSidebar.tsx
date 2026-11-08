@@ -1,4 +1,3 @@
-import { Settings } from "lucide-react";
 import Link from "next/link";
 
 import Logo from "@/components/ui/Logo";
@@ -14,7 +13,6 @@ type AdminSidebarProps = {
   email: string;
   tab: Tab;
   setTab: (tab: Tab) => void;
-  onSettings: () => void;
   onLoadSessions: () => void;
 };
 
@@ -23,7 +21,6 @@ export default function AdminSidebar({
   email,
   tab,
   setTab,
-  onSettings,
   onLoadSessions,
 }: AdminSidebarProps) {
   const username = email.split("@")[0] ?? "";
@@ -62,14 +59,6 @@ export default function AdminSidebar({
           );
         })}
       </nav>
-      <div className="sis-admin-sidebar-divider mx-5" />
-      <p className="sis-admin-nav-label px-6 pt-4">Administration</p>
-      <div className="px-3 pb-4">
-        <button type="button" onClick={onSettings} className="sis-admin-nav-item">
-          <Settings size={17} />
-          <span>Settings</span>
-        </button>
-      </div>
       <div className="sis-admin-user-footer">
         <span className="sis-admin-avatar">
           {avatarName.slice(0, 2).toUpperCase()}

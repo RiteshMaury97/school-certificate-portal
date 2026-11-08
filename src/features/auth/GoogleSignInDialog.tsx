@@ -1,5 +1,7 @@
 "use client";
 
+import { KeyRound, MailCheck } from "lucide-react";
+
 import type { SyntheticEvent } from "react";
 
 type Props = {
@@ -34,10 +36,22 @@ export default function GoogleSignInDialog({
         className="google-signin-dialog"
         role="dialog"
       >
-        <h2 id="google-signin-title">{challengeActive ? "Verify your email" : "Google sign-in"}</h2>
+        <div className="google-signin-heading">
+          <span className="google-signin-icon" aria-hidden="true">
+            {challengeActive ? <MailCheck size={22} /> : <KeyRound size={22} />}
+          </span>
+          <div>
+            <p className="google-signin-eyebrow">Administrator sign in</p>
+            <h2 id="google-signin-title">
+              {challengeActive ? "Verify your email" : "Google sign-in"}
+            </h2>
+          </div>
+        </div>
         {challengeActive ? (
           <form onSubmit={onSubmit}>
-            <p>Enter the six-digit code sent to your administrator email address.</p>
+            <p className="google-signin-description">
+              Enter the six-digit code sent to your administrator email address to finish signing in.
+            </p>
             <label>
               Verification code
               <input
@@ -53,13 +67,23 @@ export default function GoogleSignInDialog({
                 pattern="[0-9]{6}"
                 required
                 value={code}
+                placeholder="000000"
               />
             </label>
             <div className="google-signin-actions">
-              <button disabled={busy || code.length !== 6} type="submit">
-                {busy ? "Verifying..." : "Verify and sign in"}
+              <button
+                className="google-signin-primary"
+                disabled={busy || code.length !== 6}
+                type="submit"
+              >
+                {busy ? "Verifying…" : "Verify and sign in"}
               </button>
-              <button disabled={busy || resendIn > 0} onClick={onResend} type="button">
+              <button
+                className="google-signin-secondary"
+                disabled={busy || resendIn > 0}
+                onClick={onResend}
+                type="button"
+              >
                 {resendIn > 0 ? `Resend in ${String(resendIn)}s` : "Resend code"}
               </button>
             </div>

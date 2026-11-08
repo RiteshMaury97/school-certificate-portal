@@ -216,14 +216,19 @@ export function DataCategoriesAndStatus({
           Involves minors
         </label>
         {allowStatusChange ? (
-          <SelectField
-            label="Status"
-            value={draft.status}
-            options={statusOptions}
-            onChange={(value) => {
-              if (isStatus(value)) setDraft("status", value);
-            }}
-          />
+          <div className="space-y-1">
+            <SelectField
+              label="Status"
+              value={draft.status}
+              options={statusOptions}
+              onChange={(value) => {
+                if (isStatus(value)) setDraft("status", value);
+              }}
+            />
+            <p className="max-w-sm text-xs text-[var(--text-muted)]">
+              You can close a case from any active stage once its closure details are complete.
+            </p>
+          </div>
         ) : (
           <p className="text-sm text-[var(--text-muted)]">
             Initial status:{" "}
