@@ -111,8 +111,8 @@ export default function GoogleSignInController() {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      const credential = await signInWithPopup(auth, provider);
       await setPersistence(auth, inMemoryPersistence);
+      const credential = await signInWithPopup(auth, provider);
       const token = await credential.user.getIdToken(true);
       setIdToken(token);
       const nextChallenge = await requestEmailCode(token);
