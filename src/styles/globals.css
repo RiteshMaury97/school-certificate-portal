@@ -1172,3 +1172,74 @@ form:has([required])::before {
 .privacy-request-form:has([required])::before {
   grid-column: 1 / -1;
 }
+
+.google-signin-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 68%);
+}
+
+.google-signin-dialog {
+  width: min(100%, 28rem);
+  padding: 1.5rem;
+  border: 1px solid var(--border, #d7dce3);
+  border-radius: 1rem;
+  background: var(--surface, #fff);
+  color: var(--text, #17202a);
+  box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 30%);
+}
+
+.google-signin-dialog h2 {
+  margin: 0 0 1rem;
+}
+
+.google-signin-dialog form,
+.google-signin-dialog label {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.google-signin-dialog input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border, #aab3bf);
+  border-radius: 0.5rem;
+  font: inherit;
+}
+
+.google-signin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.google-signin-actions button,
+.google-signin-cancel {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border, #aab3bf);
+  border-radius: 0.5rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.google-signin-actions button:disabled,
+.google-signin-cancel:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.google-signin-cancel {
+  margin-top: 0.75rem;
+  background: transparent;
+}
+
+.google-signin-error {
+  color: var(--danger, #b42318);
+}

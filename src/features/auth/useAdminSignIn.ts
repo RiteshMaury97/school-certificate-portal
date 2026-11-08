@@ -20,6 +20,7 @@ import {
 import { appCheckHeaders, auth } from "@/lib/firebase-client";
 
 import { describeSignInError, errorCode, isBadCredentials, safeNextPath } from "./auth-errors";
+import { beginGoogleSignIn } from "./google-signin-event";
 export type Step = "credentials" | "verify-email" | "change-password" | "email-code";
 const LOCK_MESSAGE =
   "This account is temporarily locked after repeated failed sign-ins. Try again in 15 minutes.";
@@ -79,7 +80,7 @@ function getRetryAfterSeconds(response: Response): number | undefined {
   return Number.isFinite(retryAfter) && retryAfter > 0 ? Math.ceil(retryAfter) : undefined;
 }
 // eslint-disable-next-line max-lines-per-function -- reason: this hook coordinates the existing multi-step authentication state and handlers.
-export function useAdminSignIn() {
+function useExistingNonGoogleSignInMethods() {
   const router = useRouter();
   const params = useSearchParams();
   const [step, setStep] = useState<Step>("credentials");
@@ -344,4 +345,9 @@ export function useAdminSignIn() {
     changeTemporaryPassword,
     cancel,
   };
+}
+
+export function useAdminSignIn() {
+  const flow = useExistingNonGoogleSignInMethods();
+  return { ...flow, signInWithGoogle: beginGoogleSignIn };
 }
