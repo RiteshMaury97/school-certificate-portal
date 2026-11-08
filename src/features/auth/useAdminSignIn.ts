@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import {
   appCheckFailureMessage,
+  appCheckFailureReference,
   AppCheckTokenError,
   reportAppCheckFailure,
 } from "@/lib/app-check-errors";
@@ -114,7 +115,12 @@ function useExistingNonGoogleSignInMethods() {
         const appCheckMessage = appCheckFailureMessage(cause);
         if (appCheckMessage) {
           if (!(cause instanceof AppCheckTokenError)) reportAppCheckFailure(cause);
-          toast.add({ type: "error", title: failureTitle, description: appCheckMessage });
+          const reference = appCheckFailureReference(cause);
+          toast.add({
+            type: "error",
+            title: failureTitle,
+            description: reference ? `${appCheckMessage} (ref: ${reference})` : appCheckMessage,
+          });
           return;
         }
         toast.add({

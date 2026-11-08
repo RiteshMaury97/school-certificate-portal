@@ -6,6 +6,7 @@ import {
   AppCheckTokenError,
   appCheckFailureCode,
   appCheckFailureMessage,
+  appCheckFailureReference,
 } from "../src/lib/app-check-errors";
 
 const appCheckCodes = [
@@ -39,5 +40,15 @@ describe("App Check failure messages", () => {
     expect(appCheckFailureMessage(cause)).toBe(APP_CHECK_FAILURE_MESSAGE);
     expect(appCheckFailureMessage(cause)).not.toContain("hostname");
     expect(appCheckFailureMessage(cause)).not.toContain("key");
+  });
+
+  it("exposes only a short safe step reference for diagnosis", () => {
+    const cause = new AppCheckTokenError("appCheck/turnstile-error", "mint-failed/permission");
+
+    expect(appCheckFailureReference(cause)).toBe("mint-failed/permission");
+    expect(appCheckFailureMessage(cause)).toBe(APP_CHECK_FAILURE_MESSAGE);
+    expect(new AppCheckTokenError("appCheck/turnstile-error", "a b<script>").reference).toBe(
+      "abscript",
+    );
   });
 });

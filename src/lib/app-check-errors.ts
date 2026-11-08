@@ -12,15 +12,23 @@ const APP_CHECK_ERROR_CODES = new Set([
   "appCheck/maintenance",
 ]);
 
+/** Fixed, secret-free labels only (stage names, Turnstile widget codes). */
+function safeReference(value: string | undefined): string {
+  return (value ?? "").replace(/[^A-Za-z0-9:/_.,-]/g, "").slice(0, 60);
+}
+
 export class AppCheckTokenError extends Error {
   readonly code: string;
+  /** Short non-sensitive step label shown to the person so the exact failing step can be found. */
+  readonly reference: string;
 
-  constructor(code: string) {
+  constructor(code: string, reference?: string) {
     super(
       code === "appCheck/maintenance" ? APP_CHECK_MAINTENANCE_MESSAGE : APP_CHECK_FAILURE_MESSAGE,
     );
     this.name = "AppCheckTokenError";
     this.code = APP_CHECK_ERROR_CODES.has(code) ? code : "appCheck/unknown-error";
+    this.reference = safeReference(reference);
   }
 }
 
@@ -46,6 +54,12 @@ export function appCheckFailureMessage(cause: unknown): string | null {
   return code === "appCheck/maintenance"
     ? APP_CHECK_MAINTENANCE_MESSAGE
     : APP_CHECK_FAILURE_MESSAGE;
+}
+
+/** A short reference such as "mint-failed/permission" for the failing step, or "". */
+export function appCheckFailureReference(cause: unknown): string {
+  if (cause instanceof AppCheckTokenError && cause.reference) return cause.reference;
+  return safeReference(appCheckFailureCode(cause) ?? "");
 }
 
 export function reportAppCheckFailure(cause: unknown): void {

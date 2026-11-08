@@ -42,6 +42,18 @@ export async function POST(request: NextRequest) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return failure("bad-request", "Security verification failed.", 400);
 
+  // The browser uses NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY || NEXT_PUBLIC_TURNSTILE_SITE_KEY and
+  // this route uses APPCHECK_TURNSTILE_SECRET_KEY || TURNSTILE_SECRET_KEY. Setting only one half of
+  // the dedicated pair makes the browser and server use different widgets, so every token is rejected.
+  const dedicatedSite = Boolean(process.env.NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY?.trim());
+  const dedicatedSecret = Boolean(process.env.APPCHECK_TURNSTILE_SECRET_KEY?.trim());
+  if (dedicatedSite !== dedicatedSecret) {
+    console.error(
+      "appCheck/token-not-configured | HINT: set BOTH NEXT_PUBLIC_APPCHECK_TURNSTILE_SITE_KEY and APPCHECK_TURNSTILE_SECRET_KEY, or leave both blank to reuse the main Turnstile keys.",
+    );
+    return failure("not-configured", "Security verification is unavailable.", 503, "key-pair");
+  }
+
   const verification = await checkTurnstileToken(
     parsed.data.turnstileToken,
     requesterIp(request),
@@ -53,7 +65,12 @@ export async function POST(request: NextRequest) {
       return failure("not-configured", "Security verification is unavailable.", 503);
     if (verification.reason === "unavailable")
       return failure("turnstile-unavailable", "Security verification is unavailable.", 503);
-    return failure("turnstile-rejected", "Security verification failed.", 403);
+    return failure(
+      "turnstile-rejected",
+      "Security verification failed.",
+      403,
+      verification.errorCodes[0],
+    );
   }
 
   const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID?.trim();

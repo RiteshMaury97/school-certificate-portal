@@ -9,7 +9,7 @@ type TurnstileApi = {
       "expired-callback": () => void;
       "error-callback": (errorCode: string) => void;
       theme?: "light" | "dark";
-      appearance?: "always";
+      appearance?: "always" | "execute" | "interaction-only";
       size?: "normal" | "compact" | "flexible";
       execution?: "render" | "execute";
     },

@@ -4,7 +4,11 @@ import { getApps, initializeApp } from "firebase/app";
 import { CustomProvider, getToken, initializeAppCheck, type AppCheck } from "firebase/app-check";
 import { getAuth } from "firebase/auth";
 
-import { AppCheckTokenError, appCheckFailureCode } from "./app-check-errors";
+import {
+  AppCheckTokenError,
+  appCheckFailureCode,
+  appCheckFailureReference,
+} from "./app-check-errors";
 import { applyCspNonce } from "./csp";
 
 function requiredFirebaseConfig(value: string | undefined, name: string): string {
@@ -131,7 +135,7 @@ function requestTurnstileProof(): Promise<string> {
         let widgetId = "";
         let timeoutId: number | undefined;
         let settled = false;
-        const finish = (token?: string) => {
+        const finish = (token?: string, reference = "turnstile-failed") => {
           if (settled) return;
           settled = true;
           if (timeoutId !== undefined) window.clearTimeout(timeoutId);
@@ -144,7 +148,7 @@ function requestTurnstileProof(): Promise<string> {
           }
           host.remove();
           if (token) resolve(token);
-          else reject(new Error("Turnstile verification failed."));
+          else reject(new AppCheckTokenError("appCheck/turnstile-error", reference));
         };
         try {
           const turnstile = window.turnstile;
@@ -152,23 +156,25 @@ function requestTurnstileProof(): Promise<string> {
           widgetId = turnstile.render(host, {
             sitekey: siteKey,
             execution: "execute",
+            // Stay invisible unless Cloudflare must ask the person to interact.
+            appearance: "interaction-only",
             callback: (token) => {
               finish(token);
             },
             "expired-callback": () => {
-              finish();
+              finish(undefined, "widget:expired");
             },
             "error-callback": (errorCode) => {
               console.error("appCheck/turnstile-widget", errorCode);
-              finish();
+              finish(undefined, `widget:${errorCode}`);
             },
           });
           timeoutId = window.setTimeout(() => {
-            finish();
-          }, 120_000);
+            finish(undefined, "widget:timeout");
+          }, 45_000);
           turnstile.execute(widgetId);
         } catch {
-          finish();
+          finish(undefined, "widget:render");
         }
       }),
   );
@@ -216,8 +222,14 @@ async function fetchCustomAppCheckToken(): Promise<AppCheckTokenPayload> {
     if (response.status === 503 && safeEndpointLabel(payload, "stage", "") === "maintenance")
       throw new AppCheckTokenError("appCheck/maintenance");
   }
-  if (!response.ok || !isAppCheckTokenPayload(payload))
-    throw new AppCheckTokenError("appCheck/turnstile-error");
+  if (!response.ok || !isAppCheckTokenPayload(payload)) {
+    const stage = safeEndpointLabel(payload, "stage", `http-${String(response.status)}`);
+    const reason = safeEndpointLabel(payload, "reason", "");
+    throw new AppCheckTokenError(
+      "appCheck/turnstile-error",
+      reason ? `${stage}/${reason}` : stage,
+    );
+  }
   return payload;
 }
 
@@ -275,8 +287,12 @@ export async function appCheckHeaders(): Promise<Record<string, string>> {
   try {
     return { "X-Firebase-AppCheck": await readAppCheckToken() };
   } catch (cause) {
+    if (cause instanceof AppCheckTokenError) {
+      console.error(cause.code, cause.reference);
+      throw cause;
+    }
     const code = appCheckFailureCode(cause) ?? "appCheck/token-unavailable";
     console.error(code);
-    throw new AppCheckTokenError(code);
+    throw new AppCheckTokenError(code, appCheckFailureReference(cause) || "client-init");
   }
 }
