@@ -7,7 +7,6 @@ import { db } from "@/server/firebase-admin";
 import { sendMail } from "@/server/mailer";
 import {
   requireRoles,
-  requireSensitiveReauth,
   writeAuditLog,
   apiError,
 } from "@/server/security";
@@ -85,7 +84,6 @@ async function eraseRequest(
   body: Record<string, unknown>,
 ): Promise<NextResponse> {
   const admin = await requireRoles(request, ["superadmin"]);
-  await requireSensitiveReauth(request, admin);
   if (
     typeof body.id !== "string" ||
     typeof body.studentId !== "string" ||

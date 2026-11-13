@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
 import { certificateTypeSlug } from "@/server/r2";
-import { requireRoles, requireSensitiveReauth, writeAuditLog, apiError } from "@/server/security";
+import { requireRoles, writeAuditLog, apiError } from "@/server/security";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { catalogItemSchema, documentIdSchema } from "@/shared/validation";
 
@@ -77,7 +77,6 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ki
 export async function DELETE(request: NextRequest, context: { params: Promise<{ kind: string }> }) {
   try {
     const admin = await requireRoles(request, ["superadmin", "admin"]);
-    await requireSensitiveReauth(request, admin);
     const { kind } = await context.params;
     const name = collection(kind);
     const id = request.nextUrl.searchParams.get("id");

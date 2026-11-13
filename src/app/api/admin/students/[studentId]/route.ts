@@ -12,7 +12,6 @@ import { softDeleteR2Object } from "@/server/r2";
 import {
   createSearchKey,
   requireRoles,
-  requireSensitiveReauth,
   writeAuditLog,
   apiError,
 } from "@/server/security";
@@ -292,7 +291,6 @@ export async function DELETE(
 ) {
   try {
     const admin = await requireRoles(request, ["superadmin"]);
-    await requireSensitiveReauth(request, admin);
     const { studentId } = await context.params;
     const ref = db.collection("students").doc(studentId);
     const student = await ref.get();

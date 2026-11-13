@@ -222,7 +222,6 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const actor = await superadmin(request);
-    await requireSensitiveReauth(request, actor);
     const body: unknown = await request.json();
     if (!body || typeof body !== "object" || !("uid" in body) || typeof body.uid !== "string")
       return NextResponse.json({ error: "Select a valid administrator account." }, { status: 400 });

@@ -15,7 +15,11 @@ import { encryptCertificateNumber } from "@/server/certificate-number";
 import { db } from "@/server/firebase-admin";
 import { ensurePublicSessions, rebuildPublicSessions } from "@/server/public-sessions";
 import { uploadCertificate, softDeleteR2Object, certificateTypeSlug } from "@/server/r2";
-import { requireRoles, requireSensitiveReauth, writeAuditLog, apiError } from "@/server/security";
+import {
+  requireRoles,
+  writeAuditLog,
+  apiError,
+} from "@/server/security";
 import { consumeAdminUploadQuota, rejectOversizedRequest } from "@/server/upload-policy";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { canReplacePublishedCertificate } from "@/shared/certificate-lifecycle";
@@ -370,7 +374,6 @@ export async function DELETE(
 ) {
   try {
     const admin = await requireRoles(request, ["superadmin"]);
-    await requireSensitiveReauth(request, admin);
     const { certificateId } = await context.params;
     const ref = db.collection("certificates").doc(certificateId);
     const doc = await ref.get();
