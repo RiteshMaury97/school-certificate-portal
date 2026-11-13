@@ -2,6 +2,7 @@ import { ShieldCheck } from "lucide-react";
 
 import { DatePicker } from "@/components/ui/DatePicker";
 import { normalizeAcademicSession } from "@/shared/academic-session";
+import { PHONE_NUMBER_PATTERN } from "@/shared/html-patterns";
 
 import DuplicateHashWarning from "../shared/DuplicateHashWarning";
 
@@ -330,7 +331,7 @@ export default function StudentCreatePanel(props: Props) {
               autoComplete="tel"
               minLength={10}
               maxLength={16}
-              pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"
+              pattern={PHONE_NUMBER_PATTERN}
               value={notify.mobile}
               onChange={(event) => {
                 setNotify((value) => ({ ...value, mobile: event.target.value }));

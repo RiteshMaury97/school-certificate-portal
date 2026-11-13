@@ -1,13 +1,21 @@
 "use client";
 
 import { ArrowRight, ShieldCheck } from "lucide-react";
-import { useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from "react";
 
 import { FormErrorSummary } from "@/components/forms/FormErrorSummary";
 import { FormField } from "@/components/forms/FormField";
 import { useFormValidation } from "@/components/forms/useFormValidation";
 import { applyCspNonce } from "@/lib/csp";
 import { appCheckHeaders } from "@/lib/firebase-client";
+import { PERSON_NAME_PATTERN, PHONE_NUMBER_PATTERN } from "@/shared/html-patterns";
 import { contactEnquirySchema } from "@/shared/validation";
 
 const enquiryTypes = [
@@ -143,7 +151,16 @@ export default function ContactEnquiryForm() {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
   const { captcha, widget } = useContactTurnstile(siteKey, setToken, setCaptchaError);
   const validation = useFormValidation(contactEnquirySchema, {
-    fullName, mobile, email, enquiryType, studentName, classSession, subject, message, consent, turnstileToken: token,
+    fullName,
+    mobile,
+    email,
+    enquiryType,
+    studentName,
+    classSession,
+    subject,
+    message,
+    consent,
+    turnstileToken: token,
   });
 
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
@@ -178,7 +195,8 @@ export default function ContactEnquiryForm() {
     }
   }
 
-  const inputClass = "mt-1.5 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--focus)]";
+  const inputClass =
+    "mt-1.5 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--focus)]";
   if (reference) {
     return (
       <EnquirySent
@@ -295,51 +313,282 @@ function ContactFormView({
   return (
     <section className="rounded-2xl border border-[var(--divider)] bg-[var(--surface)] p-5 shadow-sm sm:p-7">
       <h2 className="text-lg font-semibold text-[var(--text)]">Send us a message</h2>
-      <p className="mt-1 text-xs text-[var(--text-muted)]">Share a few details and the school office can direct your enquiry to the right team.</p>
+      <p className="mt-1 text-xs text-[var(--text-muted)]">
+        Share a few details and the school office can direct your enquiry to the right team.
+      </p>
       <form noValidate onSubmit={onSubmit} className="mt-5 space-y-3.5">
         <FormErrorSummary errors={fieldErrors} />
         <div className="grid gap-3 sm:grid-cols-2">
-          <FormField id="contact-name" label="Full name" required helperText="Use the name shown in school records." error={fieldErrors.fullName}>
-            <input name="fullName" aria-label="Full name" translate="no" type="text" minLength={2} maxLength={80} pattern="[\\p{L}\\p{M} .'-]+" autoComplete="name" value={fullName} onBlur={onFieldBlur("fullName")} onChange={(event) => { setFullName(event.target.value); }} className={inputClass} placeholder="Enter your full name" required aria-required="true" />
+          <FormField
+            id="contact-name"
+            label="Full name"
+            required
+            helperText="Use the name shown in school records."
+            error={fieldErrors.fullName}
+          >
+            <input
+              name="fullName"
+              aria-label="Full name"
+              translate="no"
+              type="text"
+              minLength={2}
+              maxLength={80}
+              pattern={PERSON_NAME_PATTERN}
+              autoComplete="name"
+              value={fullName}
+              onBlur={onFieldBlur("fullName")}
+              onChange={(event) => {
+                setFullName(event.target.value);
+              }}
+              className={inputClass}
+              placeholder="Enter your full name"
+              required
+              aria-required="true"
+            />
           </FormField>
-          <FormField id="contact-mobile" label="Mobile number" required helperText="Enter a 10-digit Indian mobile or international number in E.164 format." error={fieldErrors.mobile}>
-            <input name="mobile" aria-label="Mobile number" translate="no" type="tel" minLength={10} maxLength={16} pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})" autoComplete="tel" inputMode="tel" value={mobile} onBlur={onFieldBlur("mobile")} onChange={(event) => { setMobile(event.target.value); }} className={inputClass} placeholder="98765 43210 or +14155552671" required aria-required="true" />
+          <FormField
+            id="contact-mobile"
+            label="Mobile number"
+            required
+            helperText="Enter a 10-digit Indian mobile or international number in E.164 format."
+            error={fieldErrors.mobile}
+          >
+            <input
+              name="mobile"
+              aria-label="Mobile number"
+              translate="no"
+              type="tel"
+              minLength={10}
+              maxLength={16}
+              pattern={PHONE_NUMBER_PATTERN}
+              autoComplete="tel"
+              inputMode="tel"
+              value={mobile}
+              onBlur={onFieldBlur("mobile")}
+              onChange={(event) => {
+                setMobile(event.target.value);
+              }}
+              className={inputClass}
+              placeholder="98765 43210 or +14155552671"
+              required
+              aria-required="true"
+            />
           </FormField>
           <FormField id="contact-email" label="Email address" required error={fieldErrors.email}>
-            <input name="email" aria-label="Email address" translate="no" type="email" maxLength={254} autoComplete="email" inputMode="email" value={email} onBlur={onFieldBlur("email")} onChange={(event) => { setEmail(event.target.value); }} className={inputClass} placeholder="you@example.com" required aria-required="true" />
+            <input
+              name="email"
+              aria-label="Email address"
+              translate="no"
+              type="email"
+              maxLength={254}
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onBlur={onFieldBlur("email")}
+              onChange={(event) => {
+                setEmail(event.target.value);
+              }}
+              className={inputClass}
+              placeholder="you@example.com"
+              required
+              aria-required="true"
+            />
           </FormField>
-          <FormField id="contact-type" label="Enquiry type" required error={fieldErrors.enquiryType}>
-            <select name="enquiryType" aria-label="Enquiry type" value={enquiryType} onBlur={onFieldBlur("enquiryType")} onChange={(event) => { setEnquiryType(event.target.value); }} className={inputClass} required aria-required="true"><option value="">Select a topic</option>{enquiryTypes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <FormField
+            id="contact-type"
+            label="Enquiry type"
+            required
+            error={fieldErrors.enquiryType}
+          >
+            <select
+              name="enquiryType"
+              aria-label="Enquiry type"
+              value={enquiryType}
+              onBlur={onFieldBlur("enquiryType")}
+              onChange={(event) => {
+                setEnquiryType(event.target.value);
+              }}
+              className={inputClass}
+              required
+              aria-required="true"
+            >
+              <option value="">Select a topic</option>
+              {enquiryTypes.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </FormField>
-          <FormField id="contact-student" label="Student name" required error={fieldErrors.studentName}>
-            <input name="studentName" aria-label="Student name" translate="no" type="text" minLength={2} maxLength={80} pattern="[\\p{L}\\p{M} .'-]+" autoComplete="off" value={studentName} onBlur={onFieldBlur("studentName")} onChange={(event) => { setStudentName(event.target.value); }} className={inputClass} placeholder="Enter student’s name" required aria-required="true" />
+          <FormField
+            id="contact-student"
+            label="Student name"
+            required
+            error={fieldErrors.studentName}
+          >
+            <input
+              name="studentName"
+              aria-label="Student name"
+              translate="no"
+              type="text"
+              minLength={2}
+              maxLength={80}
+              pattern={PERSON_NAME_PATTERN}
+              autoComplete="off"
+              value={studentName}
+              onBlur={onFieldBlur("studentName")}
+              onChange={(event) => {
+                setStudentName(event.target.value);
+              }}
+              className={inputClass}
+              placeholder="Enter student’s name"
+              required
+              aria-required="true"
+            />
           </FormField>
-          <FormField id="contact-session" label="Class / session" required error={fieldErrors.classSession}>
-            <input name="classSession" aria-label="Class or session" minLength={2} maxLength={80} value={classSession} onBlur={onFieldBlur("classSession")} onChange={(event) => { setClassSession(event.target.value); }} className={inputClass} placeholder="e.g. Class 10 · 2025–26" required aria-required="true" />
+          <FormField
+            id="contact-session"
+            label="Class / session"
+            required
+            error={fieldErrors.classSession}
+          >
+            <input
+              name="classSession"
+              aria-label="Class or session"
+              minLength={2}
+              maxLength={80}
+              value={classSession}
+              onBlur={onFieldBlur("classSession")}
+              onChange={(event) => {
+                setClassSession(event.target.value);
+              }}
+              className={inputClass}
+              placeholder="e.g. Class 10 · 2025–26"
+              required
+              aria-required="true"
+            />
           </FormField>
         </div>
         <FormField id="contact-subject" label="Subject" required error={fieldErrors.subject}>
-          <input name="subject" aria-label="Subject" minLength={3} maxLength={160} value={subject} onBlur={onFieldBlur("subject")} onChange={(event) => { setSubject(event.target.value); }} className={inputClass} placeholder="Briefly describe your enquiry" required aria-required="true" />
+          <input
+            name="subject"
+            aria-label="Subject"
+            minLength={3}
+            maxLength={160}
+            value={subject}
+            onBlur={onFieldBlur("subject")}
+            onChange={(event) => {
+              setSubject(event.target.value);
+            }}
+            className={inputClass}
+            placeholder="Briefly describe your enquiry"
+            required
+            aria-required="true"
+          />
         </FormField>
-        <FormField id="contact-message" label="Message" required helperText="Please do not include passwords or sensitive identity details." error={fieldErrors.message}>
-          <textarea name="message" aria-label="Message" minLength={10} maxLength={3000} rows={4} value={message} onBlur={onFieldBlur("message")} onChange={(event) => { setMessage(event.target.value); }} className={`${inputClass} resize-y`} placeholder="Write your message here." required aria-required="true" />
+        <FormField
+          id="contact-message"
+          label="Message"
+          required
+          helperText="Please do not include passwords or sensitive identity details."
+          error={fieldErrors.message}
+        >
+          <textarea
+            name="message"
+            aria-label="Message"
+            minLength={10}
+            maxLength={3000}
+            rows={4}
+            value={message}
+            onBlur={onFieldBlur("message")}
+            onChange={(event) => {
+              setMessage(event.target.value);
+            }}
+            className={`${inputClass} resize-y`}
+            placeholder="Write your message here."
+            required
+            aria-required="true"
+          />
         </FormField>
-        <div className="flex items-start gap-2 text-[10px] leading-4 text-[var(--text-muted)]"><label htmlFor="contact-consent" className="flex items-start gap-2"><input aria-label="I agree that the school may contact me and email me a copy of this enquiry" id="contact-consent" type="checkbox" required aria-required="true" aria-invalid={Boolean(fieldErrors.consent)} aria-describedby="contact-consent-error" checked={consent} onBlur={onFieldBlur("consent")} onChange={(event) => { setConsent(event.target.checked); }} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]" />I agree that the school may contact me about this enquiry and email me a copy. *</label><a href="/privacy" target="_blank" rel="noreferrer" className="font-semibold text-[var(--primary)]">Privacy Policy</a></div>
-        {fieldErrors.consent && <p id="contact-consent-error" className="flex items-center gap-1.5 text-sm font-medium text-[var(--danger)]" role="alert"><ShieldCheck size={15} aria-hidden="true" />{fieldErrors.consent}</p>}
+        <div className="flex items-start gap-2 text-[10px] leading-4 text-[var(--text-muted)]">
+          <label htmlFor="contact-consent" className="flex items-start gap-2">
+            <input
+              aria-label="I agree that the school may contact me and email me a copy of this enquiry"
+              id="contact-consent"
+              type="checkbox"
+              required
+              aria-required="true"
+              aria-invalid={Boolean(fieldErrors.consent)}
+              aria-describedby="contact-consent-error"
+              checked={consent}
+              onBlur={onFieldBlur("consent")}
+              onChange={(event) => {
+                setConsent(event.target.checked);
+              }}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]"
+            />
+            I agree that the school may contact me about this enquiry and email me a copy. *
+          </label>
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-[var(--primary)]"
+          >
+            Privacy Policy
+          </a>
+        </div>
+        {fieldErrors.consent && (
+          <p
+            id="contact-consent-error"
+            className="flex items-center gap-1.5 text-sm font-medium text-[var(--danger)]"
+            role="alert"
+          >
+            <ShieldCheck size={15} aria-hidden="true" />
+            {fieldErrors.consent}
+          </p>
+        )}
         <div>
           <p className="mb-2 text-xs font-semibold text-[var(--text)]">Security check *</p>
-          <div ref={captcha} aria-label="Cloudflare security verification" className="min-h-[66px]" />
-          {fieldErrors.turnstileToken && <p role="alert" className="mt-1 text-sm font-medium text-[var(--danger)]">{fieldErrors.turnstileToken}</p>}
-          {captchaError && <p role="alert" className="mt-1 text-xs text-[var(--danger)]">{captchaError}</p>}
+          <div
+            ref={captcha}
+            aria-label="Cloudflare security verification"
+            className="min-h-[66px]"
+          />
+          {fieldErrors.turnstileToken && (
+            <p role="alert" className="mt-1 text-sm font-medium text-[var(--danger)]">
+              {fieldErrors.turnstileToken}
+            </p>
+          )}
+          {captchaError && (
+            <p role="alert" className="mt-1 text-xs text-[var(--danger)]">
+              {captchaError}
+            </p>
+          )}
         </div>
-        {error && <p role="alert" className="rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--danger)]">{error}</p>}
-        <button type="submit" aria-busy={busy} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-xs font-semibold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]">{busy ? "Sending enquiry…" : "Send enquiry"} <ArrowRight size={14} aria-hidden="true" /></button>
+        {error && (
+          <p
+            role="alert"
+            className="rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--danger)]"
+          >
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          aria-busy={busy}
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 text-xs font-semibold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]"
+        >
+          {busy ? "Sending enquiry…" : "Send enquiry"} <ArrowRight size={14} aria-hidden="true" />
+        </button>
       </form>
     </section>
   );
 }
 
-async function sendContactEnquiry(submission: ContactSubmission): Promise<{ referenceId: string; emailCopySent: boolean }> {
+async function sendContactEnquiry(
+  submission: ContactSubmission,
+): Promise<{ referenceId: string; emailCopySent: boolean }> {
   const response = await fetch("/api/public/contact", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await appCheckHeaders()) },
@@ -369,7 +618,15 @@ function contactErrorMessage(cause: unknown): string {
   return cause instanceof Error ? cause.message : "Unable to send your enquiry.";
 }
 
-function EnquirySent({ reference, emailCopySent, onReset }: { reference: string; emailCopySent: boolean; onReset: () => void }) {
+function EnquirySent({
+  reference,
+  emailCopySent,
+  onReset,
+}: {
+  reference: string;
+  emailCopySent: boolean;
+  onReset: () => void;
+}) {
   return (
     <section
       role="status"

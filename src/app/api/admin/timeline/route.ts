@@ -16,7 +16,7 @@ function timestampIso(value: unknown): string | null {
 }
 export async function GET(request: NextRequest) {
   try {
-    await requireRoles(request, ["uploader", "approver", "superadmin"]);
+    await requireRoles(request, ["uploader", "approver", "admin", "superadmin"]);
     const studentId = request.nextUrl.searchParams.get("studentId");
     let rows: QueryDocumentSnapshot[];
     if (studentId) {

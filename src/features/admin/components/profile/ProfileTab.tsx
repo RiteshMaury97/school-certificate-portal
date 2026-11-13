@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useEffect, useState, type ChangeEvent, type SubmitEvent, type ReactNode } from "react";
 
 import { DatePicker } from "@/components/ui/DatePicker";
+import { PERSON_NAME_PATTERN, PHONE_NUMBER_PATTERN } from "@/shared/html-patterns";
 
 import type { Role } from "../../types/admin.types";
 
@@ -123,7 +124,9 @@ function fileAsDataUrl(file: Blob): Promise<string> {
       if (typeof reader.result === "string") resolve(reader.result);
       else reject(new Error("Could not read the profile photo."));
     };
-    reader.onerror = () => { reject(new Error("Could not read the profile photo.")); };
+    reader.onerror = () => {
+      reject(new Error("Could not read the profile photo."));
+    };
     reader.readAsDataURL(file);
   });
 }
@@ -140,8 +143,9 @@ async function makeProfilePhoto(file: File) {
   if (!context) throw new Error("Photo editing is unavailable in this browser.");
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
   image.close();
-  const blob = await new Promise<Blob | null>((resolve) => { canvas.toBlob(resolve, "image/jpeg", 0.78); },
-  );
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/jpeg", 0.78);
+  });
   if (!blob) throw new Error("Could not prepare the profile photo.");
   const dataUrl = await fileAsDataUrl(blob);
   if (dataUrl.length > 300_000)
@@ -394,12 +398,16 @@ export default function ProfileTab({
                           accept="image/*"
                           onChange={(event) => void updatePhoto(event)}
                           className="sr-only"
-                        required aria-required="true" />
+                          required
+                          aria-required="true"
+                        />
                       </label>
                       {profile.photoDataUrl && (
                         <button
                           type="button"
-                          onClick={() => { update("photoDataUrl", ""); }}
+                          onClick={() => {
+                            update("photoDataUrl", "");
+                          }}
                           className="ml-3 text-sm text-[var(--danger)]"
                         >
                           Remove
@@ -419,12 +427,15 @@ export default function ProfileTab({
                     <Field label="Full name *">
                       <input
                         aria-label="Full name"
-                        required aria-required="true"
+                        required
+                        aria-required="true"
                         minLength={2}
                         maxLength={80}
-                        pattern="[\\p{L}\\p{M} .'-]+"
+                        pattern={PERSON_NAME_PATTERN}
                         value={profile.name}
-                        onChange={(event) => { update("name", event.target.value); }}
+                        onChange={(event) => {
+                          update("name", event.target.value);
+                        }}
                         className={inputClass}
                       />
                     </Field>
@@ -433,27 +444,39 @@ export default function ProfileTab({
                         aria-label="Preferred name"
                         maxLength={80}
                         value={profile.preferredName}
-                        onChange={(event) => { update("preferredName", event.target.value); }}
+                        onChange={(event) => {
+                          update("preferredName", event.target.value);
+                        }}
                         className={inputClass}
                         placeholder="Name colleagues use"
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Employee / Staff ID">
                       <input
                         aria-label="Employee / Staff ID"
                         maxLength={50}
                         value={profile.staffId}
-                        onChange={(event) => { update("staffId", event.target.value); }}
+                        onChange={(event) => {
+                          update("staffId", event.target.value);
+                        }}
                         className={inputClass}
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Gender">
                       <select
                         aria-label="Gender"
                         value={profile.gender}
-                        onChange={(event) => { update("gender", event.target.value); }}
+                        onChange={(event) => {
+                          update("gender", event.target.value);
+                        }}
                         className={inputClass}
-                       required aria-required="true">
+                        required
+                        aria-required="true"
+                      >
                         <option value="">Prefer not to specify</option>
                         <option value="female">Female</option>
                         <option value="male">Male</option>
@@ -467,7 +490,9 @@ export default function ProfileTab({
                         id="profile-date-of-birth"
                         label="Date of birth"
                         value={profile.dateOfBirth}
-                        onChange={(value) => { update("dateOfBirth", value); }}
+                        onChange={(value) => {
+                          update("dateOfBirth", value);
+                        }}
                       />
                     </Field>
                   </div>
@@ -483,46 +508,64 @@ export default function ProfileTab({
                         aria-label="Job title / Position"
                         maxLength={120}
                         value={profile.position}
-                        onChange={(event) => { update("position", event.target.value); }}
+                        onChange={(event) => {
+                          update("position", event.target.value);
+                        }}
                         className={inputClass}
                         placeholder="For example, Office Administrator"
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Department">
                       <input
                         aria-label="Department"
                         maxLength={120}
                         value={profile.department}
-                        onChange={(event) => { update("department", event.target.value); }}
+                        onChange={(event) => {
+                          update("department", event.target.value);
+                        }}
                         className={inputClass}
                         placeholder="For example, Student Records"
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Staff designation">
                       <input
                         aria-label="Staff designation"
                         maxLength={120}
                         value={profile.designation}
-                        onChange={(event) => { update("designation", event.target.value); }}
+                        onChange={(event) => {
+                          update("designation", event.target.value);
+                        }}
                         className={inputClass}
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Campus / Branch">
                       <input
                         aria-label="Campus / Branch"
                         maxLength={120}
                         value={profile.campus}
-                        onChange={(event) => { update("campus", event.target.value); }}
+                        onChange={(event) => {
+                          update("campus", event.target.value);
+                        }}
                         className={inputClass}
                         placeholder="Lodipur, Zamania"
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Joining date">
                       <DatePicker
                         id="profile-joining-date"
                         label="Joining date"
                         value={profile.joiningDate}
-                        onChange={(value) => { update("joiningDate", value); }}
+                        onChange={(value) => {
+                          update("joiningDate", value);
+                        }}
                       />
                     </Field>
                     <Field label="Reporting manager">
@@ -530,19 +573,27 @@ export default function ProfileTab({
                         aria-label="Reporting manager"
                         maxLength={100}
                         value={profile.reportingManager}
-                        onChange={(event) => { update("reportingManager", event.target.value); }}
+                        onChange={(event) => {
+                          update("reportingManager", event.target.value);
+                        }}
                         className={inputClass}
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Office location" className="sm:col-span-2">
                       <input
                         aria-label="Office location"
                         maxLength={160}
                         value={profile.officeLocation}
-                        onChange={(event) => { update("officeLocation", event.target.value); }}
+                        onChange={(event) => {
+                          update("officeLocation", event.target.value);
+                        }}
                         className={inputClass}
                         placeholder="Building, floor, or room"
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                   </div>
                 </Section>
@@ -558,7 +609,9 @@ export default function ProfileTab({
                         readOnly
                         value={email}
                         className={`${inputClass} cursor-not-allowed opacity-75`}
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                       <span className="mt-1 block text-xs text-[var(--text-muted)]">
                         Managed by your school administrator
                       </span>
@@ -569,9 +622,13 @@ export default function ProfileTab({
                         type="email"
                         maxLength={254}
                         value={profile.alternateEmail}
-                        onChange={(event) => { update("alternateEmail", event.target.value); }}
+                        onChange={(event) => {
+                          update("alternateEmail", event.target.value);
+                        }}
                         className={inputClass}
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Primary phone number">
                       <input
@@ -581,11 +638,15 @@ export default function ProfileTab({
                         autoComplete="tel"
                         minLength={10}
                         maxLength={16}
-                        pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"
+                        pattern={PHONE_NUMBER_PATTERN}
                         value={profile.primaryPhone}
-                        onChange={(event) => { update("primaryPhone", event.target.value); }}
+                        onChange={(event) => {
+                          update("primaryPhone", event.target.value);
+                        }}
                         className={inputClass}
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Secondary phone number">
                       <input
@@ -595,11 +656,15 @@ export default function ProfileTab({
                         autoComplete="tel"
                         minLength={10}
                         maxLength={16}
-                        pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"
+                        pattern={PHONE_NUMBER_PATTERN}
                         value={profile.secondaryPhone}
-                        onChange={(event) => { update("secondaryPhone", event.target.value); }}
+                        onChange={(event) => {
+                          update("secondaryPhone", event.target.value);
+                        }}
                         className={inputClass}
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Address" className="sm:col-span-2">
                       <textarea
@@ -607,9 +672,13 @@ export default function ProfileTab({
                         rows={3}
                         maxLength={500}
                         value={profile.address}
-                        onChange={(event) => { update("address", event.target.value); }}
+                        onChange={(event) => {
+                          update("address", event.target.value);
+                        }}
                         className={`${inputClass} resize-y`}
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                   </div>
                 </Section>
@@ -707,11 +776,15 @@ export default function ProfileTab({
                         aria-label="Emergency contact name"
                         minLength={2}
                         maxLength={80}
-                        pattern="[\\p{L}\\p{M} .'-]+"
+                        pattern={PERSON_NAME_PATTERN}
                         value={profile.emergencyContactName}
-                        onChange={(event) => { update("emergencyContactName", event.target.value); }}
+                        onChange={(event) => {
+                          update("emergencyContactName", event.target.value);
+                        }}
                         className={inputClass}
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                     <Field label="Contact phone">
                       <input
@@ -721,11 +794,15 @@ export default function ProfileTab({
                         autoComplete="tel"
                         minLength={10}
                         maxLength={16}
-                        pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"
+                        pattern={PHONE_NUMBER_PATTERN}
                         value={profile.emergencyContactPhone}
-                        onChange={(event) => { update("emergencyContactPhone", event.target.value); }}
+                        onChange={(event) => {
+                          update("emergencyContactPhone", event.target.value);
+                        }}
                         className={inputClass}
-                      required aria-required="true" />
+                        required
+                        aria-required="true"
+                      />
                     </Field>
                   </div>
                 </section>
@@ -740,9 +817,13 @@ export default function ProfileTab({
                   <select
                     aria-label="Preferred language"
                     value={profile.preferredLanguage}
-                    onChange={(event) => { update("preferredLanguage", event.target.value); }}
+                    onChange={(event) => {
+                      update("preferredLanguage", event.target.value);
+                    }}
                     className={inputClass}
-                   required aria-required="true">
+                    required
+                    aria-required="true"
+                  >
                     <option value="en">English</option>
                     <option value="hi">Hindi</option>
                     <option value="bn">Bengali</option>
@@ -758,9 +839,13 @@ export default function ProfileTab({
                   <select
                     aria-label="Time zone"
                     value={profile.timeZone}
-                    onChange={(event) => { update("timeZone", event.target.value); }}
+                    onChange={(event) => {
+                      update("timeZone", event.target.value);
+                    }}
                     className={inputClass}
-                   required aria-required="true">
+                    required
+                    aria-required="true"
+                  >
                     <option value="Asia/Kolkata">India Standard Time (Asia/Kolkata)</option>
                     <option value="UTC">UTC</option>
                     <option value="Asia/Dubai">Gulf Standard Time (Asia/Dubai)</option>
@@ -772,9 +857,13 @@ export default function ProfileTab({
                   <select
                     aria-label="Date format"
                     value={profile.dateFormat}
-                    onChange={(event) => { update("dateFormat", event.target.value); }}
+                    onChange={(event) => {
+                      update("dateFormat", event.target.value);
+                    }}
                     className={inputClass}
-                   required aria-required="true">
+                    required
+                    aria-required="true"
+                  >
                     <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                     <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                     <option value="YYYY-MM-DD">YYYY-MM-DD</option>
@@ -786,13 +875,17 @@ export default function ProfileTab({
                   label="Email notifications"
                   description="Receive account and school updates by email."
                   checked={profile.emailNotifications}
-                  onChange={(checked) => { update("emailNotifications", checked); }}
+                  onChange={(checked) => {
+                    update("emailNotifications", checked);
+                  }}
                 />
                 <Toggle
                   label="System notifications"
                   description="Show notices in the admin panel."
                   checked={profile.systemNotifications}
-                  onChange={(checked) => { update("systemNotifications", checked); }}
+                  onChange={(checked) => {
+                    update("systemNotifications", checked);
+                  }}
                 />
               </div>
             </Section>
@@ -807,7 +900,9 @@ export default function ProfileTab({
               <button
                 type="button"
                 disabled={!hasChanges || saving}
-                onClick={() => { setProfile(savedProfile); }}
+                onClick={() => {
+                  setProfile(savedProfile);
+                }}
                 className="min-h-11 rounded-lg px-4 text-sm font-semibold text-[var(--text-muted)] hover:bg-[var(--surface-2)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Discard changes
@@ -849,7 +944,9 @@ function Toggle({
         aria-label={label}
         type="checkbox"
         checked={checked}
-        onChange={(event) => { onChange(event.target.checked); }}
+        onChange={(event) => {
+          onChange(event.target.checked);
+        }}
         className="mt-1 h-4 w-4 accent-[var(--primary)]"
       />
       <span>

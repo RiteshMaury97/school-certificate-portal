@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { applyCspNonce } from "@/lib/csp";
 import { appCheckHeaders } from "@/lib/firebase-client";
+import { PERSON_NAME_PATTERN, PHONE_NUMBER_PATTERN } from "@/shared/html-patterns";
 
 import type { SubmitEvent } from "react";
 
@@ -307,7 +308,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                 required aria-required="true"
                 minLength={2}
                 maxLength={80}
-                pattern="[\\p{L}\\p{M} .'-]+"
+                pattern={PERSON_NAME_PATTERN}
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
@@ -413,7 +414,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                   inputMode={contactMethod === "email" ? "email" : "tel"}
                   minLength={contactMethod === "email" ? undefined : 10}
                   maxLength={contactMethod === "email" ? 254 : 16}
-                  pattern={contactMethod === "email" ? undefined : "(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"}
+                  pattern={contactMethod === "email" ? undefined : PHONE_NUMBER_PATTERN}
                   autoComplete={contactMethod === "email" ? "email" : "tel"}
                   value={contact}
                   onChange={(e) => {
@@ -464,7 +465,7 @@ export default function ReportWrongRecordModal({ onClose }: { onClose: () => voi
                         type="tel"
                         inputMode="tel"
                         maxLength={24}
-                        pattern="(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})"
+                        pattern={PHONE_NUMBER_PATTERN}
                         autoComplete="tel"
                         value={phoneNumber}
                         onChange={(e) => {

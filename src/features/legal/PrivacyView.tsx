@@ -7,6 +7,7 @@ import { useFormValidation } from "@/components/forms/useFormValidation";
 import LegalPageLayout from "@/components/layout/LegalPageLayout";
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { usePublicSiteSettings } from "@/lib/use-site-settings";
+import { PERSON_NAME_PATTERN } from "@/shared/html-patterns";
 import { dataRightsRequestSchema } from "@/shared/validation";
 
 import type { LegalSection } from "@/components/layout/LegalPageLayout";
@@ -503,7 +504,7 @@ export default function PrivacyPage() {
               aria-required="true"
               minLength={2}
               maxLength={80}
-              pattern="[\\p{L}\\p{M} .'-]+"
+              pattern={PERSON_NAME_PATTERN}
               value={requesterName}
               onChange={(e) => {
                 setRequesterName(e.target.value);
@@ -539,7 +540,7 @@ export default function PrivacyPage() {
               aria-required="true"
               minLength={2}
               maxLength={80}
-              pattern="[\\p{L}\\p{M} .'-]+"
+              pattern={PERSON_NAME_PATTERN}
               value={studentName}
               onChange={(e) => {
                 setStudentName(e.target.value);

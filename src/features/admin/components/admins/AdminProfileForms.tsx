@@ -1,4 +1,5 @@
 import { Clock3, Download, ShieldCheck, UserCheck, UserX, Users } from "lucide-react";
+import { PERSON_NAME_PATTERN, PHONE_NUMBER_PATTERN } from "@/shared/html-patterns";
 
 import type { AdminInviteProfile, AdminInviteRole } from "../../types/admin-state.types";
 import type { Dispatch, SetStateAction, SubmitEventHandler } from "react";
@@ -66,7 +67,9 @@ export function AdminSummary({ admins }: { admins: Record<string, unknown>[] }) 
               <Icon size={17} />
             </span>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{label}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                {label}
+              </p>
               <strong className="text-xl text-text">{count}</strong>
             </div>
           </div>
@@ -189,11 +192,7 @@ export function StaffProfileFields({
     ["secondaryPhone", "Secondary phone", "tel"],
     ["emergencyContactName", "Emergency contact name", "text"],
     ["emergencyContactPhone", "Emergency contact phone", "tel"],
-  ] as const satisfies readonly [
-    keyof AdminInviteProfile,
-    string,
-    string,
-  ][];
+  ] as const satisfies readonly [keyof AdminInviteProfile, string, string][];
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -202,10 +201,11 @@ export function StaffProfileFields({
         <input
           id={`${idPrefix}-name`}
           aria-label="Full name"
-          required aria-required="true"
+          required
+          aria-required="true"
           minLength={2}
           maxLength={80}
-          pattern="[\\p{L}\\p{M} .'-]+"
+          pattern={PERSON_NAME_PATTERN}
           value={profile.name}
           onChange={(event) => {
             setProfile((current) => ({ ...current, name: event.target.value }));
@@ -224,15 +224,35 @@ export function StaffProfileFields({
               translate="no"
               type={type}
               inputMode={type === "email" ? "email" : type === "tel" ? "tel" : undefined}
-              autoComplete={key === "alternateEmail" ? "email" : type === "tel" ? "tel" : key === "dateOfBirth" ? "bday" : undefined}
-              pattern={type === "tel" ? "(?:[6-9][0-9]{9}|\\+91[ -]?[6-9][0-9]{5}[ -]?[0-9]{5}|\\+[1-9][0-9]{7,14})" : undefined}
-              maxLength={key === "alternateEmail" ? 254 : ["primaryPhone", "secondaryPhone", "emergencyContactPhone"].includes(key) ? 16 : key === "officeLocation" ? 160 : key === "preferredName" || key === "emergencyContactName" ? 80 : 120}
+              autoComplete={
+                key === "alternateEmail"
+                  ? "email"
+                  : type === "tel"
+                    ? "tel"
+                    : key === "dateOfBirth"
+                      ? "bday"
+                      : undefined
+              }
+              pattern={type === "tel" ? PHONE_NUMBER_PATTERN : undefined}
+              maxLength={
+                key === "alternateEmail"
+                  ? 254
+                  : ["primaryPhone", "secondaryPhone", "emergencyContactPhone"].includes(key)
+                    ? 16
+                    : key === "officeLocation"
+                      ? 160
+                      : key === "preferredName" || key === "emergencyContactName"
+                        ? 80
+                        : 120
+              }
               value={profile[key]}
               onChange={(event) => {
                 setProfile((current) => ({ ...current, [key]: event.target.value }));
               }}
               className="mt-1 w-full rounded border px-3 py-2"
-            required aria-required="true" />
+              required
+              aria-required="true"
+            />
           </label>
         );
       })}
@@ -245,7 +265,9 @@ export function StaffProfileFields({
             setProfile((current) => ({ ...current, gender: event.target.value }));
           }}
           className="mt-1 w-full rounded border px-3 py-2"
-         required aria-required="true">
+          required
+          aria-required="true"
+        >
           <option value="">Prefer not to specify</option>
           <option value="female">Female</option>
           <option value="male">Male</option>
@@ -266,23 +288,23 @@ export function StaffProfileFields({
             setProfile((current) => ({ ...current, address: event.target.value }));
           }}
           className="mt-1 w-full rounded border px-3 py-2"
-        required aria-required="true" />
+          required
+          aria-required="true"
+        />
       </label>
     </div>
   );
 }
 
-export function InviteForm(
-  props: {
-    adminEmail: string;
-    setAdminEmail: Dispatch<SetStateAction<string>>;
-    inviteRole: AdminInviteRole;
-    setInviteRole: Dispatch<SetStateAction<AdminInviteRole>>;
-    inviteProfile: AdminInviteProfile;
-    setInviteProfile: Dispatch<SetStateAction<AdminInviteProfile>>;
-    invite: SubmitEventHandler<HTMLFormElement>;
-  },
-) {
+export function InviteForm(props: {
+  adminEmail: string;
+  setAdminEmail: Dispatch<SetStateAction<string>>;
+  inviteRole: AdminInviteRole;
+  setInviteRole: Dispatch<SetStateAction<AdminInviteRole>>;
+  inviteProfile: AdminInviteProfile;
+  setInviteProfile: Dispatch<SetStateAction<AdminInviteProfile>>;
+  invite: SubmitEventHandler<HTMLFormElement>;
+}) {
   return (
     <form
       onSubmit={props.invite}
@@ -311,7 +333,8 @@ export function InviteForm(
             aria-label="Official email"
             translate="no"
             type="email"
-            required aria-required="true"
+            required
+            aria-required="true"
             value={props.adminEmail}
             onChange={(event) => {
               props.setAdminEmail(event.target.value);
@@ -320,16 +343,13 @@ export function InviteForm(
             className="mt-1 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 text-sm text-[var(--text)]"
           />
         </label>
-        <label
-          htmlFor="admin-invite-role"
-          className="text-xs font-medium text-[var(--text-muted)]"
-        >
+        <label htmlFor="admin-invite-role" className="text-xs font-medium text-[var(--text-muted)]">
           Role
           <select
             id="admin-invite-role"
             translate="no"
-          required
-          aria-required="true"
+            required
+            aria-required="true"
             value={props.inviteRole}
             onChange={(event) => {
               if (isAdminInviteRole(event.target.value)) props.setInviteRole(event.target.value);
@@ -396,7 +416,11 @@ export function EditProfileForm({
           Cancel
         </button>
       </div>
-      <StaffProfileFields profile={profile} setProfile={setProfile} idPrefix={`admin-edit-${uid}`} />
+      <StaffProfileFields
+        profile={profile}
+        setProfile={setProfile}
+        idPrefix={`admin-edit-${uid}`}
+      />
       <button className="mt-4 min-h-10 rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--on-primary)]">
         Save profile details
       </button>
