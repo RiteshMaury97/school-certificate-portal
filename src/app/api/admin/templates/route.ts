@@ -1,4 +1,4 @@
-import ExcelJS, { type DataValidation } from "exceljs";
+import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 
 import { db } from "@/server/firebase-admin";
@@ -21,18 +21,6 @@ const headers = [
   "dateOfBirth",
 ];
 type Catalogs = { classes: string[]; sessions: string[] };
-
-function hasDataValidations(worksheet: ExcelJS.Worksheet): worksheet is ExcelJS.Worksheet & {
-  dataValidations: { add: (range: string, validation: DataValidation) => void };
-} {
-  const validations: unknown = Reflect.get(worksheet, "dataValidations");
-  return (
-    typeof validations === "object" &&
-    validations !== null &&
-    "add" in validations &&
-    typeof validations.add === "function"
-  );
-}
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -81,7 +69,15 @@ async function buildTemplate(format: string, catalogs: Catalogs): Promise<NextRe
   if (format === "csv") return csvTemplate(catalogs);
   if (format !== "xlsx")
     return NextResponse.json({ error: "Choose csv or xlsx." }, { status: 400 });
-  return await xlsxTemplate(catalogs);
+  try {
+    return await xlsxTemplate(catalogs);
+  } catch (error) {
+    console.error("[admin/templates] Excel workbook generation failed; returning CSV template", {
+      name: error instanceof Error ? error.name : "UnknownError",
+      message: error instanceof Error ? error.message.slice(0, 200) : String(error).slice(0, 200),
+    });
+    return csvTemplate(catalogs);
+  }
 }
 
 function csvTemplate({ classes, sessions }: Catalogs): NextResponse {
@@ -119,9 +115,8 @@ async function xlsxTemplate(catalogs: Catalogs): Promise<NextResponse> {
   const studentSheet = workbook.addWorksheet("Student Data");
   populateStudentSheet(studentSheet, catalogs);
   populateAllowedSheet(workbook, catalogs);
-  // Some deployed ExcelJS bundles omit validation support. The template remains usable
-  // without dropdowns because the importer validates every class and session on upload.
-  if (hasDataValidations(studentSheet)) configureDropdowns(workbook, studentSheet, catalogs);
+  // Use the Allowed Values sheet instead of workbook dropdown metadata. The importer
+  // validates class and session values on upload, and this keeps xlsx generation portable.
   populateGuideSheet(workbook);
   const output = await workbook.xlsx.writeBuffer();
   return new NextResponse(new Uint8Array(output), {
@@ -169,49 +164,12 @@ function populateAllowedSheet(workbook: ExcelJS.Workbook, catalogs: Catalogs): E
   return sheet;
 }
 
-function configureDropdowns(
-  workbook: ExcelJS.Workbook,
-  sheet: ExcelJS.Worksheet & {
-    dataValidations: { add: (range: string, validation: DataValidation) => void };
-  },
-  catalogs: Catalogs,
-): void {
-  if (catalogs.classes.length) {
-    workbook.definedNames.add(
-      `'Allowed Values'!$A$2:$A$${String(catalogs.classes.length + 1)}`,
-      "ClassNames",
-    );
-    sheet.dataValidations.add("E2:E501", {
-      type: "list",
-      allowBlank: false,
-      formulae: ["ClassNames"],
-      showErrorMessage: true,
-      errorTitle: "Invalid class name",
-      error: "Select an exact value from the Allowed Values sheet.",
-    });
-  }
-  if (catalogs.sessions.length) {
-    workbook.definedNames.add(
-      `'Allowed Values'!$C$2:$C$${String(catalogs.sessions.length + 1)}`,
-      "AcademicSessions",
-    );
-    sheet.dataValidations.add("F2:F501", {
-      type: "list",
-      allowBlank: false,
-      formulae: ["AcademicSessions"],
-      showErrorMessage: true,
-      errorTitle: "Invalid academic session",
-      error: "Select an active session in YYYY-YY format.",
-    });
-  }
-}
-
 function populateGuideSheet(workbook: ExcelJS.Workbook): void {
   const guide = workbook.addWorksheet("Format Guide");
   guide.addRows([
     ["Student Excel import â€” format guide"],
     ["Delete the DEMO row in Student Data, then add one student per row."],
-    ["Use the exact class and session values from the dropdowns / Allowed Values sheet."],
+    ["Use the exact class and session values listed on the Allowed Values sheet."],
     ["Wrong class/session formats are rejected; the preview identifies the Excel row and column."],
     [
       "Only a fully valid preview can be imported. Add certificates afterward from each student row.",

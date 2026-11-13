@@ -129,7 +129,9 @@ export function useBulkImport({ act, loadStudents }: Props) {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "student-import-template.xlsx";
+      const disposition = response.headers.get("Content-Disposition") ?? "";
+      const filename = /filename="([^"]+)"/i.exec(disposition)?.[1];
+      anchor.download = filename ?? "student-import-template.xlsx";
       anchor.click();
       URL.revokeObjectURL(url);
     });
