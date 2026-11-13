@@ -112,9 +112,9 @@ async function submitStudent(e: SubmitEvent<HTMLFormElement>, input: StudentSubm
 
 async function deleteStudent(api: Api, loadStudents: () => Promise<void>, student: Student) {
   const accepted = await confirmAction(
-    "Delete student record",
-    `Delete ${student.studentName} and all ${String(student.certificateCount)} linked certificate files? This cannot be undone.`,
-    "Delete record",
+    "Delete student and certificates",
+    `Delete ${student.studentName}, the student record, and all ${String(student.certificateCount)} linked certificate records and files? This cannot be undone.`,
+    "Delete student and certificates",
   );
   if (!accepted) return;
   await api(`/api/admin/students/${student.id}`, { method: "DELETE" });

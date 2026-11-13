@@ -117,11 +117,11 @@ function csvTemplate({ classes, sessions }: Catalogs): NextResponse {
 async function xlsxTemplate(catalogs: Catalogs): Promise<NextResponse> {
   const workbook = new ExcelJS.Workbook();
   const studentSheet = workbook.addWorksheet("Student Data");
-  if (!hasDataValidations(studentSheet))
-    throw new Error("Spreadsheet validations are unavailable.");
   populateStudentSheet(studentSheet, catalogs);
   populateAllowedSheet(workbook, catalogs);
-  configureDropdowns(workbook, studentSheet, catalogs);
+  // Some deployed ExcelJS bundles omit validation support. The template remains usable
+  // without dropdowns because the importer validates every class and session on upload.
+  if (hasDataValidations(studentSheet)) configureDropdowns(workbook, studentSheet, catalogs);
   populateGuideSheet(workbook);
   const output = await workbook.xlsx.writeBuffer();
   return new NextResponse(new Uint8Array(output), {

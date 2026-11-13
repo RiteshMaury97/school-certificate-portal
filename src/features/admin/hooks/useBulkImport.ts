@@ -114,7 +114,17 @@ export function useBulkImport({ act, loadStudents }: Props) {
         headers: await appCheckHeaders(),
         cache: "no-store",
       });
-      if (!response.ok) throw new Error("Excel template download failed.");
+      if (!response.ok) {
+        const result: unknown = await response.json().catch(() => null);
+        const message =
+          typeof result === "object" &&
+          result !== null &&
+          "error" in result &&
+          typeof result.error === "string"
+            ? result.error
+            : "Excel template download failed.";
+        throw new Error(message);
+      }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");

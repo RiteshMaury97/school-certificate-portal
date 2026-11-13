@@ -466,10 +466,11 @@ function displayTimestamp(value: unknown): string {
                       {role === "superadmin" && (
                         <button
                           type="button"
+                          aria-label={`Delete ${student.studentName} and all linked certificates`}
                           onClick={() => void removeStudent(student)}
-                          className="min-h-8 rounded-md border border-[var(--divider)] px-2.5 text-[10px] font-medium text-[var(--danger)]"
+                          className="min-h-8 whitespace-nowrap rounded-md border border-[var(--divider)] px-2.5 text-[10px] font-medium text-[var(--danger)]"
                         >
-                          Delete
+                          Delete student + certificates
                         </button>
                       )}
                     </div>
