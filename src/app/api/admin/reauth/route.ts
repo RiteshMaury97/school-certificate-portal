@@ -3,41 +3,22 @@ import { randomBytes, createHmac } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 
-
 import { consumeVerifiedAdminOtpChallenge } from "@/server/admin-otp";
-import { adminAuth, db } from "@/server/firebase-admin";
+import { db } from "@/server/firebase-admin";
 import { requireAdmin, sameOrigin, verifyCsrf, writeAuditLog } from "@/server/security";
 
 import type { NextRequest } from "next/server";
 
-type ReauthBody = { idToken: string; challengeId: string };
+type ReauthBody = { challengeId: string };
 
 function isReauthBody(value: unknown): value is ReauthBody {
   return (
-    typeof value === "object" && value !== null &&
-    "idToken" in value && typeof value.idToken === "string" &&
-    "challengeId" in value && typeof value.challengeId === "string"
+    typeof value === "object" &&
+    value !== null &&
+    "challengeId" in value &&
+    typeof value.challengeId === "string" &&
+    /^[0-9a-f-]{36}$/i.test(value.challengeId)
   );
-}
-
-function isRecentTimestamp(authTime: number, now: number): boolean {
-  const age = now / 1000 - authTime;
-  return Number.isFinite(authTime) && age >= 0 && age <= 300;
-}
-
-async function validateAdminToken(idToken: string, adminUid: string) {
-  const decoded = await adminAuth.verifyIdToken(idToken, true);
-  const record = await db.collection("admins").doc(decoded.uid).get();
-  const storedEmail: unknown = record.get("email");
-  const storedRole: unknown = record.get("role");
-  const email = typeof storedEmail === "string" ? storedEmail.trim().toLowerCase() : "";
-  const decodedEmail = typeof decoded.email === "string" ? decoded.email.trim().toLowerCase() : "";
-  if (
-    decoded.uid !== adminUid || !isRecentTimestamp(decoded.auth_time, Date.now()) ||
-    !decoded.email_verified || !record.exists || record.get("status") !== "active" ||
-    email !== decodedEmail || decoded.role !== storedRole
-  ) throw new Error("Invalid re-authentication");
-  return decoded;
 }
 
 async function consumeChallenge(challengeId: string, uid: string): Promise<boolean> {
@@ -64,15 +45,24 @@ async function issueReauthGrant(uid: string): Promise<string> {
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
-    if (!sameOrigin(request) || !verifyCsrf(request)) return NextResponse.json({ error: "CSRF validation failed." }, { status: 403 });
+    if (!sameOrigin(request) || !verifyCsrf(request))
+      return NextResponse.json({ error: "CSRF validation failed." }, { status: 403 });
     const admin = await requireAdmin(request);
     const body: unknown = await request.json();
-    if (!isReauthBody(body)) {
-      return NextResponse.json({ error: "Recent password and email-code verification are required." }, { status: 400 });
-    }
-    await validateAdminToken(body.idToken, admin.uid);
+    if (!isReauthBody(body))
+      return NextResponse.json({ error: "A verified email code is required." }, { status: 400 });
+    const record = await db.collection("admins").doc(admin.uid).get();
+    const email = String(record.get("email") ?? "").trim().toLowerCase();
+    if (
+      !record.exists ||
+      record.get("status") !== "active" ||
+      email !== admin.email.trim().toLowerCase() ||
+      record.get("role") !== admin.role
+    )
+      return NextResponse.json({ error: "Re-authentication could not be verified." }, { status: 403 });
     const consumed = await consumeChallenge(body.challengeId, admin.uid);
-    if (!consumed) return NextResponse.json({ error: "Email verification is missing or expired." }, { status: 403 });
+    if (!consumed)
+      return NextResponse.json({ error: "Email verification is missing or expired." }, { status: 403 });
     const token = await issueReauthGrant(admin.uid);
     await writeAuditLog(request, admin.uid, "admin.reauth", "security");
     return NextResponse.json({ grant: token }, { headers: { "Cache-Control": "no-store" } });

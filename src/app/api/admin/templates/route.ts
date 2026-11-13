@@ -46,18 +46,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 async function loadCatalogs(): Promise<Catalogs> {
-  const [classesSnapshot, sessionsSnapshot] = await Promise.all([
+  const [classesResult, sessionsResult] = await Promise.allSettled([
     db.collection("classes").get(),
     db.collection("sessions").get(),
   ]);
-  const classes = classesSnapshot.docs
+  // Template downloads should remain available during a brief catalog read outage. Empty
+  // catalogs omit dropdowns; imports still validate values against the live catalogs.
+  const classesSnapshot = classesResult.status === "fulfilled" ? classesResult.value : null;
+  const sessionsSnapshot = sessionsResult.status === "fulfilled" ? sessionsResult.value : null;
+  if (!classesSnapshot || !sessionsSnapshot)
+    console.error("[admin/templates] One or more catalog reads failed", {
+      classes: classesResult.status,
+      sessions: sessionsResult.status,
+    });
+  const classes = (classesSnapshot?.docs ?? [])
     .filter((doc) => doc.get("isActive") !== false)
     .map((doc) => String(doc.get("label") ?? doc.get("name") ?? doc.id).trim())
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
   const sessions = [
     ...new Set(
-      sessionsSnapshot.docs
+      (sessionsSnapshot?.docs ?? [])
         .filter((doc) => doc.get("isActive") !== false)
         .map((doc) =>
           normalizeAcademicSession(String(doc.get("label") ?? doc.get("name") ?? doc.id)),

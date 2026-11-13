@@ -11,7 +11,9 @@ import { adminAuth, db } from "@/server/firebase-admin";
 import { requesterIp } from "@/server/request-origin";
 import {
   assertVerifiedGoogleSignIn,
+  requireAdmin,
   sameOrigin,
+  verifyCsrf,
   verifyAppCheckUnlessGoogle,
   writeAuditLog,
 } from "@/server/security";
@@ -21,15 +23,13 @@ import type { NextRequest } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type VerifyBody = { idToken?: unknown; challengeId?: unknown; code?: unknown };
-function validBody(
-  value: unknown,
-): value is VerifyBody & { idToken: string; challengeId: string; code: string } {
+type VerifyBody = { idToken?: unknown; session?: unknown; challengeId?: unknown; code?: unknown };
+function validBody(value: unknown): value is VerifyBody & { challengeId: string; code: string } {
   return (
     typeof value === "object" &&
     value !== null &&
-    "idToken" in value &&
-    typeof value.idToken === "string" &&
+    (("idToken" in value && typeof value.idToken === "string" && value.idToken.length > 0) ||
+      ("session" in value && (value.session === true || value.session === "true"))) &&
     "challengeId" in value &&
     typeof value.challengeId === "string" &&
     /^[0-9a-f-]{36}$/i.test(value.challengeId) &&
@@ -103,40 +103,62 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body: unknown = await request.json();
     if (!validBody(body))
       return NextResponse.json({ error: "The code is invalid or expired." }, { status: 400 });
-    // Turnstile/App Check is required for email+password sign-ins only; Google sign-ins skip it.
-    const appCheck = await verifyAppCheckUnlessGoogle(request, body.idToken);
-    const decoded = await adminAuth.verifyIdToken(body.idToken, true);
-    if (appCheck.skipped) assertVerifiedGoogleSignIn(decoded);
-    const email = decoded.email?.trim().toLowerCase() ?? "";
-    const admin = await db.collection("admins").doc(decoded.uid).get();
-    const role: unknown = admin.get("role");
-    const storedEmail: unknown = admin.get("email");
-    const storedMustChangePassword: unknown = admin.get("mustChangePassword");
-    const status: unknown = admin.get("status");
-    if (!isVerifiedAdmin({
-      emailVerified: decoded.email_verified === true,
-      email,
-      adminExists: admin.exists,
-      storedEmail,
-      storedMustChangePassword,
-      decodedMustChangePassword: decoded.mustChangePassword,
-      status,
-      role,
-      decodedRole: decoded.role,
-    }))
+    const sessionFlow = body.session === true || body.session === "true";
+    let uid: string;
+    let email: string;
+    let validAdmin: boolean;
+    if (sessionFlow) {
+      if (!verifyCsrf(request))
+        return NextResponse.json({ error: "CSRF validation failed." }, { status: 403 });
+      const identity = await requireAdmin(request);
+      uid = identity.uid;
+      email = identity.email.trim().toLowerCase();
+      const admin = await db.collection("admins").doc(uid).get();
+      validAdmin = isVerifiedAdmin({
+        emailVerified: true,
+        email,
+        adminExists: admin.exists,
+        storedEmail: admin.get("email"),
+        storedMustChangePassword: admin.get("mustChangePassword"),
+        decodedMustChangePassword: false,
+        status: admin.get("status"),
+        role: admin.get("role"),
+        decodedRole: identity.role,
+      });
+    } else {
+      // Turnstile/App Check is required for email+password sign-ins; Google sign-ins skip it.
+      const appCheck = await verifyAppCheckUnlessGoogle(request, body.idToken as string);
+      const decoded = await adminAuth.verifyIdToken(body.idToken as string, true);
+      if (appCheck.skipped) assertVerifiedGoogleSignIn(decoded);
+      uid = decoded.uid;
+      email = decoded.email?.trim().toLowerCase() ?? "";
+      const admin = await db.collection("admins").doc(uid).get();
+      validAdmin = isVerifiedAdmin({
+        emailVerified: decoded.email_verified === true,
+        email,
+        adminExists: admin.exists,
+        storedEmail: admin.get("email"),
+        storedMustChangePassword: admin.get("mustChangePassword"),
+        decodedMustChangePassword: decoded.mustChangePassword,
+        status: admin.get("status"),
+        role: admin.get("role"),
+        decodedRole: decoded.role,
+      });
+    }
+    if (!validAdmin)
       return NextResponse.json({ error: "The code is invalid or expired." }, { status: 403 });
-    const location = await enforceAdminLocation({ request, adminUid: decoded.uid });
+    const location = await enforceAdminLocation({ request, adminUid: uid });
     if (!location.allowed)
       return NextResponse.json({ error: "The code is invalid or expired." }, { status: 403 });
     if (await isAdminOtpLocked(email)) {
-      await writeAuditLog(request, decoded.uid, "otp.locked", body.challengeId);
+      await writeAuditLog(request, uid, "otp.locked", body.challengeId);
       return NextResponse.json({ error: "The code is invalid or expired." }, { status: 423 });
     }
 
     const ref = adminOtpChallengeCollection().doc(body.challengeId);
     const result = await db.runTransaction((transaction) =>
       verifyAdminOtpChallenge(transaction, ref, {
-        uid: decoded.uid,
+        uid,
         challengeId: body.challengeId,
         code: body.code,
       }),
@@ -145,7 +167,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return await otpResultResponse({
       result,
       request,
-      uid: decoded.uid,
+      uid,
       email,
       challengeId: body.challengeId,
     });

@@ -21,7 +21,9 @@ import { requesterIp } from "@/server/request-origin";
 import {
   assertVerifiedGoogleSignIn,
   hashRequesterIp,
+  requireAdmin,
   sameOrigin,
+  verifyCsrf,
   verifyAppCheckUnlessGoogle,
   writeAuditLog,
 } from "@/server/security";
@@ -34,7 +36,7 @@ export const dynamic = "force-dynamic";
 const minuteMs = 60_000;
 const hourMs = 60 * minuteMs;
 
-type SendBody = { idToken?: unknown };
+type SendBody = { idToken?: unknown; session?: unknown };
 
 function retrySeconds(input: {
   lastSentAt: number;
@@ -71,13 +73,12 @@ async function releaseFailedOtpReservation(input: {
   });
 }
 
-function validBody(value: unknown): value is SendBody & { idToken: string } {
+function validBody(value: unknown): value is SendBody & ({ idToken: string } | { session: true }) {
   return (
     typeof value === "object" &&
     value !== null &&
-    "idToken" in value &&
-    typeof value.idToken === "string" &&
-    value.idToken.length > 0
+    (("idToken" in value && typeof value.idToken === "string" && value.idToken.length > 0) ||
+      ("session" in value && (value.session === true || value.session === "true")))
   );
 }
 
@@ -85,10 +86,7 @@ async function verifyOtpIdentity(
   request: NextRequest,
   idToken: string,
   appCheckSkipped: boolean,
-): Promise<
-  | { decoded: Awaited<ReturnType<typeof adminAuth.verifyIdToken>>; storedEmail: string }
-  | NextResponse
-> {
+): Promise<{ uid: string; storedEmail: string } | NextResponse> {
   const decoded = await adminAuth.verifyIdToken(idToken, true);
   if (appCheckSkipped) assertVerifiedGoogleSignIn(decoded);
   const email = decoded.email?.trim().toLowerCase() ?? "";
@@ -106,7 +104,32 @@ async function verifyOtpIdentity(
     await writeAuditLog(request, decoded.uid, "otp.locked", decoded.uid);
     return NextResponse.json({ error: "Unable to send verification code." }, { status: 423 });
   }
-  return { decoded, storedEmail };
+  return { uid: decoded.uid, storedEmail };
+}
+
+async function verifySessionOtpIdentity(
+  request: NextRequest,
+): Promise<{ uid: string; storedEmail: string } | NextResponse> {
+  if (!verifyCsrf(request))
+    return NextResponse.json({ error: "CSRF validation failed." }, { status: 403 });
+  const identity = await requireAdmin(request);
+  const record = await db.collection("admins").doc(identity.uid).get();
+  const storedEmail = adminOtpRecipient({ email: record.get("email") });
+  if (
+    !record.exists ||
+    record.get("status") !== "active" ||
+    storedEmail !== identity.email.trim().toLowerCase() ||
+    record.get("role") !== identity.role
+  )
+    return NextResponse.json({ error: "Unable to send verification code." }, { status: 403 });
+  const location = await enforceAdminLocation({ request, adminUid: identity.uid });
+  if (!location.allowed)
+    return NextResponse.json({ error: "Unable to send verification code." }, { status: 403 });
+  if (await isAdminOtpLocked(storedEmail)) {
+    await writeAuditLog(request, identity.uid, "otp.locked", identity.uid);
+    return NextResponse.json({ error: "Unable to send verification code." }, { status: 423 });
+  }
+  return { uid: identity.uid, storedEmail };
 }
 
 function validOtpAccount(input: {
@@ -285,13 +308,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body: unknown = await request.json();
     if (!validBody(body))
       return NextResponse.json({ error: "Unable to send verification code." }, { status: 400 });
-    // Turnstile/App Check is required for email+password sign-ins only; Google sign-ins skip it.
-    const appCheck = await verifyAppCheckUnlessGoogle(request, body.idToken);
-    const identity = await verifyOtpIdentity(request, body.idToken, appCheck.skipped);
+    // Session-based reauthentication uses the authenticated admin cookie and CSRF token.
+    const sessionFlow = body.session === true || body.session === "true";
+    const appCheck = sessionFlow
+      ? { skipped: false }
+      : await verifyAppCheckUnlessGoogle(request, body.idToken as string);
+    const identity = sessionFlow
+      ? await verifySessionOtpIdentity(request)
+      : await verifyOtpIdentity(request, body.idToken as string, appCheck.skipped);
     if (identity instanceof NextResponse) return identity;
     const now = Date.now();
     const challenge = await reserveOtpChallenge({
-      uid: identity.decoded.uid,
+      uid: identity.uid,
       ipHash: hashRequesterIp(request),
       deviceHash: createDeviceHash(request),
       now,
@@ -311,7 +339,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         },
       );
     await deliverOtpEmail(identity.storedEmail, challenge);
-    await writeAuditLog(request, identity.decoded.uid, "otp.sent", challenge.challengeId).catch(
+    await writeAuditLog(request, identity.uid, "otp.sent", challenge.challengeId).catch(
       (auditError: unknown) => {
         console.error("[admin/otp/send audit]", describeFirebaseError(auditError));
       },

@@ -588,7 +588,7 @@ export function apiError(error: unknown): NextResponse {
     ["File failed security checks", { error: "File failed security checks", status: 422 }],
     [
       "REAUTH_REQUIRED",
-      { error: "Re-authentication with password and email code is required.", status: 428 },
+      { error: "Email-code verification is required.", status: 428 },
     ],
     ["FORBIDDEN", { error: "Administrator access required", status: 403 }],
     ["CSRF", { error: "CSRF validation failed", status: 403 }],
