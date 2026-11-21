@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import EmptyState from "@/components/feedback/EmptyState";
+import { formatDate } from "@/shared/date-format";
 
 import type { CertificatePreviewMap, PreviewUrl } from "../../types/admin-state.types";
 import type { Cert } from "../../types/admin.types";
@@ -53,22 +54,49 @@ function ApprovalDetails({
   return (
     <div>
       <div className="flex flex-wrap justify-between gap-2">
-        <b>{c.type} · {c.session}</b>
+        <b>
+          {c.type} · {c.session}
+        </b>
         <span className="text-xs font-semibold text-[var(--text)]">Pending</span>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <div><dt className="text-[var(--text-muted)]">Student</dt><dd className="font-semibold">{valueOrFallback(c.studentName, c.studentId)}</dd></div>
-        <div><dt className="text-[var(--text-muted)]">Father</dt><dd>{valueOrFallback(c.fatherName, "—")}</dd></div>
-        <div><dt className="text-[var(--text-muted)]">Mother</dt><dd>{valueOrFallback(c.motherName, "—")}</dd></div>
-        <div><dt className="text-[var(--text-muted)]">Certificate number</dt><dd className="font-semibold">{valueOrFallback(c.certificateNumber, "Not recorded")}</dd></div>
-        <div><dt className="text-[var(--text-muted)]">Session</dt><dd>{c.session}</dd></div>
-        <div><dt className="text-[var(--text-muted)]">Type</dt><dd>{c.type}</dd></div>
-        <div><dt className="text-[var(--text-muted)]">Issue date</dt><dd>{c.issueDate}</dd></div>
-        <div><dt className="text-[var(--text-muted)]">Uploaded by</dt><dd>{c.uploadedBy ?? "Unknown"}</dd></div>
+        <div>
+          <dt className="text-[var(--text-muted)]">Student</dt>
+          <dd className="font-semibold">{valueOrFallback(c.studentName, c.studentId)}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--text-muted)]">Father</dt>
+          <dd>{valueOrFallback(c.fatherName, "—")}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--text-muted)]">Mother</dt>
+          <dd>{valueOrFallback(c.motherName, "—")}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--text-muted)]">Certificate number</dt>
+          <dd className="font-semibold">{valueOrFallback(c.certificateNumber, "Not recorded")}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--text-muted)]">Session</dt>
+          <dd>{c.session}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--text-muted)]">Type</dt>
+          <dd>{c.type}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--text-muted)]">Issue date</dt>
+          <dd>{formatDate(c.issueDate) || c.issueDate}</dd>
+        </div>
+        <div>
+          <dt className="text-[var(--text-muted)]">Uploaded by</dt>
+          <dd>{c.uploadedBy ?? "Unknown"}</dd>
+        </div>
       </dl>
       {c.replacesId && (
         <p className="mt-3 rounded bg-[var(--surface-2)] p-2 text-xs text-[var(--text)]">
-          Replacement for certificate record {c.replacesId}. The old version will be superseded only after this approval.
+          Replacement for certificate record {c.replacesId}. The old version will be superseded only
+          after this approval.
         </p>
       )}
       <label className="mt-4 block text-sm">
@@ -144,7 +172,14 @@ function ApprovalPreview({
       <div className="mb-2 flex items-center justify-between">
         <b className="text-sm">Document preview</b>
         {!preview ? (
-          <button onClick={() => { loadPreview(c.id); }} className="rounded border bg-[var(--surface)] px-3 py-1.5 text-xs">Load 60-second preview</button>
+          <button
+            onClick={() => {
+              loadPreview(c.id);
+            }}
+            className="rounded border bg-[var(--surface)] px-3 py-1.5 text-xs"
+          >
+            Load 60-second preview
+          </button>
         ) : (
           <a
             href={preview.url}
@@ -158,7 +193,12 @@ function ApprovalPreview({
       </div>
       {preview ? (
         preview.mimeType === "application/pdf" ? (
-          <iframe title={`Preview ${c.fileName}`} src={preview.url} referrerPolicy="no-referrer" className="h-[520px] w-full rounded" />
+          <iframe
+            title={`Preview ${c.fileName}`}
+            src={preview.url}
+            referrerPolicy="no-referrer"
+            className="h-[520px] w-full rounded"
+          />
         ) : (
           <Image
             src={preview.url}
@@ -178,13 +218,7 @@ function ApprovalPreview({
   );
 }
 
-function ApprovalCard({
-  certificate,
-  props,
-}: {
-  certificate: Cert;
-  props: ApprovalsTabProps;
-}) {
+function ApprovalCard({ certificate, props }: { certificate: Cert; props: ApprovalsTabProps }) {
   return (
     <article className="rounded-lg border p-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
@@ -233,7 +267,8 @@ export default function ApprovalsTab({
     <section className="rounded-xl border bg-[var(--surface)] p-5">
       <h2 className="text-lg font-bold">Pending certificate approvals</h2>
       <p className="mt-1 text-sm text-[var(--text-muted)]">
-        Review the original upload in a private preview. Uploader submissions need a different approver; admin and superadmin uploads can be published directly.
+        Review the original upload in a private preview. Uploader submissions need a different
+        approver; admin and superadmin uploads can be published directly.
       </p>
       <div className="mt-4 space-y-4">
         {pending.map((certificate) => (
@@ -255,7 +290,12 @@ export default function ApprovalsTab({
             }}
           />
         ))}
-        {pending.length === 0 && <EmptyState title="No pending approvals" description="There are no certificates awaiting review." />}
+        {pending.length === 0 && (
+          <EmptyState
+            title="No pending approvals"
+            description="There are no certificates awaiting review."
+          />
+        )}
       </div>
     </section>
   );

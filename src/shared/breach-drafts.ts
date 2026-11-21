@@ -1,3 +1,5 @@
+import { formatDateTime } from "@/shared/date-format";
+
 export type BreachDraftInput = {
   summary: string;
   cause?: string;
@@ -21,11 +23,7 @@ function date(value: string | null | undefined): string {
   if (!value) return "Not recorded";
   const parsed = new Date(value);
   if (!Number.isFinite(parsed.getTime())) return "Not recorded";
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Kolkata",
-  }).format(parsed);
+  return formatDateTime(parsed.toISOString(), "Asia/Kolkata");
 }
 
 export function generateBreachDraft(
@@ -33,7 +31,9 @@ export function generateBreachDraft(
   audience: "board" | "people",
   contact: DraftContact,
 ): string {
-  const scope = incident.dataCategories?.length ? incident.dataCategories.join(", ") : "Not recorded";
+  const scope = incident.dataCategories?.length
+    ? incident.dataCategories.join(", ")
+    : "Not recorded";
   const location = text(incident.systemsAffected, "Not recorded");
   const contactDetails =
     [contact.name, contact.email, contact.phone].filter(Boolean).join(" · ") ||

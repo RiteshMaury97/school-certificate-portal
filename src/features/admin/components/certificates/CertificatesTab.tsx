@@ -7,6 +7,7 @@ import { appCheckHeaders } from "@/lib/firebase-client";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { confirmAction, requestInput } from "@/shared/admin-dialogs";
 import { readText } from "@/shared/safe-values";
+import { formatDateTime } from "@/shared/date-format";
 import {
   MAX_BULK_FILES,
   MAX_CSV_BYTES,
@@ -410,7 +411,7 @@ export default function CertificatesTab(props: Props) {
                   {c.lastDownloadedAt && (
                     <span className="inline-flex items-center gap-1">
                       <Clock3 size={12} aria-hidden="true" /> Last{" "}
-                      {new Date(c.lastDownloadedAt).toLocaleString()}
+                      {formatDateTime(c.lastDownloadedAt)}
                     </span>
                   )}
                 </div>

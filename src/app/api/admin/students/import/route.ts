@@ -14,6 +14,7 @@ import {
 import { consumeAdminUploadQuota, rejectOversizedRequest } from "@/server/upload-policy";
 import { normalizeAcademicSession } from "@/shared/academic-session";
 import { MAX_CSV_BYTES, MAX_CSV_ROWS } from "@/shared/upload-limits";
+import { normalizeDateInput } from "@/shared/date-format";
 import { studentCreateSchema } from "@/shared/validation";
 
 import type { Cell } from "exceljs";
@@ -217,6 +218,7 @@ function validateCatalogRow(
 }
 
 function parseImportedStudent(row: PreviewRow): ImportData | null {
+  row.values.dateOfBirth = normalizeDateInput(row.values.dateOfBirth ?? "");
   const parsed = studentCreateSchema
     .omit({ certificateType: true, certificateNumber: true, issuedAt: true })
     .safeParse(row.values);

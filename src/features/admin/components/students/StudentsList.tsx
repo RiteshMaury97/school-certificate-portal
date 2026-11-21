@@ -8,6 +8,7 @@ import EmptyState from "@/components/feedback/EmptyState";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { appCheckHeaders } from "@/lib/firebase-client";
 import { UPLOAD_LIMITS_HELP } from "@/shared/upload-limits";
+import { formatDate, formatDateTime } from "@/shared/date-format";
 
 import { csrf } from "../../utils/admin-helpers";
 import DuplicateHashWarning from "../shared/DuplicateHashWarning";
@@ -133,17 +134,17 @@ export default function StudentsList({
     [classOptions, students],
   );
 
-function displayScalar(value: unknown, fallback = ""): string {
-  if (typeof value === "string") return value || fallback;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return fallback;
-}
+  function displayScalar(value: unknown, fallback = ""): string {
+    if (typeof value === "string") return value || fallback;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    return fallback;
+  }
 
-function displayTimestamp(value: unknown): string {
-  if (typeof value !== "string" && typeof value !== "number") return "";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : ` · ${date.toLocaleString()}`;
-}
+  function displayTimestamp(value: unknown): string {
+    if (typeof value !== "string" && typeof value !== "number") return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "" : ` · ${formatDateTime(date.toISOString())}`;
+  }
   const sessionNames = useMemo(
     () =>
       choices(
@@ -420,7 +421,7 @@ function displayTimestamp(value: unknown): string {
                   <td className={cellClass}>{student.motherName}</td>
                   <td className={cellClass}>{displayScalar(student.scholarNumber, "—")}</td>
                   <td className={cellClass}>{displayScalar(student.admissionNo, "—")}</td>
-                  <td className={cellClass}>{displayScalar(student.dateOfBirth, "—")}</td>
+                  <td className={cellClass}>{formatDate(student.dateOfBirth) || "—"}</td>
                   <td className={cellClass}>{displayScalar(student.className, "—")}</td>
                   <td className={cellClass}>{displayScalar(student.session, "—")}</td>
                   <td className={cellClass}>{student.certificateCount}</td>
@@ -492,7 +493,9 @@ function displayTimestamp(value: unknown): string {
             <button
               type="button"
               disabled={page === 0}
-              onClick={() => { setPage((value) => value - 1); }}
+              onClick={() => {
+                setPage((value) => value - 1);
+              }}
               className="min-h-8 rounded-md border border-[var(--divider)] px-2.5 disabled:opacity-40"
             >
               Previous
@@ -503,7 +506,9 @@ function displayTimestamp(value: unknown): string {
             <button
               type="button"
               disabled={page + 1 >= pageCount}
-              onClick={() => { setPage((value) => value + 1); }}
+              onClick={() => {
+                setPage((value) => value + 1);
+              }}
               className="min-h-8 rounded-md border border-[var(--divider)] px-2.5 disabled:opacity-40"
             >
               Next
@@ -553,7 +558,9 @@ function displayTimestamp(value: unknown): string {
               <button
                 type="button"
                 aria-label="Close edit student dialog"
-                onClick={() => { setEditing(null); }}
+                onClick={() => {
+                  setEditing(null);
+                }}
                 className="rounded-lg p-2 hover:bg-[var(--surface-2)]"
               >
                 <X size={18} aria-hidden="true" />
@@ -574,7 +581,8 @@ function displayTimestamp(value: unknown): string {
                     id={`edit-student-${key}`}
                     aria-label={label}
                     type={type ?? "text"}
-                    required={required} aria-required={required}
+                    required={required}
+                    aria-required={required}
                     value={editForm[key]}
                     onChange={(event) => {
                       setEditForm((current) =>
@@ -582,13 +590,15 @@ function displayTimestamp(value: unknown): string {
                       );
                     }}
                     className={controlClass}
-                    />
+                  />
                 </label>
               ))}
               <div className="flex justify-end gap-2 sm:col-span-2">
                 <button
                   type="button"
-                  onClick={() => { setEditing(null); }}
+                  onClick={() => {
+                    setEditing(null);
+                  }}
                   className="min-h-10 rounded-lg border border-[var(--divider)] px-4 text-sm"
                 >
                   Close
@@ -660,8 +670,8 @@ function displayTimestamp(value: unknown): string {
                   Add certificate
                 </h2>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">
-                  {certificateStudent.studentName} Â· Class {certificateStudent.className} Â· Session{" "}
-                  {certificateStudent.session}
+                  {certificateStudent.studentName} Â· Class {certificateStudent.className} Â·
+                  Session {certificateStudent.session}
                 </p>
               </div>
               <button
@@ -681,7 +691,8 @@ function displayTimestamp(value: unknown): string {
                 Certificate type
                 <select
                   id="student-certificate-type"
-                  required aria-required="true"
+                  required
+                  aria-required="true"
                   value={certificate.certificateType}
                   onChange={(event) => {
                     setCertificate((current) => ({
@@ -709,7 +720,8 @@ function displayTimestamp(value: unknown): string {
                 <input
                   id="student-certificate-number"
                   aria-label="Certificate number"
-                  required aria-required="true"
+                  required
+                  aria-required="true"
                   maxLength={80}
                   value={certificate.certificateNumber}
                   onChange={(event) => {
@@ -749,9 +761,12 @@ function displayTimestamp(value: unknown): string {
                   id="student-certificate-file"
                   aria-label="Certificate document"
                   type="file"
-                  required aria-required="true"
+                  required
+                  aria-required="true"
                   accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(event) => { setCertificateFile(event.target.files?.[0] ?? null); }}
+                  onChange={(event) => {
+                    setCertificateFile(event.target.files?.[0] ?? null);
+                  }}
                   className={controlClass}
                 />
                 <span className="text-[10px] font-normal text-[var(--text-muted)]">

@@ -282,11 +282,14 @@ async function scheduleNewDeviceAlert(input: {
   const link = absoluteUrl(
     `/api/admin/session/revoke-all?token=${encodeURIComponent(actionToken)}`,
   );
-  const localTime = `${new Intl.DateTimeFormat("en-IN", {
+  const localTime = `${new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata",
-    dateStyle: "medium",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
     timeStyle: "short",
-  }).format(now)} IST`;
+    hourCycle: "h23",
+  }).format(now).replaceAll("/", "-")} IST`;
   const countryNotice = countryChanged
     ? ` This sign-in is from a new country: ${escapeHtml(country)}.`
     : country

@@ -7,6 +7,7 @@ import { requireRoles, apiError, createCertificateNumberHash } from "@/server/se
 import { studentIdentifierHmac } from "@/server/student-pii";
 import { rejectOversizedRequest } from "@/server/upload-policy";
 import { normalizeAcademicSession } from "@/shared/academic-session";
+import { normalizeDateInput } from "@/shared/date-format";
 import {
   MAX_BULK_FILES,
   MAX_CSV_BYTES,
@@ -182,7 +183,7 @@ function resolvedMapping(row: MappingRow, fileName: string) {
     session: row.session ?? "",
     type: row.certificatetype ?? row.type ?? inferredType,
     number: row.certificatenumber ?? "",
-    date: row.issuedate ?? "",
+    date: normalizeDateInput(row.issuedate ?? ""),
     admissionNo: row.admissionnumber ?? row.admissionno ?? pattern?.[1] ?? "",
     pattern,
   };
@@ -192,7 +193,7 @@ function validateBasicFields(session: string, type: string, date: string, errors
   if (!/^\d{4}-\d{2}$/.test(session)) errors.push("Invalid session.");
   if (type.length < 2)
     errors.push("Certificate type is required (or use admissionNo_type.pdf naming). ");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push("Issue date must be YYYY-MM-DD.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push("Issue date must be a valid dd-mm-yyyy date.");
 }
 
 async function validateMappingRow(

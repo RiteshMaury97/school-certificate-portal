@@ -7,6 +7,7 @@ import { useEffect, useState, type ChangeEvent, type SubmitEvent, type ReactNode
 
 import { DatePicker } from "@/components/ui/DatePicker";
 import { PERSON_NAME_PATTERN, PHONE_NUMBER_PATTERN } from "@/shared/html-patterns";
+import { formatDateTime } from "@/shared/date-format";
 
 import type { Role } from "../../types/admin.types";
 
@@ -71,7 +72,7 @@ const emptyProfile: Profile = {
   bio: "",
   preferredLanguage: "en",
   timeZone: "Asia/Kolkata",
-  dateFormat: "DD/MM/YYYY",
+  dateFormat: "DD-MM-YYYY",
   photoDataUrl: "",
   emailNotifications: true,
   systemNotifications: true,
@@ -158,13 +159,17 @@ function formatAccountDate(value: string | null | undefined, profile: Profile) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "No record available";
   try {
-    return new Intl.DateTimeFormat(profile.preferredLanguage || "en", {
-      dateStyle: "medium",
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
       ...(value.includes("T") ? { timeStyle: "short" as const } : {}),
       timeZone: profile.timeZone || "Asia/Kolkata",
-    }).format(date);
+    })
+      .format(date)
+      .replaceAll("/", "-");
   } catch {
-    return date.toLocaleString();
+    return formatDateTime(date.toISOString());
   }
 }
 
@@ -864,9 +869,7 @@ export default function ProfileTab({
                     required
                     aria-required="true"
                   >
-                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                    <option value="DD-MM-YYYY">DD-MM-YYYY</option>
                   </select>
                 </Field>
               </div>

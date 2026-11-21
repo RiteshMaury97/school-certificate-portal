@@ -1,3 +1,5 @@
+import { formatDateTime } from "@/shared/date-format";
+
 export type Api = <T extends Record<string, unknown> = Record<string, unknown>>(
   url: string,
   init?: RequestInit,
@@ -100,9 +102,18 @@ function incidentNotifications(value: Record<string, unknown>): Partial<Incident
     ...(typeof value.principalsNotifiedAt === "string" || value.principalsNotifiedAt === null
       ? { principalsNotifiedAt: value.principalsNotifiedAt }
       : {}),
-    ...(typeof value.boardNotificationNotRequiredReason === "string" ? { boardNotificationNotRequiredReason: value.boardNotificationNotRequiredReason } : {}),
-    ...(typeof value.affectedPeopleNotificationNotRequiredReason === "string" ? { affectedPeopleNotificationNotRequiredReason: value.affectedPeopleNotificationNotRequiredReason } : {}),
-    ...(typeof value.boardDetailedReportNotRequiredReason === "string" ? { boardDetailedReportNotRequiredReason: value.boardDetailedReportNotRequiredReason } : {}),
+    ...(typeof value.boardNotificationNotRequiredReason === "string"
+      ? { boardNotificationNotRequiredReason: value.boardNotificationNotRequiredReason }
+      : {}),
+    ...(typeof value.affectedPeopleNotificationNotRequiredReason === "string"
+      ? {
+          affectedPeopleNotificationNotRequiredReason:
+            value.affectedPeopleNotificationNotRequiredReason,
+        }
+      : {}),
+    ...(typeof value.boardDetailedReportNotRequiredReason === "string"
+      ? { boardDetailedReportNotRequiredReason: value.boardDetailedReportNotRequiredReason }
+      : {}),
   };
 }
 
@@ -200,15 +211,7 @@ export function formatIst(value: string | null | undefined): string {
   if (!value) return "Not recorded";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown date";
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Kolkata",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(date);
+  return formatDateTime(date.toISOString(), "Asia/Kolkata");
 }
 export function localDateTime(value: string | null | undefined): string {
   if (!value) return "";

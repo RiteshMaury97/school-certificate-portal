@@ -14,12 +14,12 @@ function stampTime(date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
     day: "2-digit",
-    month: "short",
+    month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  }).format(date);
+  }).format(date).replaceAll("/", "-");
   return `${parts} IST`;
 }
 function xml(value: string): string {

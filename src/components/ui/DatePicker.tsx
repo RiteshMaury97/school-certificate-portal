@@ -3,6 +3,8 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { formatDate } from "@/shared/date-format";
+
 type DatePickerProps = {
   id: string;
   label: string;
@@ -17,11 +19,6 @@ type DatePickerProps = {
   placeholder?: string;
 };
 
-const dateFormat = new Intl.DateTimeFormat(undefined, {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-});
 const monthFormat = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
 const weekDays = Array.from({ length: 7 }, (_, index) =>
   new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(new Date(2024, 0, 7 + index)),
@@ -49,7 +46,9 @@ function inputValue(selectedDate: string, time: string, includeTime: boolean): s
 }
 
 function selectedDateLabel(date: Date | null, placeholder: string | undefined): string {
-  return date ? dateFormat.format(date) : (placeholder ?? "Pick a date");
+  return date
+    ? `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`
+    : (placeholder ?? "Pick a date");
 }
 
 type CalendarPopupProps = {
@@ -94,7 +93,9 @@ function CalendarPopup({
         <button
           type="button"
           aria-label="Previous month"
-          onClick={() => { onChangeMonth(-1); }}
+          onClick={() => {
+            onChangeMonth(-1);
+          }}
           className="grid size-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
         >
           <ChevronLeft size={16} aria-hidden="true" />
@@ -105,15 +106,25 @@ function CalendarPopup({
         <button
           type="button"
           aria-label="Next month"
-          onClick={() => { onChangeMonth(1); }}
+          onClick={() => {
+            onChangeMonth(1);
+          }}
           className="grid size-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
         >
           <ChevronRight size={16} aria-hidden="true" />
         </button>
       </div>
-      <div role="grid" aria-label={monthFormat.format(visibleMonth)} className="grid grid-cols-7 gap-1 text-center">
+      <div
+        role="grid"
+        aria-label={monthFormat.format(visibleMonth)}
+        className="grid grid-cols-7 gap-1 text-center"
+      >
         {weekDays.map((day, index) => (
-          <div key={`${day}-${String(index)}`} role="columnheader" className="py-1 text-[10px] font-medium text-[var(--text-muted)]">
+          <div
+            key={`${day}-${String(index)}`}
+            role="columnheader"
+            className="py-1 text-[10px] font-medium text-[var(--text-muted)]"
+          >
             {day}
           </div>
         ))}
@@ -127,10 +138,12 @@ function CalendarPopup({
               key={key}
               type="button"
               role="gridcell"
-              aria-label={dateFormat.format(day)}
+              aria-label={formatDate(key)}
               aria-selected={isSelected}
               disabled={unavailable}
-              onClick={() => { onChooseDay(day); }}
+              onClick={() => {
+                onChooseDay(day);
+              }}
               className={`mx-auto grid size-9 place-items-center rounded-lg text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--primary)] ${
                 isSelected
                   ? "bg-[var(--primary)] font-semibold text-[var(--on-primary)]"
@@ -145,15 +158,19 @@ function CalendarPopup({
         })}
       </div>
       {includeTime && (
-        <label htmlFor={`${id}-time`} className="mt-3 flex items-center justify-between border-t border-[var(--divider)] pt-3 text-xs font-medium text-[var(--text-muted)]">
+        <label
+          htmlFor={`${id}-time`}
+          className="mt-3 flex items-center justify-between border-t border-[var(--divider)] pt-3 text-xs font-medium text-[var(--text-muted)]"
+        >
           Time
           <input
             id={`${id}-time`}
             aria-label={`${label} time`}
             type="time"
             value={time}
-            onChange={(event) => { onChange(`${selectedDate || keyFromDate(new Date())}T${event.target.value}`); }
-            }
+            onChange={(event) => {
+              onChange(`${selectedDate || keyFromDate(new Date())}T${event.target.value}`);
+            }}
             className="rounded-lg border border-[var(--divider)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
             required
             aria-required="true"
@@ -210,8 +227,9 @@ export function DatePicker({
   const days = useMemo(() => {
     const first = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
     const offset = first.getDay();
-    return Array.from({ length: 42 }, (_, index) =>
-      new Date(first.getFullYear(), first.getMonth(), index - offset + 1),
+    return Array.from(
+      { length: 42 },
+      (_, index) => new Date(first.getFullYear(), first.getMonth(), index - offset + 1),
     );
   }, [visibleMonth]);
 
@@ -258,13 +276,21 @@ export function DatePicker({
         className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-[var(--divider)] bg-[var(--surface)] px-3 text-left text-sm text-[var(--text)] shadow-sm outline-none transition hover:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 disabled:cursor-not-allowed disabled:opacity-50 data-[empty=true]:text-[var(--text-muted)]"
       >
         <span className="flex min-w-0 items-center gap-2.5">
-          <CalendarDays size={16} className="shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
+          <CalendarDays
+            size={16}
+            className="shrink-0 text-[var(--text-muted)]"
+            aria-hidden="true"
+          />
           <span className="truncate">
             {selectedDateLabel(parsedSelected, placeholder)}
-            {includeTime && selectedDate && <span className="ml-2 text-[var(--text-muted)]">{time}</span>}
+            {includeTime && selectedDate && (
+              <span className="ml-2 text-[var(--text-muted)]">{time}</span>
+            )}
           </span>
         </span>
-        {includeTime && <Clock3 size={15} className="shrink-0 text-[var(--text-muted)]" aria-hidden="true" />}
+        {includeTime && (
+          <Clock3 size={15} className="shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
+        )}
       </button>
 
       <input
@@ -289,7 +315,9 @@ export function DatePicker({
           days={days}
           onChange={onChange}
           onChooseDay={chooseDay}
-          onClose={() => { setOpen(false); }}
+          onClose={() => {
+            setOpen(false);
+          }}
           onChangeMonth={(offset) => {
             setVisibleMonth((month) => new Date(month.getFullYear(), month.getMonth() + offset, 1));
           }}

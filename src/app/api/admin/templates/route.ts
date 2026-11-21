@@ -89,7 +89,7 @@ function csvTemplate({ classes, sessions }: Catalogs): NextResponse {
     classes[0] ?? "",
     sessions[0] ?? "",
     "DEMO-ADM-001",
-    "2010-04-15",
+    "15-04-2010",
   ];
   const content =
     [
@@ -140,6 +140,7 @@ function populateStudentSheet(sheet: ExcelJS.Worksheet, catalogs: Catalogs): voi
   sheet.autoFilter = { from: "A1", to: "H501" };
   sheet.getColumn("scholarNumber").numFmt = "@";
   sheet.getColumn("admissionNumber").numFmt = "@";
+  sheet.getColumn("dateOfBirth").numFmt = "@";
   sheet.addRow([
     "Aarav Sharma",
     "Rohan Sharma",
@@ -148,7 +149,7 @@ function populateStudentSheet(sheet: ExcelJS.Worksheet, catalogs: Catalogs): voi
     catalogs.classes[0] ?? "",
     catalogs.sessions[0] ?? "",
     "DEMO-ADM-001",
-    "2010-04-15",
+    "15-04-2010",
   ]);
   sheet.getRow(2).font = { color: { argb: "FF64748B" }, italic: true };
 }
@@ -202,7 +203,7 @@ function populateGuideSheet(workbook: ExcelJS.Workbook): void {
     [
       "dateOfBirth",
       "No",
-      "Valid date formatted as YYYY-MM-DD; also used to distinguish matching names.",
+      "Valid date formatted as dd-mm-yyyy (for example 15-04-2010); also used to distinguish matching names.",
     ],
     [
       "Certificates",

@@ -68,7 +68,7 @@ const emptyProfile: Profile = {
   bio: "",
   preferredLanguage: "en",
   timeZone: "Asia/Kolkata",
-  dateFormat: "DD/MM/YYYY",
+  dateFormat: "DD-MM-YYYY",
   photoDataUrl: "",
   emailNotifications: true,
   systemNotifications: true,
@@ -137,7 +137,7 @@ function validateIdentity(profile: Profile): string | null {
   )
     return "Choose a valid gender option.";
   if (!validDate(profile.dateOfBirth) || !validDate(profile.joiningDate))
-    return "Enter dates in YYYY-MM-DD format.";
+    return "Enter dates in dd-mm-yyyy format.";
   return null;
 }
 
@@ -163,8 +163,7 @@ function validateContact(profile: Profile): string | null {
 function validatePreferences(profile: Profile): string | null {
   if (!["en", "hi", "bn", "mr", "gu", "pa", "ta", "te", "ur"].includes(profile.preferredLanguage))
     return "Choose a supported language.";
-  if (!["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"].includes(profile.dateFormat))
-    return "Choose a supported date format.";
+  if (profile.dateFormat !== "DD-MM-YYYY") return "Choose a supported date format.";
   try {
     new Intl.DateTimeFormat("en", { timeZone: profile.timeZone });
   } catch {
@@ -188,6 +187,7 @@ function readProfile(value: unknown): Profile {
   for (const field of BOOLEAN_FIELDS) {
     if (typeof stored[field] === "boolean") profile[field] = stored[field];
   }
+  profile.dateFormat = "DD-MM-YYYY";
   return profile;
 }
 

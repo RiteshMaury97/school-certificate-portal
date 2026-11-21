@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
           bio: "",
           preferredLanguage: "en",
           timeZone: "Asia/Kolkata",
-          dateFormat: "DD/MM/YYYY",
+          dateFormat: "DD-MM-YYYY",
           photoDataUrl: "",
           emailNotifications: true,
           systemNotifications: true,

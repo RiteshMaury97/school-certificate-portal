@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { useCertificateFlow } from "@/features/certificates/CertificateFlowProvider";
+import { formatDate } from "@/shared/date-format";
 export default function PrintPage() {
   const router = useRouter();
   const { result } = useCertificateFlow();
@@ -14,11 +15,11 @@ export default function PrintPage() {
   return (
     <main className="mx-auto max-w-4xl p-6 print:p-0 notranslate" translate="no">
       <div className="mb-6 flex justify-between print:hidden">
-        <Link href="/certificates/results">
-          ← Back to results
-        </Link>
+        <Link href="/certificates/results">← Back to results</Link>
         <button
-          onClick={() => { window.print(); }}
+          onClick={() => {
+            window.print();
+          }}
           className="rounded-lg bg-[var(--primary)] px-4 py-2 text-[var(--on-primary)]"
         >
           Print
@@ -45,7 +46,7 @@ export default function PrintPage() {
             <strong>{item.type}</strong>
             <p>Session: {item.session}</p>
             <p>Certificate number: {item.certificateNumber}</p>
-            <p>Issue date: {item.issueDate}</p>
+            <p>Issue date: {formatDate(item.issueDate) || item.issueDate}</p>
           </article>
         ))}
       </div>
